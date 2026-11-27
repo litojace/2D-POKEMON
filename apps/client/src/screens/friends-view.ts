@@ -63,6 +63,8 @@ export interface FriendsData {
   blocked?: readonly { id: string; name: string }[];
   /** Friends can be messaged in the chat (its Friends tab). */
   canMessage?: boolean;
+  /** A friend's player card can be opened (not from a private room). */
+  canCard?: boolean;
   /** Friends with an invitation from you still open (from any screen). */
   invited?: ReadonlySet<string>;
 }
@@ -247,6 +249,19 @@ function rowShell(o: {
 }
 const waiting = (view: FriendsView, id: string) => view.busy.has(id);
 
+/**
+ * A friend in the Lobby's Invite a friend (showPartyInvite in main.ts): the
+ * Friends list's own row (their portrait and frame, the presence dot, what
+ * they are doing) with one Invite button, so the two lists read as one.
+ * `label` is the button's inner markup; main.ts changes it in place.
+ */
+export function partyInviteRow(
+  f: Friend,
+  o: { inParty: boolean; label: string; off: boolean },
+) {
+  return `<li class="ui-row">${portrait(f, presenceOf(f))}<span class="ui-row-main"><b title="${esc(f.name)}">${esc(f.name)}</b><small>${esc(o.inParty ? "In your party" : friendStatus(f))}</small></span><span class="ui-row-acts"><button type="button" class="ui-btn is-s is-primary" data-party-invite="${esc(f.id)}"${o.off ? " disabled" : ""}>${o.label}</button></span></li>`;
+}
+
 function requestRow(
   r: { id: string; name: string },
   incoming: boolean,
@@ -383,7 +398,17 @@ function friendRow(f: Friend, d: FriendsData, view: FriendsView, now: number) {
           disabled: busy,
           attrs: { "data-friend-remove-ok": f.id },
         })
-      : (d.canMessage
+      : (d.canCard
+          ? button("Player card", {
+              size: "s",
+              icon: "user",
+              attrs: {
+                "data-friend-card": f.id,
+                "aria-label": `${f.name}'s player card and matches`,
+              },
+            })
+          : "") +
+        (d.canMessage
           ? button("Message", {
               size: "s",
               icon: "chat",

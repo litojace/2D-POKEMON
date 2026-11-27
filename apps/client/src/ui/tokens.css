@@ -24,6 +24,12 @@
   --ui-accent-lo: #e9b52c;
   --ui-accent-deep: #a87a12;
   --ui-accent-ink: #2a1a00;
+  /* Coins keep their own gold: a look may re-point the accent (ui-theme.ts). */
+  --ui-coin: #ffd65b;
+  --ui-coin-deep: #b8860b;
+  /* The Lobby fighter's element colour (lobby-screen.ts keeps it in step);
+     the looks draw with it. Gold until a Lobby has shown a fighter. */
+  --el: #ffd65b;
   /* Green means owned, equipped or online; red is for alerts and badges. */
   --ui-ok: #43d971;
   --ui-ok-deep: #1d7a3c;
@@ -254,10 +260,8 @@
     --split-main: clamp(760px, 58vw, 920px);
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  :root {
-    --dur-1: 0ms;
-    --dur-2: 0ms;
-    --dur-3: 0ms;
-  }
+:root:where([data-motion="reduced"]) {
+  --dur-1: 0ms;
+  --dur-2: 0ms;
+  --dur-3: 0ms;
 }

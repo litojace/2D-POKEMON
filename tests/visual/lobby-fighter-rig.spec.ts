@@ -283,7 +283,6 @@ test("your fighter wears your equipped raid look, as in the roster", async ({
       bestSeconds: null,
       titles: [],
       cosmetics: ["spark-aura"],
-      weekly: [],
     };
   });
   const errors = await openLobby(page);

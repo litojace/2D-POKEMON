@@ -1,9 +1,11 @@
 import { writeFileSync } from "node:fs";
+import { frameFiles } from "./frame-files.mjs";
 // Generates apps/client/src/signature-frames.css: art for the frames that
 // used to be a plain coloured ring (owner, 18 Nov 2026: each frame should
 // have its own look). Wayfarer, Champion laurel, Planet-ring, Cartridge and
-// the four season frames, drawn as still SVG data URIs like the collection
-// frames (frame-art.mjs): nothing here animates.
+// the four season frames, drawn as still SVG files (apps/client/src/frames/,
+// frame-files.mjs) like the collection frames (frame-art.mjs): nothing here
+// animates.
 // Run: node scripts/signature-frame-art.mjs && npx prettier --write apps/client/src/signature-frames.css
 // Frame art: viewBox -70 -70 140 140, the portrait disc is r = 50. The
 // portrait is drawn over the art, so anything inside r = 50 is hidden.
@@ -13,8 +15,8 @@ const pt = (r, a) => [f(Math.cos(R(a)) * r), f(Math.sin(R(a)) * r)];
 const P = (...pts) => pts.map((p) => p.join(" ")).join(" ");
 const svg = (body, vb = "-70 -70 140 140") =>
   `<svg xmlns='http://www.w3.org/2000/svg' viewBox='${vb}'>${body}</svg>`;
-const uri = (s) =>
-  `url("data:image/svg+xml,${s.replace(/#/g, "%23").replace(/"/g, "'").replace(/\s+/g, " ")}")`;
+// The pictures are files (frame-files.mjs): frames/signature-<id>.svg.
+const pictures = frameFiles("signature");
 // Deterministic pseudo-random, so the art never changes between runs.
 let seed = 1;
 const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
@@ -477,7 +479,7 @@ ${sel(x.id)} {
   --frame-glow: ${x.glow};
 }
 ${sel(x.id)}::before {
-  background-image: ${uri(x.art)};
+  background-image: ${pictures.url(x.id, x.art)};
 }
 `;
   if (x.edge)
@@ -494,3 +496,4 @@ writeFileSync(
   new URL("../apps/client/src/signature-frames.css", import.meta.url),
   css,
 );
+pictures.done();

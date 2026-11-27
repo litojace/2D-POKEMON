@@ -5,6 +5,7 @@ import {
   profileFaceOrder,
   PROFILE_HEAD_WIDTH,
   PROFILE_FACE_PARTS,
+  REAR_ARMS_MIRRORED,
 } from "./creature-profile";
 import { championMaterials } from "./champion-materials";
 import { styleHalcyraBeak } from "./skins/halcyra-beaks";
@@ -42,7 +43,20 @@ export type CreaturePart =
   | "ears"
   | "eyes"
   | "scarf"
-  | "flame";
+  | "flame"
+  /**
+   * A skin's headwear on a champion whose head-top piece moves on its own
+   * (Cindrake's living flame, Terradon's swaying sapling, Sunbara's rocking
+   * yuzu): it rides the head rigidly instead, so a hat or band never
+   * flickers, sways or rocks with the crest (see ANIMATED_CRESTS).
+   */
+  | "hat";
+/**
+ * Champions whose head-top piece animates on its own in the rig. A skin's
+ * pieces on that layer go on the "hat" layer instead, which follows the head
+ * rigidly, so only the crest itself flickers, sways or rocks.
+ */
+export const ANIMATED_CRESTS = new Set<CharacterId>(["cindrake", "terradon", "sunbara"]);
 export const creatureParts: CreaturePart[] = [
   "tail",
   "wings",
@@ -57,6 +71,7 @@ export const creatureParts: CreaturePart[] = [
   "eyes",
   "scarf",
   "flame",
+  "hat",
 ];
 /**
  * Chibi proportions baked into every part: the face (head, ears, eyes, crest)
@@ -80,6 +95,7 @@ export const PROPORTIONS: Record<CreaturePart, typeof FACE> = {
   eyes: FACE,
   scarf: FRAME,
   flame: FACE,
+  hat: FACE,
 };
 /** Where a point of part `part` lands once its proportion transform is applied. */
 export function proportioned(part: CreaturePart, x: number, y: number) {
@@ -499,6 +515,7 @@ export function creatureLayers(
     eyes: frontEyes(),
     scarf: "",
     flame: "",
+    hat: "",
   };
   // ---- Pieces the new eight share between parts.
   /** A small living flame (Pyranda's tail tip and its chestnut). */
@@ -599,7 +616,8 @@ export function creatureLayers(
     const blade = (x: number) =>
       `${path(`M${x - 2} 150Q${x + 4} 116 ${x + 20} 92Q${x + 30} 114 ${x + 8} 152Z`, `url(#${prefix}-jewel)`)}${line(`M${x + 4} 146Q${x + 10} 120 ${x + 19} 100`, "#ffffff", 1.6, 0.8)}${path(`M${x - 6} 150H${x + 14}L${x + 12} 156H${x - 4}Z`, "#ffe7c2")}`;
     layers.armL = hand(69);
-    layers.armR = `${blade(131)}${hand(131)}`;
+    // Marked as held, so a skin can hand it something else (SkinArt.heldOff).
+    layers.armR = `<g data-held="1">${blade(131)}</g>${hand(131)}`;
   }
   if (id === "auralynx") {
     // Ascendant lynx monk: tall ears with crystal tips, a forehead gem, a
@@ -738,7 +756,7 @@ export function creatureLayers(
     layers.armR = `${path("M126 124Q144 134 146 154L132 152Q130 140 120 132Z", body)}${e(140, 154, 6, 5, p.light)}`;
     layers.scarf = `${path("M64 112Q100 128 136 112L132 124Q100 138 68 124Z", p.dark)}${path("M96 122Q92 132 100 136Q94 130 100 124Z", p.glow)}`;
     // Lantern on a crook, hanging from its tip; the rig swings this layer.
-    layers.tail = `${tailPath("M126 150Q150 148 156 120Q160 98 172 92Q180 92 180 100", "none", ` stroke="${p.dark}" stroke-width="4" stroke-linecap="round"`)}${line(`M${tailX(180)} 100V106`, p.dark, 2)}<circle cx="${tailX(180)}" cy="118" r="17" fill="${shine}" stroke="none"/>${path(`M${tailX(173)} 108H${tailX(187)}L${tailX(185)} 128H${tailX(175)}Z`, p.accent)}${e(tailX(180), 118, 4.5, 7, p.glow)}${e(tailX(180), 120, 2, 3.5, "#ffffff")}${line(`M${tailX(172)} 107H${tailX(188)}M${tailX(174)} 129H${tailX(186)}`, p.dark, 3)}`;
+    layers.tail = `${tailPath("M126 150Q150 148 156 120Q160 98 172 92Q180 92 180 100", "none", ` stroke="${p.dark}" stroke-width="4" stroke-linecap="round"`)}${line(`M${tailX(180)} 100V106`, p.dark, 2)}<circle cx="${tailX(180)}" cy="118" r="17" fill="${shine}" stroke="none"/><g data-held="1">${path(`M${tailX(173)} 108H${tailX(187)}L${tailX(185)} 128H${tailX(175)}Z`, p.accent)}${e(tailX(180), 118, 4.5, 7, p.glow)}${e(tailX(180), 120, 2, 3.5, "#ffffff")}${line(`M${tailX(172)} 107H${tailX(188)}M${tailX(174)} 129H${tailX(186)}`, p.dark, 3)}</g>`;
   }
   if (id === "coilemur") {
     // Ring-tailed lemur: pointed ears, a white face mask with dark eye patches,
@@ -781,7 +799,7 @@ export function creatureLayers(
     const dark = marks.limb;
     layers.body = `${e(100, 138, 30, 28)}${e(100, 144, 17, 18, marks.belly)}${highlight(80, 124, 16)}`;
     layers.armL = hand(67, dark);
-    layers.armR = `${path("M134 132Q134 120 143 118Q152 120 152 130Q150 138 143 138Q136 138 134 132Z", "#8a4a22")}${e(143, 121, 7, 3, "#c98a52")}${flameTip(143, 110, 6)}${hand(133, dark)}`;
+    layers.armR = `<g data-held="1">${path("M134 132Q134 120 143 118Q152 120 152 130Q150 138 143 138Q136 138 134 132Z", "#8a4a22")}${e(143, 121, 7, 3, "#c98a52")}${flameTip(143, 110, 6)}</g>${hand(133, dark)}`;
     layers.legL = paw(80, 160, 14, dark);
     layers.legR = paw(120, 160, 14, dark);
     layers.tail = `${path("M122 152Q160 160 172 132Q180 108 164 92Q156 86 150 94Q162 104 158 120Q152 140 120 140Z", body)}${line("M150 140Q160 136 168 128M158 118Q166 114 174 114", marks.mark, 6, 0.35)}${flameTip(157, 88, 10)}`;
@@ -795,7 +813,10 @@ export function creatureLayers(
   }
   if (id === "glacelle") {
     // Sea angel: a translucent floating body with a glowing orange heart, two
-    // frosted wing-flaps, little ice horns and drifting snow crystals.
+    // frosted wing-flaps, little ice horns and drifting snow crystals. A skin
+    // in dark colours or armour draws it solid (SkinArt.solid).
+    const see = (alpha: string) =>
+      art?.solid ? "" : ` fill-opacity="${alpha}"`;
     layers.legL = "";
     layers.legR = "";
     layers.ears = `${path("M76 60L70 34L86 54Z", jewel)}${path("M124 60L130 34L114 54Z", jewel)}${line("M72 40L78 50M128 40L122 50", "#ffffff", 1.4, 0.8)}`;
@@ -806,12 +827,12 @@ export function creatureLayers(
         1.3,
         0.9,
       );
-    layers.head = `${e(100, 88, 39, 34, face, ' fill-opacity=".93"')}${highlight(70, 72, 24)}${stroke("M96.5 109.5Q100 112.6 103.5 109.5")}${frost(66, 103)}${frost(71, 109)}${frost(134, 103)}${frost(129, 109)}`;
+    layers.head = `${e(100, 88, 39, 34, face, see(".93"))}${highlight(70, 72, 24)}${stroke("M96.5 109.5Q100 112.6 103.5 109.5")}${frost(66, 103)}${frost(71, 109)}${frost(134, 103)}${frost(129, 109)}`;
     layers.eyes = frontEyes("#43c6ff", 9.5, 11.5);
-    layers.body = `${path("M72 120Q100 110 128 120Q134 146 116 166Q106 178 100 186Q94 178 84 166Q66 146 72 120Z", body, ' fill-opacity=".9"')}${e(100, 140, 9, 11, `url(#${prefix}-heart)`, ' stroke="none"')}<circle cx="100" cy="140" r="17" fill="url(#${prefix}-heartglow)" stroke="none"/>${line("M86 128Q84 146 92 162M114 128Q116 146 108 162", "#ffffff", 1.6, 0.45)}`;
+    layers.body = `${path("M72 120Q100 110 128 120Q134 146 116 166Q106 178 100 186Q94 178 84 166Q66 146 72 120Z", body, see(".9"))}${e(100, 140, 9, 11, `url(#${prefix}-heart)`, ' stroke="none"')}<circle cx="100" cy="140" r="17" fill="url(#${prefix}-heartglow)" stroke="none"/>${line("M86 128Q84 146 92 162M114 128Q116 146 108 162", "#ffffff", 1.6, 0.45)}`;
     const flap = (dir: number) => {
       const x = (v: number) => 100 + dir * v;
-      return `${path(`M${x(26)} 126Q${x(52)} 104 ${x(64)} 118Q${x(70)} 132 ${x(54)} 146Q${x(40)} 150 ${x(26)} 140Z`, jewel, ' fill-opacity=".85"')}${line(`M${x(30)} 132Q${x(46)} 124 ${x(58)} 124`, "#ffffff", 1.5, 0.75)}${sparkle(x(54), 132, 3)}`;
+      return `${path(`M${x(26)} 126Q${x(52)} 104 ${x(64)} 118Q${x(70)} 132 ${x(54)} 146Q${x(40)} 150 ${x(26)} 140Z`, jewel, see(".85"))}${line(`M${x(30)} 132Q${x(46)} 124 ${x(58)} 124`, "#ffffff", 1.5, 0.75)}${sparkle(x(54), 132, 3)}`;
     };
     layers.armL = flap(-1);
     layers.armR = flap(1);
@@ -890,7 +911,9 @@ export function creatureLayers(
     layers.body = `${e(100, 138, 28, 28)}${e(100, 143, 17, 19, pearl)}${highlight(80, 124, 16)}`;
     layers.tail = `${e(130, 156, 13, 12, "#ffffff")}${e(126, 152, 5, 4, "#ffffff", ' stroke="none" opacity=".9"')}`;
     const mallet = `${path("M148 154L156 96L162 97L154 155Z", "#b37a45")}${path("M140 80Q140 72 160 74Q178 76 178 86L176 100Q176 108 158 106Q140 104 140 96Z", "#d29a5c")}${path("M152 76L150 104L156 105L158 76Z", p.glow)}${line("M144 82Q158 82 174 86", "#ffffff", 1.6, 0.5)}`;
-    layers.armR = `${mallet}${hand(133)}`;
+    // The mallet is a held piece: a skin that hands Astrabun something else
+    // takes it off (SkinArt.heldOff).
+    layers.armR = `<g data-held="1">${mallet}</g>${hand(133)}`;
     layers.legL = paw(82, 160, 15);
     layers.legR = paw(118, 160, 15);
   }
@@ -1085,6 +1108,7 @@ export function creatureLayers(
       mood,
       eye,
       expression: moodEye,
+      solid: art?.solid,
     });
     Object.assign(layers, painted.layers);
     defs += painted.defs;
@@ -1111,6 +1135,11 @@ export function creatureLayers(
         `<g transform="matrix(${s} 0 0 ${s} ${+(cx - s * cx).toFixed(3)} ${+(cy - s * cy).toFixed(3)})">${layers[part]}</g>`;
     }
   if (art && look) dressLayers(id, dir, look, art, p, prefix, layers, flat);
+  // Seen from behind, the paw that holds something is on the other side
+  // (REAR_ARMS_MIRRORED): both arms, with all they carry, are mirrored.
+  if (back && REAR_ARMS_MIRRORED.has(id))
+    for (const part of ["armL", "armR"] as const)
+      if (layers[part]) layers[part] = `<g transform="matrix(-1 0 0 1 200 0)">${layers[part]}</g>`;
   if (profile)
     for (const part of PROFILE_FACE_PARTS)
       if (layers[part])
@@ -1145,6 +1174,11 @@ function dressLayers(
       kept.push([part, layers[part].replace(/<g data-swap="1">[\s\S]*?<\/g>/g, "")]);
     layers[part] = "";
   }
+  // A skin that hands its champion something else takes the held piece off
+  // (Tidefin's fin-blade, Pyranda's chestnut, Duskveil's lantern body).
+  if (art.heldOff)
+    for (const part of Object.keys(layers) as CreaturePart[])
+      layers[part] = layers[part].replace(/<g data-held="1">[\s\S]*?<\/g>/g, "");
   // A skin's re-forged weapon: Astrabun's mallet handle and head.
   if (art.weapon)
     for (const part of ["armR", "armL"] as const)
@@ -1174,15 +1208,20 @@ function dressLayers(
       .map((s) => s.accessory),
   ];
   for (const a of extras)
-    for (const [part, svg] of accessorySvg(a, id, dir, p)) {
+    for (const [own, svg] of accessorySvg(a, id, dir, p)) {
+      // Headwear rides the head, not an animated crest; a piece that is the
+      // crest itself (a flame a design redraws) is marked data-crest.
+      const part = own === "flame" && ANIMATED_CRESTS.has(id) && !svg.includes("data-crest") ? "hat" : own;
       // A piece marked UNDER (a pack, hanging sleeves) goes behind the part.
       const under = svg.startsWith(UNDER);
       const g = `<g class="skin-accessory skin-${a}">${under ? svg.slice(UNDER.length) : svg}</g>`;
       layers[part] = under ? g + layers[part] : layers[part] + g;
     }
   if (art.mythic)
-    for (const [part, svg] of awakeningSvg(art.mythic, stage, id, dir, p))
+    for (const [own, svg] of awakeningSvg(art.mythic, stage, id, dir, p)) {
+      const part = own === "flame" && ANIMATED_CRESTS.has(id) ? "hat" : own;
       layers[part] += `<g class="skin-awakening">${svg}</g>`;
+    }
   for (const [part, keep] of kept) layers[part] += keep;
   // Halcyra's beak, made for the skin's figure (skins/halcyra-beaks.ts).
   if (id === "halcyra")
@@ -1219,6 +1258,7 @@ export function creatureSvgRenderer(
     "ears",
     "eyes",
     "flame",
+    "hat",
   ];
   const order = dir === "down" ? [] : profilePartOrder(dir, id);
   // A part listed after the head (Terradon's shell from behind) draws over it.
@@ -1252,7 +1292,7 @@ export function creatureSvgRenderer(
           .filter((p) => !omit.includes(p))
           .map(group)
           .join("")}<g class="fighter-face">${(
-          (faceParts ?? ["head", "ears", "eyes", "flame"]) as CreaturePart[]
+          (faceParts ?? ["head", "ears", "eyes", "flame", "hat"]) as CreaturePart[]
         )
           .filter((p) => !omit.includes(p))
           .map(group)

@@ -7,6 +7,10 @@ import { expect, type Page, type TestInfo } from "@playwright/test";
 export async function openHub(page: Page) {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(String(e)));
+  // VISUAL_DELTA=1: every room in this run is sent as the server sends it
+  // with snapshots as changes on (harness/rooms.ts), to run any spec that way.
+  if (process.env.VISUAL_DELTA)
+    await page.addInitScript(() => ((window as any).__delta = true));
   // This machine renders on the CPU (a few frames a second), so Auto would
   // always pick Low: pin High unless a test asks for Auto (__graphicsAuto)
   // or picked a quality itself.
@@ -22,8 +26,18 @@ export async function openHub(page: Page) {
     } catch {
       /* No storage: Auto. */
     }
+    // Tests find the client's module URLs in resource timing (the dev
+    // server serves them by path). Its buffer holds 250 entries by default
+    // and drops later ones; the hub now loads about that many, so a module
+    // loaded late (boss-prepaint.ts) went missing.
+    performance.setResourceTimingBufferSize(5000);
   });
-  await page.goto("/");
+  // VISUAL_UI=poster (or classic): every spec in this run sees the game in
+  // that look (?ui=, ui-theme.ts), to run any spec that way: the budgets, a
+  // screen's own spec. docs/ui-themes.md, "Checks".
+  await page.goto(
+    process.env.VISUAL_UI ? `/?ui=${process.env.VISUAL_UI}` : "/",
+  );
   await page.waitForFunction(() => !!(window as any).__sock);
   // The client listens for "connect" once its account has loaded.
   await expect
@@ -35,10 +49,36 @@ export async function openHub(page: Page) {
       { timeout: 30_000, intervals: [500, 1000] },
     )
     .toBe(true);
+  // The startup curtain lifts once the hub is complete underneath. On a
+  // slow runner that is late: with the CPU 4x slowed it reached 100% after
+  // about 15-18 s and was gone at about 21 s (the status's reading pause,
+  // then the fade), past the default 20 s (quick-match 956x440 on main,
+  // 21 Nov). It must still lift: this only waits longer for it.
+  await expect(page.locator("#server-startup")).toHaveCount(0, {
+    timeout: 60_000,
+  });
   return errors;
 }
 
 /** The hub, always starting on the Lobby. */
+/**
+ * A new account (level 5 or below) gets the Lobby tour (hub-tour.ts) over
+ * the Lobby. Specs about something else mark it seen for the harness's
+ * account, so it doesn't cover what they click.
+ */
+export async function skipTour(page: Page) {
+  await page.addInitScript(() => {
+    try {
+      localStorage.setItem(
+        "arena-tour:11111111-1111-4111-8111-111111111111",
+        "done",
+      );
+    } catch {
+      /* No storage. */
+    }
+  });
+}
+
 export async function openLobby(page: Page) {
   await page.addInitScript(() => {
     try {
@@ -224,3 +264,21 @@ export const asRgb = (css: string) =>
         : `rgba(${c.join(", ")}, ${parseFloat(a)})`;
     },
   );
+
+/**
+ * Ask for reduced motion (or full motion again) in a page already loaded.
+ * The game no longer follows the device (apps/client/src/reduced-motion.ts);
+ * in the harness the browser's emulated setting flips the game's own switch
+ * (harness/motion-asked.ts), and the browser reports the change with its
+ * next frame, so this waits until the switch has followed.
+ */
+export async function askReducedMotion(page: Page, reduce: boolean) {
+  await page.emulateMedia({
+    reducedMotion: reduce ? "reduce" : "no-preference",
+  });
+  await expect
+    .poll(() =>
+      page.evaluate(() => document.documentElement.dataset.motion ?? ""),
+    )
+    .toBe(reduce ? "reduced" : "");
+}

@@ -60,8 +60,11 @@
 [data-tier="legendary"] {
   --tier: #ffbf3c;
 }
+/* One Mythical colour on a screen: the rarity tags' pink (--r-mythic,
+   ui/tokens.css). It was crimson here, beside the pink tag of the same item,
+   and close to the red of a sale tag. */
 [data-tier="mythic"] {
-  --tier: #ff4f7b;
+  --tier: var(--r-mythic, #ff9be0);
 }
 
 /* A live thumbnail replaces the old static sketch of the effect with a
@@ -167,12 +170,12 @@
   padding: clamp(2.5px, 4.5%, 10px);
   background: conic-gradient(
     from var(--tier-turn),
-    #ff4f7b,
+    #ff9be0,
     #ffd36b,
     #8ff0b5,
     #7fd8ff,
     #b59bff,
-    #ff4f7b
+    #ff9be0
   );
 }
 /* The halo: one still gradient behind the frame and its ornaments (no
@@ -206,12 +209,12 @@
 .raid-cosmetic-preview[data-tier="mythic"] > .tier-glow {
   background: conic-gradient(
     from var(--tier-turn),
-    #ff4f7bcc,
+    #ff9be0cc,
     #ffd36bcc,
     #8ff0b5cc,
     #7fd8ffcc,
     #b59bffcc,
-    #ff4f7bcc
+    #ff9be0cc
   );
   -webkit-mask: radial-gradient(
     circle closest-side,
@@ -240,7 +243,7 @@
   white-space: nowrap;
 }
 .tier-chip[data-tier="mythic"] {
-  background: linear-gradient(90deg, #ff4f7b33, #ffd36b33, #7fd8ff33);
+  background: linear-gradient(90deg, #ff9be033, #ffd36b33, #7fd8ff33);
 }
 
 /* A frame's own ornament (pearl, gem, planet, lantern, moon…) is part of

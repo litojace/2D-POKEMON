@@ -10,17 +10,17 @@ import {
 
 it("sends auth emails back to the site root, which every host serves", () => {
   for (const site of [
-    "https://parena.litojace.com",
-    "https://parena.litojace.com/",
+    "https://play.elementarenausa.com",
+    "https://play.elementarenausa.com/",
   ]) {
     expect(authRedirectUrl(site, "email-confirmed")).toBe(
-      "https://parena.litojace.com/?auth=email-confirmed",
+      "https://play.elementarenausa.com/?auth=email-confirmed",
     );
     expect(authRedirectUrl(site, "reset-password")).toBe(
-      "https://parena.litojace.com/?auth=reset-password",
+      "https://play.elementarenausa.com/?auth=reset-password",
     );
     expect(authRedirectUrl(site, "auth-callback")).toBe(
-      "https://parena.litojace.com/?auth=auth-callback",
+      "https://play.elementarenausa.com/?auth=auth-callback",
     );
   }
   for (const kind of [
@@ -50,17 +50,17 @@ it("recognises the new query form and the old paths from earlier emails", () => 
 it("drops only its own marker and keeps what Supabase reads", () => {
   expect(
     withoutAuthMarker(
-      "https://parena.litojace.com/?auth=email-confirmed#access_token=t&type=signup",
+      "https://play.elementarenausa.com/?auth=email-confirmed#access_token=t&type=signup",
     ),
   ).toBe("/#access_token=t&type=signup");
   expect(
     withoutAuthMarker(
-      "https://parena.litojace.com/?auth=reset-password&code=abc",
+      "https://play.elementarenausa.com/?auth=reset-password&code=abc",
     ),
   ).toBe("/?code=abc");
-  expect(withoutAuthMarker("https://parena.litojace.com/?room=AB12CD")).toBe(
-    "/?room=AB12CD",
-  );
+  expect(
+    withoutAuthMarker("https://play.elementarenausa.com/?room=AB12CD"),
+  ).toBe("/?room=AB12CD");
 });
 
 it("reports expired or reused links instead of claiming success", () => {

@@ -12,6 +12,8 @@
  * account goes with it. With `?perf=1` the same numbers show on screen
  * (perf-overlay.ts) for a player to screenshot.
  */
+import { buildId } from "./build-id";
+
 /** A frame slower than this is a stall (counted, and in the numbers). */
 export const PERF_STALL = 250;
 /** A gap longer than this is a pause, not a frame: left out. */
@@ -39,12 +41,70 @@ export interface PerfSummary {
   stalls: number;
 }
 
+/**
+ * What one frame held, for the report's detail (`BattlePerfMeter.detail`):
+ * where a slow phone's time goes, not only how much of it.
+ */
+export interface FrameSample {
+  /**
+   * Our own work in the frame (ms): Phaser's step from its start to the end
+   * of rendering, i.e. game logic plus building the draw calls. Short work
+   * in a long frame means the graphics chip (or heat) set the pace.
+   */
+  work?: number;
+  /** The effects engine's last frame (fx-engine.ts FxFrameStats). */
+  glow?: number;
+  soft?: number;
+  particles?: number;
+  /** Objects on the battle scene's display list. */
+  objects?: number;
+  /** The raid boss's phase (1, 2, ...); none outside raids. */
+  phase?: number;
+  /** The boss attacks being warned of, as one key ("nightfall,pounce"). */
+  attacks?: string;
+}
+
+/** Seconds of live play per slice of the report's timeline. */
+export const PERF_SLICE_SECONDS = 15;
+/** At most this many slices are reported (an hour of play). */
+const MAX_SLICES = 240;
+
+/**
+ * The report's detail: how the match changed over time, how much of each
+ * frame was our own work, and what the scene held in its slowest frames.
+ */
+export interface PerfDetail {
+  /** Our work per frame (ms), median and 95th percentile. */
+  workP50?: number;
+  workP95?: number;
+  /** Frames per second and stutter share per 15 s of live play, in order. */
+  sliceFps: number[];
+  sliceJank: number[];
+  /**
+   * The scene at the median frame and over the slowest 5% of frames:
+   * glow and soft cover (screens), particles, display-list objects.
+   */
+  glowP50?: number;
+  glowSlow?: number;
+  softP50?: number;
+  softSlow?: number;
+  particlesP50?: number;
+  particlesSlow?: number;
+  objectsP50?: number;
+  objectsSlow?: number;
+  /** Per raid boss phase: seconds, frames per second, stutter share. */
+  phases?: { phase: number; seconds: number; fps: number; jank: number }[];
+  /** The boss attacks most often warned of in the slowest 5% of frames. */
+  attacksSlow?: string[];
+}
+
 export class BattlePerfMeter {
   private last: number | undefined;
   private steps: number[] = [];
+  private samples: (FrameSample | undefined)[] = [];
   private total = 0;
   /** Feed every rendered frame; `live` is false outside live play. */
-  frame(now: number, live: boolean) {
+  frame(now: number, live: boolean, sample?: FrameSample) {
     if (!live) {
       this.last = undefined;
       return;
@@ -58,9 +118,11 @@ export class BattlePerfMeter {
       // Keep the most recent half: a long match still reports its whole
       // shape closely enough, in bounded memory.
       const dropped = this.steps.splice(0, MAX_FRAMES / 2);
+      this.samples.splice(0, MAX_FRAMES / 2);
       this.total -= dropped.reduce((a, b) => a + b, 0);
     }
     this.steps.push(step);
+    this.samples.push(sample);
     this.total += step;
   }
   /** The whole measurement, or only its last `ms` (the overlay's view). */
@@ -99,9 +161,134 @@ export class BattlePerfMeter {
       stalls: steps.filter((s) => s > PERF_STALL).length,
     };
   }
+  /** The whole match's detail, for its report (not the overlay: it sorts). */
+  detail(): PerfDetail {
+    const steps = this.steps,
+      samples = this.samples;
+    const round = (n: number, d = 1) => Math.round(n * 10 ** d) / 10 ** d;
+    const pick = (list: number[], q: number) => {
+      if (!list.length) return undefined;
+      const sorted = list.slice().sort((a, b) => a - b);
+      return sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * q))];
+    };
+    const jankOf = (from: number, to: number) => {
+      let time = 0,
+        jank = 0;
+      for (let i = from; i < to; i++) {
+        time += steps[i];
+        if (steps[i] > PERF_JANK) jank += steps[i];
+      }
+      return { time, jank };
+    };
+    // The timeline: 15 s slices of live play (a last, partial one counts
+    // from 5 s).
+    const sliceFps: number[] = [],
+      sliceJank: number[] = [];
+    let start = 0,
+      time = 0;
+    const close = (end: number) => {
+      const t = jankOf(start, end);
+      if (t.time >= 5000 && sliceFps.length < MAX_SLICES) {
+        sliceFps.push(round(((end - start) * 1000) / t.time));
+        sliceJank.push(round(t.jank / t.time, 3));
+      }
+      start = end;
+      time = 0;
+    };
+    for (let i = 0; i < steps.length; i++) {
+      time += steps[i];
+      if (time >= PERF_SLICE_SECONDS * 1000) close(i + 1);
+    }
+    if (start < steps.length) close(steps.length);
+    const out: PerfDetail = { sliceFps, sliceJank };
+    // Our own work per frame.
+    const work = samples.flatMap((s) =>
+      s?.work !== undefined && s.work >= 0 ? [s.work] : [],
+    );
+    const w50 = pick(work, 0.5),
+      w95 = pick(work, 0.95);
+    if (w50 !== undefined) out.workP50 = round(w50);
+    if (w95 !== undefined) out.workP95 = round(w95);
+    // The scene: at the median frame, and over the slowest 5%.
+    const order = steps.map((_, i) => i).sort((a, b) => steps[b] - steps[a]);
+    const slow = order.slice(0, Math.max(1, Math.ceil(steps.length * 0.05)));
+    const scene = (
+      key: "glow" | "soft" | "particles" | "objects",
+      digits: number,
+    ) => {
+      const all = samples.flatMap((s) =>
+        typeof s?.[key] === "number" ? [s[key] as number] : [],
+      );
+      const inSlow = slow.flatMap((i) =>
+        typeof samples[i]?.[key] === "number"
+          ? [samples[i]![key] as number]
+          : [],
+      );
+      const p50 = pick(all, 0.5),
+        s50 = pick(inSlow, 0.5);
+      return {
+        p50: p50 === undefined ? undefined : round(p50, digits),
+        slow: s50 === undefined ? undefined : round(s50, digits),
+      };
+    };
+    const glow = scene("glow", 2),
+      soft = scene("soft", 2),
+      particles = scene("particles", 0),
+      objects = scene("objects", 0);
+    if (glow.p50 !== undefined) out.glowP50 = glow.p50;
+    if (glow.slow !== undefined) out.glowSlow = glow.slow;
+    if (soft.p50 !== undefined) out.softP50 = soft.p50;
+    if (soft.slow !== undefined) out.softSlow = soft.slow;
+    if (particles.p50 !== undefined) out.particlesP50 = particles.p50;
+    if (particles.slow !== undefined) out.particlesSlow = particles.slow;
+    if (objects.p50 !== undefined) out.objectsP50 = objects.p50;
+    if (objects.slow !== undefined) out.objectsSlow = objects.slow;
+    // Raid boss phases.
+    const byPhase = new Map<number, number[]>();
+    samples.forEach((s, i) => {
+      if (s?.phase === undefined) return;
+      if (!byPhase.has(s.phase)) byPhase.set(s.phase, []);
+      byPhase.get(s.phase)!.push(i);
+    });
+    if (byPhase.size) {
+      out.phases = [...byPhase]
+        .sort((a, b) => a[0] - b[0])
+        .slice(0, 12)
+        .flatMap(([phase, idx]) => {
+          let t = 0,
+            j = 0;
+          for (const i of idx) {
+            t += steps[i];
+            if (steps[i] > PERF_JANK) j += steps[i];
+          }
+          return t > 0
+            ? [
+                {
+                  phase,
+                  seconds: round(t / 1000),
+                  fps: round((idx.length * 1000) / t),
+                  jank: round(j / t, 3),
+                },
+              ]
+            : [];
+        });
+    }
+    // The boss attacks warned of in the slowest frames.
+    const counts = new Map<string, number>();
+    for (const i of slow)
+      for (const kind of new Set((samples[i]?.attacks ?? "").split(",")))
+        if (kind) counts.set(kind, (counts.get(kind) ?? 0) + 1);
+    if (counts.size)
+      out.attacksSlow = [...counts]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([kind]) => kind);
+    return out;
+  }
   reset() {
     this.last = undefined;
     this.steps = [];
+    this.samples = [];
     this.total = 0;
   }
 }
@@ -131,15 +318,34 @@ export function perfMode(
 /**
  * The network side of a match, from the same device: why a battle can feel
  * late or jerky while it draws at full frame rate. Round trips come from the
- * ping badge; snapshot gaps are how irregularly the server's 15 a second
+ * ping badge; snapshot gaps are how irregularly the server's 30 a second
  * arrive; corrections are how far your own fighter jumped when a snapshot
- * disagreed with what was predicted; a skill's wait is from your press to
- * the server confirming it.
+ * disagreed with what was predicted. Confirmation starts at prediction,
+ * not the DOM press: pressToSend measures that earlier local wait apart.
  */
+export interface SlowInputTrace {
+  action: string;
+  source: "touch-controls" | "unknown";
+  deliveryMs: number;
+  deadlineMs: number;
+  totalMs: number;
+  frameGapMs?: number;
+}
+export interface HitTrace {
+  gap: number;
+  eventAgeMs: number;
+  leadMs: number;
+  timed: boolean;
+}
+
 export interface NetSummary {
+  /** At most eight worst accepted inputs/hits; durations only, no timestamps or ids. */
+  slowInputs?: SlowInputTrace[];
+  farHits?: HitTrace[];
+  hitTraceVersion: 1;
   rttP50: number;
   rttP95: number;
-  /** 95th percentile gap between snapshots (ms; 67 is on time). */
+  /** 95th percentile gap between snapshots (ms; about 33 is on time). */
   snapGapP95: number;
   /** Share of snapshot gaps over 120 ms (a late or bunched snapshot). */
   snapLate: number;
@@ -147,8 +353,23 @@ export interface NetSummary {
   corrections: number;
   /** The largest correction (px). */
   correctionMax: number;
-  /** Median wait from a skill press to the server's confirmation (ms). */
+  /** Median wait from predicted cast to server confirmation (ms). */
   confirmP50: number;
+  confirmP95?: number;
+  confirmP99?: number;
+  /** DOM action event to the emit carrying it (ms); excludes RTT/confirm. */
+  pressSamples?: number;
+  pressToSendP50?: number;
+  pressToSendP95?: number;
+  pressToSendP99?: number;
+  /** Event delivery delay vs the subsequent wait for the input deadline. */
+  eventToHandlerP95?: number;
+  handlerToSendP95?: number;
+  /** Actual gaps between local emits during uninterrupted live play (ms). */
+  sendGapP50?: number;
+  sendGapP95?: number;
+  sendGapP99?: number;
+  sendGapMax?: number;
   /**
    * The corrections a minute by cause (networking/correction-cause.ts):
    * hits and statuses are expected; "other" ones mean the prediction is
@@ -171,7 +392,7 @@ export interface NetSummary {
   correctionP50: number;
   /**
    * Holds a minute: times the server reported ticks held for your late
-   * inputs (Fighter.held went above 0: Wi-Fi held your packets), and the
+   * inputs (Fighter.held went above 0: input was late), and the
    * most ticks held at once.
    */
   holds: number;
@@ -184,6 +405,24 @@ export interface NetSummary {
 }
 /** A hit landing this far from where you were drawn looked like a miss (one fighter radius). */
 export const HIT_GAP_PX = 24;
+/** Match the event's server moment, rather than the enclosing snapshot's time. */
+export function hitDrawTime(
+  receivedAt: number,
+  leadMs: number,
+  snapshotTime: number,
+  event: { at?: number; miss?: boolean },
+): number | undefined {
+  if (event.miss) return;
+  if (event.at === undefined) return receivedAt - leadMs;
+  if (
+    !Number.isFinite(event.at) ||
+    event.at < 0 ||
+    event.at > snapshotTime + 0.001
+  )
+    return;
+  return receivedAt - leadMs - Math.max(0, snapshotTime - event.at) * 1000;
+}
+
 /**
  * How far from (x, y) your fighter was drawn at time `at` (ms): the drawn
  * sample nearest that time, if one is within 100 ms. `at` must be the frame
@@ -204,13 +443,37 @@ export function drawnGap(
   if (best && Math.abs(best.t - at) < 100)
     return Math.hypot(best.x - x, best.y - y);
 }
-/** A snapshot gap longer than this is late (the server sends one every 67 ms). */
+/**
+ * A snapshot gap longer than this is late (the server sends one every
+ * 33 ms; 67 ms before 23 Nov 2026, kept at 120 so reports stay comparable).
+ */
 export const SNAP_LATE = 120;
 /** A correction smaller than this is not noticeable. */
 export const CORRECTION_PX = 4;
 const MAX_SAMPLES = 20_000;
 
 export class NetMeter {
+  private frames: number[] = [];
+  private slowInputs: SlowInputTrace[] = [];
+  private farHits: HitTrace[] = [];
+  /** Record only the clock, without a DOM read or an allocation per frame. */
+  frame(now: number) {
+    this.frames.push(now);
+    if (this.frames.length > 240) this.frames.splice(0, 60);
+  }
+  private frameGap(event: number, handled: number) {
+    if (!this.frames.length || this.frames[0] > event) return;
+    let worst = 0,
+      previous: number | undefined;
+    for (const at of this.frames) {
+      if (at > handled) break;
+      if (previous !== undefined && at >= event)
+        worst = Math.max(worst, at - previous);
+      previous = at;
+    }
+    if (previous !== undefined) worst = Math.max(worst, handled - previous);
+    return worst <= PERF_PAUSE ? Math.round(worst) : undefined;
+  }
   private rtts: number[] = [];
   private gaps: number[] = [];
   private fixes: number[] = [];
@@ -223,6 +486,15 @@ export class NetMeter {
   private holdMost = 0;
   private wasHeld = false;
   private inputs = 0;
+  private sendGaps: number[] = [];
+  private presses: number[] = [];
+  private handlerDelays: number[] = [];
+  private sendDelays: number[] = [];
+  private lastSend: number | undefined;
+  private actionPresses = new Map<
+    string,
+    { event: number; handler: number; source: "touch-controls" | "unknown" }
+  >();
   private push(list: number[], v: number) {
     if (list.length >= MAX_SAMPLES) list.splice(0, MAX_SAMPLES / 2);
     list.push(v);
@@ -248,9 +520,75 @@ export class NetMeter {
     this.wasHeld = n > 0;
     this.holdMost = Math.max(this.holdMost, n);
   }
-  /** An input went to the server during live play. */
-  input() {
+  /**
+   * An accepted DOM action edge. Preview skills commit on release. Safari
+   * versions with epoch timestamps are converted to performance.now's origin.
+   * Gamepads have no DOM timestamp: do not call polling time a physical press.
+   */
+  press(
+    action: string,
+    stamp: number | undefined,
+    handled = performance.now(),
+    origin = performance.timeOrigin,
+    source: "touch-controls" | "unknown" = "unknown",
+  ) {
+    if (stamp === undefined || !Number.isFinite(stamp)) return;
+    const event = stamp > 1e12 ? stamp - origin : stamp;
+    if (event < 0 || event > handled || handled - event > 60_000) return;
+    this.actionPresses.set(action, { event, handler: handled, source });
+  }
+  clearPresses() {
+    this.actionPresses.clear();
+  }
+  /** Hide, exit, disconnect or a new round: neither a gap nor a stale press. */
+  pauseInput() {
+    this.frames = [];
+    this.lastSend = undefined;
+    this.clearPresses();
+  }
+  /** An input actually emitted during live play, before prediction/rendering. */
+  input(
+    action?: { basic: boolean; skill: number; dash: boolean; jump: boolean },
+    now = performance.now(),
+  ) {
     this.inputs++;
+    if (
+      this.lastSend !== undefined &&
+      now >= this.lastSend &&
+      now - this.lastSend <= PERF_PAUSE
+    )
+      this.push(this.sendGaps, now - this.lastSend);
+    this.lastSend = now;
+    if (action) {
+      for (const [key, at] of this.actionPresses) {
+        const sent = key.startsWith("skill")
+          ? action.skill === Number(key.slice(5))
+          : action[key as "basic" | "dash" | "jump"];
+        if (sent && now >= at.handler && now - at.event <= 60_000) {
+          this.push(this.presses, now - at.event);
+          this.push(this.handlerDelays, at.handler - at.event);
+          this.push(this.sendDelays, now - at.handler);
+          if (
+            now - at.event >= 80 &&
+            /^(basic|dash|jump|skill[0-3])$/.test(key)
+          ) {
+            this.slowInputs.push({
+              action: key,
+              source: at.source,
+              deliveryMs: Math.round(at.handler - at.event),
+              deadlineMs: Math.round(now - at.handler),
+              totalMs: Math.round(now - at.event),
+              frameGapMs: this.frameGap(at.event, at.handler),
+            });
+            this.slowInputs.sort((a, b) => b.totalMs - a.totalMs);
+            this.slowInputs.length = Math.min(this.slowInputs.length, 8);
+          }
+        }
+      }
+      // The actions latch is consumed by this input, including denied/EX
+      // toggles; held Basic repeats never create another physical-press sample.
+      this.clearPresses();
+    }
   }
   correction(px: number, cause?: "hit" | "status" | "move" | "other") {
     if (px <= CORRECTION_PX) return;
@@ -258,8 +596,14 @@ export class NetMeter {
     if (cause) this.causes[cause]++;
   }
   /** A hit on you landed `px` from where you were drawn at that moment. */
-  hitGap(px: number) {
-    if (Number.isFinite(px) && px >= 0) this.push(this.gaps2, px);
+  hitGap(px: number, timing?: Omit<HitTrace, "gap">) {
+    if (!Number.isFinite(px) || px < 0) return;
+    this.push(this.gaps2, px);
+    if (px > HIT_GAP_PX && timing) {
+      this.farHits.push({ gap: Math.round(px), ...timing });
+      this.farHits.sort((a, b) => b.gap - a.gap);
+      this.farHits.length = Math.min(this.farHits.length, 8);
+    }
   }
   confirmed(ms: number) {
     if (Number.isFinite(ms) && ms >= 0) this.push(this.waits, ms);
@@ -274,6 +618,13 @@ export class NetMeter {
     const perMinute = (n: number) =>
       minutes > 0 ? Math.round((n / minutes) * 10) / 10 : 0;
     return {
+      hitTraceVersion: 1,
+      ...(this.slowInputs.length
+        ? { slowInputs: this.slowInputs.map((x) => ({ ...x })) }
+        : {}),
+      ...(this.farHits.length
+        ? { farHits: this.farHits.map((x) => ({ ...x })) }
+        : {}),
       rttP50: q(this.rtts, 0.5),
       rttP95: q(this.rtts, 0.95),
       snapGapP95: q(this.gaps, 0.95),
@@ -289,6 +640,27 @@ export class NetMeter {
         this.fixes.length ? Math.max(...this.fixes) : 0,
       ),
       confirmP50: q(this.waits, 0.5),
+      ...(this.waits.length
+        ? { confirmP95: q(this.waits, 0.95), confirmP99: q(this.waits, 0.99) }
+        : {}),
+      ...(this.presses.length
+        ? {
+            pressSamples: this.presses.length,
+            pressToSendP50: q(this.presses, 0.5),
+            pressToSendP95: q(this.presses, 0.95),
+            pressToSendP99: q(this.presses, 0.99),
+            eventToHandlerP95: q(this.handlerDelays, 0.95),
+            handlerToSendP95: q(this.sendDelays, 0.95),
+          }
+        : {}),
+      ...(this.sendGaps.length
+        ? {
+            sendGapP50: q(this.sendGaps, 0.5),
+            sendGapP95: q(this.sendGaps, 0.95),
+            sendGapP99: q(this.sendGaps, 0.99),
+            sendGapMax: Math.round(Math.max(...this.sendGaps)),
+          }
+        : {}),
       correctionsHit: perMinute(this.causes.hit),
       correctionsStatus: perMinute(this.causes.status),
       correctionsMove: perMinute(this.causes.move),
@@ -309,12 +681,20 @@ export class NetMeter {
     };
   }
   reset() {
+    this.pauseInput();
+    this.sendGaps = [];
+    this.presses = [];
+    this.handlerDelays = [];
+    this.sendDelays = [];
     this.rtts = [];
     this.gaps = [];
     this.fixes = [];
     this.waits = [];
     this.causes = { hit: 0, status: 0, move: 0, other: 0 };
     this.gaps2 = [];
+    this.frames = [];
+    this.slowInputs = [];
+    this.farHits = [];
     this.lastSnap = undefined;
     this.liveMs = 0;
     this.holdCount = this.holdMost = this.inputs = 0;
@@ -322,16 +702,12 @@ export class NetMeter {
   }
 }
 
-declare const __BUILD__: string | undefined;
 /**
- * Which build of the game this is: the commit it was built from (Render sets
- * RENDER_GIT_COMMIT; apps/client/vite.config.ts), "dev" otherwise. A report
- * from an old build means the phone is still running a cached version.
+ * Which build of the game this is: the commit it was built from (build-id.ts),
+ * "dev" otherwise. A report from an old build means the phone is still
+ * running a cached version.
  */
-export const BUILD: string =
-  typeof __BUILD__ === "string" && /^[a-z0-9-]{1,16}$/.test(__BUILD__)
-    ? __BUILD__
-    : "dev";
+export const BUILD: string = buildId() ?? "dev";
 
 /**
  * The kind of device, coarsely, for battle-perf: the system family and
@@ -363,6 +739,44 @@ export function deviceKind(
               ? "linux"
               : "other";
   return { os, app: !!standalone };
+}
+
+/**
+ * Where the game runs: a browser tab, the home-screen web app, or the iOS or
+ * Android app (Capacitor). `app` (deviceKind) only says "installed to the
+ * home screen", so the Xcode-built iPhone app reported false.
+ */
+export type AppShell = "web" | "pwa" | "ios-app" | "android-app";
+export function appShell(
+  nativePlatform: string | undefined,
+  standalone: boolean,
+): AppShell {
+  if (nativePlatform === "ios") return "ios-app";
+  if (nativePlatform === "android") return "android-app";
+  return standalone ? "pwa" : "web";
+}
+
+/**
+ * Which phone, as far as it can be told without naming anyone: in the app,
+ * the model identifier the system gives (an iPhone 11 is "iPhone12,1") and
+ * the system version; in a browser, the screen's size in CSS pixels and its
+ * pixel ratio, which narrow an iPhone to a family of models.
+ */
+export function deviceModel(
+  info: { model?: string; osVersion?: string } | undefined,
+  screen: { width: number; height: number; dpr: number } | undefined,
+): { model?: string; osVersion?: string; screen?: string } {
+  const out: { model?: string; osVersion?: string; screen?: string } = {};
+  const model = info?.model?.trim();
+  if (model && /^[\w ,.()+-]{1,40}$/.test(model)) out.model = model;
+  const os = info?.osVersion?.trim();
+  if (os && /^[\w.]{1,20}$/.test(os)) out.osVersion = os;
+  if (screen && screen.width > 0 && screen.height > 0 && screen.dpr > 0) {
+    const long = Math.round(Math.max(screen.width, screen.height)),
+      short = Math.round(Math.min(screen.width, screen.height));
+    out.screen = `${long}x${short}@${Math.round(screen.dpr * 100) / 100}`;
+  }
+  return out;
 }
 
 /**

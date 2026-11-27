@@ -1,4 +1,4 @@
-# The iPhone app
+# The iOS app (iPhone and iPad)
 
 The App Store version of Element Arena is the same client as the website,
 inside a native shell made with [Capacitor](https://capacitorjs.com/) 8. The
@@ -12,21 +12,21 @@ app talks to the same game server on Render and the same Supabase project.
 
 ## What's where
 
-| Path                                        | What it is                                                                                                                  |
-| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `apps/client/capacitor.config.ts`           | App name, bundle ID (`com.litojace.elementarena`), dark background, no page bounce.                                         |
-| `apps/client/ios/`                          | The Xcode project. Commit changes to it; `ios/App/App/public` (the built game) and the generated config copies are ignored. |
-| `apps/client/ios/App/App/AppleSignIn.swift` | Native Sign in with Apple (a small plugin inside the app) and the view controller that registers it.                        |
-| `apps/client/ios/App/App/App.entitlements`  | The Sign in with Apple capability.                                                                                          |
-| `apps/client/ios/App/App/Info.plist`        | Landscape only, status bar hidden, "no special encryption" (export compliance).                                             |
-| `apps/client/src/native.ts`                 | Everything in the client that knows it's in the app.                                                                        |
-| `apps/server/src/apple.ts`                  | Trading Apple's sign-in code for a refresh token, and revoking it.                                                          |
-| `supabase/migrations/111_apple_tokens.sql`  | Where the server keeps those tokens.                                                                                        |
-| `scripts/check-native-env.mjs`              | Stops the build if the app's settings are missing.                                                                          |
-| `node scripts/generate-icons.mjs`           | Draws the app icon (default, dark and tinted), launch screen and PWA icons from `scripts/app-icon.svg`.                     |
+| Path                                        | What it is                                                                                                                                                                                                             |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/client/capacitor.config.ts`           | App name, bundle ID (`com.litojace.elementarena`), dark background, no page bounce.                                                                                                                                    |
+| `apps/client/ios/`                          | The Xcode project. Commit changes to it; `ios/App/App/public` (the built game) and the generated config copies are ignored.                                                                                            |
+| `apps/client/ios/App/App/AppleSignIn.swift` | Native Sign in with Apple (a small plugin inside the app) and the view controller that registers it.                                                                                                                   |
+| `apps/client/ios/App/App/App.entitlements`  | The Sign in with Apple capability.                                                                                                                                                                                     |
+| `apps/client/ios/App/App/Info.plist`        | Landscape only, full screen on iPad, status bar hidden, "no special encryption" (export compliance), and why it adds to Photos (saving a shared card: without `NSPhotoLibraryAddUsageDescription` iOS closes the app). |
+| `apps/client/src/native.ts`                 | Everything in the client that knows it's in the app.                                                                                                                                                                   |
+| `apps/server/src/apple.ts`                  | Trading Apple's sign-in code for a refresh token, and revoking it.                                                                                                                                                     |
+| `supabase/migrations/111_apple_tokens.sql`  | Where the server keeps those tokens.                                                                                                                                                                                   |
+| `scripts/check-native-env.mjs`              | Stops the build if the app's settings are missing.                                                                                                                                                                     |
+| `node scripts/generate-icons.mjs`           | Draws the app icon (default, dark and tinted), launch screen and PWA icons from `scripts/app-icon.svg`.                                                                                                                |
 
-The app is **iPhone only** for now (no iPad build): iPads can still run it
-in iPhone mode. Supporting iPad means testing its window sizes first.
+The app runs on **iPhone and iPad** (`TARGETED_DEVICE_FAMILY = "1,2"` in
+the Xcode project, since 24 Nov 2026). See [iPad](#ipad) below.
 
 ## What's different in the app
 
@@ -71,6 +71,33 @@ in iPhone mode. Supporting iPad means testing its window sizes first.
   (Pyranda vs Glacelle) and three alternates; iOS confirms the change with its
   own alert. It takes the place of **Settings → Display**, since the app is
   always full screen.
+
+### iPad
+
+On an iPad the app fills the whole screen, in landscape, like on an iPhone.
+The game itself already handled iPads in Safari (a larger pixel budget for
+the big iPads in `render-budget.ts`, the turn-sideways cover, the screen
+pin); `tests/visual/ipad-app-screens.spec.ts` checks the Lobby, Shop,
+Fighters and Plaza at the four iPad screen sizes (1024 × 768 iPad mini and
+9.7", 1180 × 820 iPad Air, 1194 × 834 iPad Pro 11", 1366 × 1024 iPad Pro 13").
+
+- **Full screen, no Split View or Stage Manager windows.** `Info.plist`
+  sets `UIRequiresFullScreen`: an iPad app that supports fewer than all four
+  orientations must opt out of iPad multitasking, or App Store validation
+  refuses the upload, and the game is landscape only (a fighter's arena
+  doesn't fit a portrait window). Apple deprecated the key in iPadOS 26
+  ([TN3192](https://developer.apple.com/documentation/technotes/tn3192-migrating-your-app-from-the-deprecated-uirequiresfullscreen-key)):
+  it still works for apps built with the iOS 26 SDK (Xcode 26), but from
+  the iOS 27 SDK the system resizes the app's window anyway. Before
+  building with Xcode 27, decide how the app handles a resizable window;
+  the game already lays out at any landscape size and covers a portrait one
+  with "turn sideways" (`#rotate-gate`). Never add
+  `UIRequiresFullScreenIgnoredStartingWithVersion`: it switches the key off
+  early. `tests/unit/ios-ipad.test.ts` checks these settings.
+- **No haptics** on iPads (they have no Taptic Engine): the haptics plugin
+  does nothing there.
+- The app icons are single 1024 px "universal" images, so Xcode makes the
+  iPad sizes too.
 
 ### Alternate app icons
 
@@ -135,7 +162,7 @@ iOS 26 SDK) and Node 22.
 
    ```
    VITE_SERVER_URL=https://element-arena-np34.onrender.com
-   VITE_SITE_URL=https://parena.litojace.com
+   VITE_SITE_URL=https://play.elementarenausa.com
    VITE_SUPABASE_URL=https://YOUR_GAME_PROJECT.supabase.co
    VITE_SUPABASE_ANON_KEY=your anon key
    VITE_APPLE_SIGN_IN=on
@@ -147,7 +174,12 @@ iOS 26 SDK) and Node 22.
 3. `npm run ios:build` checks those settings, builds the game in "ios" mode
    and copies it into the Xcode project (`cap sync ios`). Run it again after
    every change to the game.
-4. `npm run ios:open` opens Xcode. In the **App** target, **Signing &
+4. `npm run ios:open` opens Xcode. Xcode no longer offers "Update to
+   Recommended Settings": the project has the safe ones and records Xcode
+   27.2 as its last check (`LastUpgradeCheck = 2720`). It keeps iOS 15 as
+   the oldest supported version on purpose. If a newer Xcode offers it again,
+   press **Cancel** (changes made there make the next `git pull` refuse) and
+   update the project in the repo instead. In the **App** target, **Signing &
    Capabilities**: pick your Team, check that **Sign in with Apple** is
    listed (it comes from `App.entitlements`), and let Xcode manage signing.
 5. Plug in an iPhone, unlock it and tap **Trust**. The first time, turn on
@@ -156,6 +188,24 @@ iOS 26 SDK) and Node 22.
    Check: sign up, log in, guest play,
    Sign in with Apple, a bot match, a two-phone match, the Plaza, switching
    away and back mid-match, and deleting an account made with Apple.
+6. **On an iPad**, the same way: plug it in (USB-C or Lightning), unlock it
+   and tap **Trust**; the first time, turn on **Settings → Privacy &
+   Security → Developer Mode** on the iPad (it restarts). Choose the iPad in
+   Xcode's device menu and press **Run**. Or, without an iPad, choose an
+   iPad simulator (iPad mini, iPad Air, iPad Pro 13") in the same menu.
+   Check:
+   - the game fills the screen in landscape, with no black bars and no
+     iPhone-sized window in the middle;
+   - turning the iPad over (landscape left and right) turns the game, and
+     holding it upright keeps the game sideways;
+   - the Lobby, Shop, Fighters, Raids and the Plaza fit, with nothing cut
+     off at the edges or under the camera;
+   - a bot match plays with touch controls (and, if you have one, with a
+     Magic Keyboard or trackpad attached);
+   - Sign in with Apple opens Apple's sheet over the game;
+   - Settings → App icon changes the Home Screen icon;
+   - swiping up from the bottom during a match needs a second swipe to go
+     Home, and there is no Split View or Slide Over window from the dock.
 
 ## TestFlight and the App Store
 
@@ -169,7 +219,7 @@ iOS 26 SDK) and Node 22.
    **General** → Identity), even for the same version: App Store Connect
    refuses a build number it has seen.
 3. Fill in the listing:
-   - **Privacy:** the privacy policy URL, `https://parena.litojace.com/privacy.html` (`apps/client/public/privacy.html`; the game links to it from the menu and the sign-in panel), and the privacy
+   - **Privacy:** the privacy policy URL, `https://play.elementarenausa.com/privacy.html` (`apps/client/public/privacy.html`; the game links to it from the menu and the sign-in panel), and the privacy
      answers: email address and user ID (accounts), gameplay content
      (matches, progress), and performance data (`arena-perf` logs frame
      rates, device memory and cores without the account; `arena-load` logs
@@ -192,7 +242,7 @@ iOS 26 SDK) and Node 22.
    - **App Review notes:** a demo account (email and password), and that
      _Battle an AI bot_ plays a full match alone. The game server must be
      awake and healthy while Apple reviews.
-   - **Support URL:** `https://parena.litojace.com/support.html`
+   - **Support URL:** `https://play.elementarenausa.com/support.html`
      (`apps/client/public/support.html`). App Store Connect requires one.
    - **Pricing:** Free. The app has no in-app purchases: selling coins was
      looked at and put off until there are more players
@@ -200,7 +250,9 @@ iOS 26 SDK) and Node 22.
      Agreement, tax or banking forms.
    - Screenshots in landscape, made by the script in
      [app-store-screenshots.md](app-store-screenshots.md). App Store Connect
-     shows which iPhone sizes it requires.
+     shows which iPhone sizes it requires. Since the app runs on iPad, it
+     also requires **iPad screenshots** (the 13" iPad size, 2752 × 2064 in
+     landscape); the script makes iPhone sizes only for now.
 4. Submit for review.
 
 ## Account deletion and Apple
@@ -216,4 +268,4 @@ refuses, the account is deleted anyway, as Apple asks.
 Players who signed in with Apple **on the website** have no kept token (the
 website's sign-in goes through Supabase's page), so deleting their account
 can't revoke it; they're told how to remove the app in their Apple Account
-settings. Signing in once in the iPhone app keeps a token for them too.
+settings. Signing in once in the iOS app keeps a token for them too.

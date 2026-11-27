@@ -1,0 +1,827 @@
+/* The raid's rites choice (at 67% and 33% boss health), in the style of the
+   battle countdown (owner, Nov 2026): the whole screen edge to edge past
+   the notch, the countdown's navy shade, big bold type and the seconds as
+   one big number, no card. Six tall rite tiles in a 3 × 2 grid; each has
+   the rite's picture with its figures beside it (never on it), the name,
+   the trigger and, where there is room, the full effect.
+
+   raid-ui.ts marks the overlay .is-rites and the body .raid-rites-open and
+   writes .rites-screen. The Spire's blessings keep the match card
+   (.raid-draft, style.css).
+
+   Each rite's colour comes from its art data (raid-rite-art.ts), set on
+   its button as --rite-color: one source for all twelve rites.
+
+   Every rule starts #arena-overlay#arena-overlay.is-rites so it wins over
+   the rite card's layered rules in style.css without !important. No
+   backdrop blur: older phones pay for it per pixel. */
+
+body.battle-active #arena-overlay#arena-overlay.is-rites:not(:empty) {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: block;
+  padding: 0;
+  /* The countdown's navy, even across the screen: the countdown's own
+     shade is lighter in the middle (30%, for its number over the
+     fighters), which left the court between the tiles bright (owner).
+     65% is the countdown's edge and about the old card's touch shade. */
+  background: #071225a6;
+  overflow: hidden;
+  pointer-events: auto;
+}
+/* While the rites show, the HUD and the battle controls step aside (the
+   card covered them too): the arena and the fighters stay in view. The
+   quick-chat button stays (a party talks between chapters and floors): the
+   screen leaves its column free, below. */
+body.raid-rites-open
+  :is(
+    #raid-hud,
+    #hud,
+    #mobile-controls,
+    #abilities,
+    .battle-footer,
+    #raid-prism-controls,
+    #raid-dream-panel,
+    #raid-storm-targets
+  ) {
+  visibility: hidden;
+}
+
+#arena-overlay#arena-overlay.is-rites .rites-screen {
+  --pad-t: max(10px, var(--safe-top, 0px));
+  --pad-r: max(16px, var(--safe-right, 0px));
+  --pad-b: max(10px, var(--safe-bottom, 0px));
+  --pad-l: max(16px, var(--safe-left, 0px));
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 8px;
+  box-sizing: border-box;
+  padding: var(--pad-t) var(--pad-r) var(--pad-b) var(--pad-l);
+  color: #fff;
+  text-align: center;
+  text-shadow:
+    0 1px 2px #000,
+    0 0 10px #000c;
+  animation: rites-in 220ms ease-out both;
+}
+/* The quick-chat button (chat/chat.css) sits top left over this screen in
+   a party: keep its column free, as the Spire's card did. */
+body:has(.battle-chat:not([hidden]))
+  #arena-overlay#arena-overlay.is-rites
+  .rites-screen {
+  --pad-l: calc(max(12px, calc(var(--safe-left, 0px) + 4px)) + 52px);
+}
+@keyframes rites-in {
+  from {
+    opacity: 0;
+  }
+}
+:where(:root[data-motion="reduced"])
+  #arena-overlay#arena-overlay.is-rites
+  .rites-screen {
+  animation: none;
+}
+
+/* ---- The heading: kicker, title with a pip per pick, big number ---- */
+#arena-overlay#arena-overlay.is-rites .rites-head {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 16px;
+  width: min(1100px, 100%);
+  margin: 0 auto;
+}
+#arena-overlay#arena-overlay.is-rites .rites-lead {
+  grid-column: 2;
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+}
+#arena-overlay#arena-overlay.is-rites .rites-kicker {
+  display: block;
+  margin: 0;
+  color: #f7d780;
+  font: 800 calc(12px * var(--text-scale, 1)) / 1.2 var(--font-body);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+#arena-overlay#arena-overlay.is-rites .rites-title {
+  margin: 0;
+  color: #fff;
+  font: 800 clamp(28px, 8vh, 56px) / 0.95 var(--font-display);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+#arena-overlay#arena-overlay.is-rites .rites-pips {
+  display: inline-flex;
+  gap: 6px;
+  vertical-align: middle;
+}
+#arena-overlay#arena-overlay.is-rites .rites-pips > i {
+  width: 12px;
+  height: 12px;
+  border: 2px solid #ffffffb3;
+  border-radius: 50%;
+  box-shadow: 0 1px 6px #000a;
+}
+#arena-overlay#arena-overlay.is-rites .rites-pips > i.on {
+  border-color: #6fdc9a;
+  background: #6fdc9a;
+}
+#arena-overlay#arena-overlay.is-rites .rites-objective {
+  display: none;
+  max-width: 62ch;
+  margin: 0 auto;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: #07122599;
+  color: #eaf1ff;
+  font: 600 calc(12px * var(--text-scale, 1)) / 1.4 var(--font-body);
+}
+/* The seconds left: one big number, as on the countdown. */
+#arena-overlay#arena-overlay.is-rites .raid-choice-timer {
+  grid-column: 3;
+  justify-self: end;
+  display: inline-grid;
+  grid-template-columns: none;
+  justify-items: center;
+  align-content: center;
+  gap: 0;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: #fff;
+}
+#arena-overlay#arena-overlay.is-rites .raid-choice-timer > .live-number {
+  font: 800 clamp(40px, 14vh, 96px) / 0.9 var(--font-display);
+  font-variant-numeric: tabular-nums;
+  text-shadow:
+    0 0 28px #f7d78066,
+    0 4px 18px #000d;
+}
+#arena-overlay#arena-overlay.is-rites .raid-choice-timer > .live-unit {
+  color: #f7d780;
+  font: 800 calc(10px * var(--text-scale, 1)) / 1.2 var(--font-body);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+#arena-overlay#arena-overlay.is-rites
+  .raid-choice-timer.is-urgent
+  > .live-number {
+  color: #ffb5bb;
+  text-shadow:
+    0 0 28px #ff747b99,
+    0 4px 18px #000d;
+}
+
+/* ---- The six rites ---- */
+#arena-overlay#arena-overlay.is-rites .raid-rite-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-rows: minmax(0, 1fr);
+  align-self: stretch;
+  gap: 10px 12px;
+  width: min(1100px, 100%);
+  max-height: 640px;
+  height: 100%;
+  margin: auto;
+  /* Only with a large text size: the tiles scroll rather than clip. */
+  overflow-x: hidden;
+  overflow-y: auto;
+  text-align: center;
+}
+#arena-overlay#arena-overlay.is-rites .raid-rite-options > button {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: none;
+  align-content: center;
+  justify-items: center;
+  margin: 0;
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  padding: 10px 12px;
+  border: 0;
+  border-bottom: 3px solid
+    color-mix(in srgb, var(--rite-color) 85%, transparent);
+  border-radius: 14px 14px 6px 6px;
+  background:
+    linear-gradient(
+      to top,
+      color-mix(in srgb, var(--rite-color) 20%, transparent),
+      transparent 70%
+    ),
+    #071225e0;
+  box-shadow: none;
+  color: #fff;
+  font: inherit;
+  letter-spacing: 0;
+  text-align: center;
+  text-shadow: inherit;
+  cursor: pointer;
+  transition: transform 120ms;
+}
+/* A ring in the rite's colour on keyboard focus, and on hover only where
+   there is real hover (after a tap on a phone it would stay on). */
+#arena-overlay#arena-overlay.is-rites
+  .raid-rite-options
+  > button:focus-visible:not(:disabled) {
+  outline: 2px solid #ffe17b;
+  outline-offset: 2px;
+  box-shadow: inset 0 0 0 2px
+    color-mix(in srgb, var(--rite-color) 85%, transparent);
+}
+@media (hover: hover) {
+  #arena-overlay#arena-overlay.is-rites
+    .raid-rite-options
+    > button:hover:not(:disabled) {
+    box-shadow: inset 0 0 0 2px
+      color-mix(in srgb, var(--rite-color) 85%, transparent);
+  }
+}
+#arena-overlay#arena-overlay.is-rites
+  .raid-rite-options
+  > button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+#arena-overlay#arena-overlay.is-rites .raid-rite-copy {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  text-align: center;
+}
+#arena-overlay#arena-overlay.is-rites .raid-rite-heading {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+}
+#arena-overlay#arena-overlay.is-rites .raid-rite-heading > b {
+  margin: 0;
+  color: var(--rite-color);
+  font: 800 calc(var(--name-size, 24px) * var(--text-scale, 1)) / 1
+    var(--font-display);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  text-align: center;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+#arena-overlay#arena-overlay.is-rites .raid-rite-trigger {
+  min-height: 0;
+  margin: 0;
+  color: #eaf1ff;
+  font: 600 calc(var(--trigger-size, 14px) * var(--text-scale, 1)) / 1.3
+    var(--font-body);
+  text-align: center;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+/* The full effect, where the tile has room for it (Rite details always
+   has it). */
+#arena-overlay#arena-overlay.is-rites .raid-rite-full {
+  display: none;
+  max-width: 34ch;
+  margin: 0;
+  color: #b9c8de;
+  font: 500 calc(var(--full-size, 13px) * var(--text-scale, 1)) / 1.35
+    var(--font-body);
+  text-align: center;
+  overflow-wrap: normal;
+}
+
+/* The picture and its figures side by side: a figure never covers the
+   picture. Each figure is a dark chip with its value and unit. */
+#arena-overlay#arena-overlay.is-rites .raid-rite-icon {
+  --art-w: 80px;
+  --art-h: 60px;
+  position: static;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: auto;
+  height: auto;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--rite-color);
+}
+#arena-overlay#arena-overlay.is-rites .raid-rite-icon > svg {
+  flex: none;
+  width: var(--art-w);
+  height: var(--art-h);
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--rite-color) 35%, transparent),
+    transparent
+  );
+  filter: drop-shadow(0 2px 6px #000a);
+}
+#arena-overlay#arena-overlay.is-rites .raid-rite-stats {
+  position: static;
+  display: flex;
+  /* Two figures side by side (the card stacks them). */
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 6px;
+  margin: 0;
+  transform: none;
+}
+#arena-overlay#arena-overlay.is-rites .raid-rite-buff-stat {
+  position: static;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: #050c1cd9;
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--rite-color) 50%, transparent);
+  line-height: 1;
+  text-shadow: none;
+}
+#arena-overlay#arena-overlay.is-rites .raid-rite-buff-value {
+  color: #fff;
+  font: 800 calc(var(--stat-size, 24px) * var(--text-scale, 1)) / 1
+    var(--font-display);
+}
+#arena-overlay#arena-overlay.is-rites .raid-rite-buff-unit {
+  display: block;
+  color: #c9d6ea;
+  font: 700 calc(var(--unit-size, 11px) * var(--text-scale, 1)) / 1.1
+    var(--font-body);
+  white-space: nowrap;
+}
+
+/* Picked: checked, dimmed in place. Locked (all picks made): the rest grey.
+   Only the tile's content dims, never the tile: style.css fades every
+   disabled button to half, which let the arena show through the tile. The
+   Spire's badge sits beside its copy, not in it, so it dims with it. */
+#arena-overlay#arena-overlay.is-rites .raid-rite-options > button:disabled {
+  cursor: default;
+  opacity: 1;
+}
+#arena-overlay#arena-overlay.is-rites
+  .raid-rite-options
+  > button:disabled
+  > :is(.raid-rite-copy, .raid-rite-icon) {
+  filter: grayscale(1);
+  opacity: 0.35;
+}
+#arena-overlay#arena-overlay.is-rites
+  .raid-rite-options
+  > button.is-picked
+  > :is(.raid-rite-copy, .raid-rite-icon) {
+  filter: none;
+  opacity: 0.6;
+}
+#arena-overlay#arena-overlay.is-rites .raid-rite-options > button.is-picked {
+  background: #0f2a22e6;
+  box-shadow: inset 0 0 0 2px #6fdc9a;
+}
+#arena-overlay#arena-overlay.is-rites .raid-rite-check {
+  top: 6px;
+  right: 6px;
+  width: 26px;
+  height: 26px;
+  box-shadow: 0 2px 8px #000a;
+}
+
+/* ---- The links under the tiles: rite details, the team's rites ---- */
+#arena-overlay#arena-overlay.is-rites .rites-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px 12px;
+  min-width: 0;
+}
+#arena-overlay#arena-overlay.is-rites .rites-foot > .raid-rite-locked {
+  color: #6fdc9a;
+  font: 700 calc(13px * var(--text-scale, 1)) / 1.2 var(--font-body);
+}
+#arena-overlay#arena-overlay.is-rites :is(.raid-rite-more, .raid-team-summary) {
+  position: static;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+#arena-overlay#arena-overlay.is-rites
+  :is(.raid-rite-more, .raid-team-summary)
+  > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 22px;
+  background: #0712258c;
+  color: #eaf1ff;
+  font: 700 calc(12px * var(--text-scale, 1)) / 1.2 var(--font-body);
+  text-shadow: none;
+  list-style: none;
+  cursor: pointer;
+}
+#arena-overlay#arena-overlay.is-rites .raid-team-summary > summary::marker {
+  content: "";
+}
+#arena-overlay#arena-overlay.is-rites .raid-team-summary > summary::before {
+  content: "";
+  width: 16px;
+  height: 16px;
+  background: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2'%3E%3Ccircle cx='9' cy='8' r='3.5'/%3E%3Cpath d='M2.5 19c.8-3.5 3.4-5.5 6.5-5.5s5.7 2 6.5 5.5M16 4.6a3.5 3.5 0 010 6.8M18 13.8c2 .7 3.2 2.5 3.6 5.2'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+}
+/* Open: the full effects (or the team list) as a sheet over the tiles,
+   ending above its own close button. */
+#arena-overlay#arena-overlay.is-rites .raid-rite-reference,
+#arena-overlay#arena-overlay.is-rites
+  .raid-team-summary[open]
+  > :is(.raid-team-builds, .spire-team) {
+  position: absolute;
+  inset: var(--pad-t) var(--pad-r) calc(var(--pad-b) + 54px) var(--pad-l);
+  z-index: 5;
+  overflow: hidden auto;
+  padding: 14px 18px;
+  border: 0;
+  border-radius: 16px;
+  background: #0b1630f2;
+  text-align: left;
+  text-shadow: none;
+}
+#arena-overlay#arena-overlay.is-rites .raid-rite-reference > h3 {
+  margin: 0 0 10px;
+  font: 800 calc(22px * var(--text-scale, 1)) / 1.1 var(--font-display);
+  text-transform: uppercase;
+}
+/* The entries sit in columns: no long lines across a wide screen (owner). */
+#arena-overlay#arena-overlay.is-rites .raid-rite-reference > ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(250px, 100%), 1fr));
+  gap: 10px;
+}
+#arena-overlay#arena-overlay.is-rites .raid-rite-reference li {
+  grid-template-columns: 56px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  padding: 10px;
+  border: 0;
+  border-radius: 10px;
+  background: #ffffff0d;
+}
+#arena-overlay#arena-overlay.is-rites .raid-rite-reference .raid-rite-icon {
+  --art-w: 56px;
+  --art-h: 42px;
+}
+#arena-overlay#arena-overlay.is-rites .raid-rite-reference h4 {
+  margin: 0 0 4px;
+  font: 700 calc(17px * var(--text-scale, 1)) / 1.2 var(--font-display);
+}
+#arena-overlay#arena-overlay.is-rites .raid-rite-reference p {
+  margin: 0;
+  color: #c9d6ea;
+  font: 400 calc(13px * var(--text-scale, 1)) / 1.45 var(--font-body);
+}
+#arena-overlay#arena-overlay.is-rites .raid-team-builds > div {
+  display: grid;
+  gap: 2px;
+  padding: 8px 0;
+  border-bottom: 1px solid #ffffff1a;
+}
+
+/* ---- From the old raid card (style.css), which this screen replaced:
+   the Rite details toggle, the list reset, the team list and the figures'
+   equal widths. Only this screen draws these parts now. ---- */
+#arena-overlay#arena-overlay.is-rites .raid-rite-more {
+  min-width: 0;
+}
+#arena-overlay#arena-overlay.is-rites
+  .raid-rite-more:not([open])
+  .rite-details-open,
+#arena-overlay#arena-overlay.is-rites
+  .raid-rite-more[open]
+  .rite-details-closed,
+#arena-overlay#arena-overlay.is-rites
+  .raid-rite-more:not([open])
+  .raid-rite-reference {
+  display: none;
+}
+#arena-overlay#arena-overlay.is-rites .raid-rite-more > summary {
+  justify-content: center;
+}
+#arena-overlay#arena-overlay.is-rites
+  .raid-rite-more
+  > summary::-webkit-details-marker {
+  display: none;
+}
+#arena-overlay#arena-overlay.is-rites .raid-rite-more > summary > svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+}
+#arena-overlay#arena-overlay.is-rites .raid-rite-more > summary:focus-visible,
+#arena-overlay#arena-overlay.is-rites .raid-rite-reference:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -3px;
+}
+#arena-overlay#arena-overlay.is-rites .raid-rite-reference {
+  box-shadow: 0 8px 28px #0005;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+}
+#arena-overlay#arena-overlay.is-rites .raid-rite-reference > ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+#arena-overlay#arena-overlay.is-rites .raid-rite-reference li {
+  display: grid;
+}
+#arena-overlay#arena-overlay.is-rites .raid-team-builds {
+  display: grid;
+  gap: 6px;
+  text-align: left;
+}
+#arena-overlay#arena-overlay.is-rites .raid-team-builds > div {
+  grid-template-columns: minmax(70px, 1fr) minmax(0, 3fr);
+  align-items: baseline;
+}
+#arena-overlay#arena-overlay.is-rites .raid-team-builds b {
+  overflow: hidden;
+  color: #e7eef9;
+  font-size: calc(11px * var(--text-scale, 1));
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#arena-overlay#arena-overlay.is-rites .raid-team-builds span {
+  color: #a9c0d7;
+  font-size: calc(10px * var(--text-scale, 1));
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+#arena-overlay#arena-overlay.is-rites .raid-rite-heading {
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  max-width: 100%;
+}
+@media (orientation: landscape) and (max-height: 600px) {
+  #arena-overlay#arena-overlay.is-rites .raid-rite-heading {
+    width: 100%;
+  }
+}
+#arena-overlay#arena-overlay.is-rites .raid-rite-stats {
+  justify-content: center;
+}
+/* Two figures share their row equally. */
+#arena-overlay#arena-overlay.is-rites .raid-rite-buff-stat {
+  flex: 1 1 0%;
+  align-items: center;
+}
+#arena-overlay#arena-overlay.is-rites .raid-rite-buff-value {
+  letter-spacing: -0.5px;
+}
+
+/* ---- The Spire's blessings (spire-ui.ts): three tiles in a row, each
+   the blessing's badge, its name (with its stack, ×2), the full effect and
+   its tag, in the Spire's violet (spire-battle.css sets --rite-color). ---- */
+/* Three tiles as tall as they need (with room to tap), centred: a single
+   row stretched to the screen's height left them mostly empty. */
+#arena-overlay#arena-overlay.is-rites .spire-blessings {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-rows: auto;
+  align-self: center;
+  height: auto;
+}
+#arena-overlay#arena-overlay.is-rites .spire-blessings > button {
+  min-height: clamp(96px, 34vh, 300px);
+  padding-block: 14px;
+}
+#arena-overlay#arena-overlay.is-rites .spire-blessings .raid-rite-icon {
+  --art-w: 72px;
+  --art-h: 72px;
+}
+#arena-overlay#arena-overlay.is-rites .spire-blessings .raid-rite-icon > svg {
+  padding: 14px;
+  box-sizing: border-box;
+  color: #efe9ff;
+}
+#arena-overlay#arena-overlay.is-rites .spire-blessings .raid-rite-copy > b {
+  margin: 0;
+  color: var(--rite-color);
+  font: 800 calc(var(--name-size, 24px) * var(--text-scale, 1)) / 1.05
+    var(--font-display);
+  letter-spacing: 0.03em;
+  text-align: center;
+  text-transform: uppercase;
+  overflow-wrap: normal;
+}
+#arena-overlay#arena-overlay.is-rites .spire-blessings .spire-stack {
+  font-family: var(--font-body);
+  letter-spacing: 0;
+  vertical-align: middle;
+}
+#arena-overlay#arena-overlay.is-rites
+  .spire-blessings
+  .raid-rite-copy
+  > small:not(.spire-blessing-tag) {
+  min-height: 0;
+  max-width: 30ch;
+  color: #eaf1ff;
+  font: 600 calc(var(--trigger-size, 14px) * var(--text-scale, 1)) / 1.35
+    var(--font-body);
+  text-align: center;
+  overflow-wrap: normal;
+}
+#arena-overlay#arena-overlay.is-rites .spire-blessings .spire-blessing-tag {
+  text-align: center;
+}
+#arena-overlay#arena-overlay.is-rites .rites-foot > span:not([class]) {
+  color: #c9d6ea;
+  font: 700 calc(12px * var(--text-scale, 1)) / 1.2 var(--font-body);
+}
+#arena-overlay#arena-overlay.is-rites .spire-team {
+  display: grid;
+  gap: 6px;
+}
+/* The team's list is a short sheet over the links, as tall as its rows
+   (a few names), not the whole screen. */
+#arena-overlay#arena-overlay.is-rites :is(.raid-team-builds, .spire-team) {
+  align-content: start;
+}
+#arena-overlay#arena-overlay.is-rites
+  .raid-team-summary[open]
+  > :is(.raid-team-builds, .spire-team) {
+  top: auto;
+  max-height: calc(100% - var(--pad-t) - var(--pad-b) - 54px);
+}
+@media (max-height: 599px) {
+  #arena-overlay#arena-overlay.is-rites .spire-blessings .raid-rite-icon {
+    --art-w: 52px;
+    --art-h: 52px;
+  }
+  #arena-overlay#arena-overlay.is-rites .spire-blessings .raid-rite-icon > svg {
+    padding: 10px;
+  }
+}
+@media (max-height: 350px) {
+  #arena-overlay#arena-overlay.is-rites .spire-blessings .raid-rite-icon {
+    --art-w: 40px;
+    --art-h: 40px;
+  }
+  #arena-overlay#arena-overlay.is-rites .spire-blessings .raid-rite-icon > svg {
+    padding: 7px;
+  }
+}
+
+/* ---- Sizes. Tall screens get the biggest tiles and the chapter tip;
+   phones held sideways keep everything but the full effect (it stays in
+   Rite details); the shortest lay each tile out in a row. Figures stay at
+   least 22 px (20 px on the shortest), units at least 10 px. ---- */
+@media (min-height: 760px) {
+  #arena-overlay#arena-overlay.is-rites .raid-rite-options {
+    gap: 18px 22px;
+  }
+  #arena-overlay#arena-overlay.is-rites .raid-rite-icon {
+    --art-w: 128px;
+    --art-h: 96px;
+    --stat-size: 32px;
+    --unit-size: 13px;
+    gap: 12px;
+  }
+  #arena-overlay#arena-overlay.is-rites .rites-screen {
+    --name-size: 30px;
+    --trigger-size: 16px;
+    --full-size: 15px;
+  }
+}
+@media (min-height: 600px) {
+  #arena-overlay#arena-overlay.is-rites .rites-objective {
+    display: block;
+  }
+}
+@media (min-height: 600px) and (max-height: 759px) {
+  #arena-overlay#arena-overlay.is-rites .raid-rite-icon {
+    --art-w: 96px;
+    --art-h: 72px;
+    --stat-size: 26px;
+    --unit-size: 12px;
+  }
+  #arena-overlay#arena-overlay.is-rites .rites-screen {
+    --name-size: 24px;
+    --trigger-size: 14px;
+    --full-size: 13px;
+  }
+}
+@media (min-height: 430px) {
+  #arena-overlay#arena-overlay.is-rites .raid-rite-full {
+    display: block;
+  }
+}
+@media (max-height: 599px) {
+  #arena-overlay#arena-overlay.is-rites .rites-screen {
+    --name-size: 20px;
+    --trigger-size: 13px;
+    --full-size: 12px;
+    gap: 6px;
+  }
+  #arena-overlay#arena-overlay.is-rites .raid-rite-options {
+    gap: 6px 8px;
+  }
+  #arena-overlay#arena-overlay.is-rites .raid-rite-options > button {
+    padding: 6px 8px;
+  }
+  #arena-overlay#arena-overlay.is-rites
+    :is(.raid-rite-copy, .raid-rite-heading) {
+    gap: 3px;
+  }
+  #arena-overlay#arena-overlay.is-rites .raid-rite-icon {
+    --art-w: 56px;
+    --art-h: 42px;
+    --stat-size: 22px;
+    --unit-size: 10px;
+    gap: 6px;
+  }
+  #arena-overlay#arena-overlay.is-rites .raid-rite-buff-stat {
+    padding: 3px 6px;
+  }
+  #arena-overlay#arena-overlay.is-rites
+    :is(.raid-rite-more, .raid-team-summary)
+    > summary {
+    min-height: 40px;
+  }
+}
+@media (max-width: 720px) {
+  /* Two figures beside the picture in a 667 px phone's third of the row:
+     the picture is smaller and a long unit takes two lines ("revive /
+     speed"), so the second figure no longer ran to the tile's edge and the
+     picture lost its left side (Helping Paws, audit B17). */
+  #arena-overlay#arena-overlay.is-rites .raid-rite-icon--dual {
+    --art-w: 44px;
+    --art-h: 34px;
+    gap: 4px;
+  }
+  #arena-overlay#arena-overlay.is-rites
+    .raid-rite-icon--dual
+    .raid-rite-buff-stat {
+    padding: 3px 4px;
+  }
+  #arena-overlay#arena-overlay.is-rites
+    .raid-rite-icon--dual
+    .raid-rite-buff-unit {
+    white-space: normal;
+    text-align: center;
+  }
+}
+@media (max-height: 429px) {
+  #arena-overlay#arena-overlay.is-rites .rites-screen {
+    --name-size: 18px;
+    --trigger-size: 12px;
+  }
+}
+@media (max-height: 350px) {
+  #arena-overlay#arena-overlay.is-rites .rites-screen {
+    --name-size: 16px;
+    gap: 4px;
+  }
+  #arena-overlay#arena-overlay.is-rites .rites-kicker {
+    display: none;
+  }
+  #arena-overlay#arena-overlay.is-rites .raid-choice-timer > .live-number {
+    font-size: 40px;
+  }
+  #arena-overlay#arena-overlay.is-rites .raid-rite-trigger {
+    display: none;
+  }
+  #arena-overlay#arena-overlay.is-rites .raid-rite-icon {
+    --art-w: 44px;
+    --art-h: 33px;
+    --stat-size: 20px;
+    gap: 4px;
+  }
+  #arena-overlay#arena-overlay.is-rites .raid-rite-options > button {
+    padding: 4px 6px;
+  }
+  #arena-overlay#arena-overlay.is-rites .raid-rite-reference,
+  #arena-overlay#arena-overlay.is-rites
+    .raid-team-summary[open]
+    > :is(.raid-team-builds, .spire-team) {
+    bottom: calc(var(--pad-b) + 46px);
+    padding: 10px 12px;
+  }
+}

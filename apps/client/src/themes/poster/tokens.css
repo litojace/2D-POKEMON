@@ -1,0 +1,86 @@
+/* Poster's tokens: ink black and the Lobby fighter's element colour (--el),
+   nothing rounded, hard offset shadows instead of glass. The game's shared
+   tokens (ui/tokens.css) are re-pointed here, so every screen built on them
+   follows before any rule of its own. */
+:root[data-ui="poster"] {
+  --ink: #0d0d0f;
+  --ink-1: #151518;
+  --ink-2: #1e1e22;
+  --ink-3: #2a2a30;
+  --hot: #ff2e4d;
+  /* Contrast (WCAG AA, measured for every element, boss and Spire colour:
+     tests/visual/poster-contrast.spec.ts). Every --el is light, so what is
+     drawn on --el is ink, never white (ink on the darkest, Shadow's
+     #8a6bff, is 5.2:1), and --el on ink reads at 5.2:1 or more.
+     --hot-fill is the red behind white words (4.85:1; --hot itself is
+     3.65:1, so it stays for shadows and lines). --on-el-dim is the quieter
+     ink on --el: 4.6:1 on Shadow. */
+  --hot-fill: #e0143a;
+  --on-el-dim: rgba(13, 13, 15, 0.88);
+  /* Anton has one weight: never let the browser fake a bold of it. */
+  font-synthesis: none;
+  --font-display: "Anton", "Arial Narrow", sans-serif;
+  --font-body: "Archivo", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --ui-bg-0: var(--ink);
+  --ui-bg-1: var(--ink-1);
+  --ui-bg-2: var(--ink-2);
+  --ui-bg-3: var(--ink-3);
+  --ui-glass: var(--ink);
+  --ui-line: rgba(255, 255, 255, 0.12);
+  --ui-line-2: rgba(255, 255, 255, 0.24);
+  --ui-text: #ffffff;
+  --ui-dim: #b8b8c0;
+  --ui-faint: #92929b;
+  /* Words in the element colour on ink panels: --el, lifted to at least
+     OKLCH lightness 0.72 where it is darker (Shadow, Inkpurr), so it reads
+     at 4.5:1 on the lightest panel ink (--ink-3); lighter colours are
+     unchanged. Older browsers keep --el (below). */
+  --el-text: var(--el);
+  --ui-accent: var(--el-text);
+  --ui-accent-hi: var(--el-text);
+  --ui-accent-lo: var(--el-text);
+  --ui-accent-deep: var(--ink);
+  --ui-accent-ink: var(--ink);
+  --rad-xs: 0px;
+  --rad-sm: 0px;
+  --rad-md: 0px;
+  --rad-lg: 0px;
+  --rad-xl: 0px;
+  --rad-pill: 2px;
+  --radius-sm: 0px;
+  --radius-lg: 0px;
+  --glass-thin: var(--ink);
+  --glass-regular: var(--ink);
+  --glass-thick: var(--ink);
+  --glass-solid: var(--ink);
+  --glass-opaque: var(--ink);
+  --glass-blur: none;
+  --glass-blur-panel: none;
+  --glass-rim: transparent;
+  --glass-rim-on: var(--el);
+  --fill-well: #070708;
+  --fill-card: var(--ink-2);
+  --fill-card-hi: var(--ink-3);
+  --fill-bar: #070708;
+  --scrim: rgba(0, 0, 0, 0.55);
+  --btn-primary-bg: var(--el);
+  --btn-primary-ink: var(--ink);
+  --cta-bg: var(--el);
+  --icon-btn-bg: var(--ink);
+  --icon-btn-line: transparent;
+  --shadow-1: 5px 5px 0 rgba(0, 0, 0, 0.35);
+  --shadow-2: 8px 8px 0 rgba(0, 0, 0, 0.4);
+  --topbar-bg: var(--ink);
+  --panel-top: var(--ink-1);
+  --panel-bottom: var(--ink-1);
+  --panel-line: transparent;
+  --gold-edge: var(--ink);
+  --scroll-track: var(--ink);
+  --scroll-thumb: var(--el);
+  --scroll-thumb-light: var(--el);
+}
+@supports (color: oklch(from red l c h)) {
+  :root[data-ui="poster"] {
+    --el-text: oklch(from var(--el) max(l, 0.72) c h);
+  }
+}

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { RULES } from "@arena/shared";
 import { simulateCorrections } from "../../scripts/perf/correction-sim";
 import { HIT_GAP_PX } from "../../apps/client/src/battle-perf";
 
@@ -25,19 +26,34 @@ describe("your fighter's corrections", () => {
     const run = (noCarry: boolean) =>
       simulateCorrections({
         seconds: 60,
-        me: "cindrake",
+        // (Terradon walks into the flares' pull often; a 0.5 s Crest Flare
+        // left Cindrake out of it in this replay.)
+        me: "terradon",
         bot: "lumoth",
         fullUlt: true,
         noCarry,
       }).corrections.filter(
         (c) => c.cause === "status" && c.detail.includes("lure"),
       ).length;
-    const before = run(true),
+    // The carry only shows between snapshots: measure it at the old 15 a
+    // second, where a pull had two ticks to drift your prediction off.
+    const rate = RULES.snapshot;
+    (RULES as { snapshot: number }).snapshot = 15;
+    let before: number, after: number;
+    try {
+      before = run(true);
       after = run(false);
+    } finally {
+      (RULES as { snapshot: number }).snapshot = rate;
+    }
     // Measured with a Lumoth casting Radiant Flare whenever it can: about 430
-    // before, about 40 after (only entering and leaving the pull).
+    // before, about 40 after (only entering and leaving the pull); in this
+    // replay 94 and 10.
     expect(before).toBeGreaterThan(30);
     expect(after).toBeLessThan(before / 3);
+    // At 30 snapshots a second (23 Nov 2026) a pull is corrected every
+    // tick: few corrections with the carry (9 in this replay).
+    expect(run(false)).toBeLessThan(before / 3);
   });
 
   it("do not jump when Wi-Fi holds your inputs for a moment", () => {

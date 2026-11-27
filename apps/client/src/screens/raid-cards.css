@@ -46,7 +46,7 @@ body.touch-mode.chat-corner #arena-overlay > .rc-card {
 .rc-body {
   flex: 1 1 auto;
   min-height: 0;
-  overflow: auto;
+  overflow: hidden auto;
   overscroll-behavior: contain;
   touch-action: pan-y;
   display: grid;
@@ -251,11 +251,18 @@ body.touch-mode.chat-corner #arena-overlay > .rc-card {
 .rc-score thead th:first-child {
   text-align: left;
 }
+/* The stat columns fit their longest header ("Relights", "Braziers": eight
+   capitals, nowrap). Narrower, the header ran past the card and the results
+   could be dragged sideways on a phone (owner's screenshot, 24 Nov 2026). */
+.rc-score thead th:nth-child(n + 2) {
+  padding-left: 0;
+  letter-spacing: 0.06em;
+}
 .rc-score thead th:nth-child(2) {
   width: 104px;
 }
 .rc-score thead th:nth-child(n + 3) {
-  width: 72px;
+  width: 88px;
 }
 .rc-score tbody :is(th, td) {
   padding: 8px 10px;
@@ -456,7 +463,10 @@ body.touch-mode.chat-corner #arena-overlay > .rc-card {
     width: 84px;
   }
   .rc-score thead th:nth-child(n + 3) {
-    width: 58px;
+    width: 76px;
+  }
+  .rc-score thead th {
+    padding-right: 8px;
   }
   .rc-score tbody :is(th, td) {
     padding: 4px 8px;

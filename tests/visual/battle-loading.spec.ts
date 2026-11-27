@@ -39,13 +39,23 @@ test("the briefing holds I'm ready until the arena has loaded, and loads only th
       { timeout: 60_000, intervals: [300] },
     )
     .toBe(1);
-  // The briefing appears at once, but "I'm ready" waits for the arena.
-  await expect(ready).toHaveText("Loading…");
-  // The Reveal's bar says so, and how far it has come.
-  await expect(page.locator(".rv-load span")).toContainText(
-    "Loading the arena",
-  );
-  await expect(ready).toBeDisabled();
+  // The briefing appears at once, but "I'm ready" waits for the arena, and
+  // the Reveal's bar says so and how far it has come. Read in one look: the
+  // overlay now redraws itself while the arena loads (main.ts
+  // watchArenaLoad), so the load may end between two looks.
+  const shown = await page.evaluate(() => {
+    const button = document.querySelector<HTMLButtonElement>(
+      "#instructions-ready",
+    )!;
+    return {
+      button: button.textContent,
+      disabled: button.disabled,
+      bar: document.querySelector(".rv-load span")?.textContent ?? "",
+    };
+  });
+  expect(shown.button).toBe("Loading…");
+  expect(shown.bar).toContain("Loading the arena");
+  expect(shown.disabled).toBe(true);
   await expect
     .poll(
       async () => {

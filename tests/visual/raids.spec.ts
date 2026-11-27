@@ -10,6 +10,10 @@ import {
   layoutProblems,
   setInsets,
 } from "./ui-measure";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // UI remodel step 5 (docs/ui-remodel/PLAN.md): the boss list and a boss's
 // page, a panel inside the Lobby. Measured at the four review sizes with the
@@ -45,7 +49,6 @@ export const RAIDS = {
   titles: ["Cragbreaker"],
   cosmetics: ["mountainborn"],
   earned: ["cragbreaker", "mountainborn"],
-  weekly: [],
   loadout: {},
 };
 export const FRIENDS = {
@@ -338,16 +341,26 @@ for (const size of SIZES)
       await snap(page, info, `raid-rewards-${size.name}`);
       // A reward whose rule is cut short opens to the whole rule and what
       // the item is; another tap closes it (owner's question, 9 Nov).
-      const cut = await room.locator(".rh-reward").evaluateAll((cards) =>
-        cards
-          .filter((c) => {
-            const t = c.querySelector(".rh-reward-line small")!;
-            return t.scrollWidth > t.clientWidth + 1;
-          })
-          .map((c) => (c as HTMLElement).dataset.raidReward!),
-      );
-      // The longest rule is cut on every size.
-      expect(cut.length).toBeGreaterThan(0);
+      // The line takes two lines (audit B13), so a desktop may show every
+      // rule whole: then the longest one opens.
+      const cut = await room.locator(".rh-reward").evaluateAll((cards) => {
+        const rule = (c: Element) => c.querySelector(".rh-reward-line small")!;
+        const short = cards.filter((c) => {
+          const t = rule(c);
+          return (
+            t.scrollWidth > t.clientWidth + 1 ||
+            t.scrollHeight > t.clientHeight + 1
+          );
+        });
+        const longest = [...cards].sort(
+          (a, b) =>
+            (b.getAttribute("title") ?? "").length -
+            (a.getAttribute("title") ?? "").length,
+        );
+        return [...short, ...longest].map(
+          (c) => (c as HTMLElement).dataset.raidReward!,
+        );
+      });
       const id = cut[0];
       const reward = RAID_REWARDS.find((r) => r.id === id)!;
       const card = room.locator(`[data-raid-reward="${id}"]`);
@@ -364,7 +377,11 @@ for (const size of SIZES)
               ".rh-reward-text b, .rh-reward-text small, .rh-reward-more span",
             ),
           )
-            .filter((t) => t.scrollWidth > t.clientWidth + 1)
+            .filter(
+              (t) =>
+                t.scrollWidth > t.clientWidth + 1 ||
+                t.scrollHeight > t.clientHeight + 1,
+            )
             .map((t) => t.textContent),
         ),
       ).toEqual([]);
@@ -576,17 +593,18 @@ test("phones the size of an iPhone SE keep the boss page's actions in reach", as
     for (const sel of ["[data-raid-start]", '[data-ui-raid-play="party"]'])
       expect(inside(await box(page, sel), main)).toBe(true);
     // The Lobby doesn't stay scrolled: bringing a card into view used to
-    // scroll it up under the header now and then and leave it there.
+    // scroll it up under the header now and then and leave it there. (In
+    // Poster it has nothing to scroll at this size: a scroll doesn't take,
+    // and the check is that it is back at the top either way.)
     expect(
       await page.evaluate(async () => {
         const layer = document.querySelector(".lobby-layer")!;
         layer.scrollTop = 40;
-        const moved = layer.scrollTop;
         // Scroll events come with the next frame.
         await new Promise((r) => requestAnimationFrame(() => setTimeout(r)));
-        return [moved > 0, layer.scrollTop];
+        return layer.scrollTop;
       }),
-    ).toEqual([true, 0]);
+    ).toBe(0);
     // The HUD at this width is the Lobby's (its own spec); the panel's rules hold.
     expect(
       (await layoutProblems(page, { phone: true })).filter(
@@ -682,6 +700,39 @@ for (const size of [SIZES[1], SIZES[4]])
                     );
                 }),
               )
+            ).map((b) => `${boss}: ${b}`),
+          );
+          // Every reward's name whole on its closed card, on two lines where
+          // one is too short: a phone's title cards are a third of the row,
+          // and 12 of the 79 names ended in "…" at 852 x 393 with the island
+          // (25 Nov 2026). The text's own width, not scrollWidth: a name
+          // running into the 18 px kept for the earned tick didn't show
+          // there.
+          bad.push(
+            ...(
+              await room
+                .locator(".rh-reward:not(.is-open) .rh-reward-text b")
+                .evaluateAll((names) =>
+                  names.flatMap((b) => {
+                    const cs = getComputedStyle(b);
+                    const right =
+                      b.getBoundingClientRect().right -
+                      parseFloat(cs.paddingRight) -
+                      parseFloat(cs.borderRightWidth);
+                    const range = document.createRange();
+                    range.selectNodeContents(b);
+                    const wide = [...range.getClientRects()].some(
+                      (r) => r.right > right + 0.5,
+                    );
+                    // Nor cut by the card's two-line text area (titles).
+                    const below =
+                      b.getBoundingClientRect().bottom >
+                      b.parentElement!.getBoundingClientRect().bottom + 0.5;
+                    return wide || below || b.scrollHeight > b.clientHeight + 1
+                      ? [`name cut: ${b.textContent}`]
+                      : [];
+                  }),
+                )
             ).map((b) => `${boss}: ${b}`),
           );
           await room.locator("[data-raid-back]").click();

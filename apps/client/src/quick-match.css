@@ -13,7 +13,7 @@
     calc(100vw - 28px - var(--safe-left, 0px) - var(--safe-right, 0px))
   );
   max-height: calc(100dvh - 28px - var(--safe-bottom, 0px));
-  overflow: auto;
+  overflow: hidden auto;
   padding: 14px 16px;
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 18px;
@@ -55,4 +55,19 @@
   .quick-search .quick-time {
     font-size: 24px;
   }
+}
+
+/* 2v2 and Free-for-all: when bots take the empty seats (a number that
+   counts down in place, so the line never changes width). */
+.quick-search .quick-fill {
+  color: #f4f6ff;
+  font-size: 13px;
+  line-height: 1.35;
+}
+.quick-search .quick-fill b {
+  display: inline-block;
+  min-width: 2ch;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-accent-hi, #ffd65b);
 }

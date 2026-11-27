@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
 /**
- * The iPhone app (docs/ios-app.md): the built client (dist) inside a native
+ * The iOS app for iPhone and iPad (docs/ios-app.md): the built client (dist) inside a native
  * shell. The game itself still talks to the Render server and Supabase, so
  * the build needs VITE_SERVER_URL (see scripts/check-native-env.mjs).
  *

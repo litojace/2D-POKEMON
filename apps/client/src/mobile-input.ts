@@ -106,24 +106,107 @@ export interface TouchTarget {
   size: number;
   iconSize?: number;
 }
+/**
+ * How the skills sit round the basic attack on a phone (not the compact
+ * fallback for very small screens):
+ *
+ * - "corner": the basic attack in the bottom-right corner, as in a mobile
+ *   MOBA; skills 1–3 on one arc round it (left to straight up), and the
+ *   ultimate, Dash and Jump each nestled in a gap outside that arc.
+ * - "ring": one even ring round the basic attack, Dash and Jump on its
+ *   right (the layout approved on 16 Nov 2026).
+ *
+ * The owner asked to play with "corner" for a while (26 Nov 2026), with
+ * drag-to-aim. Going back is this one line.
+ */
+export type CombatLayoutStyle = "corner" | "ring";
+export const COMBAT_LAYOUT: CombatLayoutStyle = "corner";
+/** Placed circles (`size` across) round the basic attack at (0, 0), and their box. */
+type Placed = {
+  placed: { x: number; y: number; size: number }[];
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+};
+function boxOf(placed: Placed["placed"]): Placed {
+  const left = Math.min(...placed.map((b) => b.x - b.size / 2)),
+    top = Math.min(...placed.map((b) => b.y - b.size / 2)),
+    right = Math.max(...placed.map((b) => b.x + b.size / 2)),
+    bottom = Math.max(...placed.map((b) => b.y + b.size / 2));
+  return { placed, left, top, width: right - left, height: bottom - top };
+}
+/**
+ * A circle `size` across that keeps exactly `gap` to both `a` and `b`, on
+ * the side away from the basic attack at (0, 0) (screen y down).
+ */
+function nestle(
+  a: { x: number; y: number; size: number },
+  b: { x: number; y: number; size: number },
+  size: number,
+  gap: number,
+) {
+  const ra = a.size / 2 + size / 2 + gap,
+    rb = b.size / 2 + size / 2 + gap;
+  const dx = b.x - a.x,
+    dy = b.y - a.y,
+    d = Math.hypot(dx, dy);
+  const along = (ra * ra - rb * rb + d * d) / (2 * d),
+    across = Math.sqrt(Math.max(0, ra * ra - along * along));
+  const mx = a.x + (dx * along) / d,
+    my = a.y + (dy * along) / d;
+  const one = { x: mx - (dy * across) / d, y: my + (dx * across) / d, size },
+    two = { x: mx + (dy * across) / d, y: my - (dx * across) / d, size };
+  return Math.hypot(one.x, one.y) > Math.hypot(two.x, two.y) ? one : two;
+}
+/**
+ * The corner layout, in DESIGN order (attack, 1, 2, 3, ultimate, Dash,
+ * Jump): skills 1–3 keep one gap to the basic attack and to each other,
+ * from straight left round to straight up, so nothing passes the basic
+ * attack's right edge and it can sit in the corner. The ultimate takes the
+ * gap outside skills 1 and 2, Dash the one outside 2 and 3, Jump the one
+ * below the ultimate.
+ */
+function cornerOf(sizes: number[], gap: number): Placed {
+  const [attack, s1, s2, s3, ult, dash, jump] = sizes;
+  const basic = { x: 0, y: 0, size: attack };
+  const d = attack / 2 + s1 / 2 + gap;
+  let angle = Math.PI;
+  const skills = [s1, s2, s3].map((size, i, all) => {
+    if (i) {
+      const chord = (all[i - 1] + size) / 2 + gap;
+      angle += 2 * Math.asin(Math.min(1, chord / 2 / d));
+    }
+    return { x: d * Math.cos(angle), y: d * Math.sin(angle), size };
+  });
+  const ultimate = nestle(skills[0], skills[1], ult, gap);
+  return boxOf([
+    basic,
+    ...skills,
+    ultimate,
+    nestle(skills[1], skills[2], dash, gap),
+    nestle(skills[0], ultimate, jump, gap),
+  ]);
+}
 export function mobileLayout(
   width: number,
   height: number,
   prefs: ControlPreferences = DEFAULT_CONTROLS,
+  style: CombatLayoutStyle = COMBAT_LAYOUT,
 ) {
   const available = Math.max(280, width);
   const joystick = Math.max(
     88,
     Math.min(
       164,
-      Math.min(height * 0.34, available * 0.25) * prefs.joystickSize,
+      Math.min(height * 0.46, available * 0.25) * prefs.joystickSize,
     ),
   );
   if (available < 600 && height < 500) {
     const short = height < 310;
     const compactJoystick = Math.min(
       joystick,
-      Math.max(short ? 72 : 88, height * (short ? 0.23 : 0.28)),
+      Math.max(short ? 80 : 96, height * (short ? 0.29 : 0.34)),
     );
     const size = Math.max(
       44,
@@ -146,26 +229,35 @@ export function mobileLayout(
       size: size * scale,
     });
     const attackY = short ? 47 : 51;
+    const targets = [
+      target("0", 28, short ? 22 : 26, 44),
+      target("1", 84, short ? 22 : 26, 44),
+      target("2", 140, short ? 22 : 26, 44),
+      target("3", 28, short ? 70 : 78, 44),
+      target("attack", 220, attackY, 88),
+      target("dash", 84, short ? 72 : 78, 48),
+      target("jump", 140, short ? 70 : 78, 44),
+    ];
+    // The target button: over the basic attack, past the cluster's top.
+    const aim = {
+      x: 220 * scale,
+      y: (attackY - 44 - 10 - 22) * scale,
+      size: 44 * scale,
+    };
     return {
       compact: true,
       joystick: compactJoystick,
       width: 270 * scale,
       height: (short ? 96 : 102) * scale,
-      targets: [
-        target("0", 28, short ? 22 : 26, 44),
-        target("1", 84, short ? 22 : 26, 44),
-        target("2", 140, short ? 22 : 26, 44),
-        target("3", 28, short ? 70 : 78, 44),
-        target("attack", 220, attackY, 88),
-        target("dash", 84, short ? 72 : 78, 48),
-        target("jump", 140, short ? 70 : 78, 44),
-      ],
-      // The target button: over the basic attack, past the cluster's top.
-      aim: {
-        x: 220 * scale,
-        y: (attackY - 44 - 10 - 22) * scale,
-        size: 44 * scale,
-      },
+      targets,
+      aim,
+      context: contextPair(
+        aim,
+        targets,
+        44 * scale,
+        10 * scale,
+        (short ? 96 : 102) * scale - height,
+      ),
     };
   }
   const unit = Math.max(
@@ -188,7 +280,7 @@ export function mobileLayout(
     ["dash", 60],
     ["jump", 60],
   ];
-  const ringOf = (sizes: number[], gap: number) => {
+  const ringOf = (sizes: number[], gap: number): Placed => {
     const [attack, ...rest] = sizes;
     // Skill 1 sits low on the left; the rest follow clockwise (screen y down).
     // Started at 142° so the ultimate, Dash and Jump sit high enough for the
@@ -212,15 +304,12 @@ export function mobileLayout(
       previous = { d, r };
       placed.push({ x: d * Math.cos(angle), y: d * Math.sin(angle), size });
     }
-    const left = Math.min(...placed.map((b) => b.x - b.size / 2)),
-      top = Math.min(...placed.map((b) => b.y - b.size / 2)),
-      right = Math.max(...placed.map((b) => b.x + b.size / 2)),
-      bottom = Math.max(...placed.map((b) => b.y + b.size / 2));
-    return { placed, left, top, width: right - left, height: bottom - top };
+    return boxOf(placed);
   };
+  const place = style === "corner" ? cornerOf : ringOf;
   const GAP = 14,
     MARGIN = 6;
-  const design = ringOf(
+  const design = place(
     DESIGN.map(([, size]) => size),
     GAP,
   );
@@ -234,11 +323,11 @@ export function mobileLayout(
     ),
   );
   // Real sizes (small screens keep 44 px touch targets, 48 for Dash and Jump), then
-  // the ring again at real size so the gaps stay even after that floor.
+  // the layout again at real size so the gaps stay even after that floor.
   const sizes = DESIGN.map(([action, size]) =>
     Math.max(action === "dash" || action === "jump" ? 48 : 44, size * scale),
   );
-  const ring = ringOf(sizes, GAP * scale);
+  const ring = place(sizes, GAP * scale);
   const margin = MARGIN * scale;
   const iconSize = (action: TouchAction) =>
     // Grow the touch circle without enlarging the established icon artwork.
@@ -255,30 +344,96 @@ export function mobileLayout(
     iconSize: iconSize(action),
   }));
   const order: TouchAction[] = ["0", "1", "2", "3", "attack", "dash", "jump"];
-  // The target button: over Dash, at the cluster's right edge where the
-  // right thumb reaches up from Dash and Jump, and high enough to keep the
-  // ring's gap to the ultimate (which tops the ring, left of Dash). It may
-  // sit above the cluster's box (negative y): the court's free top-right
-  // corner.
-  const dash = targets.find((t) => t.action === "dash")!;
-  const ult = targets.find((t) => t.action === "3")!;
+  // The target button, at the cluster's right edge. It may sit above the
+  // cluster's box (negative y): the court's free top-right corner. While a
+  // skill is dragged it turns into the cancel spot (touch-controls.ts).
   const aimSize = Math.max(44, 52 * scale);
   const gap = GAP * scale;
   const aimX = ring.width + 2 * margin - margin - aimSize / 2;
-  const clear = ult.size / 2 + aimSize / 2 + gap;
-  const dx = Math.abs(aimX - ult.x);
-  const aimY = Math.min(
-    dash.y - dash.size / 2 - gap - aimSize / 2,
-    dx < clear ? ult.y - Math.sqrt(clear ** 2 - dx ** 2) : Infinity,
-  );
+  /** The lowest centre over `t` that keeps the gap to it (Infinity: not in the way). */
+  const over = (t: TouchTarget) => {
+    const clear = t.size / 2 + aimSize / 2 + gap,
+      dx = Math.abs(aimX - t.x);
+    return dx < clear ? t.y - Math.sqrt(clear ** 2 - dx ** 2) : Infinity;
+  };
+  const dash = targets.find((t) => t.action === "dash")!;
+  const clusterHeight = ring.height + 2 * margin;
+  let aimY =
+    style === "corner"
+      ? // Corner: over the basic attack and skill 3, lifted clear of every
+        // button (Dash sits up and to the left).
+        Math.min(...targets.map(over))
+      : // Ring: over Dash, where the right thumb reaches up from Dash and
+        // Jump, and high enough to keep the ring's gap to the ultimate
+        // (which tops the ring, left of Dash).
+        Math.min(
+          dash.y - dash.size / 2 - gap - aimSize / 2,
+          over(targets.find((t) => t.action === "3")!),
+        );
+  if (style === "corner")
+    // Never into the HUD's allowance over the cluster (a squat screen's
+    // boss bar and clock): lower it to there, giving up at most 60% of its
+    // gap to the buttons below.
+    aimY = Math.max(
+      aimY,
+      Math.min(clusterHeight - height + aimSize / 2, aimY + gap * 0.6),
+    );
+  const aim = { x: aimX, y: aimY, size: aimSize };
   return {
     compact: false,
     joystick,
     width: ring.width + 2 * margin,
     height: ring.height + 2 * margin,
     targets: order.map((action) => targets.find((t) => t.action === action)!),
-    aim: { x: aimX, y: aimY, size: aimSize },
+    aim,
+    context: contextPair(
+      aim,
+      targets,
+      Math.max(44, 52 * scale),
+      gap,
+      clusterHeight - height,
+    ),
   };
+}
+
+/** Room under a contextual button for its name (CSS px). */
+const CONTEXT_LABEL = 12;
+/**
+ * A boss's two contextual actions (Turn mirror, Look away), side by side in
+ * the court's free top-right corner: left of the target button, level with
+ * it, and lifted over any cluster button below them with room for their
+ * names (owner, 24 Nov 2026: both always showing, up there, not one at a
+ * time by skill 1). They never rise past `minTop` (the cluster's y of the
+ * HUD's allowance: a squat screen's boss bar is just above); where lifting
+ * would, they stay level with the target button and slide left until clear.
+ * `x`/`y` are the pair's centre; `size` is one button.
+ */
+function contextPair(
+  aim: { x: number; y: number; size: number },
+  targets: readonly TouchTarget[],
+  size: number,
+  gap: number,
+  minTop: number,
+) {
+  // Between the two: room for their names (about 50 px at 9 px type).
+  const between = Math.max(gap, 18);
+  const width = 2 * size + between;
+  const clearAt = (x: number, y: number) =>
+    targets.every(
+      (t) =>
+        Math.abs(t.x - x) >= width / 2 + t.size / 2 + gap ||
+        y + size / 2 + CONTEXT_LABEL + gap <= t.y - t.size / 2,
+    );
+  let x = aim.x - aim.size / 2 - gap - width / 2;
+  let y = aim.y;
+  for (const t of targets)
+    if (Math.abs(t.x - x) < width / 2 + t.size / 2 + gap)
+      y = Math.min(y, t.y - t.size / 2 - gap - CONTEXT_LABEL - size / 2);
+  if (y - size / 2 < minTop) {
+    y = Math.max(aim.y, minTop + size / 2);
+    while (!clearAt(x, y) && x > -2 * width) x -= 4;
+  }
+  return { x, y, size, width, height: size };
 }
 
 /**

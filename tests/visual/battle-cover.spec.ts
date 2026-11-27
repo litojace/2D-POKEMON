@@ -1,0 +1,311 @@
+import { expect, test, type Page } from "@playwright/test";
+import {
+  createRoom,
+  openHub,
+  openLobby,
+  openPlayPanel,
+  pickRoomMode,
+  pushUntilBattle,
+  snap,
+  startPractice,
+} from "./helpers";
+
+/**
+ * Loading covers on the way into a fight (docs/loading-screens.md): the
+ * raid and Spire briefing's I'm ready waits for the arena, as the PvP Reveal
+ * does, and Solo test mode has a cover of its own until the arena is in.
+ */
+
+/** Hold requests matching `pattern` until the returned release is called. */
+async function hold(page: Page, pattern: RegExp) {
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await page.route(pattern, async (route) => {
+    await held;
+    await route.continue();
+  });
+  return release;
+}
+
+test("a raid briefing is ready at once: the court is painted in code, nothing to wait for", async ({
+  page,
+}, info) => {
+  await openHub(page);
+  // The arenas used to be pictures the briefing waited for; now they are
+  // painted when the arena shows (world-art/), so no request goes out.
+  const pictures: string[] = [];
+  page.on("request", (r) => {
+    if (r.resourceType() === "image" && /raid-arenas/.test(r.url()))
+      pictures.push(r.url());
+  });
+  await page.evaluate(() =>
+    (window as any).__room("raid", { boss: "grumblecrag" }),
+  );
+  await openPlayPanel(page);
+  await createRoom(page);
+  await pushUntilBattle(page);
+  await page.evaluate(() => {
+    const w = window as any;
+    w.__snap.phase = "briefing";
+    w.__push();
+  });
+  const ready = page.locator("#raid-instructions");
+  await expect
+    .poll(
+      async () => {
+        await page.evaluate(() => (window as any).__push());
+        return ready.isEnabled();
+      },
+      { timeout: 20_000, intervals: [300] },
+    )
+    .toBe(true);
+  await expect(ready).toContainText("I’m ready");
+  await snap(page, info, "raid-briefing-ready");
+  expect(pictures).toEqual([]);
+});
+
+test("Solo test mode is covered until the arena has loaded", async ({
+  page,
+}, info) => {
+  await page.setViewportSize({ width: 844, height: 390 });
+  // A slow phone: the battle engine (loaded after the first screen) is
+  // still on its way when the practice starts.
+  const release = await hold(page, /\/deps\/phaser\.js/);
+  await openHub(page);
+  await page.evaluate(() =>
+    (window as any).__room("practice", { character: "cindrake" }),
+  );
+  await openPlayPanel(page);
+  await startPractice(page);
+  await pushUntilBattle(page);
+  const overlay = page.locator("#arena-overlay");
+  await expect(overlay).toHaveClass(/is-practice-loading/);
+  await expect(overlay.locator(".practice-loading")).toContainText(
+    "Loading the arena",
+  );
+  // The whole screen: nothing of the court shows around it.
+  const cover = (await overlay.boundingBox())!;
+  expect(cover.width).toBeGreaterThanOrEqual(844);
+  expect(cover.height).toBeGreaterThanOrEqual(390);
+  await snap(page, info, "practice-loading-844x390");
+  release();
+  await expect
+    .poll(
+      async () => {
+        await page.evaluate(() => (window as any).__push());
+        return overlay.evaluate(
+          (el) => !el.classList.contains("is-practice-loading"),
+        );
+      },
+      { timeout: 20_000, intervals: [300] },
+    )
+    .toBe(true);
+  await expect(overlay.locator(".practice-loading")).toHaveCount(0);
+});
+
+test("leaving a raid draws the Raids screen with the Lobby, not after it", async ({
+  page,
+}, info) => {
+  await page.setViewportSize({ width: 844, height: 390 });
+  await openHub(page);
+  // The Raids screen's code is slow to arrive (it loads the first time the
+  // screen opens, not with the game).
+  await page.route(/\/screens\/raid-hall/, async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    await route.continue();
+  });
+  await page.evaluate(() =>
+    (window as any).__room("raid", { boss: "grumblecrag" }),
+  );
+  await openPlayPanel(page);
+  await createRoom(page);
+  await pushUntilBattle(page);
+  // Every frame from here: a Lobby on screen without the Raids screen over
+  // it, or the screen still sliding in, is the flash this guards against.
+  await page.evaluate(() => {
+    const w = window as any;
+    w.__frames = [];
+    const look = () => {
+      if (document.body.classList.contains("hub-active")) {
+        const room = document.querySelector<HTMLElement>(".rh-room");
+        w.__frames.push(
+          room ? Number(getComputedStyle(room).opacity).toFixed(2) : "lobby",
+        );
+      }
+      if (w.__frames.length < 30) requestAnimationFrame(look);
+    };
+    requestAnimationFrame(look);
+  });
+  await page.click("#battle-menu");
+  await page.click("#exit-room");
+  await expect(page.locator(".rh-room")).toBeVisible();
+  await expect
+    .poll(() => page.evaluate(() => (window as any).__frames.length))
+    .toBeGreaterThanOrEqual(30);
+  const frames: string[] = await page.evaluate(() => (window as any).__frames);
+  expect(frames.join(" ")).toBe(Array(frames.length).fill("1.00").join(" "));
+  await snap(page, info, "raid-leave-844x390");
+});
+
+test("back from a battle, your fighter appears already moving", async ({
+  page,
+}, info) => {
+  await page.setViewportSize({ width: 844, height: 390 });
+  await openHub(page);
+  await page.evaluate(() =>
+    (window as any).__room("pvp", { mode: "duel", phase: "playing" }),
+  );
+  await openPlayPanel(page);
+  await pickRoomMode(page, "duel");
+  await createRoom(page);
+  await pushUntilBattle(page);
+  // Every frame of the Lobby until the live rig is drawn: the still
+  // artwork must not be on screen (it would be swapped for the rig, in a
+  // slightly different pose, a moment later).
+  await page.evaluate(() => {
+    const w = window as any;
+    w.__looks = [];
+    const look = () => {
+      const art = document.querySelector<HTMLElement>("#lobby-fighter-art");
+      if (document.body.classList.contains("hub-active") && art) {
+        const ready = art.classList.contains("is-ready");
+        w.__looks.push(
+          ready
+            ? "live"
+            : Number(getComputedStyle(art).opacity) > 0
+              ? "still"
+              : "hidden",
+        );
+        if (ready) return;
+      }
+      requestAnimationFrame(look);
+    };
+    requestAnimationFrame(look);
+  });
+  await page.click("#battle-menu");
+  await page.click("#exit-room");
+  await expect(page.locator("#lobby-fighter-art")).toHaveClass(/is-ready/);
+  // The watcher records "live" on the next frame after the rig is ready;
+  // on a slow runner that frame can come after the class is seen (CI, 21
+  // Nov: the last look read was "hidden").
+  await expect
+    .poll(() => page.evaluate(() => (window as any).__looks.at(-1)), {
+      timeout: 10_000,
+    })
+    .toBe("live");
+  const looks: string[] = await page.evaluate(() => (window as any).__looks);
+  expect(looks).not.toContain("still");
+  await expect(page.locator("#lobby-fighter-art")).not.toHaveClass(
+    /is-arriving/,
+  );
+  await snap(page, info, "lobby-after-battle-844x390");
+});
+
+test("back from a battle on a slow phone, your fighter fades in over several frames", async ({
+  page,
+}, info) => {
+  await page.setViewportSize({ width: 844, height: 390 });
+  await openHub(page);
+  await page.evaluate(() =>
+    (window as any).__room("pvp", { mode: "duel", phase: "playing" }),
+  );
+  await openPlayPanel(page);
+  await pickRoomMode(page, "duel");
+  await createRoom(page);
+  await pushUntilBattle(page);
+  // A slow phone: frames 100-250 ms apart while the live rig boots. The
+  // 0.22 s CSS fade it had was over in one such frame, and the fighter
+  // blinked in (owner, 24 Nov 2026).
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
+  await page.evaluate(() => {
+    const w = window as any;
+    w.__fade = [];
+    const look = () => {
+      const el = document.querySelector<HTMLElement>("#lobby-fighter-art");
+      if (el?.classList.contains("is-ready")) {
+        const a = Number(getComputedStyle(el).opacity);
+        w.__fade.push(a);
+        if (a >= 1) return;
+      }
+      requestAnimationFrame(look);
+    };
+    requestAnimationFrame(look);
+  });
+  await page.click("#battle-menu");
+  await page.click("#exit-room");
+  const art = page.locator("#lobby-fighter-art");
+  await expect(art).toHaveClass(/is-ready/, { timeout: 20_000 });
+  await expect
+    .poll(() => page.evaluate(() => (window as any).__fade.at(-1)), {
+      timeout: 15_000,
+    })
+    .toBe(1);
+  await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
+  const fade: number[] = await page.evaluate(() => (window as any).__fade);
+  // Drawn part-way on at least four frames, never fading back.
+  expect(fade.filter((a) => a > 0 && a < 1).length).toBeGreaterThanOrEqual(4);
+  for (let i = 1; i < fade.length; i++)
+    expect(fade[i]).toBeGreaterThanOrEqual(fade[i - 1]);
+  await expect(art).not.toHaveClass(/is-arriving/);
+});
+
+test("back from the Plaza, your fighter is there at once, already moving", async ({
+  page,
+}, info) => {
+  await page.setViewportSize({ width: 844, height: 390 });
+  await openLobby(page);
+  const art = page.locator("#lobby-fighter-art");
+  await expect(art).toHaveClass(/is-ready/, { timeout: 20_000 });
+  // The rig's canvas, to tell whether the Lobby kept it.
+  await page.evaluate(() => {
+    (window as any).__canvas = document.querySelector(
+      "#lobby-fighter-art > canvas",
+    );
+  });
+  await page.click('#hub-scenes [data-hub-scene="plaza"]');
+  await expect(page.locator(".plaza-layer #pz-cv")).toBeVisible({
+    timeout: 20_000,
+  });
+  // Rebuilding the rig took about 1 s at a phone's speed, the fighter
+  // hidden meanwhile, and then a fade (owner, 24 Nov 2026).
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
+  await page.evaluate(() => {
+    const w = window as any;
+    w.__first = undefined;
+    const look = () => {
+      const layer = document.querySelector<HTMLElement>(".lobby-layer");
+      const el = document.querySelector<HTMLElement>("#lobby-fighter-art");
+      if (layer && el) {
+        w.__first = {
+          ready: el.classList.contains("is-ready"),
+          opacity: Number(getComputedStyle(el).opacity),
+          kept: el.querySelector("canvas") === w.__canvas,
+        };
+        return;
+      }
+      requestAnimationFrame(look);
+    };
+    requestAnimationFrame(look);
+  });
+  await page.click('#hub-scenes [data-hub-scene="lobby"]');
+  await expect
+    .poll(() => page.evaluate(() => (window as any).__first), {
+      timeout: 15_000,
+    })
+    .toBeTruthy();
+  await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
+  const first = await page.evaluate(() => (window as any).__first);
+  // In the Lobby's first frame: the live rig, shown, the same canvas.
+  expect(first).toMatchObject({ ready: true, opacity: 1, kept: true });
+  // And it carries on moving: the idle's clock goes on from where it was.
+  await expect
+    .poll(async () => Number(await art.getAttribute("data-animation-time")))
+    .toBeGreaterThan(0);
+  const then = Number(await art.getAttribute("data-animation-time"));
+  await expect
+    .poll(async () => Number(await art.getAttribute("data-animation-time")))
+    .toBeGreaterThan(then + 300);
+  await snap(page, info, "lobby-after-plaza-844x390");
+});

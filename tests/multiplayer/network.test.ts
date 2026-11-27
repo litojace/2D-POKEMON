@@ -1,6 +1,7 @@
 import { beforeEach, afterEach, it, expect } from "vitest";
 import { io, type Socket } from "socket.io-client";
 import { createArenaServer } from "../../apps/server/src/server.js";
+import { AccountError } from "../../apps/server/src/accounts.js";
 import { fakeAccounts } from "../helpers/accounts";
 import {
   CHARACTERS,
@@ -368,19 +369,29 @@ it("cleans empty rooms and recovers a disconnected lobby slot", async () => {
   expect(server.rooms.size).toBe(0);
   expect(server.sessions.size).toBe(0);
 });
-it("broadcasts every room at 15Hz, including when an even number of rooms exist", async () => {
+it("broadcasts every room at the snapshot rate, including when an even number of rooms exist", async () => {
   const one = await connect(),
     two = await connect();
-  await emit(one, "create", { name: "One" });
-  await emit(two, "create", { name: "Two" });
+  const first = await emit(one, "create", { name: "One" });
+  const second = await emit(two, "create", { name: "Two" });
+  // In a fight (a lobby is sent only when it changes: idle-snapshots.test.ts).
+  for (const code of [first.code!, second.code!]) {
+    const arena = server.rooms.get(code)!;
+    arena.phase = "countdown";
+    arena.deadline = arena.time + 60;
+  }
+  await wait();
   let a = 0,
     b = 0;
   one.on("state", () => a++);
   two.on("state", () => b++);
   for (let i = 0; i < 10; i++) server.step();
   await wait();
-  expect(a).toBe(5);
-  expect(b).toBe(5);
+  // 30 a second: a snapshot every tick (23 Nov 2026; was every other).
+  const each = (10 * RULES.snapshot) / RULES.tick;
+  expect(each).toBe(10);
+  expect(a).toBe(each);
+  expect(b).toBe(each);
 });
 it("allows a fresh opponent after a player leaves and the winner returns to lobby", async () => {
   const { one, two, arena, host } = await lobby();
@@ -467,72 +478,145 @@ it("a full room doesn't end the watch you already have", async () => {
   await until(() => !!seen);
   expect((await emit(fan, "watch", { code: a.host.code })).ok).toBe(true);
 });
-it("sends the snapshot at once when a skill is cast, not at the next 15 Hz slot", async () => {
-  const client = await connect();
-  const reply = await emit(client, "practice", {
-    name: "Tester",
-    character: "voltkit",
+it("sends the snapshot at once when a skill is cast, not at the next slot (at a slower snapshot rate)", async () => {
+  // With a snapshot every tick there is no slot to wait for; this guards
+  // the early send for a rate below the tick's (15, before 23 Nov 2026).
+  const rate = RULES.snapshot;
+  (RULES as { snapshot: number }).snapshot = 15;
+  try {
+    const client = await connect();
+    const reply = await emit(client, "practice", {
+      name: "Tester",
+      character: "voltkit",
+    });
+    const a = server.rooms.get(reply.code!)!;
+    a.players[0].x = 850;
+    let states = 0;
+    client.on("state", () => states++);
+    // Step until a regular snapshot has just gone out: the next tick is off
+    // the 15 Hz slot (one snapshot every two 30 Hz ticks).
+    const settle = async () => {
+      for (let i = 0; i < 6; i++) {
+        states = 0;
+        server.step();
+        await wait();
+        if (states > 0) return;
+      }
+      throw new Error("No regular snapshot");
+    };
+    await settle();
+    // An off-slot tick with nothing cast sends nothing.
+    states = 0;
+    server.step();
+    await wait();
+    expect(states).toBe(0);
+    // A basic attack on an off-slot tick keeps the steady rate.
+    await settle();
+    client.emit("input", {
+      ...blankInput(),
+      seq: 1,
+      aimX: 950,
+      aimY: 180,
+      basic: true,
+    });
+    await wait();
+    states = 0;
+    server.step();
+    await wait();
+    expect(
+      a.players[0].stats.dealt +
+        a.events.filter((e) => e.kind === "cast").length,
+    ).toBeGreaterThan(0);
+    expect(states).toBe(0);
+    // A skill on an off-slot tick goes out on that tick, with its cast (once
+    // the basic attack's recovery is over).
+    for (let i = 0; i < 30; i++) server.step();
+    await wait();
+    await settle();
+    const casts: unknown[] = [];
+    client.on("state", (s: any) => {
+      for (const e of s.events ?? [])
+        if (e.kind === "cast" && e.abilityId === "static-lance") casts.push(e);
+    });
+    client.emit("input", {
+      ...blankInput(),
+      seq: 2,
+      aimX: 950,
+      aimY: 180,
+      skill: 0,
+    });
+    await wait();
+    states = 0;
+    server.step();
+    await wait();
+    expect(a.players[0].stats.skills).toBe(1);
+    expect(states).toBe(1);
+    expect(casts).toHaveLength(1);
+  } finally {
+    (RULES as { snapshot: number }).snapshot = rate;
+  }
+});
+it("keeps a battle's input stream from using up the other commands' allowance", async () => {
+  // One count per socket for everything: 30 inputs a second passed the
+  // 10-a-second commands' limit a third of the way into each second, so a
+  // refreshed login token sent mid-fight was mostly dropped (and after a
+  // few drops the player was signed out of the match), and so was chat.
+  const { one, two, arena } = await lobby();
+  await emit(one, "ready");
+  await emit(two, "ready");
+  await emit(one, "instructions-ready");
+  await emit(two, "instructions-ready");
+  for (let i = 0; i < 95; i++) server.step();
+  expect(arena.phase).toBe("playing");
+  // A second's worth of inputs, as a phone sends them.
+  for (let seq = 1; seq <= RULES.tick; seq++)
+    one.emit("input", { ...blankInput(), seq, dx: 1 });
+  const account = [...accounts.users.values()][0];
+  accounts.users.set("refreshed-mid-fight", account);
+  expect(await emit(one, "token", { token: "refreshed-mid-fight" })).toEqual({
+    ok: true,
   });
-  const a = server.rooms.get(reply.code!)!;
-  a.players[0].x = 850;
-  let states = 0;
-  client.on("state", () => states++);
-  // Step until a regular snapshot has just gone out: the next tick is off
-  // the 15 Hz slot (one snapshot every two 30 Hz ticks).
-  const settle = async () => {
-    for (let i = 0; i < 6; i++) {
-      states = 0;
-      server.step();
-      await wait();
-      if (states > 0) return;
-    }
-    throw new Error("No regular snapshot");
+  expect((await emit(one, "snapshot-meta")).ok).toBe(true);
+  // The inputs themselves all arrived.
+  server.step();
+  expect(arena.players[0].ack).toBeGreaterThan(0);
+});
+it("keeps a player's seat when the account check itself fails, and signs out only a refused login", async () => {
+  const { one, two, arena } = await lobby();
+  await emit(one, "ready");
+  await emit(two, "ready");
+  await emit(one, "instructions-ready");
+  await emit(two, "instructions-ready");
+  for (let i = 0; i < 95; i++) server.step();
+  expect(arena.phase).toBe("playing");
+  const heard: string[] = [];
+  for (const event of ["access-revoked", "token-expired"])
+    for (const socket of [one, two])
+      socket.on(event, () => heard.push(`${socket === one ? 1 : 2} ${event}`));
+  const real = accounts.provider.authenticate;
+  // The accounts service does not answer (a slow database, a deploy on
+  // their side): nobody's match may end for it.
+  accounts.provider.authenticate = async () => {
+    throw new AccountError(503, "Accounts are unavailable.");
   };
-  await settle();
-  // An off-slot tick with nothing cast sends nothing.
-  states = 0;
-  server.step();
+  await server.refreshAccounts();
+  accounts.provider.authenticate = async () => {
+    throw new TypeError("fetch failed");
+  };
+  await server.refreshAccounts();
   await wait();
-  expect(states).toBe(0);
-  // A basic attack on an off-slot tick keeps the steady rate.
-  await settle();
-  client.emit("input", {
-    ...blankInput(),
-    seq: 1,
-    aimX: 950,
-    aimY: 180,
-    basic: true,
-  });
-  await wait();
-  states = 0;
-  server.step();
-  await wait();
-  expect(
-    a.players[0].stats.dealt + a.events.filter((e) => e.kind === "cast").length,
-  ).toBeGreaterThan(0);
-  expect(states).toBe(0);
-  // A skill on an off-slot tick goes out on that tick, with its cast (once
-  // the basic attack's recovery is over).
-  for (let i = 0; i < 30; i++) server.step();
-  await wait();
-  await settle();
-  const casts: unknown[] = [];
-  client.on("state", (s: any) => {
-    for (const e of s.events ?? [])
-      if (e.kind === "cast" && e.abilityId === "static-lance") casts.push(e);
-  });
-  client.emit("input", {
-    ...blankInput(),
-    seq: 2,
-    aimX: 950,
-    aimY: 180,
-    skill: 0,
-  });
-  await wait();
-  states = 0;
-  server.step();
-  await wait();
-  expect(a.players[0].stats.skills).toBe(1);
-  expect(states).toBe(1);
-  expect(casts).toHaveLength(1);
+  expect(heard).toEqual([]);
+  expect([one.connected, two.connected]).toEqual([true, true]);
+  expect(arena.players.map((p) => p.connected)).toEqual([true, true]);
+  expect(arena.phase).toBe("playing");
+  // A suspended account is refused: that player alone leaves, at once.
+  const [first] = [...accounts.users.values()];
+  accounts.provider.authenticate = async (token) => {
+    const account = await real(token);
+    return account?.id === first.id ? { ...account, suspended: true } : account;
+  };
+  await server.refreshAccounts();
+  await until(() => !one.connected);
+  expect(heard).toEqual(["1 access-revoked"]);
+  expect(two.connected).toBe(true);
 });

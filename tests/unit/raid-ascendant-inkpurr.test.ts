@@ -73,7 +73,7 @@ const arena = (
   const variant = form === "raid" ? undefined : form;
   const a = createRaidArena("ASC", "gloomshade", { variant }) as Inner;
   TEAM.slice(0, size).forEach((c, i) => a.add("p" + i, "P" + i, c));
-  a.configure(3, false);
+  a.configure(3);
   a.start();
   a.phase = "playing";
   a.deadline = a.time + 600;
@@ -329,7 +329,7 @@ describe("the layer acts only for Inkpurr's Ascendant form", () => {
     const make = (Cls: typeof GloomshadeArena) => {
       const a = new Cls("L", "gloomshade") as unknown as Inner;
       TEAM.forEach((c, i) => a.add("p" + i, "P" + i, c));
-      a.configure(3, false);
+      a.configure(3);
       a.start();
       return a;
     };
@@ -349,7 +349,7 @@ describe("the layer acts only for Inkpurr's Ascendant form", () => {
     class Layered extends AscendantInkpurrRules(GloomshadeArena) {}
     const other = new Layered("L", "grumblecrag") as unknown as Inner;
     other.add("p0", "P0", "voltkit");
-    other.configure(3, false);
+    other.configure(3);
     other.start();
     other.raid.variant = "ascendant";
     expect(isAscendant(other.raid, "gloomshade")).toBe(false);
@@ -359,7 +359,7 @@ describe("the layer acts only for Inkpurr's Ascendant form", () => {
     ) {}
     const both = new Both("B", "gloomshade") as unknown as Inner;
     both.add("p0", "P0", "voltkit");
-    both.configure(3, false);
+    both.configure(3);
     both.start();
     both.raid.variant = "ascendant";
     expect(both.inkAscendant()).toBe(true);
@@ -1021,7 +1021,7 @@ describe("Ascendant Inkpurr keeps the honesty rules through a raid", () => {
         variant: "ascendant",
       }) as Inner;
       TEAM.slice(0, size).forEach((c, i) => a.add("p" + i, "P" + i, c));
-      a.configure(3, false);
+      a.configure(3);
       a.start();
       a.phase = "playing";
       a.deadline = a.time + 600;

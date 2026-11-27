@@ -1,8 +1,13 @@
 import { expect, test, type Page } from "@playwright/test";
 import { asRgb, openPlaza, snap } from "./helpers";
 import {
+  PLAZA_FOUNTAIN,
+  PLAZA_GIFT,
+  PLAZA_LAP_START,
   PLAZA_HURDLE_SEGMENTS,
+  PLAZA_QUESTS,
   PLAZA_TRACK,
+  trackPoint,
 } from "../../packages/shared/src/plaza";
 
 // Hub redesign phase 3: the new Plaza. The harness runs the real PlazaWorld
@@ -129,24 +134,59 @@ for (const viewport of [
         if (gapB < mb + 30)
           expect(gapB, `${b.name} bottom margin`).toBeCloseTo(mb, 0);
       }
-      // Today's quests, sized against their neighbours: on phones the
-      // folded list is the player card's twin right under it; on desktop
-      // a column as wide as the card.
+      // Today's quests: a round button like the round buttons over Jump
+      // (the Lobby rail's Missions), under the player card on phones and
+      // under the clock on desktop.
       const card = all.find((b) => b.name === "profile")!,
-        quests = all.find((b) => b.name === "quests")!;
+        clock = all.find((b) => b.name === "clock")!,
+        quests = all.find((b) => b.name === "quests")!,
+        round = await page
+          .locator("#pz-map-btn")
+          .evaluate((el) => el.getBoundingClientRect().width);
+      expect(quests.w, "quests round").toBeCloseTo(quests.h, 0);
+      expect(quests.w, "as big as the other round buttons").toBeCloseTo(
+        round,
+        0,
+      );
       if (phone) {
-        expect(quests.w, "quests as wide as the card").toBeCloseTo(card.w, 0);
-        expect(quests.h, "folded quests as tall as the card").toBeCloseTo(
-          card.h,
+        expect(quests.x, "quests under the card").toBeCloseTo(card.x, 0);
+        expect(quests.y).toBeGreaterThan(card.y + card.h);
+      } else {
+        expect(quests.x + quests.w, "under the clock").toBeCloseTo(
+          clock.x + clock.w,
           0,
         );
-        expect(quests.x, "quests under the card").toBeCloseTo(card.x, 0);
-      } else {
-        // As wide as the player card on the other side, and short enough
-        // to leave the right side of the playground open.
-        expect(quests.w, "quests as wide as the card").toBeCloseTo(card.w, 0);
-        expect(quests.h, "quests height").toBeLessThanOrEqual(215);
+        expect(quests.y).toBeGreaterThan(clock.y + clock.h);
       }
+      // Open, the list fits the screen (inside the safe area) and each
+      // quest reads on one line.
+      await page.click("#pz-quests [data-qopen]");
+      const panel = page.locator("#pz-qpanel");
+      await expect(panel).toBeVisible();
+      await panel.evaluate((el) =>
+        Promise.all(el.getAnimations().map((a) => a.finished)),
+      );
+      const pb = (await panel.boundingBox())!;
+      expect(pb.x).toBeGreaterThanOrEqual(left - 1);
+      expect(pb.x + pb.width).toBeLessThanOrEqual(viewport.width - right + 1);
+      expect(pb.y + pb.height).toBeLessThanOrEqual(
+        viewport.height - bottom + 1,
+      );
+      const lines = await panel.evaluate((el) =>
+        [...el.querySelectorAll(".pz-q .tx b")].map((b) => {
+          const r = b.getBoundingClientRect(),
+            lh = parseFloat(getComputedStyle(b).lineHeight);
+          return Math.round(r.height / lh);
+        }),
+      );
+      expect(lines).toEqual(PLAZA_QUESTS.map(() => 1));
+      await snap(
+        page,
+        info,
+        `plaza-quests-${viewport.width}x${viewport.height}${viewport.inset ? "-island" : ""}`,
+      );
+      await page.click("#pz-quests [data-qclose]");
+      await expect(panel).toBeHidden();
       const clashes = all.flatMap((a, i) =>
         all
           .slice(i + 1)
@@ -193,22 +233,26 @@ test("you walk where the server says, and Volt Boba is free", async ({
       return Math.abs(mine - srv.x);
     })
     .toBeLessThan(40);
-  // Wait until the server has stopped you too. The key-up reaches it with
-  // the next frame, which the CPU-drawn browser can hold back for a second
-  // under load; teleporting before that left the server walking you east,
-  // away from the truck, and the Volt Boba button never came.
-  let was = NaN;
+  // Wait for the released stick to be played, not merely two equal
+  // positions: a stalled simulation or a collision can be still while a
+  // moving stick remains active or queued.
   await expect
     .poll(
-      async () => {
-        const x = (await server()).x,
-          still = x === was;
-        was = x;
-        return still;
-      },
+      () =>
+        page.evaluate(() => {
+          const w = window as any,
+            visitor = w.__plazaWorld.visitors.get("local");
+          return {
+            moving: !!(visitor.dir.x || visitor.dir.y),
+            queuedMove: visitor.queue.some(
+              (m: any) => m.kind === "stick" && (m.x || m.y),
+            ),
+            clientMoving: w.__plaza.P.sp >= 1,
+          };
+        }),
       { timeout: 15_000, intervals: [500] },
     )
-    .toBe(true);
+    .toEqual({ moving: false, queuedMove: false, clientMoving: false });
   // Volt Boba: walk up to the truck, run faster (free).
   await teleport(page, 1745, 520);
   await expect(page.locator("#pz-interact")).toContainText("Volt Boba", {
@@ -232,7 +276,9 @@ test("the Photo Spot takes a polaroid, and quests update from the server", async
 }, info) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   const errors = await openPlaza(page);
-  await expect(page.locator("#pz-quests h5")).toContainText("1/5");
+  await expect(page.locator("#pz-quests h5")).toContainText(
+    `1/${PLAZA_QUESTS.length}`,
+  );
   await teleport(page, 1010, 520);
   await expect(page.locator("#pz-interact")).toContainText("Take photo", {
     timeout: 10_000,
@@ -253,14 +299,16 @@ test("the Photo Spot takes a polaroid, and quests update from the server", async
   await expect(page.locator("#account-coins")).toContainText("2,340");
   await page.evaluate(() => {
     const w = window as any;
-    w.__economyPatch = { balance: 2342 };
+    w.__economyPatch = { balance: 2360 };
     const p = structuredClone(w.__plazaProgress);
     p.quests.lap = { n: 1, done: true };
     w.__sock.fire("plaza-progress", p);
   });
-  await expect(page.locator("#pz-quests h5")).toContainText("2/5");
-  await expect(page.locator("#toast")).toContainText("+2 coins");
-  await expect(page.locator("#account-coins")).toContainText("2,342");
+  await expect(page.locator("#pz-quests h5")).toContainText(
+    `2/${PLAZA_QUESTS.length}`,
+  );
+  await expect(page.locator("#toast")).toContainText("+20 coins");
+  await expect(page.locator("#account-coins")).toContainText("2,360");
   expect(errors).toEqual([]);
 });
 
@@ -491,31 +539,196 @@ test("block a player from their card: asked first, gone from the Plaza, unblocke
   expect(errors).toEqual([]);
 });
 
-test("a daily treat bursts for everyone, and T throws one too", async ({
+// Gift boxes (PLAZA_GIFT): tossed ahead, a box flies, lands and bursts
+// open (confetti, its lid, a shockwave); its orbs are for everyone else
+// nearby, and each one caught counts as an orb. The thrower can't catch
+// their own.
+test("a gift box flies, bursts open, and its orbs are for the others", async ({
   page,
 }, info) => {
-  await page.setViewportSize({ width: 1280, height: 800 });
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 844, height: 390 });
   const errors = await openPlaza(page);
-  // The server sends your count (treats left today) after joining.
+  const list = () =>
+    page.evaluate(() => (window as any).__plaza.gifts() as any[]);
+  // The server's side (the harness runs the real PlazaWorld in the page):
+  // its clock, your profile id, and a box's toss time by id.
+  const server = (id = -1) =>
+    page.evaluate((id) => {
+      const w = (window as any).__plazaWorld;
+      const gift = [...w.copies.values()]
+        .map((c: any) => c.gifts.get(id))
+        .find(Boolean);
+      return {
+        clock: w.clock as number,
+        me: w.visitors.get("local").profile.id as number,
+        at: gift?.gift.at as number | undefined,
+        orbs: gift ? (gift.orbs.size as number) : undefined,
+      };
+    }, id);
+  // An orb leaves its box caught (the server names who caught it) or
+  // faded with the box, PLAZA_GIFT.lastsMs after the toss (nobody, 0).
+  // Everything the server sends, from before the first toss, so no catch
+  // slips by between two looks.
+  await page.evaluate(() => {
+    const w = window as any;
+    w.__giftGone = [];
+    w.__sock.on("plaza-gift-gone", (gone: number[][]) =>
+      w.__giftGone.push(...gone),
+    );
+  });
+  const goneOf = (box: number) =>
+    page.evaluate(
+      (box) =>
+        ((window as any).__giftGone as number[][]).filter(([id]) => id === box),
+      box,
+    );
+  // Orbs come out PLAZA_GIFT.flightMs + openMs + 350 ms after the toss
+  // (PlazaWorld.stepGifts); before that nobody can catch one.
+  const catchFrom = PLAZA_GIFT.flightMs + PLAZA_GIFT.openMs + 350;
+  // The count is today's progress (the database's): 3 to start.
   await expect(page.locator("#pz-treats")).toHaveText("3");
-  await page.click("#pz-treat");
-  await expect(page.locator("#toast")).toContainText(
-    "Tossed a cupcake to everyone!",
+  await expect(page.locator("#pz-treat")).toHaveAttribute(
+    "aria-label",
+    "Toss a gift box (T)",
   );
+  // A fixed spot south of the fountain (the spawn is random).
+  await teleport(page, PLAZA_FOUNTAIN.x, PLAZA_FOUNTAIN.y + 300);
+  await page.click("#pz-treat");
+  await expect(page.locator("#toast")).toContainText("Gift box tossed!");
   await expect(page.locator("#pz-treats")).toHaveText("2");
-  // The burst is drawn where the server has you.
+  // In the air first, then landed and open. Its orbs come with the toss.
+  // Read them now: a box lasts PLAZA_GIFT.lastsMs on the client too, and a
+  // slow runner's screenshots can use that up (an empty list at "mine",
+  // main's full run 45983545991).
+  await expect.poll(async () => (await list()).length).toBe(1);
+  const mine = (await list())[0];
+  expect(mine.opened).toBe(false);
+  expect(mine.orbs.length).toBe(PLAZA_GIFT.orbs);
+  await snap(page, info, "plaza-gift-flying");
   await expect
-    .poll(() => page.evaluate(() => (window as any).__plaza.treatFx()))
-    .toBeGreaterThan(0);
-  await snap(page, info, "plaza-treat");
-  // T throws one too, once the server's cooldown has passed.
-  await page.waitForTimeout(1600);
+    .poll(async () => (await list()).find((g) => g.id === mine.id)?.opened)
+    .toBe(true);
+  // The burst: confetti in the air, the box's orbs out.
+  expect(
+    await page.evaluate(() => (window as any).__plaza.confetti()),
+  ).toBeGreaterThan(10);
+  await snap(page, info, "plaza-gift-open");
+  // Your own box's orbs aren't for you: standing on one catches nothing.
+  // Stand there until the server has stepped well past the moment its orbs
+  // can be caught, then look at what it said about them.
+  const { me, at: mineAt } = await server(mine.id);
+  const [, ox, oy] = mine.orbs[0];
+  await teleport(page, ox, oy);
+  if (mineAt !== undefined)
+    await expect
+      .poll(async () => (await server()).clock - mineAt, { timeout: 20_000 })
+      .toBeGreaterThan(catchFrom + 800);
+  expect((await goneOf(mine.id)).filter(([, , who]) => who)).toEqual([]);
+  // Still lying there, unless the box has already faded (all with nobody).
+  const left = (await server(mine.id)).orbs;
+  if (left !== undefined) expect(left).toBe(PLAZA_GIFT.orbs);
+  // Someone else's box: walk onto an orb and it's yours, counted as an orb.
+  // (Out of reach of where it lands, so none is caught before we look.)
+  await teleport(page, PLAZA_FOUNTAIN.x + 420, PLAZA_FOUNTAIN.y + 300);
+  const refsBefore = await page.evaluate(
+    () => ((window as any).__plazaOrbRefs ?? []).length as number,
+  );
+  await page.evaluate(
+    ([x, y]) => (window as any).__plazaOtherGift(x, y),
+    [PLAZA_FOUNTAIN.x - 10, PLAZA_FOUNTAIN.y + 300],
+  );
+  await expect
+    .poll(async () => (await list()).some((g) => g.id !== mine.id))
+    .toBe(true);
+  const theirs = (await list()).find((g) => g.id !== mine.id)!;
+  expect(theirs.orbs.length).toBe(PLAZA_GIFT.orbs);
+  // Its orbs' refs (PlazaWorld.stepGifts: "<toss second>-<box id><orb>").
+  // Count only these: an Orb Shower (a minute every quarter hour, UTC)
+  // also records refs, for you and for the thrower standing in the square,
+  // and the harness keeps everyone's (main's full run 45983545991 ran
+  // 11:00:28-11:01:08 UTC: "Expected 0, Received 2").
+  const theirsAt = (await server(theirs.id)).at!;
+  const refs = theirs.orbs.map(
+    ([orb]: number[]) =>
+      `${Math.floor(theirsAt / 1000)}-${theirs.id * 10 + orb}`,
+  );
+  // Stand on an orb now, while it is still in the air: the server catches
+  // it the moment it lands, however slow this machine is to look.
+  const [, tx, ty] = theirs.orbs[0];
+  await teleport(page, tx, ty);
+  await expect
+    .poll(async () => (await list()).find((g) => g.id === theirs.id)?.opened)
+    .toBe(true);
+  // Caught (that one, and any other within reach), each counted as an orb.
+  const catches = () =>
+    page.evaluate(
+      ([before, refs, box, me]) => {
+        const w = window as any,
+          gone = (w.__giftGone as number[][]).filter(([id]) => id === box);
+        return {
+          caught: gone.filter(([, , who]) => who === me).length,
+          faded: gone.some(([, , who]) => !who),
+          counted: ((w.__plazaOrbRefs ?? []) as string[])
+            .slice(before)
+            .filter((r) => refs.includes(r)).length,
+        };
+      },
+      [refsBefore, refs, theirs.id, me] as const,
+    );
+  await expect
+    .poll(async () => {
+      const c = await catches();
+      return c.caught ? "caught" : c.faded ? "faded before a catch" : "none";
+    })
+    .toBe("caught");
+  await expect
+    .poll(async () => {
+      const c = await catches();
+      return c.counted - c.caught;
+    })
+    .toBe(0);
+  // A golden box: T tosses it, once the cooldown has passed (the server's,
+  // PLAZA_GIFT.throwSeconds after your last toss).
+  const cooledDown = () =>
+    expect
+      .poll(() =>
+        page.evaluate(
+          (ms) =>
+            Date.now() -
+              (window as any).__plazaWorld.visitors.get("local").lastTreat >
+            ms + 50,
+          PLAZA_GIFT.throwSeconds * 1000,
+        ),
+      )
+      .toBe(true);
+  await cooledDown();
+  await page.evaluate(() => ((window as any).__plazaGolden = true));
   await page.locator(".plaza-layer").focus();
   await page.keyboard.press("t");
+  await expect(page.locator("#toast")).toContainText("golden gift box");
   await expect(page.locator("#pz-treats")).toHaveText("1");
-  expect(
-    await page.evaluate(() => (window as any).__plazaTreatsThrown.length),
-  ).toBe(2);
+  // Its orbs come with the toss: count them before they land, where the
+  // other player may be standing to catch some.
+  await expect
+    .poll(async () => (await list()).some((g) => g.golden))
+    .toBe(true);
+  const golden = (await list()).find((g) => g.golden)!;
+  expect(golden.orbs.length).toBe(PLAZA_GIFT.goldenOrbs);
+  await expect
+    .poll(async () => (await list()).find((g) => g.id === golden.id)?.opened)
+    .toBe(true);
+  await snap(page, info, "plaza-gift-golden");
+  // None left: the button dims and says where more come from.
+  await page.evaluate(() => ((window as any).__plazaGifts = 0));
+  await cooledDown();
+  await page.click("#pz-treat");
+  await expect(page.locator("#toast")).toContainText("No gift boxes left");
+  await expect(page.locator("#pz-treats")).toHaveText("0");
+  await expect(page.locator("#pz-treat")).toHaveClass(/empty/);
+  expect(await page.evaluate(() => (window as any).__plazaGiftsThrown)).toEqual(
+    [false, true],
+  );
   expect(errors).toEqual([]);
 });
 
@@ -663,6 +876,186 @@ test("Jump and Dash work while the other thumb holds the joystick", async ({
   } finally {
     await context.close();
   }
+});
+
+// A running jump was jittery: the idle bob's phase was the body's x, which
+// moves ~4 px a frame while running, so in the air the body shook ±1.2 px
+// every frame (owner, 23 Nov). In the air there is no bob now: the jump's
+// arc carries the body, and the walk bob eases out at take-off.
+/**
+ * Run east on the pitch and take off mid-run: the same jump as Space
+ * (plazaJump's fields) but 1.5 s long, so a CI runner drawing the Plaza at a
+ * few frames a second still draws some of it. (Running onto a bounce pad
+ * missed it on CI: the teleport hadn't reached the browser's copy of you
+ * yet.) Each frame in the air after `skipMs` (the walk bob easing out), the
+ * bob the game drew you with, and whether it drew you that frame at all
+ * (bodyPose stamps `bobT` with the frame's time) and you were in the view:
+ * a body not drawn keeps its last bob, so its "bob" says nothing.
+ */
+async function runningJump(page: Page, skipMs: number, airDur = 1.5) {
+  await teleport(page, 2060, 760);
+  await page.waitForTimeout(500);
+  await page.locator(".plaza-layer").focus();
+  await page.keyboard.down("d");
+  await expect
+    .poll(() => page.evaluate(() => (window as any).__plaza.P.sp), {
+      timeout: 20_000,
+    })
+    .toBeGreaterThan(100);
+  const { frames, end } = await page.evaluate(
+    ([skipMs, airDur]) =>
+      new Promise<{
+        frames: { bob: number; drawn: boolean; seen: boolean }[];
+        end: string;
+      }>((done) => {
+        const d = (window as any).__plaza,
+          P = d.P,
+          out: { bob: number; drawn: boolean; seen: boolean }[] = [],
+          t0 = performance.now();
+        // Who ends the jump, for the report when no frame was judged.
+        let air = P.air,
+          ended = "";
+        Object.defineProperty(P, "air", {
+          configurable: true,
+          enumerable: true,
+          get: () => air,
+          set: (v: number) => {
+            if (air && !v && !ended)
+              ended = `at ${Math.round(performance.now() - t0)} ms, air ${air.toFixed(2)} s: ${new Error().stack?.split("\n").slice(2, 4).join(" <")}`;
+            air = v;
+          },
+        });
+        const finish = () => {
+          Object.defineProperty(P, "air", {
+            configurable: true,
+            enumerable: true,
+            writable: true,
+            value: air,
+          });
+          done({
+            frames: out,
+            end: `${ended || "still in the air"}; x ${Math.round(P.x)} y ${Math.round(P.y)} stun ${P.stun}`,
+          });
+        };
+        P.air = 1e-4;
+        P.airDur = airDur;
+        P.airH = 42;
+        const loop = (now: number) => {
+          // (After this frame's other callbacks, like the judging below.)
+          // A slow CI renderer can spend eight wall seconds drawing only
+          // the first steps of this jump. Judge the flight through landing;
+          // the enclosing test timeout still bounds a stuck simulation.
+          if (!P.air) return setTimeout(finish);
+          // Judged once every callback of this frame has run: the Plaza's
+          // own can be queued after this one, and `drawn` then read the
+          // frame before's time on every frame, though the Plaza drew each
+          // one (CI, #402, 24 Nov; reproduced by queueing this loop first).
+          if (now - t0 > skipMs)
+            setTimeout(() => {
+              // Landed meanwhile (a next frame came first): not in the air.
+              if (!P.air) return;
+              const v = d.view();
+              out.push({
+                bob: P.bob || 0,
+                drawn: P.bobT >= now / 1000,
+                seen: P.x > v.x0 && P.x < v.x1 && P.y > v.y0 && P.y < v.y1,
+              });
+            });
+          requestAnimationFrame(loop);
+        };
+        requestAnimationFrame(loop);
+      }),
+    [skipMs, airDur],
+  );
+  await page.keyboard.up("d");
+  if (!frames.length) console.log(`no frame judged: the jump ended ${end}`);
+  return frames;
+}
+
+test("a running jump doesn't shake: no bob in the air", async ({ page }) => {
+  test.setTimeout(90_000);
+  const errors = await openPlaza(page);
+  const frames = await runningJump(page, 250);
+  expect(frames.length).toBeGreaterThan(0);
+  expect(frames.filter((f) => !f.drawn || !f.seen)).toEqual([]);
+  expect(Math.max(...frames.map((f) => Math.abs(f.bob)))).toBeLessThan(0.5);
+  expect(errors).toEqual([]);
+});
+
+// At a few frames a second (a starved phone, or CI's software renderer,
+// which went 2 s without a frame) the camera followed by the frame, not by
+// the time that passed: after the teleport and the server's correction you
+// ran off the screen and stayed there for seconds, undrawn, and the jump
+// test read the bob from before take-off (3.99 on CI, 23 Nov). Here frames
+// come every 1.5 s, whatever the machine, and you stay in view.
+test("at a frame every 1.5 s the camera keeps you on the screen", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  // Animation frames held to one every 1.5 s once __slowFrames is set; timers
+  // (the Plaza server in the page) run as usual, as on a starved renderer.
+  await page.addInitScript(() => {
+    const w = window as any,
+      raf = window.requestAnimationFrame.bind(window);
+    let queue: FrameRequestCallback[] = [],
+      next = 0;
+    window.requestAnimationFrame = (cb) => {
+      if (!w.__slowFrames) return raf(cb);
+      queue.push(cb);
+      return 0;
+    };
+    setInterval(() => {
+      if (!w.__slowFrames || !queue.length || performance.now() < next) return;
+      next = performance.now() + 1500;
+      const due = queue;
+      queue = [];
+      raf((t) => due.forEach((cb) => cb(t)));
+    }, 5);
+  });
+  const errors = await openPlaza(page);
+  await page.evaluate(() => ((window as any).__slowFrames = true));
+  // 1.5 s a frame eases the walk bob out at once: judge every frame. A
+  // frame moves you at most 1 s (plaza-scene.ts, moveDt), so a 1.5 s jump
+  // lasted two frames and was judged on one; on CI it was sometimes judged
+  // on none (#398 and #399, 24 Nov), when the game took both steps before
+  // the test's first frame. A 4 s jump spans four frames (three judged
+  // locally); if none is judged again, the log says what ended the jump.
+  const frames = await runningJump(page, 0, 4);
+  expect(frames.length).toBeGreaterThan(0);
+  expect(frames.filter((f) => !f.drawn || !f.seen)).toEqual([]);
+  expect(Math.max(...frames.map((f) => Math.abs(f.bob)))).toBeLessThan(0.5);
+  expect(errors).toEqual([]);
+});
+
+// Bodies keep out of the fountain's basin (PLAZA_OBSTACLES), and so do
+// the square's animals: they used to check only where a walk ended, so the
+// corgi and the pigeons walked straight through the basin (owner, 22 Nov).
+test("the corgi walks round the fountain, not through its basin", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  const errors = await openPlaza(page);
+  const F = PLAZA_FOUNTAIN;
+  const inBasin = (x: number, y: number) =>
+    ((x - F.x) / F.rx) ** 2 +
+      ((y - (F.y + F.wall / 2)) / (F.ry + F.wall / 2)) ** 2 <
+    1;
+  // West of the basin, sent east: the straight line crosses it.
+  await page.evaluate(
+    ([x, y, tx, ty]) => (window as any).__plaza.sendPet(x, y, tx, ty),
+    [F.x - F.rx - 40, F.y + 10, F.x + F.rx + 40, F.y + 10],
+  );
+  const seen: { x: number; y: number }[] = [];
+  for (let i = 0; i < 25; i++) {
+    const a = await page.evaluate(() => (window as any).__plaza.animals());
+    seen.push(a.pet);
+    for (const b of a.pigeons)
+      if (!b.fly)
+        expect(inBasin(b.x, b.y), `pigeon at ${b.x},${b.y}`).toBe(false);
+    await page.waitForTimeout(120);
+  }
+  expect(seen.filter((p) => inBasin(p.x, p.y))).toEqual([]);
+  expect(errors).toEqual([]);
 });
 
 test("the dash track's lane is whole (no wedge cut out of it)", async ({
@@ -871,9 +1264,10 @@ test("a click on the ground marks where you're going until you arrive", async ({
   expect(errors).toEqual([]);
 });
 
-// Zoom: the mouse wheel and + / − on a desktop, two fingers on a phone;
+// Zoom: the mouse wheel and + / − on a desktop, two fingers on a tablet;
 // within limits (never past what is built or what the server shows), and
-// kept for the next visit.
+// kept for the next visit. Phones keep the usual zoom (0.8): a pinch there
+// does nothing, and a zoom kept from before is not used.
 test("the Plaza zooms with the wheel, the keys and a pinch", async ({
   browser,
 }) => {
@@ -916,7 +1310,28 @@ test("the Plaza zooms with the wheel, the keys and a pinch", async ({
       await ctx.close();
     }
   }
-  // Phone: a pinch on the playground.
+  /** Two fingers on the playground, spreading twice as far apart. */
+  const pinch = (page: Page) =>
+    page.evaluate(() => {
+      const cv = document.querySelector("#pz-cv")!;
+      const at = (type: string, id: number, x: number) =>
+        cv.dispatchEvent(
+          new PointerEvent(type, {
+            pointerId: id,
+            pointerType: "touch",
+            clientX: x,
+            clientY: 200,
+            bubbles: true,
+          }),
+        );
+      at("pointerdown", 11, 500);
+      at("pointerdown", 12, 600);
+      at("pointermove", 11, 450);
+      at("pointermove", 12, 650);
+      at("pointerup", 11, 450);
+      at("pointerup", 12, 650);
+    });
+  // Phone: the usual zoom, whatever was kept, and a pinch changes nothing.
   {
     const ctx = await browser.newContext({
       viewport: { width: 844, height: 390 },
@@ -925,31 +1340,35 @@ test("the Plaza zooms with the wheel, the keys and a pinch", async ({
     });
     try {
       const page = await ctx.newPage();
+      await page.addInitScript(() =>
+        localStorage.setItem("ea-plaza-zoom", "1.6"),
+      );
+      const errors = await openPlaza(page);
+      expect(await zoomOf(page)).toBeCloseTo(0.8, 3);
+      await pinch(page);
+      await page.mouse.wheel(0, -600);
+      expect(await zoomOf(page)).toBeCloseTo(0.8, 3);
+      expect(errors).toEqual([]);
+    } finally {
+      await ctx.close();
+    }
+  }
+  // Tablet (an iPad mini on its side): a pinch zooms.
+  {
+    const ctx = await browser.newContext({
+      viewport: { width: 1133, height: 744 },
+      isMobile: true,
+      hasTouch: true,
+    });
+    try {
+      const page = await ctx.newPage();
       const errors = await openPlaza(page);
       await page.evaluate(() => (window as any).__plaza.setZoom(1));
-      expect(await zoomOf(page)).toBeCloseTo(0.66, 3);
-      await page.evaluate(() => {
-        const cv = document.querySelector("#pz-cv")!;
-        const at = (type: string, id: number, x: number) =>
-          cv.dispatchEvent(
-            new PointerEvent(type, {
-              pointerId: id,
-              pointerType: "touch",
-              clientX: x,
-              clientY: 200,
-              bubbles: true,
-            }),
-          );
-        at("pointerdown", 11, 500);
-        at("pointerdown", 12, 600);
-        at("pointermove", 11, 450);
-        at("pointermove", 12, 650);
-        at("pointerup", 11, 450);
-        at("pointerup", 12, 650);
-      });
-      // Fingers twice as far apart: twice the zoom, as far as it goes.
       const r = await page.evaluate(() => (window as any).__plaza.zoomRange());
-      expect(await zoomOf(page)).toBeCloseTo(Math.min(r.max, 0.66 * 2), 3);
+      expect(await zoomOf(page)).toBeCloseTo(r.base, 3);
+      await pinch(page);
+      // Fingers twice as far apart: twice the zoom, as far as it goes.
+      expect(await zoomOf(page)).toBeCloseTo(Math.min(r.max, r.base * 2), 3);
       expect(errors).toEqual([]);
     } finally {
       await ctx.close();
@@ -1036,8 +1455,8 @@ test("the event pill shows when you arrive mid-shower", async ({ page }) => {
 
 // Phones: the emote wheel ran up over the coins, the gear and the clock on
 // a 360px-tall screen, and the toast sat on the action button that grows
-// left of Dash and Jump by the Volt Boba. The wheel opens left of the
-// Emote row, under the header; the toast rises over the Dash and Jump row.
+// left of Dash and Jump by the Volt Boba. The wheel (Q) opens over you,
+// under the header; the toast rises over the Dash and Jump row.
 test("on a short phone the emote wheel and a toast keep clear of the HUD", async ({
   browser,
 }) => {
@@ -1058,7 +1477,11 @@ test("on a short phone the emote wheel and a toast keep clear of the HUD", async
       a: { l: number; t: number; r: number; b: number },
       b: typeof a,
     ) => a.r <= b.l + 1 || b.r <= a.l + 1 || a.b <= b.t + 1 || b.b <= a.t + 1;
-    await page.click("#pz-wheel-btn");
+    // The wheel is a keyboard's (Q): on touch, emotes are the Chat
+    // button's quick chips (its own HUD button went, owner 22 Nov).
+    await expect(page.locator("#pz-wheel-btn")).toHaveCount(0);
+    await page.locator(".plaza-layer").focus();
+    await page.keyboard.press("q");
     await expect(page.locator("#pz-wheel")).toBeVisible();
     // Full size: once its pop-in (from 0.6) has finished.
     await page
@@ -1076,7 +1499,8 @@ test("on a short phone the emote wheel and a toast keep clear of the HUD", async
     expect(wheel.t, "wheel under the header").toBeGreaterThanOrEqual(
       (await rect("#account-profile")).b,
     );
-    await page.click("#pz-wheel-btn");
+    await page.keyboard.press("q");
+    await expect(page.locator("#pz-wheel")).toBeHidden();
     await page.evaluate(() => (window as any).__plazaPosition(1745, 520));
     await expect(page.locator("#pz-interact")).toBeVisible({ timeout: 10_000 });
     await page.evaluate(() => {
@@ -1098,29 +1522,21 @@ test("on a short phone the emote wheel and a toast keep clear of the HUD", async
   }
 });
 
-// The Emote button lights up while its wheel is open, like the Lobby's
-// rail; a second tap on it closes the wheel. A tap on the Plaza with the
-// wheel or a player's card open only closes it: you don't walk there.
-test("the Emote button lights up, and a second tap or a tap on the Plaza closes its wheel", async ({
+// The emote wheel opens with Q (its HUD button went: on touch, emotes are
+// the Chat button's quick chips) and Q closes it. A tap on the Plaza with
+// the wheel or a player's card open only closes it: you don't walk there.
+test("Q opens and closes the emote wheel, and a tap on the Plaza only closes it", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   const errors = await openPlaza(page);
-  const btn = page.locator("#pz-wheel-btn"),
-    wheel = page.locator("#pz-wheel");
-  const bg = async () =>
-    asRgb(await btn.evaluate((el) => getComputedStyle(el).backgroundColor));
-  const unlit = await bg();
-  await btn.click();
+  const wheel = page.locator("#pz-wheel");
+  await expect(page.locator("#pz-wheel-btn")).toHaveCount(0);
+  await page.locator(".plaza-layer").focus();
+  await page.keyboard.press("q");
   await expect(wheel).toBeVisible();
-  await expect(btn).toHaveAttribute("aria-expanded", "true");
-  // Once its background transition has run (the CPU-drawn test browser
-  // can hold frames back for seconds while the Plaza draws).
-  await expect.poll(bg, { timeout: 20_000 }).toBe("rgba(255, 214, 91, 0.18)");
-  await btn.click();
+  await page.keyboard.press("q");
   await expect(wheel).toBeHidden();
-  await expect(btn).toHaveAttribute("aria-expanded", "false");
-  await expect.poll(bg, { timeout: 20_000 }).toBe(unlit);
 
   // Open ground east of you (where the walking test goes), on the canvas.
   const local = () =>
@@ -1137,11 +1553,10 @@ test("the Emote button lights up, and a second tap or a tap on the Plaza closes 
     [start.x + 160, start.y],
   );
   expect(spot.hit).toBe("pz-cv");
-  await btn.click();
+  await page.keyboard.press("q");
   await expect(wheel).toBeVisible();
   await page.mouse.click(spot.x, spot.y);
   await expect(wheel).toBeHidden();
-  await expect(btn).toHaveAttribute("aria-expanded", "false");
   await page.waitForTimeout(1200);
   expect(await local(), "the tap that closed the wheel walked you").toEqual(
     start,
@@ -1152,8 +1567,9 @@ test("the Emote button lights up, and a second tap or a tap on the Plaza closes 
     .poll(async () => (await local()).x, { timeout: 15_000 })
     .toBeGreaterThan(start.x + 40);
 
-  // Another button closes the wheel and does its own thing.
-  await btn.click();
+  // A button closes the wheel and does its own thing.
+  await page.locator(".plaza-layer").focus();
+  await page.keyboard.press("q");
   await expect(wheel).toBeVisible();
   await page.click("#pz-album-btn");
   await expect(wheel).toBeHidden();
@@ -1169,7 +1585,8 @@ test("Nearby chat on the Plaza: the wheel sends quick chat, phrases pop over the
 }, info) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   const errors = await openPlaza(page);
-  await page.click("#pz-wheel-btn");
+  await page.locator(".plaza-layer").focus();
+  await page.keyboard.press("q");
   await page.click('#pz-wheel [data-emote="👋"]');
   // The Plaza's own state carries it, for everyone (older apps too).
   await expect
@@ -1275,6 +1692,77 @@ test("Nearby chat on the Plaza: the wheel sends quick chat, phrases pop over the
   expect(errors).toEqual([]);
 });
 
+// A champion skin's own effects, the Entrance slot when someone arrives and
+// the Victory slot when they dance (or score, or finish a lap), drawn on a
+// phone as in a match (plaza-cosmetics.ts).
+test("the Plaza plays skins' effects, entrances and victories", async ({
+  page,
+}, info) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 844, height: 390 });
+  const errors = await openPlaza(page);
+  // Someone arrives while you're here (not the crowd you joined).
+  await page.waitForTimeout(1800);
+  await page.evaluate(() => {
+    const w = window as any,
+      me = w.__plazaWorld.bodyOf("local");
+    w.__plazaWorld.join("nova", "acct-nova", {
+      name: "Nova",
+      title: null,
+      titleColor: null,
+      level: 9,
+      character: "voltkit",
+      skin: { skin: "voltkit-nova-vanguard", stage: 3 },
+      look: { entrance: "galaxy-entrance", victory: "galaxy-victory" },
+    });
+    Object.assign(w.__plazaWorld.bodyOf("nova"), { x: me.x + 110, y: me.y });
+  });
+  const nova = () =>
+    page.evaluate(() => {
+      const b = [...(window as any).__plaza.others.values()].find(
+        (x: any) => x.name === "Nova",
+      );
+      return b
+        ? {
+            greeted: !!b.greeted,
+            entrance: b.entrance,
+            victory: b.victory,
+            particles: b.sfx?.particles.length ?? 0,
+            cheering: b.sfx?.cheerAt != null,
+            sprite: !!b.img?.sprite,
+          }
+        : null;
+    });
+  await expect
+    .poll(async () => (await nova())?.greeted, { timeout: 15_000 })
+    .toBe(true);
+  expect(await nova()).toMatchObject({
+    entrance: "galaxy-entrance",
+    victory: "galaxy-victory",
+  });
+  // Its entrance burst (and the skin's landing) is in the air.
+  await expect
+    .poll(async () => (await nova())?.particles ?? 0, { timeout: 10_000 })
+    .toBeGreaterThan(0);
+  await snap(page, info, "plaza-skin-entrance-844x390");
+  // A dance plays the victory finale.
+  await page.waitForTimeout(1500);
+  await page.evaluate(() =>
+    (window as any).__plazaWorld.emote("nova", "💃", Date.now()),
+  );
+  await expect
+    .poll(async () => (await nova())?.cheering, { timeout: 10_000 })
+    .toBe(true);
+  await page.waitForTimeout(900);
+  expect((await nova())!.particles).toBeGreaterThan(0);
+  await snap(page, info, "plaza-skin-victory-844x390");
+  // Over after the finale.
+  await expect
+    .poll(async () => (await nova())?.cheering, { timeout: 10_000 })
+    .toBe(false);
+  expect(errors).toEqual([]);
+});
+
 test("the Plaza shows the skins players wear: yours at once, others' palettes and auras", async ({
   page,
 }, info) => {
@@ -1356,3 +1844,119 @@ test("the Plaza shows the skins players wear: yours at once, others' palettes an
   await snap(page, info, "plaza-skins");
   expect(errors).toEqual([]);
 });
+
+// The lap quest (owner, 25 Nov 2026): 3 laps in a row in 30 s. Mid-run, the
+// timer says which lap of the run this is and the run's time; past 30 s the
+// run's time turns red; once the quest is done, the plain lap timer is back.
+for (const viewport of [
+  { width: 1280, height: 800 },
+  { width: 844, height: 390 },
+  { width: 667, height: 375 },
+])
+  test(`the lap timer counts the quest's run at ${viewport.width}x${viewport.height}`, async ({
+    browser,
+  }, info) => {
+    const phone = viewport.width < 1000;
+    const context = await browser.newContext({
+      viewport,
+      isMobile: phone,
+      hasTouch: phone,
+    });
+    try {
+      const page = await context.newPage();
+      const errors = await openPlaza(page);
+      // On the lane, a little past the start line, on lap 3 of a run.
+      const midRun = (laps: number[], lapAgo: number) =>
+        page.evaluate(
+          ([x, y, a, laps, lapAgo]) => {
+            const w = window as any,
+              world = w.__plazaWorld;
+            w.__plazaPosition(x, y);
+            const v = world.visitors.get("local");
+            v.run = laps;
+            Object.assign(v.lap, {
+              travelled: 0.4,
+              last: a,
+              startedAt: Date.now() - lapAgo,
+            });
+          },
+          [
+            ...Object.values(trackPoint(PLAZA_LAP_START + 0.4)),
+            PLAZA_LAP_START + 0.4,
+            laps,
+            lapAgo,
+          ] as [number, number, number, number[], number],
+        );
+      const timer = page.locator("#pz-timer");
+      // One read of the timer: this lap's time, the run's lap and time, and
+      // whether it is red. The clock runs on while a slow CI renderer draws
+      // (28 s on one), so only how the numbers relate is checked: the run's
+      // time is this lap's plus the 2 laps before it.
+      const read = () =>
+        timer.evaluate((el) => {
+          const small = el.querySelector("small")!.textContent!,
+            m = /^lap (\d)\/3 · (\d+\.\d)$/.exec(small);
+          return {
+            t: parseFloat(el.firstChild!.textContent!),
+            lap: m ? Number(m[1]) : 0,
+            run: m ? parseFloat(m[2]) : NaN,
+            over: el.classList.contains("over"),
+          };
+        });
+      await midRun([7_100, 7_400], 3_000);
+      await expect(timer).toBeVisible();
+      await expect(timer.locator("small")).toHaveText(/^lap 3\/3 · \d+\.\d$/);
+      const first = await read();
+      expect(first.lap).toBe(3);
+      expect(Math.abs(first.run - first.t - 14.5)).toBeLessThanOrEqual(0.15);
+      expect(first.over).toBe(first.run >= 30);
+      // Whole and centred: no "…", inside its pill.
+      const fits = () =>
+        timer.evaluate((el) => {
+          const r = el.getBoundingClientRect(),
+            sm = el.querySelector("small")!.getBoundingClientRect();
+          return (
+            el.scrollWidth <= el.clientWidth + 1 &&
+            sm.left >= r.left - 1 &&
+            sm.right <= r.right + 1
+          );
+        });
+      expect(await fits()).toBe(true);
+      await snap(
+        page,
+        info,
+        `plaza-lap-run-${viewport.width}x${viewport.height}`,
+      );
+      // Too slow for 30 s: the run's time turns red.
+      // 2 laps of 15 s: past 30 s whatever this lap's time.
+      await midRun([15_000, 15_500], 2_000);
+      await expect(timer).toHaveClass(/over/);
+      // On a slow renderer the first run above is already past 30 s and red,
+      // so "over" alone doesn't say the new laps are drawn yet: wait for the
+      // run's time to show them (CI read the old 14.5 here, 25 Nov).
+      await expect
+        .poll(async () => {
+          const now = await read();
+          return Math.abs(now.run - now.t - 30.5);
+        })
+        .toBeLessThanOrEqual(0.15);
+      const late = await read();
+      expect(Math.abs(late.run - late.t - 30.5)).toBeLessThanOrEqual(0.15);
+      expect(await fits()).toBe(true);
+      await snap(
+        page,
+        info,
+        `plaza-lap-run-over-${viewport.width}x${viewport.height}`,
+      );
+      // Quest done today: the plain lap timer (quarters and best).
+      await page.evaluate(() => {
+        const w = window as any;
+        w.__plazaProgress.quests.lap = { n: 1, done: true };
+        w.__sock?.fire("plaza-progress", structuredClone(w.__plazaProgress));
+      });
+      await expect(timer.locator("small")).toHaveText(/^\d\/4/);
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });

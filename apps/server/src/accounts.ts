@@ -1,6 +1,7 @@
 import { appleConfig, exchangeAppleCode, revokeAppleToken } from "./apple.js";
-import type { PushDevice, PushStore } from "./push.js";
+import type { AnnouncementPush, PushDevice, PushStore } from "./push.js";
 import { clientOrigins } from "./api-cors.js";
+import { ClientAddresses, WindowLimits } from "./abuse-limits.js";
 import type {
   PlazaProgress,
   PlazaRecord,
@@ -29,6 +30,10 @@ import {
 } from "../../../packages/shared/src/shop.js";
 import { JOURNEY_ITEM_BY_ID } from "../../../packages/shared/src/journey.js";
 import {
+  dailyGiftClaimSchema,
+  dailyGiftStateSchema,
+} from "../../../packages/shared/src/daily-gifts.js";
+import {
   avatarSchema,
   isAvatar,
   photoIdOf,
@@ -51,6 +56,7 @@ import {
   supabaseSocialStore,
   type SocialStore,
 } from "./social.js";
+import { buildMatchHistory, type MatchHistoryPage } from "./match-history.js";
 import express, {
   type Express,
   type Request,
@@ -68,6 +74,8 @@ import {
   resolveReportSchema,
   titleUpdateSchema,
   titleGrantSchema,
+  adminCoinsSchema,
+  announceSchema,
   equipTitleSchema,
   nameChangeSchema,
   matchReportSchema,
@@ -77,20 +85,35 @@ import {
   friendRespondSchema,
   friendRemoveSchema,
   ratingSchema,
+  MATCH_HISTORY_KINDS,
+  MATCH_HISTORY_PAGE,
   type Friend,
   type Account,
   type MatchSummary,
   type OnlineList,
 } from "../../../packages/shared/src/accounts.js";
 /** The newest database migration the server expects. */
-export const LATEST_MIGRATION = "20261119160000_avatar_library_77.sql";
+export const LATEST_MIGRATION = "20261120140000_match_history.sql";
+/** A page of match history: whose, from where, and which matches. */
+const matchHistoryQuerySchema = z
+  .object({
+    player: z.string().uuid().optional(),
+    at: z
+      .string()
+      .max(40)
+      .refine((s) => !Number.isNaN(Date.parse(s)))
+      .optional(),
+    id: z.string().min(8).max(64).optional(),
+    kind: z.enum(MATCH_HISTORY_KINDS).optional(),
+  })
+  .strict();
 /** The migration that last redefined the raid appearance functions. */
 export const RAID_FUNCTIONS_MIGRATION = "018_collection_equipping.sql";
 export interface AccountProvider {
   recordRaid?(receipt: RaidReceipt): Promise<void>;
   /** The Spire: save one cleared floor (first-clear rewards once per player). */
   recordSpireFloor?(receipt: SpireFloorReceipt): Promise<SpireFloorResult>;
-  /** The Spire: each climber's checkpoint and raid clears, before a climb. */
+  /** The Spire: each climber's checkpoint, highest floor and raid clears, before a climb. */
   spireStart?(accountIds: string[]): Promise<SpireMember[]>;
   /** Coins, missions and Mythic progress after a real match or raid. */
   recordActivity?(receipt: ActivityReceipt): Promise<void>;
@@ -334,6 +357,29 @@ export function createAccountProvider(): AccountProvider {
         if (r.error) throw new Error(r.error.message);
         return (r.data as PushDevice[] | null) ?? [];
       },
+      // Game news (migration 20261122140000).
+      async setNews(player, endpoint, on) {
+        const r = await admin().rpc("arena_push_set_news", {
+          p_player: player,
+          p_endpoint: endpoint,
+          p_news: on,
+        });
+        if (r.error) throw new Error(r.error.message);
+        return r.data === true;
+      },
+      async newsPage(after, limit) {
+        const r = await admin().rpc("arena_push_news_page", {
+          p_after: after,
+          p_limit: limit,
+        });
+        if (r.error) throw new Error(r.error.message);
+        return (r.data as PushDevice[] | null) ?? [];
+      },
+      async newsCount() {
+        const r = await admin().rpc("arena_push_news_count", {});
+        if (r.error) throw new Error(r.error.message);
+        return Number(r.data ?? 0);
+      },
     },
     photos: createAvatarPhotoStore(() => admin() as unknown as PhotoClient),
     async avatarOf(playerId) {
@@ -370,7 +416,11 @@ export function createAccountProvider(): AccountProvider {
         p_receipt: receipt,
       });
       if (result.error)
-        throw new AccountError(503, "Raid rewards could not be stored.");
+        throw new AccountError(
+          503,
+          "Raid rewards could not be stored.",
+          result.error.message,
+        );
     },
     async recordSpireFloor(receipt) {
       const r = await admin().rpc("arena_record_spire_floor", { p: receipt });
@@ -395,6 +445,7 @@ export function createAccountProvider(): AccountProvider {
         );
       return ((r.data as SpireMember[] | null) ?? []).map((m) => ({
         checkpoint: Number(m.checkpoint) || 1,
+        highestFloor: Math.max(0, Number(m.highestFloor) || 0),
         clears: m.clears ?? {},
       }));
     },
@@ -460,6 +511,19 @@ export function createAccountProvider(): AccountProvider {
 }
 /** A fighter to keep with the account: one on the roster. */
 const savedFighterSchema = z.object({ fighter: z.enum(FIGHTER_IDS) }).strict();
+/**
+ * How a Lobby tour ended (apps/client/src/hub-tour.ts): finished or skipped,
+ * how many of its steps the player saw, and whether it was a replay.
+ */
+export const tourEndSchema = z
+  .object({
+    result: z.enum(["done", "skipped"]),
+    reached: z.number().int().min(0).max(20),
+    steps: z.number().int().min(1).max(20),
+    replay: z.boolean(),
+  })
+  .strict()
+  .refine((t) => t.reached <= t.steps, "More steps reached than shown.");
 export async function authorize(
   provider: AccountProvider,
   token: unknown,
@@ -475,6 +539,40 @@ export async function authorize(
   if (admin && !account.isAdmin)
     throw new AccountError(403, "Admin access is required.");
   return account;
+}
+/**
+ * File a finished match in a player's records: its summary from the server
+ * that ran it (the match ledger), saved with the player's own login. Over
+ * HTTP (POST /api/matches/report) and over the game connection
+ * (server.ts, "match-report"): during a deploy only the connection still
+ * reaches the server that has the summary.
+ */
+export async function reportFinishedMatch(
+  provider: AccountProvider,
+  token: string,
+  accountId: string,
+  body: unknown,
+  finishedMatch: (
+    matchId: string,
+    accountId: string,
+  ) => MatchSummary | undefined,
+  onPlayerChanged: (id: string) => void,
+) {
+  const { matchId } = matchReportSchema.parse(body);
+  const summary = finishedMatch(matchId, accountId);
+  if (!summary)
+    throw new AccountError(404, "That match is no longer available.");
+  const result = await provider.rpc(token, "arena_report_match", {
+    p_match_id: matchId,
+    p_summary: summary,
+  });
+  if (
+    result &&
+    typeof result === "object" &&
+    ((result as { achievements?: unknown[] }).achievements?.length ?? 0) > 0
+  )
+    onPlayerChanged(accountId);
+  return result;
 }
 export function installAccountRoutes(
   app: Express,
@@ -494,8 +592,21 @@ export function installAccountRoutes(
   presence: (accountId: string) => Partial<Friend> = () => ({ online: false }),
   /** Tell a player's open games that their friends list changed. */
   onFriendsChanged: (accountId: string) => void = () => {},
+  /** One line for the server log (server.ts connectionLog). */
+  log: (event: string, details: Record<string, unknown>) => void = () => {},
+  /** Send an event to every connected game (an admin's announcement). */
+  broadcast: (event: string, payload: unknown) => void = () => {},
+  /** Announcements as notifications (push.ts); null without VAPID keys. */
+  announcePush: Pick<
+    AnnouncementPush,
+    "available" | "reach" | "send"
+  > | null = null,
 ) {
-  const requests = new Map<string, { count: number; until: number }>();
+  // 120 requests a minute for each client address (abuse-limits.ts: the
+  // player's own address behind the host's proxies, not the proxy's).
+  const addresses: ClientAddresses = (app.locals.clientAddresses ??=
+    new ClientAddresses());
+  const requests = new WindowLimits(120, 60000);
   app.use("/api", (req, res, next) => {
     if (req.path === "/health") return next();
     const origin = req.get("origin");
@@ -507,14 +618,11 @@ export function installAccountRoutes(
       if (originHost !== req.get("host") && !clientOrigins().includes(origin))
         return res.status(403).json({ error: "This origin is not allowed." });
     }
-    const key = req.ip ?? "unknown",
-      now = Date.now();
-    for (const [id, limit] of requests)
-      if (limit.until < now) requests.delete(id);
-    const limit = requests.get(key) ?? { count: 0, until: now + 60000 };
-    limit.count++;
-    requests.set(key, limit);
-    if (limit.count > 120)
+    const key = addresses.of(
+      req.socket.remoteAddress,
+      req.headers["x-forwarded-for"],
+    );
+    if (!requests.take(key))
       return res
         .status(429)
         .json({ error: "Too many account requests. Try again shortly." });
@@ -579,6 +687,63 @@ export function installAccountRoutes(
       const { fighter } = savedFighterSchema.parse(req.body);
       await provider.rpc(token, "arena_save_fighter", { p_fighter: fighter });
       res.json({ ok: true });
+    }),
+  );
+  // How your Lobby tour ended (migration 20261121090000), so another device
+  // doesn't show it again. Null before it ever ended.
+  app.get(
+    "/api/account/tour",
+    route(false, async (_req, res, token) => {
+      res.setHeader("Cache-Control", "no-store");
+      const saved = await provider.rpc(token, "arena_my_tour", {});
+      res.json({
+        tour: saved === "done" || saved === "skipped" ? saved : null,
+      });
+    }),
+  );
+  app.post(
+    "/api/account/tour",
+    route(false, async (req, res, token) => {
+      const end = tourEndSchema.parse(req.body);
+      await provider.rpc(token, "arena_save_tour", {
+        p_result: end.result,
+        p_reached: end.reached,
+      });
+      // The new-player funnel (docs/player-funnel.md): how tours end. No
+      // account: the database row is the per-account record.
+      log("arena-tour", end);
+      res.json({ ok: true });
+    }),
+  );
+  // The daily gift (packages/shared/src/daily-gifts.ts; migration
+  // 20261126150000): where you are in the calendar, and taking today's.
+  // The database decides the day and what it gives, and refuses a second
+  // claim; the answer is checked before it goes to the client.
+  app.get(
+    "/api/gift",
+    route(false, async (_req, res, token) => {
+      res.setHeader("Cache-Control", "no-store");
+      res.json(
+        dailyGiftStateSchema.parse(
+          await provider.rpc(token, "arena_daily_gift", {}),
+        ),
+      );
+    }),
+  );
+  app.post(
+    "/api/gift/claim",
+    route(false, async (_req, res, token) => {
+      const claim = dailyGiftClaimSchema.parse(
+        await provider.rpc(token, "arena_daily_gift_claim", {}),
+      );
+      // How far players get in the calendar (docs/player-funnel.md). No
+      // account: the database row is the per-account record.
+      log("arena-gift", {
+        day: claim.given.day,
+        weeks: claim.weeks,
+        item: claim.given.item !== null,
+      });
+      res.json(claim);
     }),
   );
   // Your avatar from the library (packages/shared/src/avatars.ts; migration
@@ -794,21 +959,16 @@ export function installAccountRoutes(
   app.post(
     "/api/matches/report",
     route(false, async (req, res, token, account) => {
-      const { matchId } = matchReportSchema.parse(req.body);
-      const summary = finishedMatch(matchId, account.id);
-      if (!summary)
-        throw new AccountError(404, "That match is no longer available.");
-      const result = await provider.rpc(token, "arena_report_match", {
-        p_match_id: matchId,
-        p_summary: summary,
-      });
-      if (
-        result &&
-        typeof result === "object" &&
-        ((result as { achievements?: unknown[] }).achievements?.length ?? 0) > 0
-      )
-        onPlayerChanged(account.id);
-      res.json(result);
+      res.json(
+        await reportFinishedMatch(
+          provider,
+          token,
+          account.id,
+          req.body,
+          finishedMatch,
+          onPlayerChanged,
+        ),
+      );
     }),
   );
   app.get(
@@ -1162,6 +1322,25 @@ export function installAccountRoutes(
       );
     }),
   );
+  // Match history (docs/match-history.md): yours, or a friend's (the
+  // database refuses anyone else), a page at a time.
+  app.get(
+    "/api/matches/history",
+    route(false, async (req, res, token, account) => {
+      res.setHeader("Cache-Control", "no-store");
+      const q = matchHistoryQuerySchema.safeParse(req.query);
+      if (!q.success) throw new AccountError(400, "Invalid page.");
+      const player = q.data.player ?? account.id;
+      const page = (await provider.rpc(token, "arena_match_history", {
+        p_player: player,
+        p_before_at: q.data.at ?? null,
+        p_before_id: q.data.at ? (q.data.id ?? null) : null,
+        p_limit: MATCH_HISTORY_PAGE,
+        p_kind: q.data.kind ?? "all",
+      })) as MatchHistoryPage;
+      res.json(buildMatchHistory(page, player));
+    }),
+  );
   // Friends › Recent: the players in your latest matches (step 6).
   app.get(
     "/api/friends/recent",
@@ -1205,12 +1384,26 @@ export function installAccountRoutes(
       const offset = Number(req.query.offset ?? 0);
       if (!Number.isInteger(offset) || offset < 0 || offset > 100000)
         throw new AccountError(400, "Invalid page.");
-      res.json(
-        await provider.rpc(token, "arena_admin_players", {
-          p_search: search,
-          p_offset: offset,
-        }),
-      );
+      const sort = req.query.sort === "online" ? "online" : "new";
+      try {
+        // With last-online and the sort (migration 20261122120000).
+        res.json(
+          await provider.rpc(token, "arena_admin_player_list", {
+            p_search: search,
+            p_offset: offset,
+            p_sort: sort,
+          }),
+        );
+      } catch (error) {
+        // Before that migration: the older list, newest first.
+        if (sort === "online") throw error;
+        res.json(
+          await provider.rpc(token, "arena_admin_players", {
+            p_search: search,
+            p_offset: offset,
+          }),
+        );
+      }
     }),
   );
   app.post(
@@ -1385,6 +1578,121 @@ export function installAccountRoutes(
     route(true, async (_req, res) => {
       res.setHeader("Cache-Control", "no-store");
       res.json(listOnline());
+    }),
+  );
+  // A player's coins and chat stop, and coins added or taken by an admin
+  // (migration 20261122100000).
+  app.get(
+    "/api/admin/players/:id/status",
+    route(true, async (req, res, token) => {
+      const id = z.string().uuid().safeParse(req.params.id);
+      if (!id.success) throw new AccountError(400, "Invalid player.");
+      res.setHeader("Cache-Control", "no-store");
+      res.json(
+        await provider.rpc(token, "arena_admin_player_status", {
+          p_player: id.data,
+        }),
+      );
+    }),
+  );
+  app.post(
+    "/api/admin/coins",
+    route(true, async (req, res, token) => {
+      const data = adminCoinsSchema.parse(req.body);
+      const result = await provider.rpc(token, "arena_admin_adjust_coins", {
+        p_player: data.playerId,
+        p_amount: data.amount,
+        p_reason: data.reason,
+        p_ref: data.ref,
+      });
+      onPlayerChanged(data.playerId);
+      res.json(result);
+    }),
+  );
+  // Announcements (migration 20261122120000): an admin sends one to every
+  // player; games online get it at once, the rest when they next sign in.
+  app.get(
+    "/api/announcements",
+    route(false, async (_req, res, token) => {
+      res.setHeader("Cache-Control", "no-store");
+      try {
+        res.json(await provider.rpc(token, "arena_current_announcements", {}));
+      } catch {
+        // Before the migration (or a database hiccup): no announcements.
+        res.json([]);
+      }
+    }),
+  );
+  app.get(
+    "/api/admin/announcements",
+    route(true, async (_req, res, token) => {
+      res.setHeader("Cache-Control", "no-store");
+      res.json(await provider.rpc(token, "arena_admin_announcements", {}));
+    }),
+  );
+  app.post(
+    "/api/admin/announce",
+    route(true, async (req, res, token) => {
+      const data = announceSchema.parse(req.body);
+      const sent = await provider.rpc(token, "arena_admin_announce", {
+        p_message: data.message,
+        p_tone: data.tone,
+        p_hours: data.hours,
+      });
+      broadcast("announcement", sent);
+      log("arena-announce", {
+        tone: data.tone,
+        hours: data.hours,
+        push: !!data.push,
+      });
+      // Notifications go out in the background: thousands of devices take
+      // a while, and the admin needn't wait. The log says how it went.
+      let push: { devices: number } | { error: string } | undefined;
+      if (data.push) {
+        if (!announcePush?.available)
+          push = { error: "Notifications aren't set up on the server." };
+        else {
+          const devices = await announcePush.reach().catch(() => 0);
+          push = { devices };
+          void announcePush
+            .send(sent as { id: number; message: string; tone: string })
+            .then(
+              (r) => log("arena-announce-push", { ...r }),
+              (error: unknown) =>
+                log("arena-announce-push", { error: String(error) }),
+            );
+        }
+      }
+      res.json(push ? { ...(sent as object), push } : sent);
+    }),
+  );
+  // How many devices an announcement's notification would reach.
+  app.get(
+    "/api/admin/push-reach",
+    route(true, async (_req, res) => {
+      res.setHeader("Cache-Control", "no-store");
+      if (!announcePush?.available) {
+        res.json({ available: false, devices: 0 });
+        return;
+      }
+      res.json({
+        available: true,
+        devices: await announcePush.reach().catch(() => 0),
+      });
+    }),
+  );
+  app.post(
+    "/api/admin/announcements/end",
+    route(true, async (req, res, token) => {
+      const data = z
+        .object({ id: z.number().int().positive() })
+        .strict()
+        .parse(req.body);
+      await provider.rpc(token, "arena_admin_end_announcement", {
+        p_id: data.id,
+      });
+      broadcast("announcement-ended", { id: data.id });
+      res.json({ ok: true });
     }),
   );
   app.post(

@@ -32,6 +32,7 @@ import {
 import { SKINS, tonePixels } from "../../apps/client/src/animation/cosmetics";
 import {
   drawCollectionAura,
+  drawCollectionEntrance,
   playCollectionEntrance,
   drawCollectionVictory,
 } from "../../apps/client/src/skins/collection-fx";
@@ -44,7 +45,7 @@ const setup = (
   const a = createRaidArena("EMBERS", "emberwing") as EmberwingArena;
   for (let i = 0; i < size; i++)
     a.add("p" + i, "Raider " + i, chars[i % chars.length]);
-  a.configure(peril, false);
+  a.configure(peril);
   a.start();
   a.phase = "playing";
   a.raid.phase = phase;
@@ -466,7 +467,9 @@ it("renders all Emberwing appearance effects and gives both skins distinct palet
   drawCollectionAura(g, "ember-aura", 0, 0, 1800, false);
   expect(JSON.stringify(commands)).not.toBe(before);
   expect(playCollectionEntrance(emit, "firefall", 0, 0, 1)).toBe(true);
-  expect(emit).toHaveBeenCalledTimes(22);
+  expect(emit).toHaveBeenCalledTimes(15);
+  // And it draws over the greeting (a sky lantern drifts down and flares: raid-entrance-fx.ts).
+  expect(drawCollectionEntrance(g, "firefall", 0, 0, 1, 0.6)).toBe(true);
   expect(
     drawCollectionVictory(
       g,
@@ -510,6 +513,13 @@ describe("Emberwing movement and long encounters", () => {
       });
   it("plays every chapter and attack with four stand-ins without invalid positions", () => {
     const a = setup(4, 1, 3, ["voltkit", "cindrake", "tidefin", "lumoth"]);
+    // One fight every run, as in the solo route test below: the raid's seed
+    // picks Emberwing's attacks and the stand-ins' choices. While two
+    // braziers burn, whatever it planned turns into rain on the last lighter,
+    // so in an unlucky fight every heat-mark turn falls then and none is seen
+    // (seed 194095641: 1 of 3,360 seeds swept). Set before the stand-ins,
+    // whose brains take their seed from the raid's.
+    a.raid.seed = 1;
     a.heroes().forEach((p) => a.standIn(p.id));
     (a as any).nextAttack = 0;
     const seen = new Set<string>();

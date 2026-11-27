@@ -4,7 +4,12 @@
  *
  *   npx tsx scripts/perf/server-load.ts --rooms 10 --mix pvp2,pvp4,raid4
  *   npx tsx scripts/perf/server-load.ts --cycles 8 --rooms 6   # memory soak
- *   CGROUP=halfcpu npx tsx scripts/perf/server-load.ts ...      # see docs
+ *   npx tsx scripts/perf/server-load.ts --profile host       # uncapped, not capacity
+ *   npx tsx scripts/perf/server-load.ts --delta off          # whole snapshots, as before deltas
+ *
+ * Default: Render 1c-2g (1 CPU / 2 GB, Oregon). On Linux, Docker limits
+ * only the server; the load generator stays outside. The child verifies
+ * cpu.max/memory.max before the driver connects. See docs/network-performance.md.
  *
  * Every simulated player sends 30 inputs a second (movement, held Basic,
  * skills; four-seat rooms cast on the same ticks), pings once a second, and
@@ -12,18 +17,26 @@
  * reports tick/broadcast durations, event-loop delay, CPU and memory.
  * Prints one JSON document. Run locally or in an isolated environment only.
  */
-import { fork, type ChildProcess } from "node:child_process";
+import type { EventEmitter } from "node:events";
 import { writeFileSync } from "node:fs";
 import { performance } from "node:perf_hooks";
 import { io, type Socket } from "socket.io-client";
 import {
   RULES,
+  SnapshotDeltaDecoder,
   unpackSnapshot,
   type Reply,
   type WireSnapshot,
+  type WireSnapshotDelta,
 } from "../../packages/shared/src/index.js";
 import { summary } from "../../apps/server/src/diagnostics.js";
 import type { Scenario } from "./workloads.js";
+import { TickClock } from "../../apps/server/src/tick-clock.js";
+import {
+  ask as askReply,
+  startLoadServer,
+  RENDER_PROFILE,
+} from "./load-process.mjs";
 
 const args = new Map<string, string>();
 for (let i = 2; i < process.argv.length; i += 2)
@@ -35,46 +48,25 @@ const SECONDS = Number(args.get("seconds") ?? 20) * 1000;
 const CYCLES = Number(args.get("cycles") ?? 0);
 const OUT = args.get("out");
 const DUMP = args.get("dump");
+const PROFILE = args.get("profile") ?? RENDER_PROFILE;
+/**
+ * Snapshots as changes (snapshot-delta.ts), as in production: every
+ * simulated player asks for deltas and rebuilds each snapshot from them, as
+ * the app does. `--delta off` turns the server's switch off and has the
+ * players ask for nothing, to compare.
+ */
+const DELTA = args.get("delta") !== "off";
+process.env.SNAPSHOT_DELTA = DELTA ? "on" : "off";
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const connections = new Set<Socket>();
+let stopDriving: (() => void) | undefined;
+type LoadChild = EventEmitter & {
+  send(message: object): void;
+  close(): Promise<void>;
+};
 
-function startServer(): Promise<{ child: ChildProcess; port: number }> {
-  const child = fork(new URL("./load-server.ts", import.meta.url).pathname, {
-    execArgv: [
-      "--import",
-      "tsx",
-      "--expose-gc",
-      ...(process.env.SERVER_NODE_ARGS?.split(" ").filter(Boolean) ?? []),
-    ],
-    stdio: ["ignore", "inherit", "inherit", "ipc"],
-  });
-  // Optional CPU/memory cap: put the child into an existing cgroup v1.
-  const group = process.env.CGROUP;
-  if (group && child.pid)
-    for (const controller of ["cpu", "memory"])
-      try {
-        writeFileSync(
-          `/sys/fs/cgroup/${controller}/${group}/cgroup.procs`,
-          String(child.pid),
-        );
-      } catch (error) {
-        console.error(`cgroup ${controller}/${group}:`, String(error));
-      }
-  return new Promise((resolve) =>
-    child.on("message", (m: { type: string; port: number }) => {
-      if (m.type === "ready") resolve({ child, port: m.port });
-    }),
-  );
-}
-function ask<T>(child: ChildProcess, cmd: object, type: string): Promise<T> {
-  return new Promise((resolve) => {
-    const on = (m: { type: string }) => {
-      if (m.type !== type) return;
-      child.off("message", on);
-      resolve(m as T);
-    };
-    child.on("message", on);
-    child.send(cmd);
-  });
+function ask<T>(child: LoadChild, cmd: object, type: string): Promise<T> {
+  return askReply(child, cmd, type) as Promise<T>;
 }
 
 interface Client {
@@ -89,6 +81,8 @@ interface Client {
   unpackMs: number[];
   rtt: number[];
   sizes: number[];
+  /** Deltas that did not follow (none are expected). */
+  refused: number;
 }
 let tokenSerial = 0;
 async function connect(port: number, room: number, seat: number) {
@@ -96,8 +90,13 @@ async function connect(port: number, room: number, seat: number) {
     transports: ["websocket"],
     forceNew: true,
     reconnection: false,
-    auth: { accessToken: `load-${++tokenSerial}` },
+    auth: {
+      accessToken: `load-${++tokenSerial}`,
+      ...(DELTA ? { delta: 1 } : {}),
+    },
   });
+  connections.add(socket);
+  socket.once("disconnect", () => connections.delete(socket));
   const c: Client = {
     socket,
     seat,
@@ -110,6 +109,7 @@ async function connect(port: number, room: number, seat: number) {
     unpackMs: [],
     rtt: [],
     sizes: [],
+    refused: 0,
   };
   socket.io.on("open", () =>
     socket.io.engine.on("packet", (packet: { data?: unknown }) => {
@@ -117,19 +117,35 @@ async function connect(port: number, room: number, seat: number) {
         c.bytes += Buffer.byteLength(packet.data);
     }),
   );
-  socket.on("state", (wire: WireSnapshot) => {
+  const decoder = new SnapshotDeltaDecoder();
+  const onState = (
+    whole: WireSnapshot | undefined,
+    delta?: WireSnapshotDelta,
+  ) => {
     const now = performance.now();
     if (c.last) c.arrivals.push(now - c.last);
     c.last = now;
     c.states++;
     const start = performance.now();
+    // Rebuilding the snapshot from a delta is part of the client's work.
+    const wire = whole ?? decoder.delta(delta!);
+    if (whole) decoder.full(whole);
+    if (!wire) {
+      c.refused++;
+      socket.emit("state-full", { code: delta!.code });
+      return;
+    }
     unpackSnapshot(wire);
     c.unpackMs.push(performance.now() - start);
     if (DUMP && c.room === 1 && c.seat === 0 && c.states === 200)
       writeFileSync(DUMP, JSON.stringify(wire));
     if (c.sizes.length < 400 && c.states % 5 === 0)
-      c.sizes.push(Buffer.byteLength(JSON.stringify(wire)));
-  });
+      c.sizes.push(Buffer.byteLength(JSON.stringify(delta ?? wire)));
+  };
+  socket.on("state", (wire: WireSnapshot) => onState(wire));
+  socket.on("state-delta", (delta: WireSnapshotDelta) =>
+    onState(undefined, delta),
+  );
   await new Promise<void>((resolve, reject) => {
     socket.on("connect", resolve);
     socket.on("connect_error", reject);
@@ -173,7 +189,7 @@ async function makeRooms(port: number, count: number) {
 }
 function drive(clients: Client[]) {
   let tick = 0;
-  const inputs = setInterval(() => {
+  const inputs = new TickClock(() => {
     tick++;
     for (const c of clients) {
       const i = c.seat + c.room;
@@ -196,17 +212,17 @@ function drive(clients: Client[]) {
         jump: (tick + i * 23) % 210 === 0,
       });
     }
-  }, 1000 / RULES.tick);
+  }, RULES.tick);
   const pings = setInterval(() => {
     for (const c of clients) {
       const start = performance.now();
       c.socket.emit("rtt", {}, () => c.rtt.push(performance.now() - start));
     }
   }, 1000);
-  return () => {
-    clearInterval(inputs);
+  return (stopDriving = () => {
+    inputs.stop();
     clearInterval(pings);
-  };
+  });
 }
 function resetClientStats(clients: Client[]) {
   for (const c of clients) {
@@ -233,8 +249,9 @@ function clientSummary(clients: Client[], seconds: number) {
           10,
       ) / 10,
     snapshotBytes: summary(all("sizes")),
+    deltasRefused: clients.reduce((n, c) => n + c.refused, 0),
     arrivalIntervalMs: summary(arrivals),
-    /** |arrival interval - 66.7 ms|: how irregular snapshots arrive. */
+    /** Difference from the current snapshot period (33.3 ms at 30 Hz). */
     arrivalJitterMs: summary(arrivals.map((a) => Math.abs(a - interval))),
     unpackMs: summary(all("unpackMs")),
     rttMs: summary(all("rtt")),
@@ -242,63 +259,71 @@ function clientSummary(clients: Client[], seconds: number) {
 }
 
 async function main() {
-  const { child, port } = await startServer();
-  const results: unknown[] = [];
-  if (CYCLES > 0) {
-    // Soak: rooms are created, fight, and are left, again and again.
-    for (let cycle = 0; cycle < CYCLES; cycle++) {
+  const { child, port, resources } = await startLoadServer(PROFILE);
+  try {
+    const results: unknown[] = [];
+    if (CYCLES > 0) {
+      // Soak: rooms are created, fight, and are left, again and again.
+      for (let cycle = 0; cycle < CYCLES; cycle++) {
+        const clients = await makeRooms(port, ROOMS);
+        await ask(child, { cmd: "fight", immortal: false }, "fighting");
+        const stop = drive(clients);
+        await wait(SECONDS);
+        stop();
+        for (const c of clients) await emit(c.socket, "leave").catch(() => {});
+        for (const c of clients) c.socket.disconnect();
+        await wait(500);
+        const { report } = await ask<{ report: Record<string, unknown> }>(
+          child,
+          { cmd: "report", gc: true },
+          "report",
+        );
+        results.push({ cycle, ...report });
+        console.error(
+          `cycle ${cycle}: heapAfterGc ${report.heapAfterGcMB} MB, rss ${report.rssMB} MB, rooms ${report.rooms}, sessions ${report.sessions}`,
+        );
+      }
+    } else {
       const clients = await makeRooms(port, ROOMS);
-      await ask(child, { cmd: "fight", immortal: false }, "fighting");
+      await ask(child, { cmd: "fight", immortal: true }, "fighting");
       const stop = drive(clients);
+      await wait(WARMUP);
+      await ask(child, { cmd: "report" }, "report");
+      resetClientStats(clients);
+      const started = performance.now();
       await wait(SECONDS);
-      stop();
-      for (const c of clients) await emit(c.socket, "leave").catch(() => {});
-      for (const c of clients) c.socket.disconnect();
-      await wait(500);
-      const { report } = await ask<{ report: Record<string, unknown> }>(
+      const seconds = (performance.now() - started) / 1000;
+      const { report } = await ask<{ report: unknown }>(
         child,
-        { cmd: "report", gc: true },
+        { cmd: "report", gc: false },
         "report",
       );
-      results.push({ cycle, ...report });
-      console.error(
-        `cycle ${cycle}: heapAfterGc ${report.heapAfterGcMB} MB, rss ${report.rssMB} MB, rooms ${report.rooms}, sessions ${report.sessions}`,
-      );
+      stop();
+      results.push({ server: report, client: clientSummary(clients, seconds) });
+      for (const c of clients) c.socket.disconnect();
     }
-  } else {
-    const clients = await makeRooms(port, ROOMS);
-    await ask(child, { cmd: "fight", immortal: true }, "fighting");
-    const stop = drive(clients);
-    await wait(WARMUP);
-    await ask(child, { cmd: "report" }, "report");
-    resetClientStats(clients);
-    const started = performance.now();
-    await wait(SECONDS);
-    const seconds = (performance.now() - started) / 1000;
-    const { report } = await ask<{ report: unknown }>(
-      child,
-      { cmd: "report", gc: false },
-      "report",
+    const output = JSON.stringify(
+      {
+        rooms: ROOMS,
+        mix: MIX,
+        delta: DELTA,
+        resources,
+        seconds: SECONDS / 1000,
+        cycles: CYCLES,
+        results,
+      },
+      null,
+      2,
     );
-    stop();
-    results.push({ server: report, client: clientSummary(clients, seconds) });
-    for (const c of clients) c.socket.disconnect();
+    if (OUT) writeFileSync(OUT, output);
+    console.log(output);
+  } finally {
+    stopDriving?.();
+    for (const socket of connections) socket.disconnect();
+    await child.close();
   }
-  child.send({ cmd: "close" });
-  const output = JSON.stringify(
-    {
-      rooms: ROOMS,
-      mix: MIX,
-      cgroup: process.env.CGROUP ?? null,
-      seconds: SECONDS / 1000,
-      cycles: CYCLES,
-      results,
-    },
-    null,
-    2,
-  );
-  if (OUT) writeFileSync(OUT, output);
-  console.log(output);
-  process.exit(0);
 }
-void main();
+void main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

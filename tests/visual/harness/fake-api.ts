@@ -1,4 +1,5 @@
 // Canned answers for the account REST API (see apps/server/src/accounts.ts).
+import { rankAt } from "../../../packages/shared/src/accounts";
 const U = "11111111-1111-4111-8111-111111111111";
 const today = new Date().toISOString().slice(0, 10);
 const title = (n: number, name: string, color: string) => ({
@@ -63,9 +64,10 @@ const API: Record<string, unknown> = {
       rating: 1000,
       matches: 0,
       peak: 1000,
-      rank: "Pupil",
+      rank: "Unranked",
       placementLeft: 5,
-      next: { name: "Specialist", at: 1050 },
+      next: { name: "Spark II", at: 1035 },
+      shield: false,
     },
   },
   "/api/friends": { code: "a1b2c3d4", friends: [], incoming: [], outgoing: [] },
@@ -99,16 +101,7 @@ const API: Record<string, unknown> = {
       title: null,
       titleColor: null,
       rating: 1620 - i * 18,
-      rankName:
-        i < 1
-          ? "Legendary Grandmaster"
-          : i < 4
-            ? "International Grandmaster"
-            : i < 8
-              ? "Grandmaster"
-              : i < 12
-                ? "International Master"
-                : "Master",
+      rankName: rankAt(1620 - i * 18).name,
       wins: 60 - i * 2,
       matches: 80 - i * 2,
       me: false,
@@ -119,9 +112,10 @@ const API: Record<string, unknown> = {
       rating: 1110,
       matches: 62,
       peak: 1140,
-      rank: "Expert",
+      rank: "Flare III",
       placementLeft: 0,
-      next: { name: "Candidate Master", at: 1150 },
+      next: { name: "Flare II", at: 1140 },
+      shield: false,
     },
   },
   "/api/leaderboard/friends": {
@@ -132,7 +126,7 @@ const API: Record<string, unknown> = {
         place: 1,
         name: "Kai",
         rating: 1388,
-        rankName: "Grandmaster",
+        rankName: "Prism II",
         placementLeft: 0,
         wins: 14,
         matches: 22,
@@ -143,7 +137,7 @@ const API: Record<string, unknown> = {
         place: 2,
         name: "tester",
         rating: 1110,
-        rankName: "Expert",
+        rankName: "Flare III",
         placementLeft: 0,
         wins: 36,
         matches: 62,
@@ -154,7 +148,7 @@ const API: Record<string, unknown> = {
         place: 3,
         name: "Mina",
         rating: 1046,
-        rankName: "Specialist",
+        rankName: "Spark II",
         placementLeft: 0,
         wins: 8,
         matches: 15,
@@ -176,9 +170,10 @@ const API: Record<string, unknown> = {
       rating: 1110,
       matches: 62,
       peak: 1140,
-      rank: "Expert",
+      rank: "Flare III",
       placementLeft: 0,
-      next: { name: "Candidate Master", at: 1150 },
+      next: { name: "Flare II", at: 1140 },
+      shield: false,
     },
   },
   // Your name: never changed, so it can change now (migration 066).
@@ -256,6 +251,22 @@ window.fetch = async (input, init) => {
       }
       return Response.json({ fighter: f.__savedFighter ?? null });
     }
+    // How the Lobby tour ended, kept with the account (migration
+    // 20261121090000): window.__tour is what the account has; each ending
+    // the client sends is pushed to window.__tourEnds.
+    if (url.pathname === "/api/account/tour") {
+      const f = window as unknown as {
+        __tour?: string | null;
+        __tourEnds?: unknown[];
+      };
+      if (init?.method === "POST") {
+        const end = JSON.parse(String(init.body));
+        f.__tour = end.result;
+        (f.__tourEnds ??= []).push(end);
+        return Response.json({ ok: true });
+      }
+      return Response.json({ tour: f.__tour ?? null });
+    }
     // The library avatar (migration 20261119100000): window.__avatar is
     // what the account wears; each choice is pushed to window.__avatarSaves.
     if (url.pathname === "/api/account/avatar") {
@@ -270,6 +281,59 @@ window.fetch = async (input, init) => {
         return Response.json({ ok: true, avatar });
       }
       return Response.json({ avatar: f.__avatar ?? null });
+    }
+    // Match history (docs/match-history.md): window.__history maps a player
+    // id ("me" for you) to their matches, newest first; the fake pages and
+    // filters them as the server does. window.__historyProblem refuses
+    // (a stranger), window.__historyDelay holds each answer (ms), and every
+    // ask is pushed to window.__historyCalls.
+    if (url.pathname === "/api/matches/history") {
+      const h = window as unknown as {
+        __history?: Record<
+          string,
+          {
+            bot: string | null;
+            playedAt: string;
+            id: string;
+            result: string;
+            character: string;
+          }[]
+        >;
+        __historyTotals?: Record<string, unknown>;
+        __historyRating?: unknown;
+        __historyProblem?: string;
+        __historyDelay?: number;
+        __historyCalls?: string[];
+      };
+      (h.__historyCalls ??= []).push(url.search);
+      if (h.__historyDelay)
+        await new Promise((r) => setTimeout(r, h.__historyDelay));
+      if (h.__historyProblem)
+        return Response.json({ error: h.__historyProblem }, { status: 403 });
+      const player = url.searchParams.get("player") ?? "me";
+      const kind = url.searchParams.get("kind") ?? "all";
+      const at = url.searchParams.get("at");
+      const id = url.searchParams.get("id");
+      const all = (h.__history?.[player] ?? []).filter(
+        (m) => kind === "all" || (kind === "bot") === (m.bot !== null),
+      );
+      const from = at ? all.findIndex((m) => m.id === id) + 1 : 0;
+      const page = all.slice(from, from + 10);
+      const more = from + 10 < all.length;
+      const last = page.at(-1);
+      const mine = h.__history?.[player] ?? [];
+      return Response.json({
+        matches: page,
+        next: more && last ? { at: last.playedAt, id: last.id } : null,
+        totals: at
+          ? null
+          : (h.__historyTotals?.[player] ?? {
+              matches: mine.length,
+              wins: mine.filter((m) => m.result === "win").length,
+              fighters: {},
+            }),
+        rating: at ? null : (h.__historyRating ?? null),
+      });
     }
     // Tests can set window.__missions (before load, or then refresh the
     // economy) to give the player today's missions, and window.__friends to
@@ -332,6 +396,34 @@ window.fetch = async (input, init) => {
       "Content-Type": "application/json",
     };
     if (w.__serverTime) headers["X-Server-Time"] = String(w.__serverTime);
+    // The daily gift (window.__gift: the calendar as /api/gift gives it; a
+    // claim takes today's and answers with window.__giftGiven). Without
+    // __gift the routes are missing, as on a server before its migration.
+    const g = (window as any).__gift as
+      { claimed: boolean; day: number; weeks: number } | undefined;
+    if (g && url.pathname === "/api/gift")
+      return new Response(JSON.stringify(g), { status: 200, headers });
+    if (g && url.pathname === "/api/gift/claim") {
+      (window as any).__giftClaims = ((window as any).__giftClaims ?? 0) + 1;
+      if (g.claimed)
+        return new Response(
+          JSON.stringify({
+            error: "Today's gift is already yours. Come back tomorrow.",
+          }),
+          { status: 400, headers },
+        );
+      const after = {
+        ...g,
+        claimed: true,
+        weeks: g.weeks + (g.day === 7 ? 1 : 0),
+        ...((window as any).__giftAfter ?? {}),
+      };
+      (window as any).__gift = after;
+      return new Response(
+        JSON.stringify({ ...after, given: (window as any).__giftGiven }),
+        { status: 200, headers },
+      );
+    }
     return new Response(
       JSON.stringify(body ?? { error: "Not in the offline harness." }),
       {

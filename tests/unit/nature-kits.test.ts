@@ -131,17 +131,18 @@ describe("Tongue Grapple", () => {
 });
 
 describe("Scale Shrapnel", () => {
-  it("fires 3 blades plus 3 per plate and spends every plate", () => {
+  it("fires 6 blades plus 2 per plate and spends two plates", () => {
     const a = arena("pangrove");
     const [me, them] = a.players;
     place(them, 1500, 850);
     place(me, 300, Y, 700, Y);
     a.cast(me, skill("pangrove", "scale-shrapnel"));
     expect(a.projectiles).toHaveLength(12);
-    expect(platesOf(me)).toBe(0);
+    expect(platesOf(me)).toBe(1);
     a.projectiles = [];
     a.cast(me, skill("pangrove", "scale-shrapnel"));
-    expect(a.projectiles).toHaveLength(3);
+    expect(a.projectiles).toHaveLength(8);
+    expect(platesOf(me)).toBe(0);
   });
   it("hurts more up close with plates than without", () => {
     const dealt = (plates: number) => {
@@ -502,7 +503,7 @@ describe("in raids", () => {
   it("Sloth Time slows a boss like any slow, not to a crawl", () => {
     const a = createRaidArena("NATURE", "grumblecrag");
     a.add("me", "Me", "mossloth");
-    a.configure(1, false);
+    a.configure(1);
     a.start();
     a.phase = "playing";
     const me = a.players.find((p) => !p.raidBoss)!,

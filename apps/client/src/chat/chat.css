@@ -63,14 +63,45 @@
   height: 18px;
   padding: 0 4px;
   border-radius: 9px;
-  background: #ff5d6c;
+  /* The Lobby badge's red and gloss (lobby.css, .lobby-badge): one red for
+     everything waiting on the player. */
+  background: linear-gradient(180deg, #ff7486, var(--ui-danger) 55%, #d33a4e);
   color: #fff;
   font:
-    700 calc(11px * var(--text-scale, 1))/18px "Barlow",
+    800 calc(11px * var(--text-scale, 1))/18px var(--font-body),
     system-ui,
     sans-serif;
+  font-variant-numeric: tabular-nums;
   text-align: center;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
+  box-shadow:
+    0 0 0 1.5px rgba(11, 16, 32, 0.9),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 1px 3px rgba(0, 0, 0, 0.35);
   pointer-events: none;
+}
+/* New messages: the same three pings as the Lobby's badges. */
+.chat-unread::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  border: 2px solid rgba(255, 140, 155, 0.95);
+  opacity: 0;
+  animation: chat-unread-ping 1.4s ease-out 0.3s 3;
+}
+@keyframes chat-unread-ping {
+  0% {
+    opacity: 1;
+    transform: scale(0.8);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.4);
+  }
+}
+:where(:root[data-motion="reduced"]) .chat-unread::after {
+  animation: none;
 }
 .chat-unread[hidden] {
   display: none;
@@ -107,10 +138,8 @@
     opacity: 0;
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .chat-drawer {
-    animation: none;
-  }
+:where(:root[data-motion="reduced"]) .chat-drawer {
+  animation: none;
 }
 .chat-head {
   display: flex;
@@ -132,9 +161,7 @@
   border-radius: 999px;
   background: none;
   color: var(--ui-dim);
-  font:
-    800 calc(14px * var(--text-scale, 1))/1 "Barlow Condensed",
-    sans-serif;
+  font: 800 calc(14px * var(--text-scale, 1))/1 var(--font-display);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   cursor: pointer;
@@ -184,6 +211,48 @@
     display: none;
   }
 }
+/* A phone held sideways: its drawer is as narrow as a small phone's. Up to
+   three tabs fit beside the settings gear as they are; the fourth (in a
+   room: Party, Team, Room, Friends) read "FRIEN" under the gear at 844 x
+   390 and was gone at 667 (UI audit, 27 Nov 2026). With four, the tabs
+   tighten and Friends is its icon, as on a small phone. Counted from the
+   first tab: it is the fourth from the end, or further. */
+@media (min-width: 641px) and (max-height: 500px) {
+  .chat-tabs {
+    align-items: center;
+    height: 44px;
+    overflow-x: auto;
+    /* Sideways only (ui/scroll-rows.ts). */
+    overflow-y: hidden;
+    scrollbar-width: none;
+  }
+  .chat-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .chat-tab:first-child:nth-last-child(n + 4),
+  .chat-tab:first-child:nth-last-child(n + 4) ~ .chat-tab {
+    flex: none;
+    min-width: 44px;
+    padding: 0 6px;
+    letter-spacing: 0.04em;
+  }
+  .chat-tab:first-child:nth-last-child(n + 4)
+    ~ .chat-tab[data-chat-tab="friend"] {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .chat-tab:first-child:nth-last-child(n + 4)
+    ~ .chat-tab[data-chat-tab="friend"]
+    svg {
+    display: block;
+  }
+  .chat-tab:first-child:nth-last-child(n + 4)
+    ~ .chat-tab[data-chat-tab="friend"]
+    span {
+    display: none;
+  }
+}
 .chat-tab i {
   margin-left: 6px;
   font-style: normal;
@@ -210,10 +279,7 @@
   border-radius: 10px;
   background: none;
   color: var(--ui-dim);
-  font:
-    700 calc(13px * var(--text-scale, 1))/1 "Barlow",
-    system-ui,
-    sans-serif;
+  font: 700 calc(13px * var(--text-scale, 1))/1 var(--font-body);
   cursor: pointer;
 }
 .chat-modes button[aria-checked="true"] {
@@ -224,10 +290,7 @@
 .chat-mode-note {
   margin: 6px 0 0;
   color: var(--ui-dim);
-  font:
-    500 calc(12px * var(--text-scale, 1))/1.35 "Barlow",
-    system-ui,
-    sans-serif;
+  font: 500 calc(12px * var(--text-scale, 1))/1.35 var(--font-body);
 }
 /* Notifications of friends' messages (push-setup.ts): a switch and why. */
 .chat-push {
@@ -236,7 +299,8 @@
 .chat-push[hidden] {
   display: none;
 }
-.chat-push-toggle {
+.chat-push-toggle,
+.chat-news-toggle {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -248,15 +312,13 @@
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.05);
   color: #eef2ff;
-  font:
-    700 13px/1.2 "Barlow",
-    system-ui,
-    sans-serif;
+  font: 700 13px/1.2 var(--font-body);
   text-align: left;
   cursor: pointer;
 }
 /* The switch's knob. */
-.chat-push-toggle::before {
+.chat-push-toggle::before,
+.chat-news-toggle::before {
   content: "";
   order: 2;
   flex: none;
@@ -264,24 +326,28 @@
   height: 20px;
   border-radius: 999px;
   background:
-    radial-gradient(circle at 10px 50%, #fff 7px, transparent 7.5px),
-    #4a5674;
+    radial-gradient(circle at 10px 50%, #fff 7px, transparent 7.5px), #4a5674;
 }
-.chat-push-toggle[aria-checked="true"]::before {
+.chat-push-toggle[aria-checked="true"]::before,
+.chat-news-toggle[aria-checked="true"]::before {
   background:
     radial-gradient(circle at 24px 50%, #2a1a00 7px, transparent 7.5px), #ffd65b;
 }
-.chat-push-toggle:disabled {
+.chat-news-toggle {
+  margin-top: 8px;
+}
+.chat-news-toggle[hidden] {
+  display: none;
+}
+.chat-push-toggle:disabled,
+.chat-news-toggle:disabled {
   opacity: 0.55;
   cursor: default;
 }
 .chat-push-note {
   margin: 4px 0 0;
   color: #a0afc8;
-  font:
-    500 12px/1.35 "Barlow",
-    system-ui,
-    sans-serif;
+  font: 500 12px/1.35 var(--font-body);
 }
 .chat-gear[aria-expanded="true"] {
   color: var(--ui-accent);
@@ -309,16 +375,14 @@
   min-height: 0;
   margin: 8px 0 6px;
   padding: 0 2px;
+  overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
   list-style: none;
 }
 .chat-line {
   padding: 3px 0;
-  font:
-    500 calc(14px * var(--text-scale, 1))/1.35 "Barlow",
-    system-ui,
-    sans-serif;
+  font: 500 calc(14px * var(--text-scale, 1))/1.35 var(--font-body);
   overflow-wrap: anywhere;
 }
 /* Someone else's line is a button (tap: mute, block, report). */
@@ -352,10 +416,7 @@ button.chat-say:focus-visible {
 .chat-menu p {
   flex-basis: 100%;
   margin: 0;
-  font:
-    500 calc(13px * var(--text-scale, 1))/1.35 "Barlow",
-    system-ui,
-    sans-serif;
+  font: 500 calc(13px * var(--text-scale, 1))/1.35 var(--font-body);
 }
 .chat-menu button {
   min-width: 64px;
@@ -365,10 +426,7 @@ button.chat-say:focus-visible {
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.06);
   color: var(--ui-text);
-  font:
-    700 calc(13px * var(--text-scale, 1))/1 "Barlow",
-    system-ui,
-    sans-serif;
+  font: 700 calc(13px * var(--text-scale, 1))/1 var(--font-body);
   cursor: pointer;
 }
 .chat-menu button[data-chat-act="report"],
@@ -379,10 +437,7 @@ button.chat-say:focus-visible {
 .chat-stamp {
   margin: 8px 0 2px;
   color: #8193b2;
-  font:
-    600 calc(11px * var(--text-scale, 1))/1.2 "Barlow",
-    system-ui,
-    sans-serif;
+  font: 600 calc(11px * var(--text-scale, 1))/1.2 var(--font-body);
   letter-spacing: 0.03em;
   text-align: center;
 }
@@ -394,6 +449,16 @@ button.chat-say:focus-visible {
   color: #8fc3ff;
   font-weight: 700;
 }
+/* Watching the room: the name in gold after an eye. */
+.chat-line.is-watcher b {
+  color: #ffd98a;
+}
+.chat-line.is-watcher b svg {
+  width: 1.1em;
+  height: 1.1em;
+  margin-right: 3px;
+  vertical-align: -0.2em;
+}
 .chat-line.is-mine b {
   color: var(--ui-accent);
 }
@@ -404,10 +469,7 @@ button.chat-say:focus-visible {
   flex: 1;
   margin: 8px 0;
   color: var(--ui-dim);
-  font:
-    500 calc(13px * var(--text-scale, 1))/1.4 "Barlow",
-    system-ui,
-    sans-serif;
+  font: 500 calc(13px * var(--text-scale, 1))/1.4 var(--font-body);
 }
 .chat-empty[hidden] {
   display: none;
@@ -442,10 +504,7 @@ button.chat-say:focus-visible {
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.06);
   color: var(--ui-text);
-  font:
-    600 calc(13px * var(--text-scale, 1))/1 "Barlow",
-    system-ui,
-    sans-serif;
+  font: 600 calc(13px * var(--text-scale, 1))/1 var(--font-body);
   white-space: nowrap;
   cursor: pointer;
 }
@@ -468,10 +527,7 @@ button.chat-say:focus-visible {
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.06);
   color: var(--ui-text);
-  font:
-    500 calc(16px * var(--text-scale, 1))/1 "Barlow",
-    system-ui,
-    sans-serif;
+  font: 500 calc(16px * var(--text-scale, 1))/1 var(--font-body);
 }
 .chat-input::placeholder {
   color: #8592ab;
@@ -487,9 +543,7 @@ button.chat-say:focus-visible {
   border-radius: 12px;
   background: var(--ui-accent);
   color: var(--ui-accent-ink);
-  font:
-    800 calc(14px * var(--text-scale, 1))/1 "Barlow Condensed",
-    sans-serif;
+  font: 800 calc(14px * var(--text-scale, 1))/1 var(--font-display);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   cursor: pointer;
@@ -498,10 +552,7 @@ button.chat-say:focus-visible {
   min-height: 0;
   margin: 4px 0 0;
   color: #ffb4bc;
-  font:
-    500 calc(12px * var(--text-scale, 1))/1.3 "Barlow",
-    system-ui,
-    sans-serif;
+  font: 500 calc(12px * var(--text-scale, 1))/1.3 var(--font-body);
 }
 .chat-note:empty {
   display: none;
@@ -548,10 +599,7 @@ button.chat-say:focus-visible {
   border-radius: 10px;
   background: none;
   color: var(--ui-text);
-  font:
-    600 calc(15px * var(--text-scale, 1))/1.2 "Barlow",
-    system-ui,
-    sans-serif;
+  font: 600 calc(15px * var(--text-scale, 1))/1.2 var(--font-body);
   text-align: left;
   cursor: pointer;
 }
@@ -582,10 +630,7 @@ button.chat-say:focus-visible {
   border-radius: 999px;
   background: #ff5c6c;
   color: #fff;
-  font:
-    800 calc(12px * var(--text-scale, 1))/1.2 "Barlow",
-    system-ui,
-    sans-serif;
+  font: 800 calc(12px * var(--text-scale, 1))/1.2 var(--font-body);
   font-style: normal;
   text-align: center;
 }
@@ -594,10 +639,7 @@ button.chat-say:focus-visible {
   align-items: center;
   gap: 8px;
   margin: 8px 0 0;
-  font:
-    700 calc(15px * var(--text-scale, 1))/1.2 "Barlow",
-    system-ui,
-    sans-serif;
+  font: 700 calc(15px * var(--text-scale, 1))/1.2 var(--font-body);
 }
 .chat-with[hidden] {
   display: none;
@@ -632,7 +674,8 @@ button.chat-say:focus-visible {
 
 /* ── Quick chat in a battle (chat/battle-chat.ts) ─────────────────────────
    One button top left, opposite the scoreboard's right side; in a raid it
-   sits where the raid's signals button was, under the raid's HUD. Clear of
+   sits where the raid's signals button was, under the raid's HUD (phones:
+   in the top-left corner, matching the gear, style.css). Clear of
    the camera cutout (mid-height on the sides, touch-cutout.spec.ts) and of
    the joystick (bottom left). */
 .battle-chat {
@@ -695,10 +738,7 @@ button.chat-say:focus-visible {
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.06);
   color: var(--ui-text);
-  font:
-    700 calc(13px * var(--text-scale, 1))/1 "Barlow",
-    system-ui,
-    sans-serif;
+  font: 700 calc(13px * var(--text-scale, 1))/1 var(--font-body);
   white-space: nowrap;
   cursor: pointer;
   touch-action: manipulation;
@@ -724,7 +764,11 @@ button.chat-say:focus-visible {
   left: max(12px, calc(var(--safe-left, 0px) + 4px));
   z-index: 55;
   display: grid;
-  gap: 2px;
+  /* The tag, then the name and words: one set of columns for every line
+     (subgrid below), so the tags are as wide as the widest and the names
+     line up whatever font the device draws them in. */
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 2px 5px;
   max-width: 220px;
   margin: 0;
   padding: 0;
@@ -737,14 +781,15 @@ button.chat-say:focus-visible {
   );
 }
 .battle-chat-feed li {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  gap: 5px;
   padding: 3px 8px;
   border-radius: 8px;
   background: rgba(10, 19, 37, 0.72);
   color: var(--ui-text);
-  font:
-    600 calc(12px * var(--text-scale, 1))/1.3 "Barlow",
-    system-ui,
-    sans-serif;
+  font: 600 calc(12px * var(--text-scale, 1))/1.3 var(--font-body);
   animation: battle-chat-line 5s ease-in forwards;
 }
 .battle-chat-feed li b {
@@ -752,6 +797,69 @@ button.chat-say:focus-visible {
 }
 .battle-chat-feed li.is-rival b {
   color: #ff9aa5;
+}
+/* A watcher's line: their name in gold after an eye (they have no
+   fighter, so no bubble either). */
+.battle-chat-feed li.is-watcher b {
+  color: #ffd98a;
+}
+.battle-chat-feed li b {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 3px;
+}
+.battle-chat-feed li b svg {
+  flex: none;
+  width: 1.1em;
+  height: 1.1em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+}
+/* Who heard the line, before it: TEAM (your side only, blue) or ALL (the
+   whole room, rivals and watchers too, light). Same width, so the names
+   line up. The caps are centred on their cap height (text-box), not the
+   font's em box, which sits them high; letter-spacing's trailing space is
+   given back on the left so they are centred across too. Pixel-checked in
+   watch-room.spec.ts. */
+.battle-chat-to {
+  display: block;
+  flex: none;
+  box-sizing: border-box;
+  min-width: 4.2em;
+  /* Equal room above and below the trimmed caps. */
+  padding: 0.42em 0.4em 0.42em calc(0.4em + 0.06em);
+  text-align: center;
+  border-radius: 5px;
+  font-size: 0.72em;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  text-box: trim-both cap alphabetic;
+}
+.battle-chat-feed li[data-to="team"] .battle-chat-to {
+  background: #2f6fd6;
+  color: #fff;
+}
+.battle-chat-feed li[data-to="all"] .battle-chat-to {
+  background: rgba(255, 255, 255, 0.18);
+  color: #f2f6ff;
+}
+.battle-chat-say {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.battle-chat-say > span {
+  min-width: 0;
+}
+@supports (grid-template-columns: subgrid) {
+  .battle-chat-feed li {
+    display: grid;
+    grid-template-columns: subgrid;
+  }
 }
 @keyframes battle-chat-line {
   0%,
@@ -771,10 +879,7 @@ button.chat-say:focus-visible {
   border-radius: 10px;
   background: #fff;
   color: #1d2433;
-  font:
-    700 calc(12px * var(--text-scale, 1))/1.2 "Barlow",
-    system-ui,
-    sans-serif;
+  font: 700 calc(12px * var(--text-scale, 1))/1.2 var(--font-body);
   /* Sized to its text up to 160 px, then wrapped: never past its edges. */
   width: max-content;
   max-width: 160px;

@@ -1,4 +1,5 @@
 import { askConfirm, openHubPanel, type HubPanel } from "../ui/hub-panel";
+import { focusForTyping } from "../screen-pin";
 import { parse, patch } from "../ui/patch";
 import type { RaidBossId } from "../../../../packages/shared/src/raid-roster";
 import {
@@ -11,11 +12,14 @@ import {
 } from "./profile-view";
 import { esc } from "../ui/components";
 import { sharePlayerCard } from "./profile-card";
+import { historyController, type HistoryQuery } from "./match-history";
+import type { MatchHistory } from "../../../../packages/shared/src/accounts";
 import {
   checkName,
   NAME_CHANGE_DAYS,
 } from "../../../../packages/shared/src/accounts";
 import "./profile.css";
+import "./match-history.css";
 
 /**
  * The player card's behaviour (UI remodel step 7). Markup comes from
@@ -24,6 +28,8 @@ import "./profile.css";
  * answer, or its reason); Share card draws the card as a picture.
  */
 export interface ProfileHooks {
+  /** Where to mount (the Plaza's layer); defaults to the Lobby. */
+  host?: HTMLElement;
   data(): ProfileData;
   /** Wear your own picture (a file from the device); resolves once worn. */
   photo(file: File): Promise<void>;
@@ -42,6 +48,13 @@ export interface ProfileHooks {
   ranks(): void;
   journey(): void;
   raids(boss?: RaidBossId): void;
+  /** A page of your match history (docs/match-history.md). */
+  history?(q: HistoryQuery): Promise<MatchHistory>;
+  /** Play a bot of that level again (an opened bot match's button). */
+  playBot?(level: "easy" | "normal" | "hard"): void;
+  /** Whether a player's card can be opened (a friend), and opening it. */
+  isFriend?(id: string): boolean;
+  friendCard?(id: string, name: string): void;
   onClose?(): void;
 }
 export interface ProfileScreen {
@@ -58,11 +71,27 @@ export function openProfile(hooks: ProfileHooks): ProfileScreen {
   let closed = false;
   const root = () => panel.root;
 
-  // A phone held sideways shows the card's column as tabs; turning a
-  // tablet or resizing a window across the line redraws it.
-  const compactQuery = matchMedia("(max-height: 500px)");
-  const data = () => ({ ...hooks.data(), compact: compactQuery.matches });
-  const onCompact = () => render();
+  const history = hooks.history
+    ? historyController(
+        hooks.history,
+        () => render(),
+        (id, name) => {
+          panel.close();
+          hooks.friendCard?.(id, name);
+        },
+        hooks.playBot &&
+          ((level) => {
+            panel.close();
+            hooks.playBot!(level);
+          }),
+      )
+    : null;
+  const data = () => ({
+    ...hooks.data(),
+    history: history?.state,
+    canOpen: hooks.friendCard ? hooks.isFriend : undefined,
+    replay: !!hooks.playBot,
+  });
   function render() {
     if (closed) return;
     const next = parse(profileMarkup(view, data()));
@@ -123,17 +152,16 @@ export function openProfile(hooks: ProfileHooks): ProfileScreen {
     button.disabled = true;
     try {
       const result = await sharePlayerCard(hooks.data());
+      // The picture opens large to share or save (share-preview.ts).
       view.status =
-        result === "failed"
-          ? "This browser couldn't make the picture."
-          : result === "downloaded"
-            ? "Card saved as a picture; the message is copied."
-            : "";
+        result === "failed" ? "This browser couldn't make the picture." : "";
     } catch {
       view.status = "This browser couldn't make the picture.";
     }
     button.disabled = false;
     render();
+    // Back on Share card once the picture closes (render made it anew).
+    focusOn("[data-profile-share]");
   }
 
   /** Open or close the name form (focus goes where you'd type or were). */
@@ -146,8 +174,7 @@ export function openProfile(hooks: ProfileHooks): ProfileScreen {
     );
     if (open && input) {
       input.value = hooks.data().name;
-      input.focus({ preventScroll: true });
-      input.select();
+      focusForTyping(input, { selectAll: true });
     } else focusOn("[data-profile-rename]");
   }
   /** Check the name, ask once more (the next change is 14 days away), send. */
@@ -186,9 +213,11 @@ export function openProfile(hooks: ProfileHooks): ProfileScreen {
     view.nameBusy = false;
     render();
     if (view.renaming)
-      root()
-        .querySelector<HTMLInputElement>("[data-profile-name-form] input")
-        ?.focus({ preventScroll: true });
+      focusForTyping(
+        root().querySelector<HTMLInputElement>(
+          "[data-profile-name-form] input",
+        ),
+      );
     else focusOn("[data-profile-rename]");
   }
 
@@ -202,7 +231,7 @@ export function openProfile(hooks: ProfileHooks): ProfileScreen {
     );
     if (open && input) {
       input.value = "";
-      input.focus({ preventScroll: true });
+      focusForTyping(input);
       // On a phone the form opens below the fold: bring all of it in.
       input
         .closest("form")
@@ -230,9 +259,11 @@ export function openProfile(hooks: ProfileHooks): ProfileScreen {
       render();
       // The box was disabled while waiting, which took the focus away: put
       // it back so Enter tries again (as the name form does).
-      root()
-        .querySelector<HTMLInputElement>("[data-profile-delete-form] input")
-        ?.focus({ preventScroll: true });
+      focusForTyping(
+        root().querySelector<HTMLInputElement>(
+          "[data-profile-delete-form] input",
+        ),
+      );
     }
   }
 
@@ -240,6 +271,7 @@ export function openProfile(hooks: ProfileHooks): ProfileScreen {
     const t = (event.target as Element).closest<HTMLButtonElement>("button");
     if (!t || !root().contains(t) || t.disabled) return;
     const d = t.dataset;
+    if (history?.click(t)) return;
     if (d.uiProfileTab) {
       view.tab = d.uiProfileTab as ProfileTab;
       render();
@@ -344,15 +376,14 @@ export function openProfile(hooks: ProfileHooks): ProfileScreen {
   // The name's countdown is redrawn while the card is open.
   const tick = setInterval(render, 30_000);
   panel = openHubPanel(html, {
+    host: hooks.host,
     onClose: () => {
       closed = true;
       clearInterval(tick);
-      compactQuery.removeEventListener("change", onCompact);
       hooks.onClose?.();
     },
   });
   root().addEventListener("click", onClick);
-  compactQuery.addEventListener("change", onCompact);
   root().addEventListener("submit", onSubmit);
   root().addEventListener("keydown", onKey);
   // A photo picked for your own picture.
@@ -364,6 +395,7 @@ export function openProfile(hooks: ProfileHooks): ProfileScreen {
     if (file) void wearPhoto(file);
   });
   focusOn('.pf-titles > [aria-pressed="true"]');
+  history?.ensure();
   return {
     refresh: render,
     close: () => panel.close(),

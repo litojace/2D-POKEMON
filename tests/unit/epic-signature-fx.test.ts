@@ -72,7 +72,7 @@ const finite = (commands: unknown[][]) =>
 describe("Legendary signature effects", () => {
   it("gives each Legendary skin its own signature, and Epics only the small glint", () => {
     const legendary = CHAMPION_SKINS.filter((s) => s.rarity === "legendary");
-    expect(legendary).toHaveLength(ids.length * 4);
+    expect(legendary).toHaveLength(ids.length * 5);
     for (const s of legendary) {
       expect(SKIN_ART[s.id].signature, s.id).toBe(s.id);
       expect(EPIC_SIGNATURES[s.id], s.id).toBeDefined();
@@ -90,9 +90,9 @@ describe("Legendary signature effects", () => {
     ))
       expect(SKIN_ART[s.id].detail, s.id).toBe("glint");
     const sigs = Object.values(EPIC_SIGNATURES);
-    expect(sigs).toHaveLength(72);
-    expect(new Set(sigs.map((s) => s.name)).size).toBe(72);
-    expect(new Set(sigs.map((s) => s.draw)).size).toBe(72);
+    expect(sigs).toHaveLength(90);
+    expect(new Set(sigs.map((s) => s.name)).size).toBe(90);
+    expect(new Set(sigs.map((s) => s.draw)).size).toBe(90);
   });
 
   it("gives the new Epics no landing or victory of their own", () => {
@@ -171,8 +171,9 @@ describe("Legendary signature effects", () => {
   it("gives only the Legendary Nova Vanguard suits a hero landing and a victory", () => {
     for (const id of Object.keys(EPIC_SIGNATURES)) {
       const legendary = id.endsWith("-nova-vanguard");
-      // Sky Pirates and Hồn Việt land and win over several frames (tested below).
-      if (id.endsWith("-sky-pirates") || id.endsWith("-hon-viet") || id.endsWith("-stars-stripes")) continue;
+      // Sky Pirates, Hồn Việt, Stars & Stripes and Sun Dynasty land and win
+      // over several frames (tested below).
+      if (id.endsWith("-sky-pirates") || id.endsWith("-hon-viet") || id.endsWith("-stars-stripes") || id.endsWith("-sun-dynasty")) continue;
       const art = { ...SKIN_ART[id], trail: undefined };
       // Ambient off: no idle particles, so every emission is the moment's.
       const land = frame(3000, false, Math.PI / 2, { greeting: true });
@@ -269,17 +270,20 @@ describe("Legendary signature effects", () => {
       for (const now of [0, 700, 2900]) {
         const idle = frame(now, false);
         drawSkinFx(idle.ctx, art, 1);
-        // Compact: a few calls for the emblem, seam pulse or brim glint.
-        expect(idle.commands.length, id).toBeLessThanOrEqual(12);
+        // Compact: the Legendary aura (pool, gold rim, one comet) and the
+        // suit's own light (emblem, seam pulse or brim glint).
+        expect(idle.commands.length, id).toBeLessThanOrEqual(20);
         const summoned = frame(now + 400, false, Math.PI / 2, {});
         const cast = frame(now, false, Math.PI / 2, { ultimate: true });
         drawSkinFx(cast.ctx, art, 1);
         cast.commands.length = 0;
         drawSkinFx({ ...cast.ctx, now: now + 400, ultimate: false }, art, 1);
         drawSkinFx(summoned.ctx, art, 1);
-        expect(cast.commands.length, id).toBeGreaterThan(
-          summoned.commands.length,
-        );
+        // The aura steps back to its rim then (a subset of its idle self),
+        // so whatever the cast frame draws that idle does not is the motif.
+        const idleSet = new Set(summoned.commands.map((c) => JSON.stringify(c)));
+        const motif = cast.commands.filter((c) => !idleSet.has(JSON.stringify(c)));
+        expect(motif.length, id).toBeGreaterThanOrEqual(2);
       }
     }
   });
@@ -338,6 +342,45 @@ describe("Legendary signature effects", () => {
       ] as const) {
         const f = frame(1000, false, Math.PI / 2, { [moment]: true });
         drawSkinFx(f.ctx, art, 1);
+        // The Walk-of-Fame star and the fireworks are the whole moment:
+        // neither brings Nova's column of light, shock ring or star fan.
+        const shapes = f.emit.mock.calls.map(([p]) => p.shape);
+        expect(shapes, `${id} ${moment}`).not.toContain("beam");
+        expect(shapes, `${id} ${moment}`).not.toContain("shock");
+        expect(shapes, `${id} ${moment}`).not.toContain("star");
+        f.commands.length = 0;
+        drawSkinFx({ ...f.ctx, now: 1000 + ms * 0.5, [moment]: false }, art, 1);
+        const mid = f.commands.length;
+        const idle = frame(1000 + ms * 0.5, false);
+        drawSkinFx(idle.ctx, art, 1);
+        expect(mid, `${id} ${moment}`).toBeGreaterThan(idle.commands.length);
+        expect(finite(f.commands), `${id} ${moment}`).toBe(true);
+        f.commands.length = 0;
+        drawSkinFx({ ...f.ctx, now: 1000 + ms + 2000, [moment]: false }, art, 1);
+        const later = frame(1000 + ms + 2000, false);
+        drawSkinFx(later.ctx, art, 1);
+        expect(JSON.stringify(f.commands), `${id} ${moment}`).toBe(JSON.stringify(later.commands));
+      }
+    }
+  });
+
+  it("lands Sun Dynasty on a mosaic sun and wins with a winged sunrise, then clears", () => {
+    for (const id of Object.keys(EPIC_SIGNATURES).filter((k) => k.endsWith("-sun-dynasty"))) {
+      const art = { ...SKIN_ART[id], trail: undefined };
+      for (const [moment, ms] of [
+        ["greeting", 1300],
+        ["celebrating", 1900],
+      ] as const) {
+        const f = frame(1000, false, Math.PI / 2, { [moment]: true });
+        drawSkinFx(f.ctx, art, 1);
+        // Landing throws gold sand behind the feet; neither moment brings
+        // Nova's column of light.
+        const shapes = f.emit.mock.calls.map(([p]) => p.shape);
+        expect(shapes, `${id} ${moment}`).not.toContain("beam");
+        if (moment === "greeting") {
+          expect(shapes.length, id).toBeGreaterThan(0);
+          expect(f.emit.mock.calls.every(([p]) => p.behind), id).toBe(true);
+        }
         f.commands.length = 0;
         drawSkinFx({ ...f.ctx, now: 1000 + ms * 0.5, [moment]: false }, art, 1);
         const mid = f.commands.length;
@@ -388,6 +431,67 @@ describe("Legendary signature effects", () => {
           JSON.stringify(later.commands),
         );
       }
+    }
+  });
+
+  it("wears a Legendary aura at rest: a gold rim with a comet, its collection's marks in full", () => {
+    const GOLD = 0xffbf3c;
+    const rimOf = (commands: unknown[][]) =>
+      commands.some(([k, , c]) => k === "lineStyle" && c === GOLD);
+    const marks: Record<string, string> = {};
+    for (const id of Object.keys(EPIC_SIGNATURES)) {
+      const art = { ...SKIN_ART[id], trail: undefined };
+      for (const angle of angles) {
+        const low = frame(900, false, angle);
+        drawSkinFx(low.ctx, art, 1);
+        // Every graphics level shows the tier: the rim and a comet's head.
+        expect(rimOf(low.commands), `${id} low`).toBe(true);
+        expect(
+          low.commands.some(([k, c, a]) => k === "fillStyle" && c === 0xffffff && (a as number) > 0.9),
+          `${id} low`,
+        ).toBe(true);
+        const full = frame(900, true, angle);
+        drawSkinFx(full.ctx, art, 1);
+        expect(rimOf(full.commands), `${id} full`).toBe(true);
+        // In full, more on the layers than compact: marks, glints, back light.
+        expect(full.commands.length, id).toBeGreaterThan(low.commands.length + 8);
+      }
+      // The marks are the collection's own: same within a collection
+      // (point counts), different across them.
+      const full = frame(900, true);
+      drawSkinFx(full.ctx, art, 1);
+      const pts = full.commands
+        .filter(([k, p]) => k === "fillPoints" && Array.isArray(p))
+        .map(([, p]) => (p as unknown[]).length);
+      const collection = id.slice(id.indexOf("-") + 1);
+      marks[collection] ??= JSON.stringify(pts.slice(0, 4));
+    }
+    expect(new Set(Object.values(marks)).size).toBe(5);
+    // The aura is a function of time only: two fighters at the same moment
+    // draw it the same, and it moves.
+    const a = frame(1234, true),
+      b = frame(1234, true),
+      c = frame(2100, true);
+    const art = { ...SKIN_ART["voltkit-hon-viet"], trail: undefined };
+    drawSkinFx(a.ctx, art, 1);
+    drawSkinFx(b.ctx, art, 1);
+    drawSkinFx(c.ctx, art, 1);
+    expect(a.commands).toEqual(b.commands);
+    expect(a.commands).not.toEqual(c.commands);
+  });
+
+  it("steps the aura back to its rim while the ultimate's motif is out", () => {
+    for (const id of Object.keys(EPIC_SIGNATURES)) {
+      const art = { ...SKIN_ART[id], trail: undefined };
+      const cast = frame(1000, true, Math.PI / 2, { ultimate: true });
+      drawSkinFx(cast.ctx, art, 1);
+      cast.commands.length = 0;
+      drawSkinFx({ ...cast.ctx, now: 1800, ultimate: false }, art, 1);
+      // Still the gold rim under the motif.
+      expect(
+        cast.commands.some(([k, , c]) => k === "lineStyle" && c === 0xffbf3c),
+        id,
+      ).toBe(true);
     }
   });
 

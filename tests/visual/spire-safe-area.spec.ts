@@ -39,7 +39,6 @@ const RECORDS = {
     bestSeconds: 200,
     titles: [],
     cosmetics: [],
-    weekly: [],
     earned: [],
     bosses: {
       grumblecrag: { clears: 2, highestPeril: 3, bestSeconds: 200, runs: 3 },
@@ -236,7 +235,25 @@ async function cardFits(
   action: string,
 ) {
   await settle(page);
-  inSafe(await boxOf(page, card), s, card);
+  // The briefing and results take the whole screen (match-sheet.css, like
+  // the PvP Reveal): then what they hold, title, content and foot, keeps
+  // to the safe area and clear of the chat buttons.
+  const sheet = await page
+    .locator("#arena-overlay")
+    .evaluate((o) => o.classList.contains("is-sheet"));
+  const parts = sheet
+    ? ["rc-head", "rc-body", "rc-foot"].map((p) => `${card} > .${p}`)
+    : [card];
+  if (sheet) {
+    const b = await boxOf(page, card);
+    expect([b.x, b.y, b.right, b.bottom], `${card} fills the screen`).toEqual([
+      0,
+      0,
+      s.width,
+      s.height,
+    ]);
+  }
+  for (const part of parts) inSafe(await boxOf(page, part), s, part);
   await expect(page.locator(action)).toBeInViewport({ ratio: 1 });
   await touchTargets(page, card);
   // The chat buttons (quick chat in a fight, the room's chat at the
@@ -244,10 +261,11 @@ async function cardFits(
   await page.waitForTimeout(800);
   for (const chat of ["#battle-chat", "#chat-button"])
     if (await page.locator(chat).isVisible())
-      expect(
-        overlaps(await boxOf(page, chat), await boxOf(page, card)),
-        `${chat} over ${card}`,
-      ).toBe(false);
+      for (const part of parts)
+        expect(
+          overlaps(await boxOf(page, chat), await boxOf(page, part)),
+          `${chat} over ${part}`,
+        ).toBe(false);
 }
 
 for (const s of SIZES)
@@ -315,7 +333,7 @@ for (const s of SIZES)
         w.__room("spire", { floor: 3, stage: "intermission", seats: 2 });
         w.__push();
       });
-      const cards = page.locator(".raid-draft [data-raid-rite]");
+      const cards = page.locator(".rites-screen [data-raid-rite]");
       await expect(cards).toHaveCount(3);
       await settle(page);
       for (const c of await cards.all()) {
@@ -335,7 +353,18 @@ for (const s of SIZES)
         expect(b.clip).toBe(false);
         inSafe(b, s, "blessing card");
       }
-      inSafe(await boxOf(page, ".raid-draft"), s, "blessing panel");
+      // The screen itself reaches every edge (like the countdown); what it
+      // shows stays inside the safe area.
+      inSafe(
+        await boxOf(page, ".rites-screen .rites-head"),
+        s,
+        "blessing heading",
+      );
+      inSafe(
+        await boxOf(page, ".rites-screen .raid-rite-options"),
+        s,
+        "blessing tiles",
+      );
       // A party sees the quick-chat button between floors: it never sits
       // on a card.
       if (await page.locator("#battle-chat").isVisible()) {

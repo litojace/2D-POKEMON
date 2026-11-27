@@ -1,3 +1,4 @@
+import { setHudHidden, setHudMarkup } from "./hud-dom";
 import { drawBossBattleEffects } from "./boss-spell-art";
 import { resultXp } from "./adventure-ui";
 import type { Journey } from "../../../packages/shared/src/journey";
@@ -27,7 +28,10 @@ import {
 } from "./raid-somnara-art";
 import { iconLabel, menuIcon } from "./menu-icons";
 import { actions as uiActions, button as uiButton } from "./ui/components";
+import { readyButton, type ArenaLoad } from "./briefing-ready";
 import "./screens/raid-cards.css";
+import "./screens/raid-rites.css";
+import { paintRaidParty } from "./raid-party";
 import { raidContributions, raidGoals } from "./raid-presentation";
 import { paintRaidHud, raidHudView } from "./raid-hud";
 import type Phaser from "phaser";
@@ -79,9 +83,11 @@ import {
 import {
   setOverlayMarkup,
   LIVE_SECONDS,
-  countdownCard,
+  LIVE_COUNTDOWN,
+  LIVE_NUMBER,
   fillLiveSeconds,
   fillLiveCountdown,
+  fillLiveNumber,
 } from "./overlay";
 const escape = (s: string) =>
   s.replace(
@@ -95,12 +101,6 @@ const time = (s: number) =>
   `${Math.floor(s / 60)}:${Math.floor(s % 60)
     .toString()
     .padStart(2, "0")}`;
-/** Equipped items as a space-separated list (for data-raid-cosmetic~=...). */
-export function raidLookList(look: RaidLoadout | null | undefined) {
-  return Object.values(look ?? {})
-    .filter(Boolean)
-    .join(" ");
-}
 export { portraitAvatar, portraitCosmetics } from "./portraits";
 /** The result whose saved progress was already fetched, per overlay. */
 const resultProgress = new WeakMap<HTMLElement, string>();
@@ -110,14 +110,17 @@ export function renderRaidUI(
   request: (event: string, data?: unknown) => Promise<unknown>,
   loadProgress?: () => Promise<RaidProgress>,
   journey?: Journey,
+  arena?: ArenaLoad,
 ) {
   const r = state.raid!;
   document.body.classList.toggle(
     "raid-downed",
     state.phase === "playing" && me.hp <= 0,
   );
-  if (state.phase !== "playing")
-    document.getElementById("spectate")?.setAttribute("hidden", "");
+  if (state.phase !== "playing") {
+    const banner = document.getElementById("spectate");
+    if (banner) setHudHidden(banner, true);
+  }
   let hud = document.getElementById("raid-hud");
   if (!hud) {
     hud = document.createElement("div");
@@ -129,6 +132,7 @@ export function renderRaidUI(
   // the boss only.
   raidControls(state, me, request);
   paintRaidHud(hud, raidHudView(state, me));
+  paintRaidParty(state, me);
   const overlay = document.getElementById("arena-overlay")!;
   // Fetch saved progress once per result: the caller refreshes frame stars
   // and turns over newly earned reward cards from it.
@@ -156,14 +160,14 @@ export function renderRaidUI(
   }
 
   if (state.phase === "playing") {
+    overlay.classList.remove("is-rites");
+    document.body.classList.remove("raid-rites-open");
+    overlay.classList.remove("is-countdown", "is-sheet");
     setOverlayMarkup(overlay, "");
     overlay.style.pointerEvents = "none";
     const banner = document.getElementById("spectate")!;
-    banner.hidden = me.hp > 0;
-    if (me.hp <= 0) {
-      const markup = downedCard(state, me.id);
-      if (banner.innerHTML !== markup) banner.innerHTML = markup;
-    }
+    setHudHidden(banner, me.hp > 0);
+    if (me.hp <= 0) setHudMarkup(banner, downedCard(state, me.id));
     return;
   }
   overlay.style.pointerEvents = "auto";
@@ -171,25 +175,17 @@ export function renderRaidUI(
     body = "",
     actions = "";
   // A Spire climb: its own briefing, blessing cards and results.
-  const spire = r.spire ? spireOverlay(state, me) : undefined;
+  const spire = r.spire ? spireOverlay(state, me, arena) : undefined;
   const kicker = spire?.kicker ?? "Boss raid · co-op";
   if (spire) ({ title, body, actions } = spire);
   else if (state.phase === "briefing") {
     title = `${RAID_TRAITS[r.trait].name} ${raidBossName(r)}`;
     const waiting = state.instructionsReady.includes(me.id);
     body = `<div class="rc-body" tabindex="0" role="region" aria-label="Raid instructions">${raidBriefingGuide(r.boss, me.character, r.partySize === 1)}<details class="rc-extra" id="raid-briefing-extra"><summary>Your fighter, team &amp; modifiers</summary><p><b>${escape(RAID_TRAITS[r.trait].name)}</b> · ${escape(RAID_TRAITS[r.trait].text)}</p>${perkLines(state, me.id)}${r.partySize > 1 ? `<p class="raid-signals">Team signals: ${(Object.keys(RAID_PINGS) as RaidPingKind[]).map((k) => `<b>${RAID_PINGS[k].key}</b> ${raidPingLabel(k, r.boss)}`).join(" · ")} (or use the on-screen buttons)</p>` : ""}</details></div>`;
-    actions = `<p class="ui-note rc-meta">Three phases · one shared fight · ${r.partySize === 1 ? (soloRevives(r.boss, r.variant) ? "Solo · one self-revive" : "Solo") : "Team · stand beside fallen allies to revive"}</p>${r.partySize === 1 && !soloRevives(r.boss, r.variant) ? `<p class="raid-solo-warning" role="note">${SOLO_NO_REVIVE}</p>` : ""}${uiActions(uiButton(waiting ? "Waiting for the team…" : "I’m ready", { kind: "primary", icon: waiting ? undefined : "battle", disabled: waiting, attrs: { id: "raid-instructions", "aria-label": waiting ? "Waiting for the team" : "I’m ready — start raid" } }))}`;
-  } else if (state.phase === "intermission") {
-    // Rites are chosen once, before the fight (RAID_RITE_PICKS each).
-    const picked = Math.min(RAID_RITE_PICKS, (r.rites[me.id] ?? []).length);
-    title = `Choose ${RAID_RITE_PICKS} rites · ${picked}/${RAID_RITE_PICKS}`;
-    body = `<p class="raid-phase-objective">${raidChapters(r.boss, r.variant)[r.phase - 1].detail}</p><details class="raid-team-summary"><summary>Team rites</summary><div class="raid-team-builds" aria-label="Team rites"></div></details>`;
-    const offers = r.offers[me.id] ?? [];
-    const mine = r.rites[me.id] ?? [];
-    const order = riteDisplayOrder(offers, mine);
-    actions = `<div class="raid-rite-intro">${offers.length ? "<span>Grow stronger each chapter</span>" : '<span class="raid-rite-locked">Rites locked in · waiting for the team</span>'}<span class="raid-choice-timer" role="timer" aria-label="Time left to choose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg><span>Choose in</span><strong>${LIVE_SECONDS}</strong></span>${raidRiteDetails(order)}</div><div class="raid-rite-options">${raidRiteChoices(order, mine, !offers.length)}</div>`;
+    actions = `<p class="ui-note rc-meta">Three phases · one shared fight · ${r.partySize === 1 ? (soloRevives(r.boss, r.variant) ? "Solo · one self-revive" : "Solo") : "Team · stand beside fallen allies to revive"}</p>${r.partySize === 1 && !soloRevives(r.boss, r.variant) ? `<p class="raid-solo-warning" role="note">${SOLO_NO_REVIVE}</p>` : ""}${uiActions(readyButton(waiting, arena, "I’m ready", "I’m ready — start raid"))}`;
   } else if (state.phase === "countdown") {
-    body = escape(raidChapters(r.boss, r.variant)[r.phase - 1].objective);
+    title = LIVE_COUNTDOWN;
+    body = `<p>${raidChapters(r.boss, r.variant)[r.phase - 1].objective}</p>`;
   } else if (state.phase === "paused") {
     title = "A teammate disconnected";
     body = "<p>The raid is paused while they reconnect.</p>";
@@ -259,7 +255,7 @@ export function renderRaidUI(
       state.activityEligible?.includes(me.id) ?? true,
     );
   const previousCard = overlay.querySelector<HTMLElement>(
-    ".raid-overlay, .rc-card",
+    ".raid-overlay, .rc-card, .rites-screen",
   );
   const guideExpanded =
     overlay.querySelector<HTMLDetailsElement>("#raid-briefing-extra")?.open ??
@@ -267,6 +263,7 @@ export function renderRaidUI(
   const previousScroller =
     overlay.querySelector<HTMLElement>(".rc-body") ??
     overlay.querySelector<HTMLElement>(".panel-scroll") ??
+    overlay.querySelector<HTMLElement>(".rites-screen > .raid-rite-options") ??
     previousCard;
   const scrollTop =
     overlay.dataset.raidPhase === state.phase
@@ -275,26 +272,44 @@ export function renderRaidUI(
   const active = document.activeElement;
   const focusId = active && previousCard?.contains(active) ? active.id : "";
   // The briefing and the results use the hub's shared panel, tags and
-  // buttons (UI remodel step 5); the rites and pause keep the match's own
-  // card. The countdown is every mode's (overlay.ts countdownCard).
+  // buttons (UI remodel step 5); the rites, countdown and pause keep the
+  // match's own card.
   const shared = state.phase === "briefing" || state.phase === "finished";
+  // The rites take the whole screen, as the countdown does
+  // (screens/raid-rites.css); so do the Spire's blessings (spire-ui.ts).
+  const rites =
+    state.phase === "intermission" && (!spire || spire.screen !== undefined);
+  overlay.classList.toggle("is-rites", rites);
+  // The countdown (3, 2, 1) is the PvP one, raids and the Spire alike: the
+  // whole screen, one big number, no card (style.css, .is-countdown). Marked
+  // with the markup, in the same step (main.ts says why).
+  overlay.classList.toggle("is-countdown", state.phase === "countdown");
+  // The briefing ("I'm ready") and the results take the whole screen in the
+  // PvP Reveal's style, raids and the Spire alike (match-sheet.css): every
+  // mode opens and ends the same way (owner, 22 Nov 2026).
+  overlay.classList.toggle("is-sheet", shared);
+  overlay.classList.remove("is-break"); // (PvP's, main.ts)
+  document.body.classList.toggle("raid-rites-open", rites);
   const replaced = setOverlayMarkup(
     overlay,
-    state.phase === "countdown"
-      ? countdownCard(escape(kicker), body)
+    rites
+      ? (spire?.screen ?? ritesScreen(state, me, kicker))
       : shared
-        ? `<div class="ui rc-card ${state.phase === "finished" ? "is-results" : "is-briefing"}" role="dialog" aria-label="${escape(title)}"><header class="rc-head"><span class="ui-kicker">${escape(kicker)}</span><h2 class="ui-title">${title}</h2></header>${state.phase === "finished" ? `<div class="rc-body panel-scroll" tabindex="0" role="region" aria-label="Raid details">${body}</div>` : body}<footer class="rc-foot">${actions}</footer></div>`
-        : `<div class="overlay-card raid-overlay${state.phase === "intermission" ? " raid-draft action-overlay" : ""}"><span class="eyebrow">${escape(kicker)}</span><h2>${title}</h2>${actions ? `<div class="panel-scroll" tabindex="0" role="region" aria-label="Raid details">${body}</div><div class="panel-actions">${actions}</div>` : body}</div>`,
+        ? `<div class="ui rc-card ${state.phase === "finished" ? `is-results ${r.result === "victory" ? "is-victory" : "is-defeat"}` : "is-briefing"}" role="dialog" aria-label="${escape(title)}"><header class="rc-head"><span class="ui-kicker">${escape(kicker)}</span><h2 class="ui-title">${title}</h2></header>${state.phase === "finished" ? `<div class="rc-body panel-scroll" tabindex="0" role="region" aria-label="Raid details">${body}</div>` : body}<footer class="rc-foot">${actions}</footer></div>`
+        : `<div class="overlay-card raid-overlay${state.phase === "intermission" ? " raid-draft action-overlay" : state.phase === "countdown" ? " countdown-card" : ""}"><span class="eyebrow">${escape(kicker)}</span><h2>${title}</h2>${actions ? `<div class="panel-scroll" tabindex="0" role="region" aria-label="Raid details">${body}</div><div class="panel-actions">${actions}</div>` : body}</div>`,
     undefined,
     // Picking a rite redraws the same panel: it doesn't pop in again.
     `raid:${state.phase}`,
   );
   overlay.dataset.raidPhase = state.phase;
-  const card = overlay.querySelector<HTMLElement>(".raid-overlay, .rc-card");
+  const card = overlay.querySelector<HTMLElement>(
+    ".raid-overlay, .rc-card, .rites-screen",
+  );
   // Leave native touch scrolling alone while snapshots keep the same DOM.
   const scroller =
     overlay.querySelector<HTMLElement>(".rc-body") ??
     overlay.querySelector<HTMLElement>(".panel-scroll") ??
+    overlay.querySelector<HTMLElement>(".rites-screen > .raid-rite-options") ??
     card;
   if (replaced && guideExpanded) {
     const extra = overlay.querySelector<HTMLDetailsElement>(
@@ -322,6 +337,7 @@ export function renderRaidUI(
     );
   fillLiveSeconds(overlay, state.remaining);
   if (state.phase === "countdown") fillLiveCountdown(overlay, state.remaining);
+  if (rites) fillLiveNumber(overlay, state.remaining);
   overlay
     .querySelector(".raid-choice-timer")
     ?.classList.toggle("is-urgent", state.remaining <= 5);
@@ -336,6 +352,40 @@ export function renderRaidUI(
   if (retry) retry.onclick = () => void request("rematch");
   const lobby = overlay.querySelector<HTMLButtonElement>("#raid-lobby");
   if (lobby) lobby.onclick = () => void request("lobby");
+}
+/**
+ * Watching a raid: the boss's bar and cue, and every raider's health in the
+ * party list, as a raider sees them but for no one in particular (cues name
+ * whoever is targeted instead of saying "you"). The overlays between fights
+ * are the watcher's own (main.ts, renderWatchOverlay).
+ */
+export function renderRaidWatchHud(state: Snapshot) {
+  const nobody = { id: "" } as Fighter;
+  let hud = document.getElementById("raid-hud");
+  if (!hud) {
+    hud = document.createElement("div");
+    hud.id = "raid-hud";
+    document.getElementById("battle")!.prepend(hud);
+  }
+  paintRaidHud(hud, raidHudView(state, nobody));
+  paintRaidParty(state, nobody);
+}
+/**
+ * The rites choice over the whole screen (screens/raid-rites.css): the
+ * title with a pip per pick, the seconds as one big number, six rite tiles,
+ * and the rite details and the team's rites as links under them.
+ */
+function ritesScreen(state: Snapshot, me: Fighter, kicker: string) {
+  const r = state.raid!;
+  const offers = r.offers[me.id] ?? [];
+  const mine = r.rites[me.id] ?? [];
+  const order = riteDisplayOrder(offers, mine);
+  const picked = Math.min(RAID_RITE_PICKS, mine.length);
+  const pips = Array.from(
+    { length: RAID_RITE_PICKS },
+    (_, i) => `<i${i < picked ? ' class="on"' : ""}></i>`,
+  ).join("");
+  return `<div class="rites-screen" role="dialog" aria-label="Choose ${RAID_RITE_PICKS} rites, ${picked} of ${RAID_RITE_PICKS} chosen"><header class="rites-head"><div class="rites-lead"><span class="rites-kicker">${escape(kicker)} · Chapter ${r.phase}</span><h2 class="rites-title">Choose ${RAID_RITE_PICKS} rites <span class="rites-pips" aria-hidden="true">${pips}</span></h2><p class="rites-objective">${raidChapters(r.boss, r.variant)[r.phase - 1].detail}</p></div><span class="raid-choice-timer" role="timer" aria-label="Time left to choose">${LIVE_NUMBER}</span></header><div class="raid-rite-options">${raidRiteChoices(order, mine, !offers.length)}</div><footer class="rites-foot">${offers.length ? "" : '<span class="raid-rite-locked">Rites locked in · waiting for the team</span>'}${raidRiteDetails(order)}<details class="raid-team-summary"><summary>Team rites</summary><div class="raid-team-builds" aria-label="Team rites"></div></details></footer></div>`;
 }
 /** A small magma vent on the floor (a triangle in a dark notch). */
 function drawVent(
@@ -354,6 +404,7 @@ function drawVent(
   );
   g.fillStyle(color, 1).fillTriangle(x - 7, y + 6, x, y - 8, x + 7, y + 6);
 }
+export type DrawnAt = (id: string) => { x: number; y: number } | undefined;
 export function drawRaidArena(
   g: Phaser.GameObjects.Graphics,
   state: Snapshot,
@@ -365,7 +416,15 @@ export function drawRaidArena(
    * lanterns, braziers, mirrors) and for bosses with several bodies. On the
    * Coliseum court (`court`) broken pillars are rubble drawn by the scene.
    */
-  layers?: { boss: Phaser.GameObjects.Graphics; at: LayerAt; court: boolean },
+  layers?: {
+    boss: Phaser.GameObjects.Graphics;
+    at: LayerAt;
+    court: boolean;
+    /** Where each raider is drawn (your own predicted, the others
+     * smoothed): what follows a raider (curses) goes there, not to the
+     * server's last position, which runs ~60 px behind you as you move. */
+    drawnAt?: DrawnAt;
+  },
 ) {
   const r = state.raid;
   if (!r) return;
@@ -392,7 +451,7 @@ export function drawRaidArena(
   if (tide) drawLagoon(g, state, reduced, clock);
   // (The Spire's wave and elite floors in Inkpurr's zone: its court, no yard.)
   if (gloom && (!r.spire || r.spire.kind === "boss"))
-    drawLanternYard(g, state, reduced, at, clock);
+    drawLanternYard(g, state, reduced, at, clock, layers?.drawnAt);
   for (const w of r.warnings) {
     if (r.boss === "storm-twins" && drawStormWarning(g, state, w)) continue;
     if (r.boss === "emberwing" && drawEmberwingWarning(g, state, w)) continue;

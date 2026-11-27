@@ -4,6 +4,7 @@ import {
   isIOSWebApp,
   largeIPad,
   memoryConstrained,
+  memoryShortInBattle,
   previewDensity,
   rendererDensity,
   sceneDensity,
@@ -39,6 +40,16 @@ it("gives memory back eagerly on iOS and on phones with little memory", () => {
   expect(memoryConstrained(false, undefined)).toBe(false);
 });
 
+it("gives the hub's memory back for a battle on 4 GB phones too", () => {
+  expect(memoryShortInBattle(true, undefined)).toBe(true);
+  expect(memoryShortInBattle(false, 2)).toBe(true);
+  expect(memoryShortInBattle(false, 4)).toBe(true);
+  expect(memoryShortInBattle(false, 8)).toBe(false);
+  expect(memoryShortInBattle(false, 16)).toBe(false);
+  expect(memoryShortInBattle(false, undefined)).toBe(false);
+  expect(memoryShortInBattle(false, 0)).toBe(false);
+});
+
 it("keeps the Plaza canvas within the pixel budget on iOS", () => {
   // An iPhone draws at most 1.5x, as in battle (fewer pixels each frame).
   expect(sceneDensity(844, 390, 3, true)).toBe(1.5);
@@ -56,6 +67,17 @@ it("keeps the Plaza canvas within the pixel budget on iOS", () => {
   expect(sceneDensity(4000, 3000, 2, true)).toBe(1);
   expect(sceneDensity(800, 600, NaN, true)).toBe(1);
   expect(sceneDensity(800, 600, 1, false)).toBe(1);
+});
+
+it("lets the Plaza ask for 2x on an iPhone, within the same budget", () => {
+  expect(sceneDensity(844, 390, 3, true, false, true)).toBe(2);
+  expect(sceneDensity(932, 430, 3, true, false, true)).toBe(2);
+  expect(sceneDensity(844, 390, 1, true, false, true)).toBe(1);
+  // An iPad-sized window still keeps to the budget.
+  const d = sceneDensity(1194, 834, 2, true, false, true);
+  expect(Math.round(1194 * d) * Math.round(834 * d)).toBeLessThanOrEqual(
+    2_002_000,
+  );
 });
 
 it("draws sharp on large iPads (4 GB or more), as on a desktop", () => {

@@ -1,8 +1,11 @@
 // The Plaza server, in the page: the real PlazaWorld with the player in it.
 import { PlazaWorld } from "../../../apps/server/src/plaza";
+import { positionPlazaVisitor } from "./plaza-position";
 import {
   PLAZA,
   PLAZA_EMOTES,
+  PLAZA_FISH,
+  PLAZA_FISHING,
   PLAZA_QUESTS,
 } from "../../../packages/shared/src/plaza";
 import { CHAT_LIMITS, quickText } from "../../../packages/shared/src/chat";
@@ -15,8 +18,7 @@ const placeLines: unknown[] = [];
 w.__plazaWorld = world;
 /** Move the player (tests). */
 w.__plazaPosition = (x: number, y: number) => {
-  const b = world.bodyOf(ME);
-  if (b) Object.assign(b, { x, y });
+  positionPlazaVisitor(world, ME, x, y);
 };
 /** Today's quests and TOP DASH as the database would send them. */
 w.__plazaProgress = {
@@ -28,15 +30,50 @@ w.__plazaProgress = {
     ]),
   ),
   orbsToday: 0,
+  gifts: 3,
   bestLapMs: 7420,
   board: [
     { name: "Nova", ms: 6120 },
     { name: "tester", ms: 7420, me: true },
   ],
 };
-/** Treats left today (PLAZA.treatsDaily a day): treats to throw. */
-w.__plazaTreats = 3;
-w.__plazaTreatsThrown = [] as string[];
+/** Tests: how long a new cast waits before its fish bites (ms), instead of
+ * the server's random 2-6 s; unset keeps the server's. */
+w.__plazaBiteAfter = 0;
+/** Tests: a fish that has bitten waits for the tap instead of swimming off
+ * after the window (off: the server's window). */
+w.__plazaBiteHold = false;
+/** Tests: the fish on the line bites at the next step. */
+w.__plazaBiteNow = () => {
+  const line = (world as any).visitors.get(ME)?.line;
+  if (line) line.biteAt = 0;
+};
+/** Gift boxes left today (the database's count, PLAZA_GIFT), the boxes
+ * tossed so far, and tests: the next box is golden. */
+w.__plazaGifts = 3;
+w.__plazaGiftsThrown = [] as boolean[];
+w.__plazaGolden = false;
+/** Tests: a gift box tossed by someone else (profile `by`, standing at
+ * x0, y0), as the server would send it. */
+w.__plazaOtherGift = (x0: number, y0: number, golden = false) => {
+  const other = world.join("gift-other", "acct-gift-other", {
+    name: "Nova",
+    title: null,
+    titleColor: null,
+    level: 9,
+    character: "voltkit",
+    skin: null,
+  });
+  Object.assign(world.bodyOf("gift-other")!, {
+    x: x0,
+    y: y0,
+    lastX: 1,
+    lastY: 0,
+  });
+  const t = world.throwGift("gift-other", golden, Date.now());
+  if (t) w.__sock?.fire("plaza-gift", t.gift);
+  return other.profile.id;
+};
 const handle = (ev: string, data: any) => {
   if (ev === "plaza-join") {
     const me = world.join(ME, "acct-me", {
@@ -47,24 +84,26 @@ const handle = (ev: string, data: any) => {
       character: data.character,
       skin: null,
     });
-    // The server sends your treat count after the join.
-    setTimeout(() => w.__sock?.fire("plaza-treats", { n: w.__plazaTreats }), 0);
     return { ok: true, plaza: me.plaza, me: me.profile.id };
   }
-  if (ev === "plaza-treat") {
-    if (!world.treatReady(ME, Date.now()))
-      return { ok: false, error: "Wait a moment between treats." };
-    if (w.__plazaTreats < 1)
+  if (ev === "plaza-gift") {
+    if (!world.giftReady(ME, Date.now()))
+      return { ok: false, error: "Wait a moment between gift boxes." };
+    if (w.__plazaGifts < 1) {
+      world.giftRefused(ME);
       return {
         ok: false,
-        error: "No treats left today. More tomorrow!",
-        treats: 0,
+        error:
+          "No gift boxes left today. Plaza quests and rare fish earn more!",
+        gifts: 0,
       };
-    w.__plazaTreats--;
-    w.__plazaTreatsThrown.push("cupcake");
-    const thrown = world.treat(ME, "cupcake");
-    setTimeout(() => w.__sock?.fire("plaza-treat", thrown), 0);
-    return { ok: true, treat: "cupcake", treats: w.__plazaTreats };
+    }
+    w.__plazaGifts--;
+    const golden = !!w.__plazaGolden;
+    w.__plazaGiftsThrown.push(golden);
+    const t = world.throwGift(ME, golden, Date.now());
+    if (t) setTimeout(() => w.__sock?.fire("plaza-gift", t.gift), 0);
+    return { ok: true, golden, gifts: w.__plazaGifts };
   }
   if (ev === "plaza-look") {
     world.updateProfile(ME, { character: data.character });
@@ -72,6 +111,20 @@ const handle = (ev: string, data: any) => {
   }
   if (ev === "plaza-leave") {
     world.leave(ME);
+    return { ok: true };
+  }
+  // Pair emotes (server.ts): a request goes to the other player's socket,
+  // kept here for tests; a yes starts it for both.
+  if (ev === "plaza-pair-ask") {
+    const r = world.pairAsk(ME, data?.to, data?.kind, Date.now());
+    if (!r.ok) return r;
+    (w.__plazaPairAsks ??= []).push({ to: r.to, ...r.ask });
+    return { ok: true };
+  }
+  if (ev === "plaza-pair-answer") {
+    const r = world.pairAnswer(ME, data?.from, data?.yes === true, Date.now());
+    if (!r.ok) return r;
+    if (!r.declined) setTimeout(() => w.__sock?.fire("plaza-pair", r.start));
     return { ok: true };
   }
   if (ev === "plaza-emote")
@@ -98,6 +151,38 @@ const handle = (ev: string, data: any) => {
   }
   // The Nearby lines the server keeps (the drawer reads them on opening).
   if (ev === "chat-history") return { ok: true, lines: [...placeLines] };
+  // Fishing: the real PlazaWorld decides; a catch is recorded here as the
+  // database would (arena_plaza_record), and the progress sent back.
+  if (ev === "plaza-fish") {
+    if (data?.act === "cast") {
+      const r = world.cast(ME, Date.now(), data.tz);
+      // Tests: a fish that bites only when told (__plazaBiteNow), so a slow
+      // machine never sees it bite and swim off between two looks.
+      const line = (world as any).visitors.get(ME)?.line;
+      if (r.ok && line && w.__plazaBiteAfter)
+        line.biteAt = Date.now() + w.__plazaBiteAfter;
+      return r;
+    }
+    if (data?.act === "stop") return { ok: world.stopFishing(ME, Date.now()) };
+    if (data?.act === "reel") return world.reel(ME, Date.now());
+    const r = world.land(ME, Date.now(), data?.moves);
+    if (r.ok) {
+      const p = w.__plazaProgress;
+      p.fishBook = { ...(p.fishBook ?? {}) };
+      if ((p.fishToday ?? 0) < PLAZA_FISHING.perDay) {
+        p.fishToday = (p.fishToday ?? 0) + 1;
+        p.fishBook[r.fish] = (p.fishBook[r.fish] ?? 0) + 1;
+        const q = p.quests.fish;
+        const max = PLAZA_QUESTS.find((x) => x.id === "fish")!.max;
+        q.n = Math.min(max, q.n + 1);
+        q.done = q.n >= max;
+      } else p.fishBook[r.fish] ??= 0;
+      // The whole book: the title (arena_plaza_record).
+      p.fishTitle = PLAZA_FISH.every((f) => p.fishBook[f.id] !== undefined);
+      setTimeout(() => w.__sock?.fire("plaza-progress", structuredClone(p)));
+    }
+    return r;
+  }
   if (ev === "plaza-act") {
     if (data.spot === "cafe") {
       if (!world.at(ME, "cafe"))
@@ -121,13 +206,34 @@ w.__emit = (ev: string, data: any) => {
   if (ev === "plaza-input") world.input(ME, data.dx, data.dy, timing);
   else if (ev === "plaza-jump") world.jump(ME, timing);
   else if (ev === "plaza-dash") world.dash(ME, data?.dx, data?.dy, timing);
+  else if (ev === "plaza-trip") world.trip(ME, data?.left, timing);
+  else if (ev === "plaza-fish" && data?.act === "stop")
+    world.stopFishing(ME, Date.now());
   else before.emit?.(ev, data);
 };
+/** What server.ts sends for a Plaza event (rewards are the database's). */
+function fire(e: ReturnType<PlazaWorld["step"]>[number]) {
+  if (e.type === "news") w.__sock?.fire("plaza-news", e.news);
+  else if (e.type === "orbs") w.__sock?.fire("plaza-orbs", e.orbs);
+  else if (e.type === "fish") w.__sock?.fire("plaza-fish", e.note);
+  else if (e.type === "giftGone") w.__sock?.fire("plaza-gift-gone", e.gone);
+  // A gift orb caught: the database counts it toward the orbs quest.
+  else if (e.type === "orb")
+    w.__plazaOrbRefs = [...(w.__plazaOrbRefs ?? []), e.ref];
+}
 let ticks = 0;
 setInterval(() => {
-  for (const e of world.step(1 / PLAZA.tick, Date.now()))
-    if (e.type === "news") w.__sock?.fire("plaza-news", e.news);
-    else if (e.type === "orbs") w.__sock?.fire("plaza-orbs", e.orbs);
+  // Tests: a bite that waits for the tap (__plazaBiteHold), so a slow
+  // machine's tap still lands inside the window.
+  const line = (world as any).visitors.get(ME)?.line;
+  if (
+    w.__plazaBiteHold &&
+    line &&
+    line.bitAt !== null &&
+    line.hookedAt === null
+  )
+    line.bitAt = Date.now();
+  for (const e of world.step(1 / PLAZA.tick, Date.now())) fire(e);
   if (++ticks % 2) return;
   const v = w.__sock && world.view(ME);
   if (!v) return;

@@ -8,6 +8,7 @@ import {
   type SnapshotMeta,
 } from "./snapshot-meta.js";
 export * from "./snapshot-meta.js";
+export * from "./snapshot-delta.js";
 import { inMeters } from "./units.js";
 export * from "./units.js";
 export * from "./pick-rules.js";
@@ -19,11 +20,27 @@ export * from "./avatars.js";
  */
 export const QUICK_MATCH_FALLBACK_MS = 20_000;
 export const QUICK_MATCH_OFFER_MS = 6_000;
+/**
+ * 2v2 and Free-for-all: how long a search waits for players before bots
+ * take the empty seats (the client asks then; a player can ask sooner).
+ */
+export const QUICK_FILL_MS = 15_000;
+/** The modes a lone player can search, with bots for the empty seats. */
+export const FILL_MODES = ["teams", "ffa"] as const;
+export type FillMode = (typeof FILL_MODES)[number];
 export const RULES = {
   width: 1600,
   height: 900,
   tick: 30,
-  snapshot: 15,
+  /**
+   * Snapshots a second: one every tick (was 15, every second tick, until
+   * 23 Nov 2026). Hits, blasts and opponents reach you about 17 ms sooner
+   * on average, and opponents are drawn 16-24 ms closer to the present on
+   * Wi-Fi and 4G, for about twice the download (~150 KB/s per player in a
+   * battle) and ~15-25% more server CPU: docs/network-performance.md,
+   * section 17.
+   */
+  snapshot: 30,
   radius: 24,
   dashSpeed: 850,
   acceleration: 18,
@@ -601,8 +618,25 @@ export interface Ability {
   chainWindow?: number;
   /** Surf: the cooldown left after a dash that went through an enemy (s). */
   surf?: { refund: number };
-  /** Wave: the longest an enemy is carried along (s). */
-  wave?: { carry: number };
+  /**
+   * Wave: the longest an enemy is carried along (s); `second`: a second wall
+   * rolls out this many seconds after the first (one jump can't clear both).
+   */
+  wave?: { carry: number; second?: number };
+  /**
+   * Cone: `grow` px of reach gained over the breath (stepping back is not
+   * enough); `freeze`: an enemy hit by this many ticks in a row is frozen for
+   * `freezeFor` seconds (once a breath).
+   */
+  cone?: { grow?: number; freeze?: number; freezeFor?: number };
+  /** Shrapnel: blades = `count` + `perPlate` per plate (instead of count each). */
+  perPlate?: number;
+  /** Shrapnel: how many plates a cast spends (all of them when unset). */
+  platesSpent?: number;
+  /** Cage: the ring closes in to `shrinkTo` px over its duration. */
+  cage?: { shrinkTo: number };
+  /** Rest: when it ends, a shockwave round the fighter (damage, radius, knockback). */
+  burst?: { damage: number; radius: number; knockback: number };
   /**
    * Projectile: it flies through enemies, zapping the nearest one within
    * `radius` in sight for `damage` every `tick` seconds, and explodes at the
@@ -717,7 +751,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A sugar-glider kit that stores static in its antennae. Glides over trouble and stays deadly at range.",
     color: 0xffd65b,
-    health: 157,
+    health: 135,
     speed: 270,
     basic: basic(
       "spark-dart",
@@ -726,7 +760,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       6,
       270,
       "A fast electric projectile.",
-      { speed: 860, range: 680, radius: 9 },
+      { speed: 930, range: 680, radius: 9 },
     ),
     skills: [
       ability(
@@ -736,21 +770,23 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         20,
         8,
         "A powerful electric bolt toward your aim. Briefly paralyzes.",
-        { speed: 1050, radius: 12, status: "paralysis", statusDuration: 0.6 },
+        { speed: 1500, radius: 12, status: "paralysis", statusDuration: 0.6 },
       ),
       ability(
         "ball-lightning",
         "Ball Lightning",
         "projectile",
-        12,
+        8,
         10,
-        "A slow electric orb that flies through enemies, zapping the nearest one within 150 px for 3 every 0.3 seconds, then bursts at the end of its flight for 12. 30% more damage to enemies already slowed, stunned or otherwise hindered.",
+        "A slow electric orb that flies through enemies, zapping the nearest one within 150 px for 3 every 0.3 seconds, then bursts at the end of its flight for 8. Every zap and the burst slow for a moment, and it deals 30% more to enemies already slowed, stunned or otherwise hindered: stay near it and each zap hurts more.",
         {
           speed: 360,
           range: 640,
           radius: 22,
           explosion: 100,
           bonusVsStatus: 1.3,
+          status: "slow",
+          statusDuration: 0.3,
           aura: { radius: 150, tick: 0.3, damage: 3 },
         },
       ),
@@ -773,20 +809,20 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "thunderstorm",
         "Thunderstorm",
         "storm",
-        16,
+        14,
         20,
-        "Call a storm over the whole court: three bolts fall on the enemy nearest your aim, wherever it is, 0.8 seconds apart. Each marks the ground where it is heading and strikes 0.55 seconds later: 16 damage and a short paralysis to anyone in its 95 px. Change direction to dodge them.",
+        "Call a storm over the whole court: four bolts fall on the enemy nearest your aim, wherever it is, 0.65 seconds apart. Each marks the ground where it is heading and strikes 0.55 seconds later: 14 damage and 0.8 seconds of paralysis to anyone in its 120 px, so a bolt that lands holds them for the next.",
         {
           cast: 0.4,
-          count: 3,
-          tickInterval: 0.8,
+          count: 4,
+          tickInterval: 0.65,
           tickDelay: 0.55,
-          explosion: 95,
-          duration: 2.4,
+          explosion: 120,
+          duration: 2.6,
           range: 0,
           knockback: 0,
           status: "paralysis",
-          statusDuration: 0.5,
+          statusDuration: 0.8,
         },
       ),
     ],
@@ -815,18 +851,19 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "crest-flare",
         "Crest Flare",
         "cone",
-        6,
+        3,
         8,
-        "The flame crest flares into a cone of fire for 1.2 seconds. Burns.",
+        "The flame crest flares into a short, fierce cone of fire for half a second: 3 damage every 0.1 seconds, reaching from 230 px out to 300 px as it burns. Burns.",
         {
           range: 230,
           arc: 0.75,
-          duration: 1.2,
+          duration: 0.5,
           tickDelay: 0.1,
-          tickInterval: 0.2,
+          tickInterval: 0.1,
           knockback: 0,
           status: "burn",
           statusDuration: 1.5,
+          cone: { grow: 70 },
         },
       ),
       ability(
@@ -891,7 +928,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "An axolotl duelist in a river sash. The quickest fighter; pokes, slips away, regrows, then finishes.",
     color: 0x4fd6e6,
-    health: 146,
+    health: 136,
     speed: 285,
     basic: basic(
       "tide-needle",
@@ -946,9 +983,9 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "riptide-wave",
         "Riptide Wave",
         "wave",
-        24,
+        18,
         20,
-        "After a short charge, a wall of water 380 px wide rolls from Tidefin along your aim across the whole court, over any wall. Enemies it reaches take 24 and are carried along for up to half a second; carried into a wall, they take 12 more and are stunned. Jump over it.",
+        "After a short charge, two walls of water 380 px wide roll from Tidefin along your aim, 0.9 seconds apart, across the whole court and over any wall. Each wall that reaches an enemy deals 18 and carries it along for up to half a second; carried into a wall, it takes 9 more and is stunned. One jump can't clear both.",
         {
           cast: 0.35,
           speed: 650,
@@ -959,7 +996,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
           wallSlam: 0.5,
           status: "stun",
           statusDuration: 0.6,
-          wave: { carry: 0.5 },
+          wave: { carry: 0.5, second: 0.9 },
         },
       ),
     ],
@@ -1021,10 +1058,16 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "crystal-cage",
         "Crystal Cage",
         "cage",
-        10,
         20,
-        "After a short charge, crystal spires rise in a 180 px ring round Auralynx for 2.5 seconds: nobody can cross it and no shot gets through. Enemies caught inside take 10.",
-        { radius: 180, cast: 0.4, duration: 2.5, knockback: 0 },
+        20,
+        "After a short charge, crystal spires rise in a 180 px ring round Auralynx for 2.5 seconds: nobody can cross it and no shot gets through. Enemies caught inside take 20, and the ring closes in to 60 px, squeezing them toward Auralynx.",
+        {
+          radius: 180,
+          cast: 0.4,
+          duration: 2.5,
+          knockback: 0,
+          cage: { shrinkTo: 60 },
+        },
       ),
     ],
   },
@@ -1063,7 +1106,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "gaze",
         8,
         12,
-        "Flash the big eyespots on your wings: enemies within 220 px take 8, and those looking at Lumoth (aiming at it) are stunned for 0.5 seconds. Look away to dodge it.",
+        "Flash the big eyespots on your wings: enemies within 220 px take 8, and those looking at Lumoth (aiming at it) are stunned for 0.5 seconds.",
         {
           radius: 220,
           gaze: 0.5,
@@ -1087,7 +1130,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "lure",
         24,
         20,
-        "Shoot a flare up to 650 px away. It hangs like a little sun for 2 seconds and draws every enemy within 200 px toward it (190 px a second), then bursts: 24 damage and stunned for 0.6 seconds within 150 px. Dash out of the pull.",
+        "Shoot a flare up to 650 px away. It hangs like a little sun for 2 seconds and draws every enemy within 200 px toward it (190 px a second), then bursts: 24 damage and stunned for 0.6 seconds within 150 px.",
         {
           cast: 0.35,
           range: 650,
@@ -1211,8 +1254,13 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "rest",
         0,
         16,
-        "Pull into your shell for 2.5 seconds: you can't move or act, but take 45% less damage and regrow 30 HP.",
-        { duration: 2.5, heal: 6, status: "shell" },
+        "Pull into your shell for 1.5 seconds: you can't move or act, but take 45% less damage and regrow 21 HP. Then the shell bursts open, shoving away everyone within 140 px.",
+        {
+          duration: 1.5,
+          heal: 7,
+          status: "shell",
+          burst: { damage: 0, radius: 140, knockback: 300 },
+        },
       ),
       ability(
         "mud-mire",
@@ -1236,7 +1284,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "nova",
         36,
         20,
-        "Slam the ground for a large shockwave. Jump to avoid it.",
+        "Slam the ground for a large shockwave.",
         { radius: 230, cast: 0.5, ground: true, knockback: 140 },
       ),
     ],
@@ -1267,7 +1315,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "projectile",
         14,
         8,
-        "Your shadow crawls out and binds the first enemy's shadow: 14 damage and Rooted for 0.4 seconds (it can still attack, but not move or dash). Sidestep it.",
+        "Your shadow crawls out and binds the first enemy's shadow: 14 damage and Rooted for 0.4 seconds (it can still attack, but not move or dash).",
         {
           speed: 900,
           radius: 18,
@@ -1300,7 +1348,9 @@ export const CHARACTERS: Record<CharacterId, Character> = {
           knockback: 0,
           tickDelay: 0.4,
           tickInterval: 1.3,
-          turret: { damage: 4, speed: 640, radius: 10, range: 330 },
+          // 6 a wisp (was 4): Duskveil was the weakest champion at every
+          // bot level (docs/balance-overhaul.md, "Duskveil's lantern").
+          turret: { damage: 6, speed: 640, radius: 10, range: 330 },
         },
       ),
       ability(
@@ -1309,7 +1359,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "hunt",
         5,
         20,
-        "A wraith leaves your lantern and hunts the nearest enemy you can see for 3 seconds, through walls, a little slower than anyone walks. Its touch deals 5 every half second, and reaps an enemy under 20% health: knocked out. Run from it.",
+        "A wraith leaves your lantern and hunts the nearest enemy you can see for 3 seconds, through walls. Its touch deals 5 every half second, and reaps an enemy under 20% health: knocked out.",
         {
           cast: 0.3,
           radius: 50,
@@ -1468,7 +1518,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "zone",
         6,
         12,
-        "Scatter a patch of hot coals for 4 seconds. Burns anyone standing in it. Jump to avoid it.",
+        "Scatter a patch of hot coals for 4 seconds. Burns anyone standing in it.",
         {
           radius: 120,
           range: 600,
@@ -1502,7 +1552,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "creep",
         26,
         20,
-        "A storm of burning chestnuts creeps along your aim, over any wall: five blasts 115 px wide, from 160 px out to 760 px, 0.15 seconds apart. Each is marked 0.6 seconds before it lands: 26 damage, a burn and a shove. Step out of the line.",
+        "A storm of burning chestnuts creeps along your aim, over any wall: five blasts 115 px wide, from 160 px out to 760 px, 0.15 seconds apart. Each is marked 0.6 seconds before it lands: 26 damage, a burn and a shove.",
         {
           cast: 0.3,
           count: 5,
@@ -1581,9 +1631,9 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "cone",
         4,
         12,
-        "Breathe a freezing cone for 1 second. Slows.",
+        "Breathe a freezing cone for 1 second: 4 damage every 0.2 seconds and a slow. An enemy caught by four breaths in a row is frozen solid for half a second.",
         {
-          range: 210,
+          range: 230,
           arc: 0.7,
           duration: 1,
           tickDelay: 0.1,
@@ -1591,6 +1641,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
           knockback: 0,
           status: "slow",
           statusDuration: 0.6,
+          cone: { freeze: 4, freezeFor: 0.5 },
         },
       ),
       ability(
@@ -1703,9 +1754,11 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "Yuzu Toss",
         "projectile",
         14,
-        8,
+        7,
         "Toss a glowing yuzu that bursts on impact; Sunbara soaks up a fifth of the damage it deals as health.",
-        { speed: 650, radius: 16, explosion: 80, drain: 0.2 },
+        // 760 px/s and 7 s (were 650 and 8) since Hard dodges like a good
+        // player: docs/smarter-bots.md, "Second round".
+        { speed: 760, radius: 16, explosion: 80, drain: 0.2 },
       ),
       ability(
         "warm-spring",
@@ -2027,10 +2080,12 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "Scale Shrapnel",
         "shrapnel",
         6,
-        9,
-        "Shed your armour plates as a fan of blades: 3 blades, plus 3 for each plate you have. Every plate is spent and grows back later.",
+        11,
+        "Shed two armour plates as a fan of blades: 6 blades, plus 2 for each plate you have. The plates grow back later.",
         {
-          count: 3,
+          count: 6,
+          perPlate: 2,
+          platesSpent: 2,
           fan: 1.2,
           speed: 760,
           range: 300,
@@ -2101,7 +2156,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "seedling",
         28,
         5,
-        "Plant a seed at the aim. It grows a stage every 1.5 seconds (sprout, bud, bloom); the first enemy to step on it sets it off for 10, 18 or 28 damage and a 0.4, 0.6 or 1 second root. Up to 3 at once; jump over them.",
+        "Plant a seed at the aim. It grows a stage every 1.5 seconds (sprout, bud, bloom); the first enemy to step on it sets it off for 10, 18 or 28 damage and a 0.4, 0.6 or 1 second root. Up to 3 at once.",
         {
           range: 520,
           radius: 70,
@@ -2121,7 +2176,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "timewarp",
         0,
         9,
-        "Slow time in a bubble at the aim for 3 seconds: enemies inside, and their shots, move at a third of their speed. Dashing isn't slowed: dash out of the bubble and you are free at once.",
+        "Slow time in a bubble at the aim for 3 seconds: enemies inside, and their shots, move at a third of their speed.",
         { range: 520, radius: 165, duration: 3, knockback: 0, warp: 0.35 },
       ),
       ability(
@@ -2431,26 +2486,27 @@ for (const combo of Object.values(COMBOS)) combo.text = inMeters(combo.text);
  * the bot fixes (bots pick their own target, Normal no longer flips
  * champions) every factor is within 12% of 1. Retuned for the smarter bots
  * (2v2 focus fire, docs/smarter-bots.md).
+ * Retuned again for the second round of smarter bots (2026-11-22).
  */
 export const TEAM_TUNING: Partial<Record<CharacterId, number>> = {
-  voltkit: 1.07,
-  cindrake: 0.994,
-  tidefin: 1.018,
-  auralynx: 0.88,
-  lumoth: 1.038,
-  mystowl: 0.984,
-  terradon: 0.898,
-  duskveil: 1.06,
-  coilemur: 0.927,
-  pyranda: 0.988,
-  glacelle: 0.972,
-  halcyra: 1.027,
-  sunbara: 1.045,
-  astrabun: 0.982,
-  wombolder: 0.913,
-  shadopus: 1.011,
-  pangrove: 0.904,
-  mossloth: 1.119,
+  voltkit: 1.054,
+  cindrake: 0.974,
+  tidefin: 1.062,
+  auralynx: 0.853,
+  lumoth: 1.062,
+  mystowl: 0.987,
+  terradon: 0.911,
+  duskveil: 1.064,
+  coilemur: 0.936,
+  pyranda: 0.993,
+  glacelle: 0.947,
+  halcyra: 1.053,
+  sunbara: 1.052,
+  astrabun: 0.992,
+  wombolder: 0.902,
+  shadopus: 1.014,
+  pangrove: 0.896,
+  mossloth: 1.01,
 };
 /**
  * Free-for-all tuning, for mode "ffa" only, in the same form as TEAM_TUNING
@@ -2459,26 +2515,27 @@ export const TEAM_TUNING: Partial<Record<CharacterId, number>> = {
  * take about twice the damage per second of ranged ones (as in a duel), which
  * a duel repays with their higher damage but a free-for-all does not. Tuned
  * with scripts/balance/tune-teams.ts --mode ffa on four-player matches.
+ * Retuned again for the second round of smarter bots (2026-11-22).
  */
 export const FFA_TUNING: Partial<Record<CharacterId, number>> = {
-  voltkit: 0.873,
-  cindrake: 1.16,
-  tidefin: 0.869,
-  auralynx: 1.043,
-  lumoth: 0.903,
-  mystowl: 0.828,
-  terradon: 0.956,
-  duskveil: 0.865,
-  coilemur: 1.194,
-  pyranda: 0.818,
-  glacelle: 0.91,
-  halcyra: 0.814,
-  sunbara: 0.88,
-  astrabun: 1.142,
-  wombolder: 1.099,
-  shadopus: 1.131,
-  pangrove: 1.034,
-  mossloth: 0.972,
+  voltkit: 0.9,
+  cindrake: 1.097,
+  tidefin: 0.886,
+  auralynx: 1.02,
+  lumoth: 0.936,
+  mystowl: 0.861,
+  terradon: 0.959,
+  duskveil: 0.898,
+  coilemur: 1.149,
+  pyranda: 0.817,
+  glacelle: 0.915,
+  halcyra: 0.835,
+  sunbara: 0.914,
+  astrabun: 1.113,
+  wombolder: 1.069,
+  shadopus: 1.102,
+  pangrove: 1.011,
+  mossloth: 0.914,
 };
 /**
  * The same for a free-for-all that started with three players, tuned on
@@ -2972,11 +3029,36 @@ export const MUTATOR_RULES = {
   speed: 1.6,
   giants: 1.45,
 };
-/** Round wins needed with these party rules. */
-export function roundsNeeded(mutators: readonly string[] = []) {
-  return mutators.includes("quick")
+/**
+ * A new player's first matches against a bot are short (owner, 26 Nov 2026):
+ * the first is one round, the second is first to two, and from the third on
+ * a match is the usual first to three. Indexed by the matches the account
+ * has finished. Only a solo match against a bot: a match between players
+ * always has its full length, so nobody's rating rides on one round.
+ */
+export const INTRO_ROUNDS: readonly number[] = [1, 2];
+/** Round wins a new player's bot match needs, or undefined for the usual. */
+export function introRounds(matchesFinished: number | undefined) {
+  if (
+    matchesFinished === undefined ||
+    !Number.isInteger(matchesFinished) ||
+    matchesFinished < 0
+  )
+    return undefined;
+  return INTRO_ROUNDS[matchesFinished];
+}
+/**
+ * Round wins needed with these party rules; `intro` is a new player's short
+ * match (Snapshot.introRounds), which only ever shortens one.
+ */
+export function roundsNeeded(
+  mutators: readonly string[] = [],
+  intro?: number | null,
+) {
+  const usual = mutators.includes("quick")
     ? MUTATOR_RULES.quickRounds
     : RULES.roundsToWin;
+  return intro && intro >= 1 ? Math.min(usual, Math.floor(intro)) : usual;
 }
 /**
  * The closing ring: in a round's last minute the safe circle shrinks from the
@@ -3023,6 +3105,8 @@ export interface Zone extends Vec {
 }
 export interface GameEvent extends Vec {
   id: number;
+  /** Server simulation seconds when a hit occurred; older servers omit it. */
+  at?: number;
   raidRadius?: number;
   kind:
     | "raid-impact"
@@ -3110,6 +3194,11 @@ export interface Snapshot {
   matchId?: string | null;
   /** Party rules switched on for this room. */
   mutators?: MutatorId[];
+  /**
+   * A new player's short match against a bot: the round wins it needs (1,
+   * then 2: INTRO_ROUNDS). Absent in every other match.
+   */
+  introRounds?: number;
   /** Crown Hill: seconds each side has held the circle this round. */
   crown?: number[];
   /** Names of friends watching this room. */
@@ -3136,6 +3225,11 @@ export type WireSnapshot = Omit<
   metaRev?: number;
   /** Appearance block, sent when it changes or a socket (re)joins. */
   meta?: SnapshotMeta;
+  /**
+   * The room's count of snapshots, when the server can send deltas
+   * (snapshot-delta.ts): the next delta applies to this one.
+   */
+  n?: number;
 };
 const META_KEY_SET: ReadonlySet<string> = new Set(META_KEYS);
 /** Display-only positions: 0.01 px is far below anything drawn. */
@@ -3253,7 +3347,7 @@ function ownedAbility(s: WireSnapshot, owner: string, id: string): Ability {
  */
 export function unpackSnapshot(s: WireSnapshot, cache?: MetaCache): Snapshot {
   if (s.meta && cache) cache.apply(s.code, s.meta);
-  const { meta: _meta, metaRev: _rev, ...rest } = s;
+  const { meta: _meta, metaRev: _rev, n: _n, ...rest } = s;
   return {
     ...rest,
     players: s.players.map((p) => {
@@ -3283,6 +3377,8 @@ export function unpackSnapshot(s: WireSnapshot, cache?: MetaCache): Snapshot {
 export interface Reply {
   ok: boolean;
   error?: string;
+  /** "match-report": what filing the match returned (as over HTTP). */
+  report?: unknown;
   token?: string;
   id?: string;
   code?: string;
@@ -3290,15 +3386,20 @@ export interface Reply {
   me?: number;
   /** Plaza joins: which Plaza copy (with `me`). */
   plaza?: number;
-  /** A Plaza treat: which one was thrown (PLAZA_TREATS), and how many are left. */
-  treat?: string;
-  treats?: number;
+  /** A Plaza gift box (PLAZA_GIFT): golden or not, and how many are left today. */
+  golden?: boolean;
+  gifts?: number;
   /** A message to a friend: kept (read later), or only shown live. */
   kept?: boolean;
   /** Quick Match: waiting in the queue (no opponent yet). */
   queued?: boolean;
   /** Quick Match: other players connected right now (not counting you). */
   online?: number;
+  /**
+   * A searched 2v2 or Free-for-all room ("quick-found"): the match began
+   * at once (you alone with bots), so there is no room to pick in.
+   */
+  started?: boolean;
 }
 export const normalize = (x: number, y: number): Vec => {
   const length = Math.hypot(x, y);
@@ -3659,8 +3760,8 @@ export const RITES: Rite[] = [
     "minor",
     "crest-flare",
     "Long Breath",
-    "Crest Flare lasts 1.6s instead of 1.2s.",
-    { set: { duration: 1.6 } },
+    "Crest Flare lasts 0.7s instead of 0.5s.",
+    { set: { duration: 0.7 } },
   ),
   rite(
     "cindrake",
@@ -3795,8 +3896,8 @@ export const RITES: Rite[] = [
     "major",
     "crystal-cage",
     "Long Cage",
-    "Crystal Cage stands for 4s instead of 2.5s and deals 18 instead of 10.",
-    { set: { duration: 4, damage: 18 } },
+    "Crystal Cage stands for 4s instead of 2.5s and deals 28 instead of 20.",
+    { set: { duration: 4, damage: 28 } },
   ),
   rite(
     "lumoth",
@@ -3902,8 +4003,8 @@ export const RITES: Rite[] = [
     "minor",
     "shell-up",
     "Thick Moss",
-    "Shell Up regrows 35 HP instead of 30.",
-    { set: { heal: 7 } },
+    "Shell Up regrows 27 HP instead of 21.",
+    { set: { heal: 9 } },
   ),
   rite("terradon", "minor", "mud-mire", "Deep Mud", "Mud Mire is 20% wider.", {
     mul: { radius: 1.2 },

@@ -22,7 +22,7 @@
   max-height: calc(
     100dvh - var(--safe-top, 0px) - var(--safe-bottom, 0px) - 24px
   );
-  overflow: auto;
+  overflow: hidden auto;
   box-sizing: border-box;
   padding: 16px;
   border: 1px solid color-mix(in srgb, var(--ui-accent) 53.3%, transparent);
@@ -30,9 +30,7 @@
   color: #edf3ff;
   background: #14213a;
   box-shadow: 0 12px 40px #0008;
-  font:
-    400 calc(14px * var(--text-scale, 1))/1.4 "DM Sans",
-    sans-serif;
+  font: 400 calc(14px * var(--text-scale, 1))/1.4 var(--font-body);
 }
 .room-invite-heading {
   display: flex;

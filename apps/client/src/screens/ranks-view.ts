@@ -3,18 +3,22 @@
  * Markup and rules only (no DOM); screens/ranks.ts wires it up.
  *
  * A panel: your rank card on the left (tier badge, rating, best rating,
- * progress to the next rank and the whole ladder with yours lit), the
- * leaderboard on the right with medals for the top three and your own row
- * pinned under it, wherever you stand. Everyone / Friends switches the
- * board; the Friends board comes from its own read-only endpoint. The
- * server owns every number; the season's countdown uses the server's clock.
+ * progress to the next rank, your shield), and on the right the rank road
+ * (docs/rank-road.md: seven tiers of three steps, each tier's reward, where
+ * you stand) or the leaderboard, with medals for the top three and your own
+ * row pinned under it. Road / Everyone / Friends switches; the Friends
+ * board comes from its own read-only endpoint. The server owns every
+ * number; the season's countdown uses the server's clock.
  */
 import { avatarImage } from "../portraits";
 import { photoIdOf } from "../../../../packages/shared/src/avatars";
 import {
   PLACEMENT_MATCHES,
   RANKS,
+  RANK_STEPS,
+  RANK_TIERS,
   rankColor,
+  rankNamed,
   type FriendsBoard,
   type Leaderboard,
   type Rating,
@@ -27,9 +31,11 @@ import {
   emptyState,
   esc,
   panel,
+  price,
   segmented,
   tag,
 } from "../ui/components";
+import { menuIcon } from "../menu-icons";
 
 /** "2026-10" → "October 2026". */
 export function seasonName(id: string) {
@@ -42,20 +48,23 @@ export function seasonName(id: string) {
   });
 }
 
-export type RanksScope = "everyone" | "friends";
+export type RanksScope = "road" | "everyone" | "friends";
 export interface RanksData {
   board: Leaderboard | null;
   /** null until loaded (it loads the first time Friends is picked). */
   friends: FriendsBoard | null;
   problem?: string;
   friendsProblem?: string;
-  /** Your name and avatar, for your row (pinned when not in the top 20). */
-  me: { name: string; avatar?: string | null };
+  /**
+   * Your name and avatar, for your row (pinned when not in the top 20), and
+   * the titles you own: a tier reached once stays ticked on the road.
+   */
+  me: { name: string; avatar?: string | null; titles?: readonly string[] };
 }
 export interface RanksView {
   scope: RanksScope;
 }
-export const ranksView = (): RanksView => ({ scope: "everyone" });
+export const ranksView = (): RanksView => ({ scope: "road" });
 
 const num = (n: number) => n.toLocaleString("en-US");
 
@@ -82,15 +91,8 @@ export function rankProgress(r: Rating) {
       text: `${r.placementLeft} placement ${r.placementLeft === 1 ? "match" : "matches"} to go`,
     };
   }
-  const index = RANKS.findIndex((x) => x.name === r.rank);
-  const floor = index >= 0 ? RANKS[index].min : 0;
-  if (!r.next) return { value: 1, max: 1, text: "Top of the ladder" };
-  if (r.next.name === "Legendary Grandmaster" && r.rating >= r.next.at)
-    return {
-      value: 1,
-      max: 1,
-      text: "Reach #1 to become Legendary Grandmaster",
-    };
+  const floor = rankNamed(r.rank)?.min ?? 0;
+  if (!r.next) return { value: 1, max: 1, text: "Top of the road" };
   return {
     value: Math.max(0, r.rating - floor),
     max: Math.max(1, r.next.at - floor),
@@ -103,28 +105,96 @@ const badge = () =>
   `<svg class="rk-badge" viewBox="0 0 100 110" aria-hidden="true"><path d="M50 4 94 26v38c0 24-20 38-44 44C26 102 6 88 6 64V26Z" fill="color-mix(in srgb, var(--rank) 30%, #121a33)" stroke="var(--rank)" stroke-width="5"/><path d="M50 30 58 46 76 48 63 60 66 78 50 69 34 78 37 60 24 48 42 46Z" fill="var(--rank)"/></svg>`;
 
 function rules() {
-  return `<details class="rk-rules"><summary>How ranks work</summary><ul><li>Everyone starts at a <b>1000</b> rating. Your first ${PLACEMENT_MATCHES} matches against other players are placement matches: your rating moves faster and you show as Unranked.</li><li>Win and you gain rating; lose and you drop. Beating a stronger player earns more (up to about +20), beating a much weaker one very little. In 2v2 your team's average rating is compared with theirs; in a free-for-all, you're compared with each opponent by final standings.</li><li>Only confirmed matches against other players count: bot matches and matches someone quit don't change ratings.</li><li>Reaching a rank gives you its title to keep, even if your rating drops later. Equip it from your profile.</li><li>Each month, everyone's rating moves a quarter of the way back towards 1000, so a new season is a fresh race. Titles you've earned stay.</li></ul></details>`;
+  return `<details class="rk-rules"><summary>How ranks work</summary><ul><li>Everyone starts at a <b>1000</b> rating. Your first ${PLACEMENT_MATCHES} matches against other players are placement matches: your rating moves faster and you show as Unranked.</li><li>Win and you gain rating; lose and you drop. Beating a stronger player earns more (up to about +20), beating a much weaker one very little. In 2v2 your team's average rating is compared with theirs; in a free-for-all, you're compared with each opponent by final standings.</li><li>Only confirmed matches against other players count: bot matches and matches someone quit don't change ratings.</li><li>The road has ${RANK_TIERS.length} tiers of three steps (III, II, I). Reaching a tier gives you its title and its coins, once, to keep even if your rating drops later. Equip the title from your profile.</li><li>Reaching a new tier also gives you a <b>shield</b>: the first loss that would drop you out of the tier holds you on its first step instead.</li><li>Each month, everyone's rating moves a quarter of the way back towards 1000, so a new season is a fresh race. Titles you've earned stay, old ones too.</li></ul></details>`;
 }
 
-/** Your rank card: badge, rating, best, progress, the ladder, the rules. */
+const shieldIcon = () =>
+  `<svg class="rk-shield-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 20 5.6v6.1c0 5-3.4 8.4-8 9.8-4.6-1.4-8-4.8-8-9.8V5.6Z" fill="currentColor"/></svg>`;
+/** The shield in hand, said in the card: what it does, in a few words. */
+function shieldLine(r: Rating) {
+  if (!r.shield) return "";
+  return `<p class="rk-shield">${shieldIcon()}<span>Shield ready<span class="rk-shield-more"> · holds one loss</span></span></p>`;
+}
+
+/** Your rank card: badge, rating, best, progress, your shield, the rules. */
 export function rankCard(r: Rating | undefined) {
   if (!r)
-    return `<aside class="rk-card" aria-label="Your rank" style="--rank:${rankColor(undefined)}">${badge()}<b class="rk-rank">Unranked</b><p class="ui-note rk-line">Play a match against another player to get a rating.</p>${ladder(undefined)}${rules()}</aside>`;
+    return `<aside class="rk-card" aria-label="Your rank" style="--rank:${rankColor(undefined)}">${badge()}<b class="rk-rank">Unranked</b><p class="ui-note rk-line">Play a match against another player to get a rating.</p>${rules()}</aside>`;
   const placing = (r.placementLeft ?? 0) > 0;
   const p = rankProgress(r);
   const best =
     r.peak !== undefined && r.peak > r.rating ? ` · best ${num(r.peak)}` : "";
-  return `<aside class="rk-card${placing ? " is-placing" : ""}" aria-label="Your rank" style="--rank:${rankColor(r.rank)}">${badge()}<b class="rk-rank">${esc(r.rank)}</b><span class="rk-rating"><b class="ui-num">${num(r.rating)}</b><small>rating</small></span>${bar(p.value, p.max, { label: placing ? "Placement matches played" : "Progress to the next rank", color: "var(--rank)", thick: true })}<p class="ui-note rk-line">${esc(p.text)}${esc(best)}</p>${ladder(placing ? undefined : r.rank)}${rules()}</aside>`;
+  return `<aside class="rk-card${placing ? " is-placing" : ""}" aria-label="Your rank" style="--rank:${rankColor(r.rank)}">${badge()}<b class="rk-rank">${esc(r.rank)}</b><span class="rk-rating"><b class="ui-num">${num(r.rating)}</b><small>rating</small></span>${bar(p.value, p.max, { label: placing ? "Placement matches played" : "Progress to the next rank", color: "var(--rank)", thick: true })}<p class="ui-note rk-line">${esc(p.text)}${esc(best)}</p>${placing ? "" : shieldLine(r)}${rules()}</aside>`;
 }
 
-function ladder(current: string | undefined) {
-  return `<ol class="rk-ladder" aria-label="Rank ladder">${[...RANKS]
+/** One tier of the road, as the screen draws it. */
+export interface RoadTier {
+  name: string;
+  color: string;
+  /** The rating its first step starts at. */
+  from: number;
+  coins: number;
+  /** Its title and coins are yours: reached now or once before. */
+  earned: boolean;
+  /** You stand in it; `step` is yours (0: III, 1: II, 2: I). */
+  current: boolean;
+  step: number | null;
+}
+/**
+ * The road for a player: every tier, which are theirs and where they stand.
+ * A placing or unrated player stands nowhere yet. Tiers at or under yours
+ * are earned (the database grants them all, migration 20261127090000), and
+ * so is any tier whose title you own from an earlier climb.
+ */
+export function roadTiers(
+  r: Rating | undefined,
+  titles: readonly string[] = [],
+): RoadTier[] {
+  const placing = !r || (r.placementLeft ?? 0) > 0;
+  const mine = placing ? undefined : rankNamed(r.rank);
+  return RANK_TIERS.map((t, i) => ({
+    name: t.name,
+    color: t.color,
+    from: t.floors[0],
+    coins: t.coins,
+    earned: (!!mine && i <= mine.tier) || titles.includes(t.name),
+    current: mine?.tier === i,
+    step: mine?.tier === i ? mine.step : null,
+  }));
+}
+/**
+ * A tier's three steps, each with the rating it starts at (a wide screen
+ * shows it): lit up to yours, all lit under you.
+ */
+function steps(t: RoadTier, tier: number, passed: boolean) {
+  return `<span class="rk-steps" aria-hidden="true">${RANK_STEPS.map(
+    (s, i) =>
+      `<i class="${passed || (t.step !== null && i <= t.step) ? "is-on" : ""}${t.step === i ? " is-you" : ""}"><b>${s}</b><small class="ui-num">${num(RANK_TIERS[tier].floors[i])}</small></i>`,
+  ).join("")}</span>`;
+}
+function roadRow(t: RoadTier, tier: number, passed: boolean) {
+  const reward = `<span class="rk-reward${t.coins ? " has-coins" : ""}"><span class="rk-reward-title">Title</span>${t.coins ? price(t.coins) : ""}</span>`;
+  const state = t.earned
+    ? `<span class="rk-got" role="img" aria-label="Earned">${menuIcon("check")}</span>`
+    : `<span class="rk-got" aria-hidden="true"></span>`;
+  const where = t.current ? `Your tier, step ${RANK_STEPS[t.step ?? 0]}. ` : "";
+  return `<li class="rk-tier${t.current ? " is-cur" : ""}${t.earned ? " is-earned" : ""}" style="--rank:${t.color}"${t.current ? ' aria-current="true"' : ""}><i class="rk-gem" aria-hidden="true"></i><span class="rk-tier-name"><b>${esc(t.name)}</b>${t.current ? tag("You", "new") : ""}<span class="sr-only"> ${where}From ${num(t.from)} rating.</span></span><small class="rk-from ui-num" aria-hidden="true">${num(t.from)}</small>${steps(t, tier, passed)}${reward}${state}</li>`;
+}
+/**
+ * The rank road: the seven tiers from Legend down to Sprout, each with its
+ * three steps, the rating it starts at and its reward, and yours marked.
+ */
+export function roadMarkup(
+  r: Rating | undefined,
+  titles: readonly string[] = [],
+) {
+  const tiers = roadTiers(r, titles);
+  const at = tiers.findIndex((t) => t.current);
+  const head = `<div class="rk-road-head" aria-hidden="true"><span></span><span>Tier</span><span class="rk-from">From</span><span class="rk-head-steps">Steps</span><span class="rk-head-reward">Reward</span><span></span></div>`;
+  return `<div class="rk-road">${head}<ol class="rk-road-list" data-ranks-road aria-label="Rank road, highest tier first">${tiers
+    .map((t, i) => roadRow(t, i, at > i))
     .reverse()
-    .map(
-      (r) =>
-        `<li class="${r.name === current ? "is-cur" : ""}" style="--rank:${r.color}"${r.name === current ? ' aria-current="true"' : ""}><i aria-hidden="true"></i><span>${esc(r.name)}</span><small class="ui-num">${r.min ? `${num(r.min)}${r.name === "Legendary Grandmaster" ? " · #1" : "+"}` : "0+"}</small></li>`,
-    )
-    .join("")}</ol>`;
+    .join("")}</ol></div>`;
 }
 
 /** One leaderboard row (and the pinned "you" row). */
@@ -253,6 +323,7 @@ export function ranksMarkup(view: RanksView, d: RanksData) {
   const kicker = `Season · ${seasonName(season)}${ends ? ` · ends in ${ratedSeasonCountdown(season)}` : ""}`;
   const seg = segmented(
     [
+      { id: "road", label: "Road", selected: view.scope === "road" },
       {
         id: "everyone",
         label: "Everyone",
@@ -265,7 +336,11 @@ export function ranksMarkup(view: RanksView, d: RanksData) {
   );
   let side = "",
     main = "";
-  if (!board) {
+  if (view.scope === "road") {
+    // The road needs no board: it shows at once, yours marked once loaded.
+    side = rankCard(board?.rating);
+    main = roadMarkup(board?.rating, d.me.titles);
+  } else if (!board) {
     side = rankCard(undefined);
     main = d.problem
       ? emptyState(

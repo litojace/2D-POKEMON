@@ -1,3 +1,5 @@
+// First: before any schema parses (zod-jitless.ts).
+import "./zod-jitless";
 import {
   autoChoosesLow,
   autoLowWhy,
@@ -7,7 +9,14 @@ import {
   type GraphicsSetting,
 } from "./graphics-quality";
 import { softwareRendering } from "./gpu-check";
-import { raidCameraView } from "./raid-camera";
+import {
+  RaidCamera,
+  raidFrame,
+  underControls,
+  type ControlSides,
+  type ScreenRect,
+} from "./raid-camera";
+import { AllyBearings } from "./ally-bearings";
 import { BattleQualityGovernor, resetBattleQuality } from "./battle-quality";
 import { capGameFrames, screenHz, type FrameCap } from "./frame-cap";
 /** The battle's frame cap: it also knows the screen's refresh (reports). */
@@ -17,31 +26,53 @@ import {
   BUILD,
   NetMeter,
   PERF_MIN_SECONDS,
+  appShell,
   connectionKind,
   deviceKind,
+  deviceModel,
   drawnGap,
+  hitDrawTime,
   loadPhases,
   perfMode,
   setPerfMode,
 } from "./battle-perf";
+import { BattleInputClock } from "./battle-input-clock";
 import { correctionCause } from "./networking/correction-cause";
 import { PerfOverlay } from "./perf-overlay";
 import { syncPerfHud } from "./perf-hud";
 import { addCanvasTexture } from "./canvas-texture";
-import { setHudText, setHudAttribute, setHudStyle } from "./hud-dom";
-import { battleCurves } from "./battle-curves";
-import { generateGraphicsTexture } from "./graphics-bake";
+import {
+  setHudText,
+  setHudAttribute,
+  setHudStyle,
+  setHudHidden,
+  sweepPercent,
+} from "./hud-dom";
+import { viewportHeight, viewportLandscape } from "./viewport-size";
 import { RoomInvites } from "./room-invites";
+import { AnnouncementBanner } from "./announcements";
+import { moveNotice, newAddress } from "./domain-move";
 import { serverNow } from "./server-clock";
 import { PvpSpectator } from "./pvp-spectator";
 import {
   carryCurrent,
   newestStep,
   predictFighter,
+  raidCarry,
   serverSteps,
+  stepRaidCarry,
+  type RaidCarry,
 } from "./predict-fighter";
 import { startPingBadge } from "./ping-badge";
 import { TargetLock, drawTargetReticle, type Targetable } from "./target-lock";
+import {
+  aimPoint,
+  aimSpec,
+  courtDirection,
+  drawAimGuide,
+  pickNear,
+  type AimSpec,
+} from "./touch-aim";
 import {
   CastPredictor,
   canBasic,
@@ -49,10 +80,7 @@ import {
   canDash,
   type CastAction,
 } from "./cast-prediction";
-import { queueBossSpellArt } from "./boss-spell-flipbook";
-import { queueBossArt, retainBossArt } from "./boss-painted-rig";
-import { memoryConstrained, rendererDensity } from "./render-budget";
-import { watchRendererLifecycle } from "./renderer-lifecycle";
+import { memoryShortInBattle, rendererDensity } from "./render-budget";
 import {
   groundHeight,
   WORLD_ART,
@@ -70,6 +98,7 @@ import {
 import { setupHomeNavigation } from "./home-navigation";
 import {
   openLobby,
+  releaseParkedLobbyRig,
   partyLobbyMode,
   type LobbyAction,
   type LobbyHandle,
@@ -77,7 +106,29 @@ import {
   AI_LEVELS,
   aiLevelMark,
   type AiLevel,
+  ACTION_FEATURE,
 } from "./lobby-screen";
+import {
+  openGiftDialog,
+  tomorrowGift,
+  giftLabel,
+  type GiftDialog,
+} from "./daily-gift";
+import {
+  dailyGiftClaimSchema,
+  dailyGiftStateSchema,
+  giftOn,
+  type DailyGiftState,
+} from "../../../packages/shared/src/daily-gifts";
+import {
+  featureLocked,
+  loadSeenLevel,
+  lockedMessage,
+  saveSeenLevel,
+  unlockDialog,
+  unlocksDue,
+  type Feature,
+} from "./feature-unlocks";
 // The Plaza loads when first wanted (hub-worlds.ts).
 import { worldLoader, type World } from "./hub-worlds";
 import {
@@ -92,10 +143,9 @@ import {
   pacificDate,
   raidPingLabel,
   isRaider,
+  raidBossName,
 } from "../../../packages/shared/src/raid";
-import { resultXp } from "./adventure-ui";
 import { arcadeWeek, ARCADE_EVENTS } from "../../../packages/shared/src/arcade";
-import { drawArcade } from "./arcade-art";
 import { stormTarget } from "./storm-twins-controls";
 import { raidTargets } from "./raid-targets";
 import { prismatailAim } from "./prismatail-controls";
@@ -113,45 +163,60 @@ import {
   type RoomMode as RoomKind,
 } from "./screens/room-view";
 import "./screens/room.css";
-import { renderRaidUI, drawRaidArena, raidLookList } from "./raid-ui";
-import { illustratedHelp } from "./illustrated-help";
+// The raid's and the Spire's battle styles stay in the startup stylesheet,
+// at the place they always had in it (their modules are in the battle kit
+// now): the Raid Hall's cards use them before any battle, and a stylesheet
+// arriving later would win ties it used to lose.
+import "./screens/raid-cards.css";
+import "./screens/raid-rites.css";
+import "./screens/raid-party.css";
+import "./spire-battle.css";
+import { raidLookList } from "./raid-look-list";
+import {
+  howToPlayMarkup,
+  helpTopicMarkup,
+  type HelpControls,
+  type HelpDevice,
+  type HelpGo,
+  type HelpState,
+  type HelpTopicId,
+} from "./how-to-play";
+import {
+  TOUR_STEPS,
+  loadTour,
+  runTour,
+  saveTour,
+  tourDue,
+  tourFromServer,
+  type TourEnd,
+  type TourHandle,
+} from "./hub-tour";
 import { buttonIcon, iconLabel, menuIcon } from "./menu-icons";
 import type { RaidBossId, RaidSlot } from "../../../packages/shared/src/raid";
 import type { RaidTab } from "./screens/raid-hall-view";
 import type { SpireTab } from "./screens/spire-view";
 import { LobbySelection } from "./lobby-selection";
 import { setupBattleDock } from "./battle-dock";
-import {
-  queueFighterAssets,
-  createFighterVisual,
-  fighterTextureKeys,
-  type FighterVisual,
-} from "./animation/pipeline";
+import type { FighterVisual } from "./animation/pipeline";
 import { rigAssets, skinSuffix } from "./animation/assets";
-import { loadRigTextures } from "./animation/rig-textures";
-import {
-  bossLookOf,
-  prewarmBossAtlas,
-  syncBossPrepaint,
-} from "./boss-vector-prewarm";
 import {
   addPrepaintedLayers,
+  forgetPrepainted,
   holdFighterPrepaint,
   syncFighterPrepaint,
 } from "./fighter-prepaint";
-import { prewarmRaidArena } from "./raid-arena-prewarm";
-import { PillarRig, prewarmPillars } from "./raid-grumble-pillars-rig";
-import { IMPACT_RADIUS } from "./raid-grumble-pillars";
-import { prewarmTerrace } from "./raid-emberwing-terrace-rig";
-import { setRaidMapLow } from "./raid-map-atlas";
-import { prewarmLagoon } from "./raid-tidewyrm-art";
-import { noteCloudDeckEvent, prewarmCloudDeck } from "./raid-somnara-art";
-import { isMirrorTurnImpact } from "./raid-prismatail-atrium";
-import { FighterLoading, neededFighters } from "./animation/fighter-loading";
+import type { ArtNode } from "./rig-health";
+import type { PillarRig } from "./raid-grumble-pillars-rig";
+import {
+  FighterLoading,
+  neededFighters,
+  neededLooks,
+  type FighterLook,
+} from "./animation/fighter-loading";
 import {
   setOverlayMarkup,
   LIVE_SECONDS,
-  countdownCard,
+  LIVE_COUNTDOWN,
   fillLiveSeconds,
   fillLiveCountdown,
 } from "./overlay";
@@ -161,26 +226,37 @@ import { drawCollectionAura } from "./skins/collection-fx";
 import { battleAuraScale } from "./shop-preview-layout";
 import { colourPreview } from "./colour-preview";
 import { stadiumCrowd } from "./stadium";
-import { paintArenaFloor, scaledPainter } from "./arena-floor";
-import {
-  drawChannel,
-  drawProjectile,
-  drawWindup,
-  drawZone,
-  playBeam,
-  playCast,
-  playHit,
-  playImpact,
-  playRewindDive,
-} from "./skill-effects";
 import { setupPWA } from "./pwa";
-import { PRIVACY_URL, isNativeApp, setupNativeShell } from "./native";
+import {
+  PRIVACY_URL,
+  SUPPORT_URL,
+  isNativeApp,
+  loadDeviceInfo,
+  nativeDeviceInfo,
+  nativePlatform,
+  setupNativeShell,
+} from "./native";
+import {
+  BUILD_ID,
+  passTitle,
+  quickBar,
+  repairGame,
+  titleScreen,
+  titleDue,
+  type QuickAction,
+} from "./title-screen";
+import { PROFILE_COPY_KEY } from "./profile-copy";
 import { appIconCardHTML, bindAppIconCard } from "./app-icon-setting";
 import { abilityIcon } from "./ability-icons";
 import { TouchControls } from "./touch-controls";
 import type Phaser from "phaser";
-import { loadPhaser, phaser, whenPhaser } from "./phaser-runtime";
-import { installGraphicsRenderer } from "./graphics-render";
+import {
+  afterPhaser,
+  kit,
+  loadPhaser,
+  phaser,
+  whenPhaser,
+} from "./phaser-runtime";
 import { io } from "socket.io-client";
 import {
   CHARACTERS,
@@ -196,6 +272,7 @@ import {
   MUTATORS,
   MUTATOR_RULES,
   roundsNeeded,
+  introRounds,
   RULES,
   STATUS_RULES,
   ULT_SLOT,
@@ -226,6 +303,7 @@ import {
   type Fighter,
   type Input,
   type Reply,
+  type FillMode,
   type Snapshot,
   type Zone,
   maxHealth,
@@ -235,15 +313,17 @@ import {
   platesOf,
 } from "../../../packages/shared/src/index";
 import { AudioManager } from "./audio";
-import { drawLeafStorm, plateFx } from "./skill-fx-nature";
-import { drawSiphon } from "./skill-fx-water";
-import { drawLiveWire } from "./skill-fx-electric";
 import { InterpolationBuffer } from "./networking/interpolation";
+import { SNAPSHOT_AUTH, followSnapshots } from "./networking/snapshot-stream";
 import {
   LocalTimeline,
   ShotTimeline,
+  ImpactPrediction,
   leadProjectile,
+  type ShotTarget,
+  zoneClock,
 } from "./networking/timeline-lead";
+import { rankChip, rankChipKey, rankNews } from "./rank-chip";
 import { AccountUI } from "./accounts";
 import {
   avatarOfPlayer,
@@ -251,11 +331,17 @@ import {
   identityPortrait,
   portraitAvatar,
 } from "./portraits";
-import { waitForServer, onServerStartupRetry } from "./server-connection";
+import {
+  curtainCovers,
+  waitForServer,
+  onServerStartupRetry,
+} from "./server-connection";
+import { startStartupCurtain, type StartupStage } from "./startup-curtain";
 import "./ui/tokens.css";
 import "./style.css";
 import "./ui/components.css";
 import "./battle-dock.css";
+import "./match-sheet.css";
 import "./cosmetic-review.css";
 import "./collection-frames.css";
 import "./journey-frames.css";
@@ -278,11 +364,27 @@ import { watchNotchInsets } from "./notch-insets";
 import { watchScrollRows } from "./ui/scroll-rows";
 import { watchScreenPin } from "./screen-pin";
 import { watchCosmeticPreviews } from "./cosmetic-fx-preview";
-import { askConfirm, openHubPanelNow } from "./ui/hub-panel";
+import {
+  askConfirm,
+  openHubPanelNow,
+  PANEL_EVENT,
+  PARKED,
+} from "./ui/hub-panel";
 import { photoIdOf } from "../../../packages/shared/src/avatars";
 import { createGuide } from "./getting-started-screen";
-import { openQuickSearch, type QuickSearchHandle } from "./quick-match";
-import { recordBotResult, suggestedBotLevel } from "./bot-ladder";
+import {
+  openFillSearch,
+  openQuickSearch,
+  type QuickSearchHandle,
+} from "./quick-match";
+import {
+  LOSS_STREAK_HINT,
+  easierBot,
+  recordBotOutcome,
+  recordBotResult,
+  suggestedBotLevel,
+  type BotLevelId,
+} from "./bot-ladder";
 import { createCoach } from "./battle-coach";
 import { playerLevel } from "../../../packages/shared/src/journey";
 import { openRoster, type RosterScreen } from "./screens/roster";
@@ -302,11 +404,22 @@ import {
   type Action,
 } from "./controls";
 import { PAD_LABELS, firstPad, readPad, type PadAction } from "./gamepad";
-import { drawPreview, previewShape } from "./skill-preview";
 import { controlsCapturing, showControlsScreen } from "./controls-screen";
 import { lockAppZoom, watchBattleZoom } from "./zoom-guard";
 import { guardTouchHold } from "./touch-hold";
-import { KO_FEEL, hitFeel, hitStrength, rumble } from "./game-feel";
+import {
+  KO_FEEL,
+  hitFeel,
+  hitStrength,
+  rumble,
+  setVibration,
+  vibrationOn,
+} from "./game-feel";
+import {
+  reducedMotion as reducedMotionChoice,
+  reducedMotionQuery,
+  setReducedMotion,
+} from "./reduced-motion";
 import { captureInvite, clearInvite, pendingInvite } from "./invite";
 import { lockScrollWhileOpen, setScrollLock } from "./scroll-lock";
 import { watchMenuMotion } from "./menu-motion";
@@ -314,7 +427,7 @@ import {
   MASTERY_TIERS,
   masteryTier,
   progressSchema,
-  RANKS,
+  type Rating,
 } from "../../../packages/shared/src/accounts";
 import {
   recapMarkup,
@@ -322,6 +435,14 @@ import {
   standingsMarkup,
   type RecordState,
 } from "./match-recap";
+import {
+  confettiMarkup,
+  fighterHop,
+  rewardsMarkup,
+  syncRewardMotion,
+} from "./result-rewards";
+import { fighterPortrait } from "./fighter-art";
+import { avatar } from "./ui/components";
 import {
   matchReportReplySchema,
   partyRoomSchema,
@@ -341,8 +462,6 @@ import type { PlazaScreen } from "./plaza/plaza-screen";
 import "./plaza/plaza.css";
 import type { PlazaProgress } from "../../../packages/shared/src/plaza";
 import { CHAMPION_SKIN_BY_ID } from "../../../packages/shared/src/shop";
-import { prepareSurfaceTextures, surfaceBurst } from "./court-surface-fx";
-import { fxFor } from "./fx-engine";
 import {
   ECHO_SKILL_COLOR,
   spireEchoTint,
@@ -355,50 +474,23 @@ import {
   spireZoneStart,
 } from "../../../packages/shared/src/spire";
 import { spireCourtWalls } from "../../../packages/shared/src/spire-court";
-import {
-  SpireCourtRig,
-  hasSpireSummitArena,
-  isSpireFloorId,
-  isSpireSummitFloorId,
-  nextSpireCourtView,
-  paintSpireFloorId,
-  prewarmSpireCourt,
-  spireCourtView,
-  spireFloorId,
-  spireSummitArt,
-  spireSummitFloorId,
-  spireSummitFloorOf,
-  type SpireCourtView,
-} from "./spire-court-rig";
-import { spireFloorTint } from "./spire-court-art";
+import type { SpireCourtView, SpireCourtRig } from "./spire-court-rig";
 import { loadSpireSeen, spireLobbyCard } from "./spire-nudge";
-import { isRaidFloor, paintRaidFloor } from "./raid-floors";
-import {
-  isIllustratedRaidFloor,
-  loadRaidArenaArt,
-  type IllustratedRaidFloor,
-  paintIllustratedRaidFloor,
-  prefetchRaidArena,
-} from "./raid-arena-art";
+import type { IllustratedRaidFloor } from "./raid-arena-art";
 import type { LayerAt } from "./raid-layers";
-import {
-  courtBlockFrame,
-  courtBlocks,
-  isCourt,
-  paintCourtBlock,
-  paintCourtFloor,
-  paintCourtStands,
-  paintCourtApron,
-  COURT_APRON,
-  SHIFTING_BLOCK,
-  STANDS,
-  type CourtId,
-} from "./arena-courts";
+import type { CourtId } from "./arena-courts";
 import { RITE_EFFECTS, riteEffect, riteIcon } from "./rite-icons";
 import { ConnectionWatch, dropMessage } from "./connection-loss";
+import { freezesWhenHidden, watchBackgroundExit } from "./background-exit";
 import { watchSceneSwitch } from "./scene-switch-place";
 import { mountChat, type ChatFriend, type ChatPlace } from "./chat/chat-ui";
-import { pushState, turnPushOff, turnPushOn } from "./chat/push-setup";
+import {
+  pushNews,
+  pushState,
+  setPushNews,
+  turnPushOff,
+  turnPushOn,
+} from "./chat/push-setup";
 import { mountBattleChat } from "./chat/battle-chat";
 import {
   CHAT_MODES,
@@ -414,7 +506,22 @@ import "./chat/chat.css";
 import "./ui/aero.css";
 import "./ui/light-effects.css";
 import { syncUiEffects } from "./ui/ui-effects";
+import { practiceMeter } from "./practice-meter";
+import {
+  PRACTICE_STATS,
+  loadPracticePrefs,
+  practicePanelMarkup,
+  savePracticePrefs,
+  type PracticeStat,
+} from "./practice-panel";
 import "./ui/phone-fit.css";
+import "./settings-screen.css";
+import { fighterPickerMarkup } from "./fighter-picker";
+import "./result-extras.css";
+import { partyInviteRow } from "./screens/friends-view";
+import { applyUiTheme } from "./ui-theme";
+// The player's look (ui-theme.ts), before anything is drawn.
+void applyUiTheme();
 const audio = new AudioManager();
 audio.start();
 const allAbilities = new Map(
@@ -432,25 +539,35 @@ const remoteFrames = new InterpolationBuffer();
 /** How far ahead of the last snapshot your fighter is drawn (timeline-lead.ts). */
 const timeline = new LocalTimeline();
 const shotTimeline = new ShotTimeline();
+/** Your shots' blasts played before the server's impact (timeline-lead.ts). */
+const impacts = new ImpactPrediction();
 /**
  * Where your own fighter was drawn over the last second or so, to tell
  * whether a hit on you landed where you saw yourself (battle-perf hitsFar).
  */
 const drawnSelf: { t: number; x: number; y: number }[] = [];
 /**
- * A hit on you: the server hit you at (event.x, event.y) at about the last
- * snapshot's time, which your screen showed a lead ago (the snapshot's own,
- * un-eased lead: drawnGap). How far from there were you drawn then?
+ * Match the server moment of this hit, including its age within a bundled
+ * snapshot, to the frame you saw then. Older servers lack event.at and use
+ * the snapshot moment; the trace marks those samples as untimed.
  */
-function measureHitGap(event: { x: number; y: number }) {
+function measureHitGap(
+  event: { x: number; y: number; at?: number; miss?: boolean },
+  snapshotTime: number,
+) {
   const now = performance.now();
-  const gap = drawnGap(
-    drawnSelf,
-    now - timeline.estimate(now) * 1000,
-    event.x,
-    event.y,
-  );
-  if (gap !== undefined) netMeter.hitGap(gap);
+  const leadMs = timeline.estimate(now) * 1000;
+  const at = hitDrawTime(now, leadMs, snapshotTime, event);
+  if (at === undefined) return;
+  const gap = drawnGap(drawnSelf, at, event.x, event.y);
+  if (gap !== undefined)
+    netMeter.hitGap(gap, {
+      eventAgeMs: Math.round(
+        Math.max(0, snapshotTime - (event.at ?? snapshotTime)) * 1000,
+      ),
+      leadMs: Math.round(leadMs),
+      timed: event.at !== undefined,
+    });
 }
 /** Script errors during the match, for its battle-perf report. */
 let matchErrors = 0;
@@ -479,6 +596,27 @@ let battleStill: boolean | undefined;
 let battleDensity: number | undefined;
 /** How smoothly this match runs on this device (battle-perf.ts). */
 const battlePerf = new BattlePerfMeter();
+/**
+ * Our own work in the last frame (ms): Phaser's step from its start to the
+ * end of rendering (createGame). In a long frame, short work means the
+ * graphics chip set the pace (battle-perf FrameSample.work).
+ */
+let frameWork: number | undefined;
+/** The raid's warned attacks as one key, worked out once per snapshot. */
+let attackKey: { warnings?: readonly { kind: string }[]; key: string } = {
+  key: "",
+};
+function raidAttackKey(warnings: readonly { kind: string }[]) {
+  if (attackKey.warnings !== warnings)
+    attackKey = {
+      warnings,
+      key: [...new Set(warnings.map((w) => w.kind))]
+        .filter((k) => /^[a-z0-9-]{1,32}$/.test(k))
+        .sort()
+        .join(","),
+    };
+  return attackKey.key;
+}
 /**
  * Moves whose cast effect plays on your press (predicted): it depends only on
  * where you stand and face. The rest wait for the server (see
@@ -525,7 +663,7 @@ function recoverSnapshotMeta(code: string, rev: number) {
 const lobbySelection = new LobbySelection();
 const socket = io(import.meta.env.VITE_SERVER_URL || undefined, {
   autoConnect: false,
-  auth: { accessToken: null },
+  auth: { accessToken: null, ...SNAPSHOT_AUTH },
 });
 let accountsUI: AccountUI;
 /** The server's key for notifications (null: it sends none). */
@@ -597,6 +735,9 @@ const chat = mountChat({
               error: "Notifications aren't available right now.",
             })
         : turnPushOff((event, data) => request(event, data, true)),
+    news: pushNews,
+    setNews: (on) =>
+      setPushNews(on, (event, data) => request(event, data, true)),
   },
   me: () =>
     accountsUI?.account
@@ -650,17 +791,83 @@ const battleChat = mountBattleChat({
 });
 let authConnectionAttempt = 0;
 const connectionWatch = new ConnectionWatch();
-document.addEventListener("visibilitychange", () =>
-  connectionWatch.visibility(),
-);
+document.addEventListener("visibilitychange", () => {
+  connectionWatch.visibility();
+  // Shown again: Safari may have let the fighters' canvases go meanwhile.
+  if (!document.hidden) scene?.checkArtSoon("visible");
+});
 window.addEventListener("offline", () => connectionWatch.network());
 window.addEventListener("online", () => connectionWatch.network());
+/**
+ * Switching away from the game, or closing it, signs the player out of the
+ * live game at once (background-exit.ts): friends see them offline, the
+ * Plaza drops their avatar and a room shows their seat as offline, instead
+ * of all that waiting for the server's heartbeat to give up on a frozen or
+ * killed app. Coming back reconnects and resumes.
+ */
+const backgroundExit = watchBackgroundExit({
+  socket,
+  canConnect: () =>
+    !replacedAccount &&
+    !!(socket.auth as { accessToken?: string | null }).accessToken,
+  closeAtOnce: () => freezesWhenHidden(isNativeApp()),
+  onLeave: () => {
+    // The server dropped the search with the connection: say so on return.
+    if (quickSearch?.open) {
+      socket.off("quick-found");
+      quickSearch.close();
+      quickSearch = undefined;
+      quickSearchStopped = true;
+    }
+  },
+});
+/** Quick Match stopped when the game went to the background. */
+let quickSearchStopped = false;
 // Keep a displaced tab paused across reloads. Only an explicit button press
 // may reclaim the game; token refresh/focus must not kick the other device.
 let replacedAccount = sessionStorage.getItem("arena-session-replaced");
 let gameInstance: Phaser.Game | undefined;
 let battleResizeObserver: ResizeObserver | undefined;
 let raidCameraHudBottom = 0;
+/** Phones: how far the joystick and the skill buttons reach in from each side
+ * of the arena (game px). Measured once on the first raid frame after the
+ * battle is laid out (fitRenderer clears it), never every frame. */
+let raidControlSides: ControlSides | undefined;
+/** Phones: each touch control's box over the arena (game px), measured with
+ * raidControlSides: a court-wide moment's warnings stay clear of them. */
+let raidControlBoxes: ScreenRect[] = [];
+function measureRaidControls(): ControlSides {
+  const frame = $("game").parentElement!.getBoundingClientRect(),
+    dpr = renderScale();
+  const joystick = document.querySelector<HTMLElement>(".touch-pad .joystick");
+  const buttons = Array.from(
+    // The cluster's own buttons and its contextual slot (left of skill 1),
+    // where a boss's action pops up: your raider stands clear of both.
+    document.querySelectorAll<HTMLElement>(
+      ".touch-buttons > button, .touch-buttons > .touch-context",
+    ),
+  ).filter((b) => b.offsetWidth);
+  raidControlBoxes = [...buttons, ...(joystick?.offsetWidth ? [joystick] : [])]
+    .map((e) => e.getBoundingClientRect())
+    .map((r) => ({
+      x0: (r.left - frame.left) * dpr,
+      y0: (r.top - frame.top) * dpr,
+      x1: (r.right - frame.left) * dpr,
+      y1: (r.bottom - frame.top) * dpr,
+    }));
+  return {
+    left: joystick?.offsetWidth
+      ? Math.max(0, joystick.getBoundingClientRect().right - frame.left) * dpr
+      : 0,
+    right: buttons.length
+      ? Math.max(
+          0,
+          frame.right -
+            Math.min(...buttons.map((b) => b.getBoundingClientRect().left)),
+        ) * dpr
+      : 0,
+  };
+}
 let state: Snapshot | undefined,
   myId = "",
   selected: CharacterId = lastHomeFighter(),
@@ -668,6 +875,8 @@ let state: Snapshot | undefined,
   local: Fighter | undefined,
   pending: Input[] = [],
   scene: ArenaScene | undefined;
+/** What ran a fighter-art check (rig-health.ts, "battle-art"). */
+type ArtTrigger = "visible" | "resume" | "renderer" | "context";
 /** Ticks the server held for your late inputs (Fighter.held). */
 let owedSteps = 0;
 let raidRoomReturn:
@@ -676,8 +885,21 @@ let raidRoomReturn:
 let accountShown = "";
 /** Last known "ultimate ready" state, for the ready sound. */
 let ultWasReady = false;
+/** How to play (how-to-play.ts): the topic and device it shows. */
+let helpState: HelpState | undefined;
+/** The Lobby tour (hub-tour.ts): a new account's first look around. */
+let tour: TourHandle | undefined;
+let tourTimer: ReturnType<typeof setTimeout> | undefined;
+/** What the account said about its tour (asked once per account). */
+let tourAsked: { account: string; answered: boolean } | undefined;
 /** EX skills: armed until this time (ms), 0 when not armed. */
 let exArmedUntil = 0;
+/** Solo test mode: skills 1-3 cast as their EX version (free with No skill
+ * cooldowns, a third of the meter otherwise). This device only. */
+let practiceEx = false;
+const practiceExOn = () => practiceEx && !!state?.practice;
+/** Solo test mode's last hit and damage per second. */
+let practiceDamage = practiceMeter();
 /** An invite is waiting for sign-in: say so once. */
 let inviteHinted = true;
 /** Render key for menu, lobby and battle state changes. */
@@ -685,8 +907,14 @@ let screen = "",
   eventId = 0,
   settingsOpen = false,
   menuOpen = false,
-  connected = false;
-const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  connected = false,
+  inputSessionReady = false;
+// Settings → Reduce motion (reduced-motion.ts): the player's own choice, off
+// by default, never the device's setting. It can change in a match.
+let reducedMotion = reducedMotionChoice();
+reducedMotionQuery.addEventListener("change", () => {
+  reducedMotion = reducedMotionChoice();
+});
 const $ = <T extends HTMLElement>(id: string) =>
   document.getElementById(id) as T;
 const escape = (s: string) =>
@@ -698,7 +926,7 @@ const escape = (s: string) =>
       ]!,
   );
 document.querySelector("#app")!.innerHTML =
-  `<header class="topbar"><nav class="hub-scenes" id="hub-scenes" role="group" aria-label="Scene" hidden></nav><a class="brand" href="#"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><defs><linearGradient id="element-crest" x2="0" y2="1"><stop stop-color="#fff1a3"/><stop offset="1" stop-color="#d9a340"/></linearGradient></defs><path fill="url(#element-crest)" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span> ELEMENT<span>ARENA</span></a><div class="top-links"><div id="account-nav" class="account-nav"></div><button type="button" class="quiet home-settings" id="home-settings" aria-label="Settings" title="Settings">${menuIcon("settings")}</button><details class="header-menu" id="header-menu"><summary><i class="menu-burger" aria-hidden="true">☰</i><i class="menu-gear" aria-hidden="true">${menuIcon("settings")}</i> <span>Menu</span></summary><div class="header-menu-panel"><button class="quiet" id="help">${menuIcon("help")}<span>How to play</span></button><button class="quiet" id="guide-open">${menuIcon("sparkle")}<span>Getting started</span></button><button class="quiet" id="settings">${menuIcon("settings")}<span>Settings</span></button><button class="quiet" id="leaderboard">${menuIcon("leaderboard")}<span>Leaderboard</span></button><button class="quiet" id="install-app">${menuIcon("fullscreen")}<span>Want fullscreen?</span></button><button class="quiet" id="report-problem">${menuIcon("report")}<span>Report a problem</span></button><button class="quiet" id="privacy-policy">${menuIcon("help")}<span>Privacy policy</span></button><button class="quiet" id="menu-logout">${menuIcon("leave")}<span>Log out</span></button><span class="connection" id="connection">Connecting</span></div></details></div></header><main><section id="menu"></section><section id="battle" hidden>${stadiumCrowd()}<div id="practice-controls" class="practice-controls" hidden></div><div id="hud" class="hud"></div><div class="arena-stage"><div class="arena-frame"><div id="game"></div><div id="arena-overlay"></div><div id="spectate" class="spectate-banner" role="status" hidden></div><span class="map-label">ELEMENTAL COLISEUM <span>01 / CHAMPIONS COURT</span></span></div></div><div id="mobile-controls"></div><div id="abilities" class="ability-bar"></div><div class="battle-footer"><span id="control-hints"></span><span id="network">AUTHORITATIVE ONLINE MATCH</span><button class="quiet" id="battle-menu" aria-label="Battle settings" title="Battle settings (Esc / controller Menu)">${menuIcon("settings")}</button></div></section></main><div id="toast" role="status"></div><dialog id="dialog"></dialog>`;
+  `<header class="topbar"><nav class="hub-scenes" id="hub-scenes" role="group" aria-label="Scene" hidden></nav><a class="brand" href="#"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><defs><linearGradient id="element-crest" x2="0" y2="1"><stop stop-color="#fff1a3"/><stop offset="1" stop-color="#d9a340"/></linearGradient></defs><path fill="url(#element-crest)" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span> ELEMENT<span>ARENA</span></a><div class="top-links"><div id="account-nav" class="account-nav"></div><button type="button" class="quiet home-settings" id="home-settings" aria-label="Settings" title="Settings">${menuIcon("settings")}</button><details class="header-menu" id="header-menu"><summary><i class="menu-burger" aria-hidden="true">☰</i><i class="menu-gear" aria-hidden="true">${menuIcon("settings")}</i> <span>Menu</span></summary><div class="header-menu-panel"><button class="quiet" id="help">${menuIcon("help")}<span>How to play</span></button><button class="quiet" id="guide-open">${menuIcon("sparkle")}<span>Getting started</span></button><button class="quiet" id="daily-gift">${menuIcon("star")}<span>Daily gift</span></button><button class="quiet" id="settings">${menuIcon("settings")}<span>Settings</span></button><button class="quiet" id="leaderboard">${menuIcon("leaderboard")}<span>Leaderboard</span></button><button class="quiet" id="install-app">${menuIcon("fullscreen")}<span>Want fullscreen?</span></button><button class="quiet" id="report-problem">${menuIcon("report")}<span>Report a problem</span></button><button class="quiet" id="privacy-policy">${menuIcon("help")}<span>Privacy policy</span></button><button class="quiet" id="menu-logout">${menuIcon("leave")}<span>Log out</span></button><span class="connection" id="connection">Connecting</span></div></details></div></header><main><section id="menu"></section><section id="battle" hidden>${stadiumCrowd()}<div id="practice-controls" class="practice-controls" hidden></div><div id="hud" class="hud"></div><div class="arena-stage"><div class="arena-frame"><div id="game"></div><div id="arena-overlay"></div><div id="spectate" class="spectate-banner" role="status" hidden></div><span class="map-label">ELEMENTAL COLISEUM <span>01 / CHAMPIONS COURT</span></span></div></div><div id="mobile-controls"></div><div id="abilities" class="ability-bar"></div><div class="battle-footer"><span id="control-hints"></span><span id="network">AUTHORITATIVE ONLINE MATCH</span><button class="quiet" id="battle-menu" aria-label="Battle settings" title="Battle settings (Esc / controller Menu)">${menuIcon("settings")}</button></div></section></main><div id="toast" role="status"></div><dialog id="dialog"></dialog>`;
 // Measure wrapped HUDs for phone spacing and desktop boss-specific controls.
 let measuredRaidHud: HTMLElement | null = null;
 let battleLayoutFrame = 0;
@@ -820,6 +1048,8 @@ battleHudSize.observe($("abilities"));
 watchBattleZoom();
 // The iPhone app never zooms: a double tap in the Plaza zoomed the game in.
 if (isNativeApp()) lockAppZoom();
+// The phone's model for match reports (native.ts), read once.
+loadDeviceInfo();
 guardTouchHold();
 const homeNavigation = setupHomeNavigation($("menu"), () => showSettings());
 $("home-settings").onclick = () => showSettings();
@@ -862,15 +1092,42 @@ document.addEventListener(
 );
 
 document.addEventListener("pointerdown", (event) => {
-  if ((event.target as Element).closest("button")) {
+  const button = (event.target as Element).closest("button");
+  if (button) {
     audio.unlock();
-    audio.play("ui");
+    // A skill, dash or jump button sounds as its cast, not as a click.
+    if (!button.closest(".touch-buttons")) audio.cue("ui");
   }
 });
+/**
+ * A toast said while the startup curtain still covers the game waits for it
+ * to go: the curtain sits over the toast, and the toast's 4.5 s ran out under
+ * it on a slow start, so a waiting friend request was never seen (main's
+ * full run, 21 Nov 2026). Only the latest one waits.
+ */
+let toastTimer = 0;
+let toastWaiting = "";
+let toastWait = 0;
 function toast(message: string) {
+  if (curtainCovers()) {
+    toastWaiting = message;
+    if (!toastWait)
+      toastWait = window.setInterval(() => {
+        if (curtainCovers()) return;
+        clearInterval(toastWait);
+        toastWait = 0;
+        toast(toastWaiting);
+      }, 100);
+    return;
+  }
   $("toast").textContent = message;
   $("toast").classList.add("show");
-  setTimeout(() => $("toast").classList.remove("show"), 4500);
+  // A newer toast keeps its whole time (an older one's timer hid it early).
+  clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(
+    () => $("toast").classList.remove("show"),
+    4500,
+  );
 }
 /** Ask the server; `quiet`: a background read that never shows a toast. */
 function request(
@@ -898,6 +1155,24 @@ function request(
       }),
   );
 }
+function prepareBattlePrediction() {
+  if (!state) return;
+  // Walls for prediction (the Shifting Ruins block comes and goes) and the floor.
+  useObstacles(
+    state.raid
+      ? (spireCourtWalls(state.raid.spire) ??
+          (state.arena === "lagoon" ||
+          state.arena === "lantern-yard" ||
+          state.arena === "cloud-deck" ||
+          state.arena === "sun-atrium" ||
+          state.arena === "sky-terrace" ||
+          state.arena === "conductor-ring"
+            ? []
+            : OBSTACLES.filter((_, i) => !state!.raid!.pillars[i]?.broken)))
+      : obstaclesAt(state.arena, arenaClock()),
+  );
+  useSpeedScale(state.mutators?.includes("speed") ? MUTATOR_RULES.speed : 1);
+}
 function identity(reply: Reply) {
   if (!reply.ok) return;
   lobbySelection.reset();
@@ -907,25 +1182,46 @@ function identity(reply: Reply) {
   owedSteps = 0;
   eventId = 0;
   scene?.hydrateNextSnapshot();
+  // A resumed connection (often after the page was in the background):
+  // check the fighters' art is still there (rig-health.ts).
+  scene?.checkArtSoon("resume");
   local = undefined;
+  inputSessionReady = true;
+  stopControls();
   remoteFrames.clear();
   timeline.clear();
   shotTimeline.clear();
+  impacts.clear();
   sessionStorage.setItem("arena-token", reply.token!);
 }
+/** The local fighter's skills' drag-to-aim specs (touch-aim.ts), by slot. */
+let aimSpecs: AimSpec[] = [];
+let aimSpecsKey = "";
 const touch: TouchControls = new TouchControls(
   $("mobile-controls"),
   () => !!scene?.canControl(),
-  (action) => {
+  (action, stamp, handled) => {
     audio.unlock();
-    if (scene) Object.assign(scene.actions, action);
+    if (scene) {
+      Object.assign(scene.actions, action);
+      for (const [key, value] of Object.entries(action))
+        if (key === "skill" ? Number(value) >= 0 : value)
+          netMeter.press(
+            key === "skill" ? `skill${value}` : key,
+            stamp,
+            handled,
+            performance.timeOrigin,
+            "touch-controls",
+          );
+    }
   },
   toast,
   () => {
-    if (scene)
-      scene.actions = { skill: -1, dash: false, jump: false, basic: false };
+    if (scene) scene.clearActions();
   },
 );
+// Controls laid out again (resize, settings, toggled): measure them anew.
+touch.onLayout = () => (raidControlSides = undefined);
 if (touch.available)
   setupBattleDock(
     $("battle"),
@@ -1015,7 +1311,11 @@ const typingIn = (target: EventTarget | null) =>
     /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName));
 const skillSlot = (action: Action | PadAction) =>
   (SKILL_ACTIONS as readonly string[]).indexOf(action);
-function pressAction(action: Action | PadAction) {
+function pressAction(
+  action: Action | PadAction,
+  stamp?: number,
+  handled = performance.now(),
+) {
   // Between rounds the skill keys/buttons pick a rite (1st, 2nd, 3rd, 4th).
   if (state?.phase === "intermission") {
     const pick = skillSlot(action);
@@ -1030,22 +1330,35 @@ function pressAction(action: Action | PadAction) {
   const slot = skillSlot(action);
   if (slot >= 0) {
     const cast = caster.press(slot, controlPrefs().cast);
-    if (cast >= 0) scene.actions.skill = cast;
+    if (cast >= 0) {
+      scene.actions.skill = cast;
+      netMeter.press(`skill${cast}`, stamp, handled);
+    }
   } else if (action === "dash") scene.actions.dash = true;
   else if (action === "jump") scene.actions.jump = true;
   else if (action === "basic") scene.actions.basic = true;
+  if (slot < 0 && ["basic", "dash", "jump"].includes(action))
+    netMeter.press(action, stamp, handled);
 }
-function releaseAction(action: Action | PadAction) {
+function releaseAction(
+  action: Action | PadAction,
+  stamp?: number,
+  handled = performance.now(),
+) {
   const slot = skillSlot(action);
   if (slot < 0) return;
   const cast = caster.release(slot, controlPrefs().cast);
-  if (cast >= 0 && scene?.canControl()) scene.actions.skill = cast;
+  if (cast >= 0 && scene?.canControl()) {
+    scene.actions.skill = cast;
+    netMeter.press(`skill${cast}`, stamp, handled);
+  }
 }
 const matchKeys = () =>
   state?.phase === "playing" && !$<HTMLDialogElement>("dialog").open;
 document.addEventListener(
   "keydown",
   (e) => {
+    const handled = performance.now();
     if (controlsCapturing() || typingIn(e.target)) return;
     const rune = dreamRuneKey(state, myId, e.code);
     if (rune && matchKeys()) {
@@ -1063,7 +1376,7 @@ document.addEventListener(
     // A fresh press moves the key to the end: the latest press wins (heldAxis).
     held.delete(e.code);
     held.add(e.code);
-    if (live) pressAction(action);
+    if (live) pressAction(action, e.timeStamp, handled);
     else if (
       state?.phase === "intermission" &&
       !$<HTMLDialogElement>("dialog").open
@@ -1159,14 +1472,16 @@ function riteMarkup(me: Fighter, _seconds: number) {
 document.addEventListener(
   "keyup",
   (e) => {
+    const handled = performance.now();
     if (!held.delete(e.code)) return;
     const action = actionFor(controlPrefs().bindings, e.code);
-    if (action) releaseAction(action);
+    if (action) releaseAction(action, e.timeStamp, handled);
   },
   true,
 );
 // mousedown/mouseup fire for every button (pointer events skip chorded buttons).
 $("game").addEventListener("mousedown", (e) => {
+  const handled = performance.now();
   audio.unlock();
   if (touch.enabled) return;
   const code = `Mouse${e.button}`;
@@ -1174,13 +1489,14 @@ $("game").addEventListener("mousedown", (e) => {
   if (e.button === 1) e.preventDefault(); // No middle-click autoscroll.
   held.add(code);
   const action = actionFor(controlPrefs().bindings, code);
-  if (action && matchKeys()) pressAction(action);
+  if (action && matchKeys()) pressAction(action, e.timeStamp, handled);
 });
 window.addEventListener("mouseup", (e) => {
+  const handled = performance.now();
   const code = `Mouse${e.button}`;
   if (!held.delete(code)) return;
   const action = actionFor(controlPrefs().bindings, code);
-  if (action) releaseAction(action);
+  if (action) releaseAction(action, e.timeStamp, handled);
 });
 $("game").addEventListener("mousemove", () => (usingPad = false));
 window.addEventListener("blur", () => {
@@ -1202,7 +1518,7 @@ function heldAxis(negative: Action, positive: Action) {
     else if (bindings[positive].includes(code)) value = 1;
   return value;
 }
-/** Poll the controller once per frame; returns its movement for this frame. */
+/** Poll the controller for the render or input update; return its movement. */
 function pollPad() {
   const pad = firstPad();
   if (!pad) {
@@ -1244,15 +1560,6 @@ const skillsText = () =>
   usingPad
     ? SKILL_ACTIONS.map((a) => PAD_LABELS[a]).join(" ")
     : skillLabels(controlPrefs().bindings).join(" ");
-/** The controls cheat sheet used by the briefing and How to play. */
-function controlsList(full = false) {
-  const aimHow = usingPad ? "right stick to aim" : "mouse to aim";
-  const casting =
-    controlPrefs().cast === "preview"
-      ? " · hold to preview, release to cast"
-      : "";
-  return `<div class="controls-list"><span><kbd>${escape(moveText())}</kbd>Move · ${aimHow}</span><span><kbd>${escape(keyText("basic"))}</kbd>Basic attack${full ? " · hold to keep attacking" : ""}</span><span><kbd>${escape(skillsText())}</kbd>Four skills · the last is your ultimate${casting}</span>${full ? "<span><kbd>ULT</kbd>The ultimate charges as you fight · basic hits shorten cooldowns</span><span><kbd>COMBO</kbd>Each fighter has a setup → payoff combo (see the fighter panel)</span>" : ""}<span><kbd>${escape(keyText("dash"))}</kbd>Dash${full ? " · 3 second cooldown" : ""}</span><span><kbd>${escape(keyText("jump"))}</kbd>Jump over ground attacks</span>${full ? "<span><kbd>ESC</kbd>Settings · change keys under Controls</span>" : ""}</div>`;
-}
 /** The briefing's keys: one compact row (the help screen has the full list). */
 function briefKeys() {
   const key = (k: string, what: string) =>
@@ -1286,31 +1593,18 @@ onControlPrefs(() => {
 function stopControls() {
   touch.reset();
   if (scene) {
-    scene.actions = { skill: -1, dash: false, jump: false, basic: false };
+    scene.clearActions();
     held.clear();
     caster.cancel();
   }
-  if (connected && state?.phase === "playing" && local)
-    socket.emit("input", {
-      seq: ++seq,
-      dx: 0,
-      dy: 0,
-      aimX: Math.max(
-        0,
-        Math.min(RULES.width, local.x + Math.cos(local.angle) * 100),
-      ),
-      aimY: Math.max(
-        0,
-        Math.min(RULES.height, local.y + Math.sin(local.angle) * 100),
-      ),
-      basic: false,
-      skill: -1,
-      dash: false,
-      jump: false,
-    });
+  castPredictor.clear();
+  optimisticCooldowns.clear();
+  netMeter.pauseInput();
+  scene?.syncInputClock();
 }
 window.addEventListener("blur", stopControls);
 window.addEventListener("pagehide", stopControls);
+window.addEventListener("pageshow", stopControls);
 document.addEventListener("visibilitychange", stopControls);
 const pwa = setupPWA(() => state?.phase, dialog, toast);
 wireRotateGate();
@@ -1321,8 +1615,11 @@ watchScreenPin();
 // The iPhone app (native.ts): iOS pauses it soon after you switch away, which
 // drops the game connection; coming back reconnects at once.
 void setupNativeShell(() => {
+  backgroundExit.back();
+  scene?.syncInputClock();
   const token = (socket.auth as { accessToken?: string | null }).accessToken;
-  if (token && !socket.connected) socket.connect();
+  // Not while still connecting (`active`): see onSession.
+  if (token && !replacedAccount && !socket.active) socket.connect();
 });
 watchCosmeticPreviews();
 // Remember a room from an invite link (?room=ABC123) before the first render.
@@ -1375,7 +1672,7 @@ function roomData(watch: boolean): RoomData {
     spire: s.raid?.spire
       ? { problem: s.raid.spire.problem, zone: s.raid.spire.zone }
       : undefined,
-    rounds: roundsNeeded(s.mutators),
+    rounds: roundsNeeded(s.mutators, s.introRounds),
     seats: players.map((p, i) => {
       const character = p.id === myId ? selected : p.character;
       const scope = `room-${watch ? "watch" : "seat"}-${i}`;
@@ -1595,12 +1892,7 @@ function vsReveal(
   s: Snapshot,
   loading: boolean,
 ): ((i: number) => number | "wait") | undefined {
-  if (
-    s.raid ||
-    s.practice ||
-    matchMedia("(prefers-reduced-motion: reduce)").matches
-  )
-    return undefined;
+  if (s.raid || s.practice || reducedMotion) return undefined;
   const key = `${s.code}:${s.players.map((p) => `${p.id}=${p.character}`).join(",")}`;
   if (key !== vsRevealKey && loading) return () => "wait";
   if (key !== vsRevealKey) {
@@ -1612,6 +1904,44 @@ function vsReveal(
     VS_FLIP_FIRST + (s.players.length - 1) * VS_FLIP_STEP + VS_FLIP_MS;
   if (elapsed > last) return undefined;
   return (i: number) => VS_FLIP_FIRST + i * VS_FLIP_STEP - elapsed;
+}
+/**
+ * Draw the Reveal again just after its last card has turned over, so
+ * "I'm ready" lights up then even if no snapshot arrives at that moment.
+ */
+let vsRevealTimer: ReturnType<typeof setTimeout> | undefined;
+function scheduleRevealEnd(players: number) {
+  if (vsRevealTimer !== undefined) return;
+  const last = VS_FLIP_FIRST + (players - 1) * VS_FLIP_STEP + VS_FLIP_MS;
+  const wait = Math.max(0, vsRevealAt + last + 220 - performance.now());
+  vsRevealTimer = setTimeout(() => {
+    vsRevealTimer = undefined;
+    if (state?.phase === "briefing" && !state.raid) renderBattle();
+  }, wait);
+}
+/**
+ * A fighter's full health for its bar. A PvP round always starts everyone
+ * full (the server's resetRound), so the health in the Reveal and the
+ * countdown is the server's own full health: the bar trusts it over this
+ * client's table, which an out-of-date app gets wrong. On the owner's
+ * phone (22 Nov 2026) Voltkit's bar started a round at 86%: the app still
+ * had its old 157 health, the server 135. Raids, the Spire and Solo test
+ * keep the table: their fighters don't all start full.
+ */
+const fullSeen = new Map<string, number>();
+function fullHealth(s: Snapshot, p: Fighter) {
+  const key = `${s.code}:${p.id}:${p.character}`;
+  if (
+    !s.raid &&
+    !s.practice &&
+    !p.out &&
+    p.hp > 0 &&
+    (s.phase === "briefing" || s.phase === "countdown")
+  ) {
+    if (fullSeen.size > 64) fullSeen.clear();
+    fullSeen.set(key, p.hp);
+  }
+  return fullSeen.get(key) ?? maxHealth(p.character, s.mode, s.players.length);
 }
 /** The room's ⋯ menu (Settings, Invite, Leave) is open. */
 let roomMenuOpen = false;
@@ -1827,8 +2157,24 @@ let roomMode: RoomMode = (() => {
   }
 })();
 /** Lobby panel: a duel list, or Blue/Red columns for 2v2. */
+/** A side's name for a watcher: Blue/Red in 2v2, else its fighter's name. */
+function sideName(team: number) {
+  if (isTeams()) return (TEAM_LABELS[team] ?? "").toUpperCase();
+  return (
+    state?.players.find((p) => teamOf(p) === team)?.name ?? ""
+  ).toUpperCase();
+}
+/** Watching: the leading side and the runner-up, for no one in particular. */
+function watchRace(label: string, totals: number[], target: number) {
+  const sides = totals
+    .map((n, team) => ({ n: Math.floor(n), team }))
+    .sort((a, b) => b.n - a.n)
+    .slice(0, 2);
+  return `${label} · ${sides.map((x) => `${sideName(x.team)} ${x.n}`).join(" · ")} / ${target}`;
+}
 /** Orb Rush HUD line: gems you carry, your side's bank and the best rival's. */
 function rushLabel(me: Fighter) {
+  if (!myId) return watchRace("RUSH", state?.banked ?? [], RUSH.target);
   const banked = state?.banked ?? [];
   const mine = banked[teamOf(me)] ?? 0;
   const rival = Math.max(0, ...banked.filter((_, t) => t !== teamOf(me)));
@@ -1836,6 +2182,12 @@ function rushLabel(me: Fighter) {
 }
 /** Crown Hill HUD line: your hold time against the best rival's. */
 function crownLabel(me: Fighter) {
+  if (!myId)
+    return watchRace(
+      "CROWN",
+      state?.crown ?? [],
+      state?.arcade?.hill?.target ?? CROWN.holdSeconds,
+    );
   const crown = state?.crown ?? [];
   const mine = crown[teamOf(me)] ?? 0;
   const rival = Math.max(0, ...crown.filter((_, t) => t !== teamOf(me)));
@@ -1844,8 +2196,10 @@ function crownLabel(me: Fighter) {
 /** What a watcher sees over the arena: no buttons but "Stop watching". */
 function renderWatchOverlay(overlay: HTMLElement) {
   const banner = $("spectate");
-  banner.hidden = state!.phase !== "playing";
-  banner.textContent = `Watching room ${state!.code} · Esc / Menu to stop`;
+  setHudHidden(banner, state!.phase !== "playing");
+  // Phones have no Esc: the gear (top right) holds "Stop watching".
+  const text = `Watching room ${state!.code} · ${touch.enabled ? "⚙ to stop" : "Esc to stop"}`;
+  if (banner.textContent !== text) banner.textContent = text;
   if (state!.phase === "playing") {
     setOverlayMarkup(overlay, "");
     overlay.style.pointerEvents = "none";
@@ -1857,7 +2211,25 @@ function renderWatchOverlay(overlay: HTMLElement) {
   let heading = "",
     details = "",
     actions = "";
-  if (state!.phase === "briefing") {
+  const raid = state!.raid;
+  if (raid) {
+    // A raid: the raiders against the boss, its own words between fights.
+    const raiders = state!.players.filter((p) => isRaider(p) && !p.out);
+    if (state!.phase === "briefing") {
+      heading = `The raiders are getting ready`;
+      details = `<p>${raiders.map((p) => `<b>${escape(p.name)}</b>`).join(" · ")} against ${escape(raidBossName(raid))}</p>`;
+    } else if (state!.phase === "intermission") {
+      heading = "The raiders are choosing rites";
+      details = `<p class="rite-timer">Next phase in ${LIVE_SECONDS}</p>`;
+    } else if (state!.phase === "finished") {
+      heading =
+        raid.result === "victory"
+          ? `${escape(raidBossName(raid))} defeated!`
+          : `${escape(raidBossName(raid))} still stands`;
+      details = `<p>${raiders.map((p) => `<b>${escape(p.name)}</b>`).join(" · ")} · ${Math.floor(raid.elapsed / 60)}:${String(Math.floor(raid.elapsed % 60)).padStart(2, "0")} · ${raid.revives} revives</p>`;
+      actions = `<div class="result-actions"><button class="secondary btn-secondary leave-button" id="watch-stop">${iconLabel("stop-watching", "Stop watching")}</button></div>`;
+    }
+  } else if (state!.phase === "briefing") {
     heading = "The players are getting ready";
     details = `<div class="briefing-versus${isFfa() ? " ffa" : ""}">${state!.players
       .map(
@@ -1868,8 +2240,11 @@ function renderWatchOverlay(overlay: HTMLElement) {
         '<span class="vs-mark">VS</span>',
       )}</div><p class="arena-brief"><b>Arena · ${escape(ARENAS[state!.arena ?? "classic"].name)}</b>${escape(ARENAS[state!.arena ?? "classic"].tip)}</p>${partyRulesNote()}`;
   }
-  if (state!.phase === "countdown") details = "Here we go.";
-  if (state!.phase === "intermission") {
+  if (state!.phase === "countdown") {
+    heading = LIVE_COUNTDOWN;
+    details = "Here we go.";
+  }
+  if (state!.phase === "intermission" && !raid) {
     heading = isTeams()
       ? state!.roundWinnerTeam === null || state!.roundWinnerTeam === undefined
         ? "Round drawn"
@@ -1883,7 +2258,7 @@ function renderWatchOverlay(overlay: HTMLElement) {
     heading = "A player disconnected";
     details = `Waiting for them · ${LIVE_SECONDS}`;
   }
-  if (state!.phase === "finished") {
+  if (state!.phase === "finished" && !raid) {
     heading = isTeams()
       ? `${TEAM_LABELS[state!.winnerTeam ?? 0] ?? ""} team wins`
       : `${name(state!.winner)} wins`;
@@ -1891,12 +2266,9 @@ function renderWatchOverlay(overlay: HTMLElement) {
       (isFfa() ? standingsMarkup(state!, "") : "") + recapMarkup(state!, "");
     actions = `<div class="result-actions"><button class="secondary btn-secondary leave-button" id="watch-stop">${iconLabel("stop-watching", "Stop watching")}</button></div>`;
   }
-  const eyebrow = `Watching · ${escape(state!.code)}`;
   setOverlayMarkup(
     overlay,
-    state!.phase === "countdown"
-      ? countdownCard(eyebrow, details)
-      : `<div class="overlay-card${actions ? " action-overlay" : ""}"><span class="eyebrow">${eyebrow}</span><h2>${heading}</h2><div${actions ? ' class="panel-scroll" tabindex="0" role="region" aria-label="Match results"' : ""}>${details}</div>${actions ? `<div class="panel-actions">${actions}</div>` : ""}</div>`,
+    `<div class="overlay-card${actions ? " action-overlay" : state!.phase === "countdown" ? " countdown-card" : ""}"><span class="eyebrow">Watching · ${escape(state!.code)}</span><h2>${heading}</h2><div${actions ? ' class="panel-scroll" tabindex="0" role="region" aria-label="Match results"' : ""}>${details}</div>${actions ? `<div class="panel-actions">${actions}</div>` : ""}</div>`,
     actions
       ? `${state!.code}:${state!.matchId ?? ""}:${state!.phase}`
       : undefined,
@@ -1961,6 +2333,17 @@ async function joinByCode(code: string) {
 /** Room code being watched (no seat), or "". */
 let watching = "";
 const pvpSpectator = new PvpSpectator();
+/** Announcements from the admins, as a banner (announcements.ts). */
+const announcements = new AnnouncementBanner();
+// On the game's old address: offer the new one (domain-move.ts).
+{
+  const moved = newAddress(location.hostname, import.meta.env.VITE_SITE_URL);
+  if (moved)
+    announcements.notice(moveNotice(moved), {
+      href: `${moved}/`,
+      label: "Open",
+    });
+}
 const roomInvites = new RoomInvites({
   accountId: () => accountsUI?.account?.id,
   canJoin: () => connected && !!accountsUI?.account && !myId,
@@ -2139,7 +2522,11 @@ async function showPartyInvite() {
       ? `<ul class="party-invite-list">${online
           .map((f) => {
             const state = partyInviteButton(f.id);
-            return `<li><span><b>${escape(f.name)}</b><small>${members.has(f.id) ? "In your party" : "Online"}</small></span><button type="button" class="secondary" data-party-invite="${f.id}"${state.off ? " disabled" : ""}>${state.label}</button></li>`;
+            return partyInviteRow(f, {
+              inParty: members.has(f.id),
+              label: state.label,
+              off: state.off,
+            });
           })
           .join("")}</ul>`
       : `<p class="muted">None of your friends are online right now.</p><p><button type="button" class="secondary" id="party-open-friends">${iconLabel("friends", "Open Friends")}</button></p>`;
@@ -2238,7 +2625,7 @@ function cooldownScale() {
 }
 /** "two" / "three": round wins needed under this room's rules (arcade). */
 function roundWord() {
-  const n = roundsNeeded(state?.mutators);
+  const n = roundsNeeded(state?.mutators, state?.introRounds);
   return ["zero", "one", "two", "three", "four"][n] ?? String(n);
 }
 /** An arcade week's rules on the briefing card, if any. */
@@ -2297,9 +2684,62 @@ async function startAdventure(mode: string) {
   await request("browse", selected);
 }
 /**
+ * The title screen (title-screen.ts) is due: once per launch, for a
+ * signed-in player with nowhere else to go. A room to rejoin, an invite
+ * link or a friend's notification goes straight there instead.
+ */
+function titleWanted() {
+  if (!titleDue()) return false;
+  if (
+    replacedAccount ||
+    watching ||
+    friendToOpen ||
+    pendingInvite() ||
+    sessionStorage.getItem("arena-token")
+  ) {
+    passTitle();
+    return false;
+  }
+  return true;
+}
+/** Start on the title screen: in, under the loading curtain. */
+function leaveTitle() {
+  audio.unlock();
+  passTitle();
+  screen = "";
+  startStartupCurtain(startupStage, undefined, true);
+  renderMenu();
+}
+// Enter starts from the title screen, wherever the focus is (a computer's
+// "press Enter"); not while a dialog (Settings, Help) is open over it.
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" || event.repeat) return;
+  const start = document.getElementById("title-start") as HTMLButtonElement;
+  if (!start || start.disabled) return;
+  if (document.querySelector("dialog[open]")) return;
+  const focus = document.activeElement;
+  if (focus instanceof HTMLButtonElement && focus !== start) return;
+  event.preventDefault();
+  leaveTitle();
+});
+/** The front door's quick buttons (title-screen.ts). */
+function quickAction(action: QuickAction) {
+  if (action === "settings") return showSettings();
+  if (action === "help") return showHowToPlay();
+  if (action === "support")
+    return void window.open(SUPPORT_URL, "_blank", "noopener");
+  dialog(
+    `<div class="repair-screen"><h2>Repair the game?</h2><p>If pictures look wrong, an update didn't finish or a screen is stuck, this downloads the game's files again and restarts it.</p><p>Your account, progress and settings stay as they are.</p><div class="dialog-actions"><button type="button" class="primary" id="repair-go">${iconLabel("again", "Repair and restart")}</button></div></div>`,
+  );
+  $("repair-go").onclick = () => {
+    $("repair-go").setAttribute("disabled", "");
+    void repairGame({ forget: [PROFILE_COPY_KEY] });
+  };
+}
+/**
  * The welcome screen: shown when signed out (with the sign-up / log-in
- * panel in it), while the account loads, and while a signed-in player is
- * (re)connecting to the hub.
+ * panel in it), while the account loads, as the title screen once per
+ * launch, and while a signed-in player is (re)connecting to the hub.
  */
 function renderGate() {
   syncHub();
@@ -2308,14 +2748,29 @@ function renderGate() {
     : !accountsUI?.checked
       ? "loading"
       : accountsUI.account
-        ? "connecting"
+        ? titleWanted()
+          ? "title"
+          : "connecting"
         : accountsUI.session
           ? "error"
           : !accountsUI.client
             ? "unavailable"
             : "signed-out";
   const invite = pendingInvite();
-  const key = `gate:${status}:${invite ?? ""}`;
+  const title =
+    status === "title" && accountsUI.account
+      ? titleScreen(
+          {
+            name: accountsUI.account.displayName,
+            level: accountsUI.level,
+            method: accountsUI.signInMethod,
+            picture: accountsUI.identityPicture(),
+            ready: connected,
+          },
+          BUILD_ID,
+        )
+      : undefined;
+  const key = `gate:${status}:${invite ?? ""}:${title ?? ""}`;
   if (screen === key) return;
   screen = key;
   audio.setTheme("lobby");
@@ -2331,7 +2786,18 @@ function renderGate() {
   $("battle").hidden = true;
   syncBattleLoop();
   $("menu").hidden = false;
-  $("menu").innerHTML = welcomeGate(status, invite);
+  $("menu").innerHTML =
+    title ?? welcomeGate(status, invite, { quick: quickBar(BUILD_ID) });
+  document
+    .querySelectorAll<HTMLElement>("[data-gate-quick]")
+    .forEach((button) => {
+      button.onclick = () =>
+        quickAction(button.dataset.gateQuick as QuickAction);
+    });
+  const start = document.getElementById("title-start");
+  if (start) start.onclick = leaveTitle;
+  const change = document.getElementById("title-switch");
+  if (change) change.onclick = () => void accountsUI.logOut();
   const login = document.getElementById("gate-login"),
     retry = document.getElementById("gate-retry");
   if (login) login.onclick = () => accountsUI.showAuth("login");
@@ -2348,6 +2814,8 @@ function renderGate() {
   // Signed out: the panel is right there. Returning players see Log in,
   // new ones Create account.
   if (status === "signed-out") {
+    // Signing in here is the way in: no title screen after it.
+    passTitle();
     let returning = false;
     try {
       returning = localStorage.getItem("arena-has-account") === "yes";
@@ -2356,6 +2824,14 @@ function renderGate() {
     }
     accountsUI.showAuth(invite || returning ? "login" : "signup");
   }
+  // Signed in from the front door (or as another account), or the hub's
+  // connection dropped (the app back from the background, say): the
+  // loading curtain covers the way in, as at startup, instead of the front
+  // door showing and the Lobby then appearing in front of the player
+  // (docs/loading-screens.md). It lifts at once if a front-door screen
+  // needs the player, and never stays past its cap.
+  if (status === "connecting" || status === "loading")
+    startStartupCurtain(startupStage, undefined, true);
 }
 
 const WORLD_NAMES: Record<World, string> = {
@@ -2365,14 +2841,25 @@ const WORLD_NAMES: Record<World, string> = {
 syncUiEffects();
 const worlds = worldLoader();
 let phaserWarm: ReturnType<typeof setTimeout> | undefined;
-/** Load Phaser `ms` from now, while the page is idle (phaser-runtime.ts). */
+let phaserWarmNow = false;
+/**
+ * Load Phaser and the battle kit `ms` from now, while the page is idle
+ * (phaser-runtime.ts). At once (0) overtakes a wait the hub began: a room
+ * has a battle coming, and a raid room paints its boss ahead with the kit.
+ */
 function warmPhaser(ms: number) {
-  if (phaser() || phaserWarm !== undefined) return;
+  if (phaser()) return;
+  if (phaserWarm !== undefined) {
+    if (ms || phaserWarmNow) return;
+    clearTimeout(phaserWarm);
+  }
+  phaserWarmNow = !ms;
   phaserWarm = setTimeout(() => {
     const load = () =>
       void loadPhaser().catch(() => {
         // Offline or a new deploy: a battle asks again when it needs it.
         phaserWarm = undefined;
+        phaserWarmNow = false;
       });
     if (ms && typeof requestIdleCallback === "function")
       requestIdleCallback(load, { timeout: 4000 });
@@ -2433,22 +2920,36 @@ let wantedPlazaClosed = false;
  * The hub (Lobby, Plaza): open whenever a signed-in, connected player
  * is not in a room (and not about to resume or join one); closed otherwise.
  */
-function syncHub() {
-  syncUiEffects();
-  const hub =
+function hubOpen() {
+  return (
     !!accountsUI?.account &&
     connected &&
     !myId &&
     !watching &&
     !state &&
     !sessionStorage.getItem("arena-token") &&
-    !pendingInvite();
+    !pendingInvite() &&
+    // The title screen first, once per launch (title-screen.ts).
+    !titleWanted()
+  );
+}
+function syncHub() {
+  syncUiEffects();
+  const hub = hubOpen();
+  // The Plaza this device was last on, at a level it isn't open at yet.
+  if (hub && hubScene === "plaza" && featureLocked("plaza", levelNow())) {
+    hubScene = "lobby";
+    saveHubScene("lobby");
+  }
   syncHubScenes(hub);
   // Which hub scene is showing (styles such as the toast's place follow it).
   if (hub) document.body.dataset.hubScene = hubScene;
   else delete document.body.dataset.hubScene;
   syncParty();
-  syncLobby(hub && hubScene === "lobby");
+  // Off to the Plaza (the hub stays up), your fighter's rig waits for the
+  // way back; out of the hub (a battle), it goes.
+  syncLobby(hub && hubScene === "lobby", hub && hubScene === "plaza");
+  if (!hub) releaseParkedLobbyRig();
   worldWait = null;
   syncPlaza(hub && hubScene === "plaza", hub);
   renderWorldWait();
@@ -2467,7 +2968,10 @@ function syncHub() {
 }
 /** The chat button's place and channels (chat/chat-ui.ts). */
 function syncChat(hub: boolean) {
-  const inRoom = !!myId && !!state;
+  // Watching a room counts as being in it: watchers chat with its players
+  // (docs/chat-plan.md, "Watchers").
+  const watcher = !myId && !!watching && state?.code === watching;
+  const inRoom = (!!myId || watcher) && !!state;
   const fighting =
     inRoom && state!.phase !== "lobby" && state!.phase !== "finished";
   // The Reveal (a PvP briefing) is a few seconds' loading screen: no chat
@@ -2486,15 +2990,19 @@ function syncChat(hub: boolean) {
       !reveal &&
       !state!.practice &&
       !state!.vsBot &&
-      state!.players.length > 1 &&
-      (!state!.raid || state!.raid.partySize > 1),
+      // Someone to talk to: another fighter, a raid party, or a watcher.
+      (watcher ||
+        (state!.watchers?.length ?? 0) > 0 ||
+        (state!.players.length > 1 &&
+          (!state!.raid || state!.raid.partySize > 1))),
     !!state?.raid,
+    watcher,
   );
   chat.sync(place, {
     party: !!party,
     room: inRoom && !state!.practice,
-    // A 2v2 room's own side (docs/hidden-picks.md).
-    team: inRoom && !state!.practice && state!.mode === "teams",
+    // A 2v2 room's own side (docs/hidden-picks.md); a watcher has none.
+    team: inRoom && !watcher && !state!.practice && state!.mode === "teams",
     // Nearby: the Plaza's copy.
     place: hub && hubScene === "plaza",
     // Friends: anyone signed in with an account (guests have no friends).
@@ -2519,6 +3027,9 @@ function syncChat(hub: boolean) {
 /** The new Plaza (hub redesign phase 3): the server moves everyone in it. */
 function syncPlaza(want: boolean, hub = want) {
   if (!want) {
+    // A screen opened over the Plaza (your card) goes with it.
+    if (openHubPanelNow()?.root.closest(".plaza-layer"))
+      openHubPanelNow()?.close();
     // Behind the Lobby the Plaza waits, drawn and kept (you are
     // off it on the server, which keeps your spot); out of the hub it closes.
     if (plaza && hub) plaza.hide();
@@ -2539,6 +3050,8 @@ function syncPlaza(want: boolean, hub = want) {
         skin,
         accountsUI.raidLook?.skin ?? null,
         accountsUI.raidLook?.aura ?? null,
+        accountsUI.raidLook?.entrance ?? null,
+        accountsUI.raidLook?.victory ?? null,
       );
     plazaLook = look;
     return;
@@ -2554,6 +3067,8 @@ function syncPlaza(want: boolean, hub = want) {
     skin,
     colour: accountsUI.raidLook?.skin ?? null,
     aura: accountsUI.raidLook?.aura ?? null,
+    entrance: accountsUI.raidLook?.entrance ?? null,
+    victory: accountsUI.raidLook?.victory ?? null,
     reduced: reducedMotion,
     low: plazaLow,
     art: (character, worn, flat, colour) => {
@@ -2656,7 +3171,7 @@ function syncHubScenes(hub: boolean) {
   nav.hidden = !hub;
   document.body.classList.toggle("hub-active", hub);
   if (!hub) return;
-  const markup = sceneSwitchMarkup(hubScene);
+  const markup = sceneSwitchMarkup(hubScene, levelNow());
   if (nav.innerHTML !== markup) nav.innerHTML = markup;
   // Centred, or between the player card and the pills on narrow phones.
   placeSceneSwitch ??= watchSceneSwitch(nav);
@@ -2665,6 +3180,7 @@ function syncHubScenes(hub: boolean) {
 let placeSceneSwitch: (() => void) | undefined;
 function setHubScene(scene: HubScene) {
   if (scene === hubScene) return;
+  if (scene === "plaza" && tellLocked("plaza")) return;
   hubScene = scene;
   saveHubScene(scene);
   homeNavigation.close();
@@ -2738,7 +3254,188 @@ function lobbyView() {
     friendsOnline: lobbyFriends.online,
     guide: guide.view(),
     spire: lobbySpire(),
+    level: levelNow(),
+    introRounds: introRounds(matchesFinished),
+    rank: rankChip(myRating, featureLocked("ranks", levelNow())),
   };
+}
+/** Your level, or undefined while the account loads. */
+function levelNow() {
+  const journey = accountsUI?.economy?.journey;
+  return journey ? playerLevel(journey.xp).level : undefined;
+}
+/**
+ * A feature that opens by level (feature-unlocks.ts) and is still locked at
+ * yours: says when it opens, and returns true (the caller stops).
+ */
+function tellLocked(feature: Feature | undefined) {
+  if (!feature || !featureLocked(feature, levelNow())) return false;
+  toast(lockedMessage(feature));
+  return true;
+}
+/** Where a feature lives, for the "Unlocked" sheet's Open. */
+function openFeature(feature: Feature) {
+  if (feature === "plaza") return setHubScene("plaza");
+  if (hubScene !== "lobby") setHubScene("lobby");
+  lobbyAction(feature);
+}
+/**
+ * A hub screen in front of the Lobby: open, or still leaving. Not one kept
+ * hidden for its next open (ui/hub-panel.ts park: the Shop, the Fighters),
+ * which held back the unlock sheet, today's gift and the tour for as long
+ * as it was kept, up to a minute after it closed.
+ */
+function screenInFront() {
+  return document.querySelector(`.ui-panel-host:not([${PARKED}]) .ui-panel`);
+}
+/** The "Unlocked" dialog is up (one at a time). */
+let unlockShowing = false;
+/**
+ * A level that opened something since this browser last looked: the
+ * "Unlocked" dialog, once, on the Lobby, when nothing else is in front (the
+ * tour, a dialog, another screen, a reward being revealed). Otherwise it
+ * waits for the next time the Lobby is free.
+ */
+function maybeShowUnlocks() {
+  const account = accountsUI?.account?.id,
+    level = levelNow();
+  if (!account || level === undefined || !lobby || myId || unlockShowing)
+    return;
+  const seen = loadSeenLevel(account);
+  const due = unlocksDue(seen, level);
+  if (!due.show.length) {
+    if (seen !== due.seen) saveSeenLevel(account, due.seen);
+    return;
+  }
+  if (
+    tour?.open ||
+    tourTimer !== undefined ||
+    $<HTMLDialogElement>("dialog").open ||
+    screenInFront() ||
+    document.querySelector("[data-ui-confirm]") ||
+    document.getElementById("reward-reveal") ||
+    accountsUI?.guestWarningPending
+  )
+    return;
+  saveSeenLevel(account, due.seen);
+  unlockShowing = true;
+  const first = due.show[0].id;
+  void askConfirm(unlockDialog(level, due.show)).then((open) => {
+    unlockShowing = false;
+    // Still on the hub (a room invite may have been taken meanwhile).
+    if (open && !myId && hubOpen()) openFeature(first);
+    else maybeShowGift();
+  });
+}
+/**
+ * The daily gift (daily-gift.ts): where this account is in its calendar,
+ * read when the Lobby opens (again on a new Pacific day).
+ */
+let gift: { account: string; state: DailyGiftState } | undefined;
+let giftLoading = "";
+let giftDialog: GiftDialog | undefined;
+const giftLaterKey = (account: string) => `arena-gift-later:${account}`;
+function loadGift() {
+  const account = accountsUI?.account?.id;
+  if (!account) return;
+  if (gift?.account === account && gift.state.today === pacificDate()) return;
+  const key = `${account}:${pacificDate()}`;
+  if (giftLoading === key) return;
+  giftLoading = key;
+  accountsUI
+    .api("/api/gift")
+    .then((value) => {
+      if (accountsUI.account?.id !== account) return;
+      gift = { account, state: dailyGiftStateSchema.parse(value) };
+      maybeShowGift();
+      if (state?.phase === "finished") renderBattle();
+    })
+    .catch(() => {
+      // Not set up yet (migration 20261126150000), or offline: no gift
+      // dialog; the next Lobby asks again.
+      giftLoading = "";
+    });
+}
+/** Open the calendar: to claim, or to look at it (the Menu's Daily gift). */
+function showGift() {
+  const account = accountsUI?.account?.id;
+  if (!account || giftDialog?.open) return;
+  if (gift?.account !== account) {
+    loadGift();
+    return toast("Your daily gift is loading. Try again in a moment.");
+  }
+  giftDialog = openGiftDialog({
+    state: gift.state,
+    claim: async () => {
+      try {
+        const claim = dailyGiftClaimSchema.parse(
+          await accountsUI.api("/api/gift/claim", {}),
+        );
+        gift = { account, state: claim };
+        // Coins, XP and the cosmetic are in the account now.
+        void accountsUI.loadEconomy();
+        return claim;
+      } catch (error) {
+        // Taken on another device meanwhile: show the calendar as it is.
+        giftLoading = "";
+        gift = undefined;
+        loadGift();
+        return error instanceof Error
+          ? error.message
+          : "Couldn't take the gift. Try again.";
+      }
+    },
+    onClose: (after) => {
+      giftDialog = undefined;
+      // Later: not again this visit (the Menu still opens it).
+      if (!after.claimed)
+        try {
+          sessionStorage.setItem(giftLaterKey(account), after.today);
+        } catch {
+          /* No storage: it may show once more. */
+        }
+      maybeShowUnlocks();
+    },
+  });
+}
+/**
+ * Today's gift, waiting: its dialog on the Lobby, when nothing else is in
+ * front. A brand-new player plays first (docs/onboarding.md): the gift
+ * shows once they have finished a match or reached level 2.
+ */
+function maybeShowGift() {
+  const account = accountsUI?.account?.id,
+    level = levelNow();
+  if (!account || !lobby || myId || giftDialog?.open || unlockShowing) return;
+  if (gift?.account !== account || gift.state.claimed) return;
+  if (level === undefined || !((matchesFinished ?? 0) >= 1 || level >= 2))
+    return;
+  try {
+    if (sessionStorage.getItem(giftLaterKey(account)) === gift.state.today)
+      return;
+  } catch {
+    /* No storage. */
+  }
+  if (
+    tour?.open ||
+    tourTimer !== undefined ||
+    $<HTMLDialogElement>("dialog").open ||
+    screenInFront() ||
+    document.querySelector("[data-ui-confirm]") ||
+    document.getElementById("reward-reveal") ||
+    accountsUI?.guestWarningPending
+  )
+    return;
+  showGift();
+}
+/** What the result sheet says about the gift (result-rewards.ts). */
+function giftNote() {
+  const account = accountsUI?.account?.id;
+  if (!account || gift?.account !== account) return undefined;
+  const s = gift.state;
+  return s.claimed
+    ? `Tomorrow's gift: ${giftLabel(tomorrowGift(s))}`
+    : `Today's gift is waiting in the Lobby: ${giftLabel(giftOn(s.day, s))}`;
 }
 /** The Lobby's Spire card, and the Raids dot while it's new (spire-nudge.ts). */
 function lobbySpire() {
@@ -2765,16 +3462,26 @@ const guide = createGuide({
   },
   go: (step) => {
     if (step === "bot") void lobbyPlay("bot-easy");
-    else if (step === "raid") void accountsUI.showRaids("grumblecrag", "party");
-    else void accountsUI.showWardrobe();
+    else if (step === "raid") {
+      if (!tellLocked("raids"))
+        void accountsUI.showRaids("grumblecrag", "party");
+    } else void accountsUI.showWardrobe();
   },
   changed: () => syncLobby(!!lobby),
   toast: (text) => toast(text),
+  locks: () => (featureLocked("raids", levelNow()) ? { raid: "raids" } : {}),
 });
-function syncLobby(want: boolean) {
+function syncLobby(want: boolean, park = false) {
   if (!want) {
+    // The tour points at the Lobby: it goes with it (shown again next time).
+    if (tour?.open) {
+      tour.close();
+      tour = undefined;
+    }
+    clearTimeout(tourTimer);
+    tourTimer = undefined;
     if (lobby) {
-      lobby.close();
+      lobby.close({ park });
       lobby = undefined;
       clearInterval(lobbyFriendsTimer);
     }
@@ -2787,6 +3494,7 @@ function syncLobby(want: boolean) {
       onPlay: (mode) => void lobbyPlay(mode),
       onStep: stepHomeFighter,
       onKick: (id) => void kickFromParty(id),
+      onLocked: (feature) => void tellLocked(feature),
       firstMatchDone: (() => {
         const g = guide.view();
         return !(g.active && !g.done.bot);
@@ -2796,6 +3504,10 @@ function syncLobby(want: boolean) {
     lobbyFriendsTimer = setInterval(() => void refreshLobbyFriends(), 60000);
   }
   lobby.update(lobbyView());
+  maybeStartTour();
+  maybeShowUnlocks();
+  loadGift();
+  maybeShowGift();
 }
 /** The roster (UI remodel step 3): every fighter, and a fighter's detail. */
 let rosterScreen: RosterScreen | undefined;
@@ -2825,12 +3537,23 @@ function openRosterScreen() {
       syncHub();
     },
     skins: (id) => void accountsUI.showShop("skins", id),
+    // Test skills: this fighter becomes yours, then Solo test starts with it.
+    practice: (id) => {
+      if (id !== selected) {
+        selected = id;
+        rememberHomeFighter(id);
+        renderMenu();
+        syncHub();
+      }
+      void lobbyPlay("practice");
+    },
     onClose: () => (rosterScreen = undefined),
   });
 }
 /** Menu, cards and party slots on the Lobby. */
 function lobbyAction(action: LobbyAction) {
   audio.unlock();
+  if (tellLocked(ACTION_FEATURE[action])) return;
   // A screen opened from the rail replaces the one that is open (the Shop
   // and the Wardrobe are one screen and switch in place).
   if (action !== "shop" && action !== "wardrobe") openHubPanelNow()?.close();
@@ -2899,6 +3622,62 @@ async function quickMatch() {
     },
   });
 }
+/**
+ * 2v2 or Free-for-all on your own (docs/pvp-plan.md, "Bots fill in"):
+ * search for players; after QUICK_FILL_MS, or at Start, bots take the
+ * empty seats. The room arrives as "quick-found" either way.
+ */
+async function fillMatch(mode: FillMode) {
+  if (quickSearch?.open) return;
+  const name =
+    document.querySelector<HTMLInputElement>("#name")?.value.trim() ||
+    accountsUI.account?.displayName ||
+    "Trainer";
+  // Listening before asking: when this search completes a group of four,
+  // the room follows the reply at once.
+  let arrived = false;
+  socket.off("quick-found");
+  socket.once("quick-found", (found: Reply) => {
+    arrived = true;
+    quickSearch?.close();
+    quickSearch = undefined;
+    if (!found.ok) return;
+    identity(found);
+    // A room with other players: your pick, shown to you only.
+    if (!found.started) void request("browse", selected);
+  });
+  const reply = await request("quick-join", {
+    name,
+    character: selected,
+    mode,
+  });
+  if (!reply.ok) return void socket.off("quick-found");
+  if (arrived) return;
+  quickSearch = openFillSearch({
+    mode,
+    online: reply.online ?? 0,
+    onCancel: () => {
+      socket.off("quick-found");
+      quickSearch = undefined;
+      void request("quick-leave", {}, true);
+    },
+    onFill: async () => {
+      const filled = await request(
+        "quick-fill",
+        { difficulty: suggestedBotLevel() },
+        true,
+      );
+      // A full group formed at the same moment: its room is on the way.
+      if (!filled.ok && quickSearch?.open) {
+        socket.off("quick-found");
+        quickSearch.close();
+        quickSearch = undefined;
+        void request("quick-leave", {}, true);
+        toast(filled.error ?? "Try again.");
+      }
+    },
+  });
+}
 /** PLAY: the remembered mode, through the same controls as the Play panel. */
 async function lobbyPlay(chosen: LobbyMode) {
   audio.unlock();
@@ -2922,8 +3701,14 @@ async function lobbyPlay(chosen: LobbyMode) {
         `Your party has ${size} players: choose 2v2 Teams, Free-for-all or Boss Raid.`,
       );
   }
-  if (mode === "raid") return void accountsUI.showRaids();
+  if (mode === "raid") {
+    if (tellLocked("raids")) return;
+    return void accountsUI.showRaids();
+  }
   if (mode === "quick") return void quickMatch();
+  // Alone, 2v2 and Free-for-all are searches bots fill; a party makes a room.
+  if ((mode === "teams" || mode === "ffa") && size < 2)
+    return void fillMatch(mode);
   if (mode === "practice") return document.getElementById("practice")?.click();
   if (mode.startsWith("bot-")) {
     document
@@ -3040,9 +3825,11 @@ async function startSpire(options: {
 function renderMenu(revealSelection = false) {
   coach.stop();
   // In a raid room, the boss's atlas is painted ahead (boss-prepaint.ts).
-  syncBossPrepaint(state);
+  if (phaser()) kit.syncBossPrepaint(state);
   syncFighterArt();
   document.body.classList.remove("practice-active");
+  // One tune for the whole hub: going between the Lobby and the Plaza
+  // doesn't restart it (owner, 26 Nov 2026).
   audio.setTheme("lobby");
   pwa.sync();
   const p = state?.players.find((p) => p.id === myId);
@@ -3050,9 +3837,20 @@ function renderMenu(revealSelection = false) {
   const watchingRoom = !isRoom && !!watching && state?.code === watching;
   // Everyone plays from the shared hub, so the game needs an account.
   // No hub without an account or a connection: the welcome screen instead.
-  if (!isRoom && !watchingRoom && (!accountsUI?.account || !connected))
+  // Nor before the whole profile is in (skins, saved fighter, avatar): the
+  // hub opens complete instead of changing in front of the player.
+  if (
+    !isRoom &&
+    !watchingRoom &&
+    (!accountsUI?.account || !accountsUI.checked || !connected || titleWanted())
+  )
     return renderGate();
   document.body.classList.remove("gate-active");
+  // Your skins and looks first: the Lobby's stage (syncHub) draws your
+  // fighter from them. Set after it, an account that answered once the
+  // Lobby was up left the fighter undressed until the next visit.
+  setWornSkins(accountsUI?.economy?.looks);
+  setWornLook(accountsUI?.raidLook);
   syncHub();
   const raidChallenge = state?.raid
     ? `${state.raid.boss}/${state.raid.peril}`
@@ -3121,8 +3919,6 @@ function renderMenu(revealSelection = false) {
   ]);
   const wornChanged = wornKey !== lastWornKey;
   lastWornKey = wornKey;
-  setWornSkins(accountsUI?.economy?.looks);
-  setWornLook(accountsUI?.raidLook);
   // A room (or a room you watch): the seats beside the roster picker.
   if (!home) {
     renderRoom(watchingRoom);
@@ -3254,7 +4050,16 @@ function renderMenu(revealSelection = false) {
         const button = $<HTMLButtonElement>("practice");
         button.disabled = true;
         const name = $<HTMLInputElement>("name").value.trim() || "Trainer";
-        identity(await request("practice", { name, character: selected }));
+        // A new Solo test starts with the switches you left on last time.
+        const prefs = loadPracticePrefs();
+        practiceEx = prefs.ex;
+        const reply = await request("practice", { name, character: selected });
+        identity(reply);
+        if (reply.ok && (prefs.unlimitedCooldowns || prefs.targetAttacks))
+          void request("practice-options", {
+            unlimitedCooldowns: prefs.unlimitedCooldowns,
+            targetAttacks: prefs.targetAttacks,
+          });
         button.disabled = false;
       };
   }
@@ -3264,6 +4069,13 @@ async function leave(returnToHub = true) {
     await stopWatching();
     return;
   }
+  // Stop at the request, including a slow reply or raid-hall load. A failed
+  // leave can resume this same identity; a reconnect must earn its own gate.
+  const inputBeforeLeave = inputSessionReady;
+  const leavingConnection = socket.id;
+  const leavingPlayer = myId;
+  inputSessionReady = false;
+  stopControls();
   const returnToRaidHub = returnToHub
     ? state?.raid
       ? raidRoomReturn?.code === state.code
@@ -3276,10 +4088,20 @@ async function leave(returnToHub = true) {
       : undefined
     : undefined;
   const leftCode = state?.code;
+  // Back to the Raids screen: its code loads while the server answers, so
+  // the Lobby and the screen are drawn together (no Lobby on its own for a
+  // moment first, docs/loading-screens.md).
+  const raidHall = returnToRaidHub
+    ? accountsUI.loadRaids().catch(() => undefined)
+    : undefined;
   const reply = await request("leave", {
     token: sessionStorage.getItem("arena-token"),
   });
+  await raidHall;
   if (!reply.ok) {
+    if (socket.id === leavingConnection && myId === leavingPlayer)
+      inputSessionReady = inputBeforeLeave;
+    scene?.syncInputClock();
     toast("Could not leave the room yet. Reconnect and try again.");
     return;
   }
@@ -3306,6 +4128,7 @@ async function leave(returnToHub = true) {
       returnToRaidHub.boss,
       returnToRaidHub.tab,
       returnToRaidHub.spire,
+      true,
     );
 }
 /** The spectator bar's arrows: drawn, not the ‹ › glyphs, which some
@@ -3319,7 +4142,7 @@ function renderPvpSpectator() {
   const banner = $("spectate");
   const target = state && pvpSpectator.target(state, myId);
   banner.classList.toggle("pvp-spectator", !!target);
-  banner.hidden = !target;
+  setHudHidden(banner, !target);
   if (!state || !target) {
     spectateShown = "";
     return;
@@ -3352,8 +4175,45 @@ const coach = createCoach({
     basic: keyText("basic"),
     skills: skillsText(),
     dash: keyText("dash"),
+    rounds: roundsNeeded(state?.mutators, state?.introRounds),
   }),
 });
+/**
+ * Your coins as a match began, to show what it paid on the result sheet
+ * (result-rewards.ts): the balance moves once the server has saved the
+ * match, its missions and any level it reached.
+ */
+let coinsAtStart: { key: string; balance: number } | undefined;
+/** Counts results shown: each one's celebration is timed from its own start. */
+let resultSerial = 0;
+let resultShowing = false;
+function markMatchStart() {
+  if (!state || !myId) return;
+  const finished = state.phase === "finished";
+  if (finished && !resultShowing) resultSerial++;
+  resultShowing = finished;
+  // Once per match, while it is being played (a rematch is a new one).
+  const balance = accountsUI.economy?.balance,
+    key = `${state.code}:${resultSerial}`;
+  if (
+    !finished &&
+    state.phase !== "lobby" &&
+    balance !== undefined &&
+    coinsAtStart?.key !== key
+  )
+    coinsAtStart = { key, balance };
+}
+/** Coins the match just finished in this room has paid (undefined: not known). */
+function matchCoins() {
+  const balance = accountsUI.economy?.balance;
+  if (
+    !state ||
+    balance === undefined ||
+    coinsAtStart?.key !== `${state.code}:${resultSerial - 1}`
+  )
+    return undefined;
+  return Math.max(0, balance - coinsAtStart.balance);
+}
 /** The room the coach was last decided for (once per room). */
 let coachRoom = "";
 /**
@@ -3376,11 +4236,32 @@ function syncCoach() {
   const g = guide.view();
   if (g.active && !g.done.bot) coach.start();
 }
+/**
+ * What the hub's own bookkeeping (syncHub) last saw from a battle. It runs
+ * with every snapshot, 30 times a second, and nearly always finds nothing
+ * new: it closes the Lobby and the Plaza, places the chat button, repaints
+ * its badge. So in a battle it runs when something it reads changed, and
+ * once a second besides (a setting changed in the battle menu, an account
+ * that finished loading).
+ */
+let battleHubSeen = "";
+function syncHubInBattle() {
+  const s = state;
+  const key = s
+    ? `${s.code}:${s.phase}:${!!s.practice}:${!!s.vsBot}:${s.mode ?? ""}:${s.players.length}:${s.watchers?.length ?? 0}:${s.raid ? s.raid.partySize : "-"}:${myId ?? ""}:${watching ?? ""}:${connected}:${!!party}:${!!accountsUI?.account}:${Math.floor(performance.now() / 1000)}`
+    : "";
+  if (s && key === battleHubSeen) return;
+  battleHubSeen = key;
+  syncHub();
+}
 function renderBattle() {
   document.body.classList.remove("home-active", "lobby-active", "gate-active");
   if (!state?.practice) document.body.classList.remove("practice-active");
-  syncHub();
-  if (state) audio.setTheme(battleMusic(state, myId), state.raid?.phase ?? 1);
+  syncHubInBattle();
+  if (state) {
+    audio.setTheme(battleMusic(state, myId), state.raid?.phase ?? 1);
+    audio.countdown(state.phase, state.remaining);
+  }
   if (!document.body.classList.contains("battle-active")) {
     document.body.classList.add("battle-active");
     // The battle screen fits the window; drop any scroll left over from the menu.
@@ -3396,6 +4277,7 @@ function renderBattle() {
     (watching && state?.code === watching ? state.players[0] : undefined);
   if (!state || !me) return;
   syncCoach();
+  markMatchStart();
   setHudStyle(
     document.body,
     "--element",
@@ -3406,7 +4288,10 @@ function renderBattle() {
   document.body.classList.toggle("spectating", !myId && !!watching);
   const knockedOut = !state.raid && !state.practice && (me.hp <= 0 || !!me.out);
   document.body.classList.toggle("pvp-knocked-out", knockedOut);
-  if (!knockedOut) $("spectate").classList.remove("pvp-spectator");
+  // (Only when it is there: taking away a class that is not set still
+  // writes the attribute, 30 times a second.)
+  if (!knockedOut && $("spectate").classList.contains("pvp-spectator"))
+    $("spectate").classList.remove("pvp-spectator");
   queueMicrotask(refreshControlLabels);
   const hudOrder = isTeams()
     ? [
@@ -3416,13 +4301,13 @@ function renderBattle() {
     : isFfa()
       ? [me, ...state.players.filter((p) => p !== me)]
       : state.raid?.spire
-        ? // A climb's Echoes come and go: the cards are the climbers'.
+        ? // A climb's Echoes come and go: the names are the climbers'.
           state.players.filter((p) => !p.echo)
         : state.players;
-  // PvP shows one score badge (names, rounds, the clock): health is over
-  // each fighter, and no one sees an opponent's ultimate (owner, 7 Nov
-  // 2026). Raids and Practice keep the full cards.
-  const badge = !state.raid && !state.practice;
+  // One score badge (names, rounds, the clock) for PvP and Practice alike:
+  // health is over each fighter, and no one sees an opponent's ultimate
+  // (owner, 7 Nov 2026). Raids hide it for their own boss HUD.
+  const badge = !state.raid;
   const key = `battle:${me.character}:${!!state.practice}:${badge}:${state.mode ?? "duel"}:${hudOrder.map((p) => p.id + p.character).join(",")}`;
   if (screen !== key) {
     screen = key;
@@ -3435,17 +4320,7 @@ function renderBattle() {
     // Solo test mode keeps its only leave action inside the Practice panel.
     document.body.classList.toggle("practice-active", !!state.practice);
     if (state.practice) {
-      $("practice-controls").innerHTML =
-        `<details id="practice-settings" class="practice-settings"><summary>Practice</summary><div class="practice-panel"><div class="practice-heading"><span class="eyebrow">Solo test mode</span><span id="practice-stats"></span><button type="button" class="quiet" id="practice-close" aria-label="Close Practice">×</button></div><div class="practice-actions"><label>Creature <select id="practice-character">${Object.values(
-          CHARACTERS,
-        )
-          .map(
-            (c) =>
-              `<option value="${c.id}" ${me.character === c.id ? "selected" : ""}>${c.name}</option>`,
-          )
-          .join(
-            "",
-          )}</select></label><label><input id="practice-unlimited" type="checkbox"> No skill cooldowns</label><label><input id="practice-attacks" type="checkbox"> Target attacks</label><button class="secondary btn-secondary" id="practice-reset">${iconLabel("again", "Reset arena")}</button><button class="quiet leave-button" id="practice-exit">${iconLabel("leave", "Exit test mode")}</button></div><p>Target respawns automatically. Enable attacks to test counters, clones and jumping over ground fire. Hover a skill for its description.</p></div></details>`;
+      $("practice-controls").innerHTML = practicePanelMarkup(me.character);
       $("practice-settings").addEventListener("toggle", () => {
         if (($("practice-settings") as HTMLDetailsElement).open) stopControls();
       });
@@ -3457,11 +4332,25 @@ function renderBattle() {
           "practice-character",
           $<HTMLSelectElement>("practice-character").value,
         );
-      const options = () =>
+      // Every switch is remembered on this device for the next Solo test.
+      const remember = () =>
+        savePracticePrefs({
+          unlimitedCooldowns: $<HTMLInputElement>("practice-unlimited").checked,
+          targetAttacks: $<HTMLInputElement>("practice-attacks").checked,
+          ex: practiceEx,
+        });
+      const options = () => {
+        remember();
         void request("practice-options", {
           unlimitedCooldowns: $<HTMLInputElement>("practice-unlimited").checked,
           targetAttacks: $<HTMLInputElement>("practice-attacks").checked,
         });
+      };
+      practiceDamage = practiceMeter();
+      $("practice-ex").onchange = () => {
+        practiceEx = $<HTMLInputElement>("practice-ex").checked;
+        remember();
+      };
       $("practice-unlimited").onchange = options;
       $("practice-attacks").onchange = options;
       $("practice-reset").onclick = () => void request("practice-reset");
@@ -3472,15 +4361,14 @@ function renderBattle() {
     $("hud").classList.toggle("hud-ffa", isFfa());
     const timerWrap =
       '<div class="timer-wrap"><span id="round-label"></span><strong id="timer">03:00</strong><span id="phase-label"></span></div>';
-    const card = (p: Fighter, i: number) =>
-      `<div class="health-card ${i >= split ? "right" : ""}${isTeams() ? ` team-${teamOf(p)}${p.id === myId ? " me" : ""}` : isFfa() && p.id === myId ? " me" : ""}" style="--element:#${CHARACTERS[p.character].color.toString(16)}"><div><b>${escape(p.name)}</b><span>${CHARACTERS[p.character].name}</span><strong id="score-${i}"></strong></div><div class="health-track"><span id="health-${i}"></span></div><small id="health-text-${i}"></small><small id="status-${i}"></small><div class="hud-ultimate" title="Ultimate charge"><span>ULT <b id="ult-text-${i}"></b></span><div class="hud-ultimate-track" role="meter" aria-label="${escape(p.name)} ultimate charge" aria-valuemin="0" aria-valuemax="100"><i id="ult-meter-${i}"></i></div></div></div>`;
-    const cards = hudOrder.map(card);
+    // Each fighter's name and score (empty where the mode keeps none).
+    const fighter = (p: Fighter, i: number) =>
+      `<div class="hud-fighter${i >= split ? " right" : ""}${isTeams() ? ` team-${teamOf(p)}${p.id === myId ? " me" : ""}` : isFfa() && p.id === myId ? " me" : ""}" style="--element:#${CHARACTERS[p.character].color.toString(16)}"><b>${escape(p.name)}</b><strong id="score-${i}"></strong></div>`;
+    const fighters = hudOrder.map(fighter);
     // The badge holds each side in a group of the same width, so the clock
     // sits in the middle whatever the names' lengths.
-    $("hud").innerHTML = badge
-      ? `<div class="hud-side">${cards.slice(0, split).join("")}</div>${timerWrap}<div class="hud-side right">${cards.slice(split).join("")}</div>`
-      : cards.map((c, i) => (i === split ? timerWrap : "") + c).join("") +
-        (cards.length <= split ? timerWrap : "");
+    $("hud").innerHTML =
+      `<div class="hud-side">${fighters.slice(0, split).join("")}</div>${timerWrap}<div class="hud-side right">${fighters.slice(split).join("")}</div>`;
     battleHudSize.disconnect();
     battleHudSize.observe($("hud"));
     battleHudSize.observe($("phase-label"));
@@ -3492,114 +4380,46 @@ function renderBattle() {
   }
   document.body.classList.toggle("pvp-badge", badge);
   $("hud").classList.toggle("hud-badge", badge);
-  hudOrder.forEach((p, i) => {
-    // 2v2 has its own health per champion (TEAM_TUNING).
-    const full = maxHealth(p.character, state!.mode, state!.players.length);
-    setHudStyle(
-      $(`health-${i}`),
-      "width",
-      `${(100 * Math.max(0, p.hp)) / full}%`,
-    );
-    setHudText(
-      $(`health-text-${i}`),
-      p.out ? "LEFT THE MATCH" : `${Math.ceil(Math.max(0, p.hp))} / ${full} HP`,
-    );
+  // Rounds won; Practice keeps no score.
+  hudOrder.forEach((p, i) =>
     setHudText(
       $(`score-${i}`),
       state!.practice
-        ? p.id === myId
-          ? "TRAINER"
-          : "TARGET"
-        : badge
-          ? String(
-              isTeams()
-                ? (state!.teamScores?.[teamOf(p)] ?? 0)
-                : (state!.scores[p.id] ?? 0),
-            )
-          : isTeams()
-            ? `${state!.teamScores?.[teamOf(p)] ?? 0} / ${roundsNeeded(state!.mutators)}`
-            : `${state!.scores[p.id]} / ${roundsNeeded(state!.mutators)}`,
-    );
-    const charge = Math.min(
-      100,
-      Math.max(0, (100 * (p.ult ?? 0)) / RULES.ultMax),
-    );
-    setHudText(
-      $(`ult-text-${i}`),
-      charge >= 100 ? "READY" : `${Math.floor(charge)}%`,
-    );
-    setHudStyle($(`ult-meter-${i}`), "width", `${charge}%`);
-    setHudAttribute(
-      $(`ult-meter-${i}`).parentElement!,
-      "aria-valuenow",
-      String(Math.floor(charge)),
-    );
-    $(`ult-meter-${i}`)
-      .closest(".hud-ultimate")
-      ?.classList.toggle("is-ready", charge >= 100);
-    setHudText(
-      $(`status-${i}`),
-      p.statuses
-        .map((s) =>
-          s.kind === "sleep"
-            ? `SLEEP +${Math.round((STATUS_RULES.sleepVulnerability - 1) * 100)}% DMG`
-            : s.kind === "shell"
-              ? `SHELL −${Math.round((1 - STATUS_RULES.shellReduction) * 100)}% DMG`
-              : s.kind === "mark"
-                ? comboOf(s.by).toUpperCase()
-                : s.kind === "warp"
-                  ? "TIME SLOWED"
-                  : s.kind === "leash"
-                    ? "PINNED"
-                    : s.kind === "blind"
-                      ? "BLINDED"
-                      : s.kind === "taunt"
-                        ? "TAUNTED"
-                        : s.kind === "brace"
-                          ? "BRACED"
-                          : s.kind === "clamp"
-                            ? "CHARGED"
-                            : s.kind === "cage"
-                              ? "CAGED"
-                              : s.kind === "current"
-                                ? "SWEPT AWAY"
-                                : s.kind === "lure"
-                                  ? "DRAWN TO THE LIGHT"
-                                  : s.kind === "silence"
-                                    ? "SILENCED"
-                                    : s.kind === "grounded"
-                                      ? "GROUNDED"
-                                      : s.kind === "float"
-                                        ? "SLIDING"
-                                        : s.kind === "confuse"
-                                          ? "CONFUSED"
-                                          : s.kind.toUpperCase(),
-        )
-        .join(" · "),
-    );
-  });
+        ? ""
+        : String(
+            isTeams()
+              ? (state!.teamScores?.[teamOf(p)] ?? 0)
+              : (state!.scores[p.id] ?? 0),
+          ),
+    ),
+  );
   // Blinded by Ink Jet: ink splashes over your view while it lasts.
   document.body.classList.toggle(
     "is-blinded",
     me.statuses.some((s) => s.kind === "blind" && s.until > state!.time),
   );
   if (state.practice) {
-    setHudText(
-      $("practice-stats"),
-      `Damage dealt: ${Math.round(me.stats.dealt)} · Damage taken: ${Math.round(me.stats.received)} · Skills used: ${me.stats.skills}`,
-    );
+    const hit = practiceDamage.update(me.stats.dealt, state.time);
+    const numbers: Record<PracticeStat, number> = {
+      last: hit.lastHit,
+      dps: hit.dps,
+      dealt: Math.round(me.stats.dealt),
+      taken: Math.round(me.stats.received),
+      skills: me.stats.skills,
+    };
+    for (const [id] of PRACTICE_STATS)
+      setHudText($(`practice-${id}`), numbers[id].toLocaleString("en-US"));
     $<HTMLInputElement>("practice-unlimited").checked =
       state.practice.unlimitedCooldowns;
     $<HTMLInputElement>("practice-attacks").checked =
       state.practice.targetAttacks;
+    $<HTMLInputElement>("practice-ex").checked = practiceEx;
   }
   setHudText(
     $("round-label"),
     state.practice
       ? "FREE PRACTICE"
-      : badge
-        ? `R${state.round} · BO${roundsNeeded(state.mutators) * 2 - 1}`
-        : `ROUND ${state.round} · BEST OF ${roundsNeeded(state.mutators) * 2 - 1}`,
+      : `R${state.round} · BO${roundsNeeded(state.mutators, state.introRounds) * 2 - 1}`,
   );
   setHudText(
     $("network"),
@@ -3619,7 +4439,8 @@ function renderBattle() {
   const phaseText =
     state.phase === "playing"
       ? state.practice
-        ? "TEST YOUR SKILLS"
+        ? // No ring or rule to tell: the badge stays one line.
+          `LIVE · ${ARENAS[state.arena ?? "classic"].name.toUpperCase()}`
         : state.banked
           ? rushLabel(me)
           : state.crown
@@ -3644,7 +4465,7 @@ function renderBattle() {
   // desktop button's decoration is omitted on touch screens.
   const fullMeter = (me.ult ?? 0) >= RULES.ultMax;
   if (fullMeter && !ultWasReady && state.phase === "playing" && myId) {
-    audio.play("orb");
+    audio.cue("ult-ready");
     if (!touch.enabled) {
       const button = $(`ability-${ULT_SLOT}`);
       button.classList.add("ult-burst");
@@ -3674,7 +4495,7 @@ function renderBattle() {
             !!state!.practice?.unlimitedCooldowns,
           );
         const armed = exArmedUntil > performance.now();
-        const exReady = !ready && charge >= EX.cost && !state!.practice;
+        const exReady = !ready && charge >= EX.cost;
         setHudText(
           $(`cooldown-${i}`),
           ready
@@ -3689,7 +4510,7 @@ function renderBattle() {
         setHudStyle(
           $(`ability-${i}`),
           "--cooldown",
-          `${ready ? 0 : 100 - charge}%`,
+          sweepPercent(ready ? 0 : 100 - charge),
         );
         $(`ability-${i}`).classList.toggle("cooling", !ready);
         $(`ability-${i}`).classList.toggle("ult-ready", ready);
@@ -3705,7 +4526,7 @@ function renderBattle() {
       }
       $(`ability-${i}`).classList.toggle(
         "ex-armed",
-        exArmedUntil > performance.now(),
+        exArmedUntil > performance.now() || practiceExOn(),
       );
       const left = cooldownLeft(me, i, state!.time);
       setHudText(
@@ -3720,7 +4541,7 @@ function renderBattle() {
       setHudStyle(
         $(`ability-${i}`),
         "--cooldown",
-        `${Math.min(100, (100 * left) / (a.cooldown * cooldownScale()))}%`,
+        sweepPercent((100 * left) / (a.cooldown * cooldownScale())),
       );
       $(`ability-${i}`).classList.toggle("cooling", left > 0);
     });
@@ -3737,6 +4558,14 @@ function renderBattle() {
         : "READY",
     );
   }
+  touch.downed = !!state.raid && !!myId && me.hp <= 0;
+  // How each skill aims on a drag (touch-aim.ts), when the kit changes.
+  const aimKey = `${me.character}|${(me.rites ?? []).join(",")}`;
+  if (aimKey !== aimSpecsKey) {
+    aimSpecsKey = aimKey;
+    aimSpecs = kitOf(me.character, me.rites).skills.map((a) => aimSpec(a));
+    touch.setAims(aimSpecs.map((a) => a.kind));
+  }
   touch.update(
     state.phase === "playing" && connected && !!myId && !knockedOut,
     CHARACTERS[me.character].skills.map((a) => a.name),
@@ -3752,26 +4581,14 @@ function renderBattle() {
       duration: CHARACTERS[me.character].basic.interval ?? 0.3,
     },
     state.practice?.unlimitedCooldowns ? RULES.ultMax : (me.ult ?? 0),
-    state.practice ? Infinity : EX.cost,
-    exArmedUntil > performance.now(),
+    state.practice?.unlimitedCooldowns ? Infinity : EX.cost,
+    exArmedUntil > performance.now() || practiceExOn(),
   );
-  // The Reveal and the countdown take the whole screen (style.css). Marked on
-  // the overlay itself, in the same step as its markup: a rule asking the
-  // overlay whether it holds the Reveal (:has) could take effect a frame
-  // late in Safari, showing the arena before the Reveal (owner's iPhone).
-  // The countdown is every mode's, for players and watchers alike: PvP,
-  // bots, the raids and the Spire all draw overlay.ts countdownCard, so a
-  // change to it (or to its CSS) reaches every fight. The Reveal is the
-  // players' PvP briefing; watchers have their own.
-  const player = !!myId || !watching;
-  const overlay = $("arena-overlay");
-  overlay.classList.toggle(
-    "is-reveal",
-    player && state.phase === "briefing" && !state.practice && !state.raid,
-  );
-  overlay.classList.toggle("is-countdown", state.phase === "countdown");
   if (state.raid && myId) {
-    renderRaidUI(
+    // The raid's HUD and overlays come with the battle kit, like the arena
+    // they sit on: drawn when it arrives (afterPhaser, below).
+    if (!phaser()) return;
+    kit.renderRaidUI(
       state,
       me,
       request,
@@ -3797,6 +4614,8 @@ function renderBattle() {
         return progress;
       },
       accountsUI.economy?.journey,
+      // The briefing's I'm ready waits for the arena, as the Reveal does.
+      { loading: arenaLoading(state), progress: arenaProgress(state) },
     );
     const raidHud = document.getElementById("raid-hud");
     if (raidHud && raidHud !== measuredRaidHud) {
@@ -3804,30 +4623,83 @@ function renderBattle() {
       measuredRaidHud = raidHud;
       battleHudSize.observe(raidHud);
     }
-    if (me.hp <= 0)
-      document
-        .querySelectorAll<HTMLButtonElement>(".touch-buttons button")
-        .forEach((b) => (b.disabled = true));
     const exit = document.getElementById("raid-exit");
     if (exit) exit.onclick = () => void leave();
     return;
   }
+  // Watching a raid: the boss's bar and the raiders' health, as they see
+  // them; the overlays between fights are the watcher's (below).
+  if (state.raid && !myId && watching && phaser()) {
+    kit.renderRaidWatchHud(state);
+    const raidHud = document.getElementById("raid-hud");
+    if (raidHud && raidHud !== measuredRaidHud) {
+      if (measuredRaidHud) battleHudSize.unobserve(measuredRaidHud);
+      measuredRaidHud = raidHud;
+      battleHudSize.observe(raidHud);
+    }
+  }
+  const overlay = $("arena-overlay");
+  // The Reveal and the countdown take the whole screen (style.css). Marked on
+  // the overlay itself, in the same step as its markup: a rule asking the
+  // overlay whether it holds the Reveal (:has) could take effect a frame
+  // late in Safari, showing the arena before the Reveal (owner's iPhone).
+  const player = !!myId || !watching;
+  overlay.classList.toggle(
+    "is-reveal",
+    player && state.phase === "briefing" && !state.practice,
+  );
+  overlay.classList.toggle(
+    "is-countdown",
+    player && state.phase === "countdown",
+  );
+  // The break between rounds and the results take the whole screen too,
+  // as the Reveal and the countdown do (match-sheet.css): the match opens
+  // and ends in the same style (owner, 22 Nov 2026).
+  overlay.classList.toggle(
+    "is-break",
+    player && state.phase === "intermission" && !state.practice,
+  );
+  overlay.classList.toggle(
+    "is-sheet",
+    player && state.phase === "finished" && !state.practice,
+  );
+  // Solo test mode starts straight away, with no briefing to load behind:
+  // its own cover until this device has the arena, so the court and the
+  // fighters never pop in (arenaLoading gives up after its cap).
+  const practiceLoading =
+    !!myId &&
+    !!state.practice &&
+    state.phase === "playing" &&
+    arenaLoading(state);
+  overlay.classList.toggle("is-practice-loading", practiceLoading);
   if (!myId && watching) {
     renderWatchOverlay(overlay);
     return;
   }
-  if (state.phase === "playing") {
+  if (practiceLoading) {
+    const progress = arenaProgress(state);
+    const percent = Math.round(progress * 100);
+    setOverlayMarkup(
+      overlay,
+      `<div class="practice-loading" role="status"><span class="eyebrow">Solo test mode</span><div class="rv-load is-loading"><span>Loading the arena · ${percent}%</span><i role="progressbar" aria-label="Arena loading" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}"><b style="width:${(progress * 100).toFixed(1)}%"></b></i></div></div>`,
+      "practice-loading",
+      "practice-loading",
+    );
+    overlay.style.pointerEvents = "auto";
+  } else if (state.phase === "playing") {
     // Its own element: a non-empty overlay dims the whole screen on phones.
     setOverlayMarkup(overlay, "");
     renderPvpSpectator();
     overlay.style.pointerEvents = "none";
   } else {
-    $("spectate").hidden = true;
+    setHudHidden($("spectate"), true);
     overlay.style.pointerEvents = "auto";
     let heading = "",
       details = "",
       actions = "",
       eyebrow = "Element Arena",
+      // A result's confetti: first in the card, outside what scrolls.
+      flourish = "",
       reveal = false;
     if (state.phase === "briefing") {
       // The Reveal (docs/hidden-picks.md, "The Reveal"): the picks were
@@ -3883,12 +4755,14 @@ function renderBattle() {
       // panels hold the rest.
       const arena = ARENAS[state.arena ?? "classic"];
       const event = state.arcade ? ARCADE_EVENTS[state.arcade.id] : undefined;
-      const rounds = roundsNeeded(state.mutators);
+      const rounds = roundsNeeded(state.mutators, state.introRounds);
       const goal = isTeams()
         ? `Stay side by side: +${Math.round((TEAMUP.damage - 1) * 100)}% damage · First team to ${rounds} rounds`
         : isFfa()
           ? `Last one standing takes the round · First to ${rounds}`
-          : `First to win ${rounds} rounds`;
+          : rounds === 1
+            ? "One round: win it to take the match"
+            : `First to win ${rounds} rounds`;
       eyebrow = `${isTeams() ? "2v2 Teams" : isFfa() ? `Free-for-all · ${state.players.length} players` : state.vsBot ? "1v1 vs Bot" : "1v1 Duel"} · ${escape(event?.name ?? arena.name)}`;
       const place = event
         ? `<p class="brief-arena">${escape(event.tip)} · No rating change</p>`
@@ -3905,16 +4779,26 @@ function renderBattle() {
         partyRulesNote();
       // Ready only once this device has the arena: the countdown starts when
       // everyone is ready, so a slow phone would otherwise miss the start.
+      // …and only once every card has turned over (owner, 22 Nov 2026):
+      // you see who you face before you can start. Lights up when the last
+      // card lands (scheduleRevealEnd draws the Reveal again then).
+      const flipping = !!flips && !loading;
+      if (flipping) scheduleRevealEnd(state.players.length);
       const progress = arenaProgress(state);
       const readyCount = state.instructionsReady.length;
       const status = loading
         ? `Loading the arena · ${Math.round(progress * 100)}%`
         : confirmed
           ? `Waiting for the others · ${readyCount}/${state.players.length} ready`
-          : "Arena and every fighter loaded";
-      actions = `<div class="rv-foot"><div class="rv-load${loading ? " is-loading" : ""}"><span>${status}</span><i role="progressbar" aria-label="Arena loading" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(progress * 100)}"><b style="width:${(progress * 100).toFixed(1)}%"></b></i></div><button class="primary btn-primary" id="instructions-ready" ${confirmed || loading ? "disabled" : ""}>${confirmed ? "Ready ✓" : loading ? "Loading…" : "I’m ready"}</button></div>`;
+          : flipping
+            ? "Revealing the fighters…"
+            : "Arena and every fighter loaded";
+      actions = `<div class="rv-foot"><div class="rv-load${loading ? " is-loading" : ""}"><span>${status}</span><i role="progressbar" aria-label="Arena loading" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(progress * 100)}"><b style="width:${(progress * 100).toFixed(1)}%"></b></i></div><button class="primary btn-primary" id="instructions-ready" ${confirmed || loading || flipping ? "disabled" : ""}>${confirmed ? "Ready ✓" : loading ? "Loading…" : "I’m ready"}</button></div>`;
     }
-    if (state.phase === "countdown") details = "Get ready. Make your move.";
+    if (state.phase === "countdown") {
+      heading = LIVE_COUNTDOWN;
+      details = "Get ready. Make your move.";
+    }
     if (state.phase === "intermission") {
       heading = isTeams()
         ? state.roundWinnerTeam === null || state.roundWinnerTeam === undefined
@@ -3928,6 +4812,7 @@ function renderBattle() {
       const rites = riteMarkup(me, Math.ceil(state.remaining));
       details = rites.body;
       actions = rites.actions;
+      eyebrow = `Round ${state.round} · ${escape(ARENAS[state.arena ?? "classic"].name)}`;
     }
     if (state.phase === "paused") {
       heading = isTeams() ? "A player disconnected" : "Opponent disconnected";
@@ -3945,8 +4830,10 @@ function renderBattle() {
           ? `${escape(state.players.find((p) => p.id === state!.winner)?.name ?? "A rival")} takes the free-for-all`
           : "A worthy fight.";
       // Scoreline: your side on the left, always.
+      // No motion on Low graphics or with reduced motion: the end state.
+      const still = reducedMotion || lowGraphics();
       const score = (left: string, a: number, b: number, right: string) =>
-        `<div class="result-score"><span>${left}</span><b>${a}</b><i>–</i><b>${b}</b><span>${right}</span></div>`;
+        `<div class="result-score"><span class="rw-side">${fighterHop(avatar(fighterPortrait(me.character), { element: CHARACTERS[me.character].element }), won, still)}<span>${left}</span></span><b>${a}</b><i>–</i><b>${b}</b><span>${right}</span></div>`;
       const rival = state.players.find((p) => p.id !== myId);
       details = isFfa()
         ? standingsMarkup(state, myId)
@@ -3963,38 +4850,93 @@ function renderBattle() {
               rival ? (state.scores[rival.id] ?? 0) : 0,
               escape(rival?.name ?? "Opponent"),
             );
-      details +=
+      const record =
+        state.matchId && !state.arcade
+          ? matchRecords.get(state.matchId)
+          : undefined;
+      const saved = record?.status === "done" ? record.reply : undefined;
+      // What the match gave you, before its numbers (result-rewards.ts):
+      // the rank shows there, so the records line below leaves it out.
+      const rated = saved?.rating?.before !== undefined;
+      // One opponent you could add: the button sits beside Rematch.
+      const stranger =
+        !isTeams() && !isFfa() && saved?.records.length === 1
+          ? saved.records.find((r) => !friendIds.has(r.id))
+          : undefined;
+      // Over the sheet's head, outside the part that scrolls.
+      flourish = won && !still ? confettiMarkup() : "";
+      details =
+        details +
+        rewardsMarkup({
+          won,
+          still,
+          journey: accountsUI.economy?.journey,
+          ref: state.matchId ? `match:${state.matchId}` : undefined,
+          status: state.activityStatus,
+          eligible: state.activityEligible?.includes(myId) ?? true,
+          rating: rated ? saved!.rating : undefined,
+          // Once your records have this match (the count includes it).
+          mastery:
+            saved?.confirmed && masteryCounts === state.matchId
+              ? {
+                  fighter: CHARACTERS[me.character].name,
+                  matches: masteryMatches(me.character),
+                }
+              : undefined,
+          coins: matchCoins(),
+          gift: giftNote(),
+        }) +
         recapMarkup(state, myId) +
-        recordsMarkup(
-          state.matchId && !state.arcade
-            ? matchRecords.get(state.matchId)
-            : undefined,
-          friendIds,
-        );
-      details += resultXp(
-        accountsUI.economy?.journey,
-        state.matchId ? `match:${state.matchId}` : undefined,
-        state.activityStatus,
-        state.activityEligible?.includes(myId) ?? true,
-      );
+        recordsMarkup(record, friendIds, {
+          rating: !rated,
+          addFriend: !stranger,
+        });
       if (state.arcade)
         details +=
           '<p class="arcade-rating-note">Weekly arcade · XP and mission progress · PvP rating stays separate.</p>';
       // A finished match against a bot: Getting started's first step.
       if (state.vsBot) {
         guide.mark("bot");
-        recordBotResult(
-          state.matchId ?? `${state.code}:${state.time}`,
-          state.vsBot,
-          won,
+        const matchKey = state.matchId ?? `${state.code}:${state.time}`;
+        recordBotResult(matchKey, state.vsBot, won);
+        const decided = isTeams()
+          ? state.winnerTeam !== null && state.winnerTeam !== undefined
+          : !!state.winner;
+        const streak = recordBotOutcome(
+          matchKey,
+          won ? "win" : decided ? "loss" : "draw",
         );
+        // Three losses in a row: a way to practise, or an easier bot.
+        if (!won && decided && !state.arcade && streak >= LOSS_STREAK_HINT) {
+          const easier = easierBot(state.vsBot);
+          details += `<div class="result-coach" role="note"><p><b>${streak} losses in a row.</b> A few minutes in Solo test${easier ? " or an easier bot" : ""} can help.</p><div class="result-coach-actions"><button type="button" class="secondary btn-secondary" id="coach-practice">${iconLabel("target", `Practice ${escape(CHARACTERS[me.character].name)}`)}</button>${easier ? `<button type="button" class="secondary btn-secondary" id="coach-easier" data-level="${easier}">${iconLabel("bot", `Try ${AI_LEVELS.find((l) => l.id === easier)!.name}`)}</button>` : ""}</div></div>`;
+        }
       }
-      actions = `<div class="result-actions"><button class="primary btn-primary" id="rematch">${me.ready ? "Waiting for opponent…" : iconLabel("again", "Rematch")}</button><button class="secondary btn-secondary" id="share-result">${iconLabel("share", "Share result")}</button><button class="secondary btn-secondary${state.vsBot ? " leave-button" : ""}" id="return">${state.vsBot ? iconLabel("home", "Back to menu") : iconLabel("back", "Return to lobby")}</button></div>`;
+      // The Reveal's kicker: the mode and where (the title says who won).
+      eyebrow = `${isTeams() ? "2v2 Teams" : isFfa() ? "Free-for-all" : state.vsBot ? "1v1 vs Bot" : "1v1 Duel"} · ${escape(state.arcade ? ARCADE_EVENTS[state.arcade.id].name : ARENAS[state.arena ?? "classic"].name)}`;
+      // What happens next, on the left of the foot as on the Reveal's.
+      const rematchers = state.players.filter((p) => p.ready).length;
+      const next = state.vsBot
+        ? "Rematch the same bot, or head back"
+        : `${rematchers}/${state.players.length} ready for a rematch`;
+      // Against a bot, the rematch can bring another fighter (not in PvP,
+      // where picks stay secret until a match starts, nor the arcade).
+      const canSwap = !!state.vsBot && !state.arcade && !me.ready;
+      const addFriend = stranger
+        ? `<button class="secondary btn-secondary" data-add-friend="${escape(stranger.id)}" aria-label="Add ${escape(stranger.name)} as a friend">${iconLabel("add-friend", "Add friend")}</button>`
+        : "";
+      actions = `<p class="sheet-note">${next}</p><div class="result-actions"><button class="primary btn-primary result-again" id="rematch">${me.ready ? "Waiting for opponent…" : iconLabel("again", state.vsBot ? "Play again" : "Rematch")}</button>${addFriend}${canSwap ? `<button class="secondary btn-secondary" id="change-fighter">${iconLabel("swap", "Change fighter")}</button>` : ""}<button class="secondary btn-secondary" id="share-result">${iconLabel("share", "Share result")}</button><button class="secondary btn-secondary${state.vsBot ? " leave-button" : ""}" id="return">${state.vsBot ? iconLabel("home", "Back to menu") : iconLabel("back", "Return to lobby")}</button></div>`;
     }
-    const markup =
-      state.phase === "countdown"
-        ? countdownCard(eyebrow, details)
-        : `<div class="overlay-card${actions ? " action-overlay" : ""}${reveal ? " match-reveal" : ""}"><span class="eyebrow">${eyebrow}</span><h2>${heading}</h2><div${actions ? ' class="panel-scroll" tabindex="0" role="region" aria-label="Match details"' : ""}>${details}</div>${actions ? `<div class="panel-actions">${actions}</div>` : ""}</div>`;
+    const finished = state.phase === "finished";
+    const won =
+      finished &&
+      (isTeams() ? state.winnerTeam === teamOf(me) : state.winner === myId);
+    const sheet = finished
+      ? ` match-sheet ${won ? "is-victory" : "is-defeat"}`
+      : state.phase === "intermission"
+        ? ` round-break${actions ? " has-rites" : ""}`
+        : "";
+    const markup = `<div class="overlay-card${actions ? " action-overlay" : state.phase === "countdown" ? " countdown-card" : ""}${reveal ? " match-reveal" : ""}${sheet}">${flourish}<span class="eyebrow">${eyebrow}</span><h2>${heading}</h2><div${actions ? ' class="panel-scroll" tabindex="0" role="region" aria-label="Match details"' : ""}>${details}</div>${actions ? `<div class="panel-actions">${actions}</div>` : ""}</div>`;
     // Preserve the pressed button and native scrolling between snapshots.
     // The arena finishing loading starts the Reveal's scroll afresh, but it
     // is the same panel: it must not pop in again (it blinked out, the whole
@@ -4002,13 +4944,17 @@ function renderBattle() {
     const panelKey = actions
       ? `${state.code}:${state.matchId ?? ""}:${state.phase}`
       : undefined;
-    setOverlayMarkup(
+    const redrawn = setOverlayMarkup(
       overlay,
       markup,
       panelKey &&
         `${panelKey}${state.phase === "briefing" && arenaLoading(state) ? ":loading" : ""}`,
       panelKey,
     );
+    // The result's celebration carries on from where it was (drawn again
+    // as the XP, the rank and a rematch's "ready" arrive).
+    if (redrawn && finished)
+      syncRewardMotion(overlay, `${state.code}:${resultSerial}`);
     fillLiveSeconds(
       overlay,
       state.phase === "paused" ? state.pauseRemaining : state.remaining,
@@ -4023,6 +4969,22 @@ function renderBattle() {
       };
     if (state.phase === "finished") {
       $("rematch").onclick = () => void request("rematch");
+      const swap = document.getElementById("change-fighter");
+      if (swap) swap.onclick = showFighterPicker;
+      // The losing-streak note: leave this bot room, then start the other.
+      const coachPractice = document.getElementById("coach-practice");
+      if (coachPractice)
+        coachPractice.onclick = async () => {
+          await leave();
+          void lobbyPlay("practice");
+        };
+      const coachEasier = document.getElementById("coach-easier");
+      if (coachEasier)
+        coachEasier.onclick = async () => {
+          const level = coachEasier.dataset.level as BotLevelId;
+          await leave();
+          void lobbyPlay(`bot-${level}` as LobbyMode);
+        };
       document
         .querySelectorAll<HTMLButtonElement>("[data-add-friend]")
         .forEach((b) => {
@@ -4033,19 +4995,11 @@ function renderBattle() {
         });
       $("share-result").onclick = () => {
         if (!state) return;
-        void shareResult(
-          state,
-          myId,
-          import.meta.env.VITE_SITE_URL || location.origin,
-        ).then((how) =>
-          toast(
-            how === "downloaded"
-              ? "Result card saved, and the message copied for pasting."
-              : how === "failed"
-                ? "Couldn’t make the result card on this browser."
-                : "Shared.",
-          ),
-        );
+        // The picture opens large to share or save (share-preview.ts).
+        void shareResult(state, myId).then((how) => {
+          if (how === "failed")
+            toast("Couldn’t make the result card on this browser.");
+        });
       };
       // A bot room has no lobby to return to: go back to the menu.
       $("return").onclick = () =>
@@ -4059,6 +5013,17 @@ socket.on("connect", () => {
     return;
   }
   connected = true;
+  inputSessionReady = false;
+  // A fresh connection lands on the server that takes new ones now; if a
+  // deploy is replacing that one too, it says so again (server-update).
+  moveToNewServer = updateSaid.moving = updateSaid.draining = false;
+  clearTimeout(restartReminder);
+  if (quickSearchStopped) {
+    quickSearchStopped = false;
+    toast(
+      "Quick Match stopped while the game was closed. Press Play to search again.",
+    );
+  }
   // Tell the server what this browser saw when it last dropped (once).
   const dropReport = connectionWatch.reconnected();
   if (dropReport) socket.emit("connection-report", dropReport);
@@ -4080,10 +5045,15 @@ socket.on("connect", () => {
   $("connection").textContent = "SERVER CONNECTED";
   $("connection").classList.add("online");
   const token = sessionStorage.getItem("arena-token");
+  // After a move to a new server (server-update): its own words, not the
+  // resume's "Room expired." (the room stayed on the old server).
+  const note = resumeNote;
+  resumeNote = undefined;
   if (token)
-    void request("resume", { token }).then((reply) => {
+    void request("resume", { token }, note !== undefined).then((reply) => {
       if (reply.ok) identity(reply);
       else {
+        if (note) toast(note);
         sessionStorage.removeItem("arena-token");
         lobbySelection.reset();
         state = undefined;
@@ -4104,6 +5074,9 @@ socket.on("disconnect", (reason: string) => {
   });
   lobbySelection.reset();
   connected = false;
+  inputSessionReady = false;
+  local = undefined;
+  stopControls();
   if (!myId && !watching && !state) {
     screen = "";
     renderMenu();
@@ -4136,6 +5109,7 @@ socket.on("session-replaced", () => {
   remoteFrames.clear();
   timeline.clear();
   shotTimeline.clear();
+  impacts.clear();
   touch.reset();
   document
     .querySelectorAll<HTMLDialogElement>("dialog[open]")
@@ -4163,6 +5137,79 @@ socket.on(
   },
 );
 socket.on("account-changed", () => void accountsUI.refresh());
+// Announcements from the admins (announcements.ts): at once to every open game.
+socket.on("announcement", (data: unknown) => announcements.receive(data));
+socket.on("announcement-ended", (data: unknown) => announcements.end(data));
+// A deploy is replacing the server (docs/server-updates.md). A newer server
+// already takes new connections: this one moves there as soon as it is out
+// of a room (a match, its results, a watched one), so every new match starts
+// on the new server. A match in progress plays on here, and once Render asks
+// this server to stop, the player reads how long it still has.
+let moveToNewServer = false;
+/** What was already said about this update (each said once). */
+const updateSaid = { moving: false, draining: false };
+let restartReminder: ReturnType<typeof setTimeout> | undefined;
+/** Said instead of a failed resume's own error after a move (connect). */
+let resumeNote: string | undefined;
+/** In a room: a match, its results, or watching one. */
+const inRoom = () => !!state || !!watching;
+function moveToNewServerNow() {
+  moveToNewServer = false;
+  clearTimeout(restartReminder);
+  if (!socket.connected) return;
+  // A room lobby can't start here any more (the server refuses Ready); on
+  // the new server it no longer exists.
+  if (state?.phase === "lobby")
+    resumeNote =
+      "The game moved to its new version: open or join the room again.";
+  socket.disconnect().connect();
+}
+// Out of the match (back in the Lobby, or in the room's lobby, where nothing
+// can start on this server any more): move now. Results stay up until left.
+setInterval(() => {
+  if (
+    moveToNewServer &&
+    socket.connected &&
+    (!inRoom() || state?.phase === "lobby")
+  )
+    moveToNewServerNow();
+}, 2000);
+socket.on("server-update", (data: unknown) => {
+  pwa.serverUpdating();
+  const notice = (data ?? {}) as {
+    reconnect?: boolean;
+    draining?: boolean;
+    left?: number;
+    closing?: boolean;
+  };
+  if (notice.closing) {
+    // The time ran out with this match still going: the connection drops
+    // next, and the room isn't on the new server.
+    toast(
+      "The server restarted for the update before your match ended. Moving you to the new version…",
+    );
+    resumeNote = ""; // said already: the failed resume adds nothing
+    return;
+  }
+  if (notice.reconnect || notice.draining) moveToNewServer = true;
+  if (!inRoom() || state?.phase === "lobby") return moveToNewServerNow();
+  if (notice.draining && !updateSaid.draining) {
+    updateSaid.draining = updateSaid.moving = true;
+    const left = Math.max(0, notice.left ?? 0);
+    toast(
+      `Update: the server restarts in about ${Math.max(1, Math.round(left / 60000))}\u00a0min. Finish your match, then update.`,
+    );
+    clearTimeout(restartReminder);
+    if (left > 75_000)
+      restartReminder = setTimeout(() => {
+        if (state && state.phase !== "finished")
+          toast("The server restarts in under a minute: finish your match.");
+      }, left - 60_000);
+  } else if (!updateSaid.moving) {
+    updateSaid.moving = true;
+    toast("A new version is ready. Finish your match, then you'll move to it.");
+  }
+});
 // Coins, missions or Awakening changed after a match or raid.
 socket.on("economy-changed", () => void accountsUI.loadEconomy());
 socket.on("room-invite", (data: unknown) => roomInvites.receive(data));
@@ -4208,18 +5255,32 @@ socket.on("invite-declined", (data: unknown) => {
 socket.on("chat", (line: ChatLine) => {
   chat.receive(line);
   // In a battle: a bubble over the speaker, and the feed under the button.
-  if (line.channel === "room" && line.fighter && state) {
+  // A watcher's line has no fighter: it goes in the feed only.
+  if (line.channel === "room" && (line.fighter || line.watcher) && state) {
     const speaker = state.players.find((p) => p.id === line.fighter);
     const me = state.players.find((p) => p.id === myId);
-    const plate = document.querySelector<HTMLElement>(
-      `.battle-nameplate[data-fighter="${CSS.escape(line.fighter)}"]`,
-    );
+    const plate = line.fighter
+      ? document.querySelector<HTMLElement>(
+          `.battle-nameplate[data-fighter="${CSS.escape(line.fighter)}"]`,
+        )
+      : null;
+    const mine = line.from.id === accountsUI?.account?.id;
     battleChat.receive(
       line.quick ? quickText(line.quick) : (line.text ?? ""),
       line.from.name,
       plate,
-      !!state.raid || (!!speaker && !!me && teamOf(speaker) === teamOf(me)),
+      mine ||
+        (!line.watcher &&
+          (!!state.raid ||
+            (!!speaker &&
+              (me
+                ? teamOf(speaker) === teamOf(me)
+                : // Watching (no side): the name takes its side's colour,
+                  // Blue as a teammate's, Red as a rival's, like the score
+                  // badge (the server sends a watcher players' emotes only).
+                  teamOf(speaker) === 0)))),
       !!line.quick && quickKind(line.quick) === "emote",
+      !!line.watcher && !mine,
     );
   }
   // Nearby lines pop over the speaker's head. On the Plaza the server
@@ -4298,18 +5359,21 @@ socket.on("access-revoked", ({ error }: { error: string }) => {
   // Reconnects too (onSession); a refused expired token is then renewed.
   void accountsUI.refresh();
 });
-socket.on("state", (snapshot: WireSnapshot) => {
+// Whole snapshots and deltas alike arrive here as whole snapshots.
+followSnapshots(socket, (snapshot: WireSnapshot) => {
   if (replacedAccount) return;
   const spectator = !myId && !!watching;
   // A stale room (we left it) can still send a last snapshot: ignore it.
   if (spectator && snapshot.code !== watching) return;
   if (state?.phase !== snapshot.phase || state?.round !== snapshot.round) {
+    scene?.clearActions();
+    scene?.stopInputClock();
     remoteFrames.clear();
     timeline.clear();
     shotTimeline.clear();
+    impacts.clear();
   }
   const previous = state;
-  if (snapshot.raid?.boss) prefetchRaidArena(snapshot.raid.boss);
   // No rite choice mid-fight: at each new chapter the rites grow a step.
   if (
     snapshot.raid &&
@@ -4384,7 +5448,16 @@ socket.on("state", (snapshot: WireSnapshot) => {
   const steps = serverSteps(pending, owedSteps);
   timeline.snapshot(Math.max(0, pending.length - owedSteps), receivedAt);
   local = structuredClone(me);
+  prepareBattlePrediction();
   carryCurrent(local, state.time);
+  // Tidelotl's Undertow, Bubble Prison and roots move you before your input
+  // does: predicted from this snapshot on (stepRaidCarry in predict()).
+  raidCarryNow = raidCarry(
+    me,
+    state.raid,
+    state.players.find((p) => p.raidBoss),
+    state.time,
+  );
   for (const { input, tick } of steps)
     predict(local, input, state.time + tick / RULES.tick);
   if (predicted)
@@ -4405,7 +5478,7 @@ socket.on("state", (snapshot: WireSnapshot) => {
         event.target === myId &&
         state.phase === "playing"
       )
-        measureHitGap(event);
+        measureHitGap(event, state.time);
       eventId = Math.max(eventId, event.id);
     }
   if (
@@ -4415,10 +5488,18 @@ socket.on("state", (snapshot: WireSnapshot) => {
     !state.arcade
   )
     void reportMatch(state.matchId);
-  syncBossPrepaint(state);
+  scene?.syncInputClock();
+  if (phaser()) kit.syncBossPrepaint(state);
   syncFighterArt();
   if (state.phase === "lobby") renderMenu();
   else renderBattle();
+});
+// A raid that began before the battle kit arrived (phaser-runtime.ts) had
+// no boss painted ahead and no raid HUD: both now.
+afterPhaser(() => {
+  if (!state) return;
+  kit.syncBossPrepaint(state);
+  if (state.phase !== "lobby") renderBattle();
 });
 /** Wear your best mastery tier for the fighter you've picked (lobby only). */
 let flairSent = "";
@@ -4433,31 +5514,60 @@ function syncFlair(me: Fighter) {
 let friendIds = new Set<string>();
 /** Fighter mastery badges on the roster: matches you've played with each. */
 let masteryFor = "";
+/** Matches this account has finished (undefined until its records load). */
+let matchesFinished: number | undefined;
+/**
+ * Your rating and rank, for the Lobby's rank chip (rank-chip.ts): from your
+ * records, then from each match's report.
+ */
+let myRating: Rating | undefined;
+/**
+ * The match your records were last read for, and the one they now count
+ * (the result's mastery tile shows the count with that match in it).
+ */
+let masteryWaits: string | undefined;
+let masteryCounts: string | undefined;
 function loadMastery(force = false) {
   const id = accountsUI?.account?.id ?? "";
   if (!id) {
     if (masteryFor) setMastery({});
     masteryFor = "";
+    matchesFinished = undefined;
+    myRating = undefined;
     return;
   }
   if (id === masteryFor && !force) return;
   // First load for this account: mention any waiting friend requests.
+  if (id !== masteryFor) matchesFinished = undefined;
+  if (id !== masteryFor) myRating = undefined;
   if (id !== masteryFor)
     void accountsUI.checkFriendRequests().then((list) => {
       if (list) friendIds = new Set(list.friends.map((f) => f.id));
     });
   masteryFor = id;
+  const waited = masteryWaits;
   void accountsUI
     .api("/api/progress")
     .then((value) => {
-      setMastery(progressSchema.parse(value).fighters);
+      const progress = progressSchema.parse(value);
+      setMastery(progress.fighters);
+      if (waited) masteryCounts = waited;
+      // A new player's short first matches (INTRO_ROUNDS): the Lobby says so.
+      const rankMoved =
+        rankChipKey(rankChip(progress.rating, false)) !==
+        rankChipKey(rankChip(myRating, false));
+      myRating = progress.rating;
+      if (matchesFinished !== progress.matches || rankMoved) {
+        matchesFinished = progress.matches;
+        syncLobby(!!lobby);
+      }
       rosterScreen?.refresh();
       const me = state?.players.find((p) => p.id === myId);
       if (me && state?.phase === "lobby") syncFlair(me);
       if (!state || state.phase === "lobby") {
         screen = "";
         renderMenu();
-      }
+      } else if (state.phase === "finished") renderBattle();
     })
     .catch(() => {
       // Records not set up yet (migration 004): no badges.
@@ -4469,6 +5579,18 @@ const matchRecords = new Map<string, RecordState>();
  * Save a finished match to your records. A match counts once every player's
  * game has saved it, so if ours was first, check again shortly.
  */
+/**
+ * Ask the server that ran the match to file it. Over the game connection
+ * first: during a deploy it stays with that server until the results are
+ * left, while HTTP already reaches the new one, which never saw the match
+ * ("Couldn't save this match to your records", 25 Nov 2026). HTTP is the
+ * fallback (not connected, or a server without the event).
+ */
+async function sendMatchReport(matchId: string): Promise<unknown> {
+  const reply = await request("match-report", { matchId }, true);
+  if (reply.ok && reply.report !== undefined) return reply.report;
+  return accountsUI.api("/api/matches/report", { matchId });
+}
 async function reportMatch(matchId: string, attempt = 0) {
   if (!accountsUI.account) return;
   if (attempt === 0) {
@@ -4476,9 +5598,7 @@ async function reportMatch(matchId: string, attempt = 0) {
     matchRecords.set(matchId, { status: "pending" });
   }
   try {
-    const reply = matchReportReplySchema.parse(
-      await accountsUI.api("/api/matches/report", { matchId }),
-    );
+    const reply = matchReportReplySchema.parse(await sendMatchReport(matchId));
     const before = matchRecords.get(matchId);
     const seen =
       before?.status === "done" ? before.reply.achievements : ([] as string[]);
@@ -4486,8 +5606,12 @@ async function reportMatch(matchId: string, attempt = 0) {
     if (
       reply.confirmed &&
       !(before?.status === "done" && before.reply.confirmed)
-    )
+    ) {
+      // Your records now have this match: the result's mastery tile shows
+      // once they are read again (result-rewards.ts).
+      masteryWaits = matchId;
       loadMastery(true);
+    }
     for (const name of reply.achievements)
       if (!seen.includes(name))
         toast(`Achievement unlocked: ${name}. Its title is yours to wear.`);
@@ -4495,15 +5619,10 @@ async function reportMatch(matchId: string, attempt = 0) {
     const rating = reply.rating;
     const wasRated =
       before?.status === "done" && before.reply.rating?.before !== undefined;
-    if (
-      rating?.before !== undefined &&
-      !wasRated &&
-      rating.rank !== "Unranked" &&
-      rating.previousRank !== rating.rank &&
-      RANKS.findIndex((r) => r.name === rating.rank) >
-        RANKS.findIndex((r) => r.name === rating.previousRank)
-    )
-      toast(`Rank up! You're now ${rating.rank}. The title is yours to keep.`);
+    if (rating) myRating = rating;
+    const news =
+      rating?.before !== undefined && !wasRated ? rankNews(rating) : "";
+    if (news) toast(news);
     if (!reply.confirmed && attempt < 3)
       setTimeout(
         () => {
@@ -4513,6 +5632,10 @@ async function reportMatch(matchId: string, attempt = 0) {
         3000 + attempt * 3000,
       );
   } catch (error) {
+    // A later check (has the other player filed it too?) that failed: the
+    // match is saved, so keep what the first report said. After a deploy the
+    // server that ran it may be gone, and the new one never saw it.
+    if (attempt > 0 && matchRecords.get(matchId)?.status === "done") return;
     matchRecords.set(matchId, {
       status: "unavailable",
       message:
@@ -4523,8 +5646,11 @@ async function reportMatch(matchId: string, attempt = 0) {
   }
   if (state?.phase === "finished") renderBattle();
 }
+/** What Tidelotl does to your fighter between snapshots (predict-fighter.ts). */
+let raidCarryNow: RaidCarry | undefined;
 function predict(p: Fighter, input: Input, time: number) {
-  predictFighter(p, input, time, !!state?.raid);
+  const run = p === local ? stepRaidCarry(p, raidCarryNow, input, time) : input;
+  predictFighter(p, run, time, !!state?.raid);
 }
 
 function dialog(html: string) {
@@ -4540,6 +5666,25 @@ function dialog(html: string) {
     settingsOpen = false;
     menuOpen = false;
   };
+}
+/** Result screen → Change fighter: a pick is the rematch, with that fighter. */
+function showFighterPicker() {
+  const me = state?.players.find((p) => p.id === myId);
+  if (!me) return;
+  dialog(fighterPickerMarkup(me.character));
+  for (const b of Array.from(
+    document.querySelectorAll<HTMLButtonElement>("#dialog [data-fp-pick]"),
+  ))
+    b.onclick = async () => {
+      const id = b.dataset.fpPick as CharacterId;
+      $<HTMLDialogElement>("dialog").close();
+      menuOpen = false;
+      const reply = await request("rematch", { character: id });
+      if (!reply.ok) return toast(reply.error ?? "Try again.");
+      // It is your fighter from now on, in the Lobby too.
+      selected = id;
+      rememberHomeFighter(id);
+    };
 }
 /**
  * The Settings leave button. Outlined red normally; bolder, with what it
@@ -4564,11 +5709,11 @@ function leaveButton() {
   return `<button id="exit-room" class="secondary btn-secondary leave-button is-costly"><span>${buttonIcon("leave")}Leave match</span><small>Counts as a forfeit</small></button>`;
 }
 /** Settings → Graphics: Auto, High or Low for the Plaza (graphics-quality.ts). */
-function graphicsCard() {
+function graphicsRow() {
   const setting = graphicsSetting();
   const option = (value: GraphicsSetting, label: string) =>
     `<button type="button" role="radio" data-graphics="${value}" aria-checked="${setting === value}">${label}</button>`;
-  return `<section class="prefs-card prefs-graphics" aria-labelledby="prefs-graphics"><h3 id="prefs-graphics">${menuIcon("sparkle")}Graphics</h3><div class="prefs-choice" role="radiogroup" aria-labelledby="prefs-graphics">${option("auto", "Auto")}${option("high", "High")}${option("low", "Low")}</div><p class="prefs-graphics-note">${graphicsNote(setting)}</p>${softwareRendering() ? GPU_OFF_NOTE : ""}</section>`;
+  return `<div class="st-row st-graphics"><span class="st-row-text"><b id="prefs-graphics">Graphics</b><small class="prefs-graphics-note">${graphicsNote(setting)}</small></span><div class="prefs-choice" role="radiogroup" aria-labelledby="prefs-graphics">${option("auto", "Auto")}${option("high", "High")}${option("low", "Low")}</div></div>${softwareRendering() ? GPU_OFF_NOTE : ""}`;
 }
 /** Shown when the browser draws without the graphics card (gpu-check.ts). */
 const GPU_OFF_NOTE =
@@ -4649,12 +5794,78 @@ function syncPrefOutputs(root: ParentNode) {
   }
 }
 const syncDialogPrefs = () => syncPrefOutputs($<HTMLDialogElement>("dialog"));
+/**
+ * Settings: Sound on the left; on the right, Display in the hub (graphics,
+ * full screen, motion) or This match in a battle (practice tools, leave,
+ * motion). Rows of a label and its control, the same everywhere. Controls,
+ * Report and Credits sit in the footer. Fits a phone held sideways without
+ * scrolling (settings-screen.css).
+ */
+function settingsMarkup(reduced: boolean) {
+  // The game's own switch, off by default (reduced-motion.ts): the device's
+  // accessibility setting no longer decides it (owner, 27 Nov 2026).
+  const motion = `<div class="st-row"><span class="st-row-text"><b id="prefs-motion">Reduce motion</b><small>Calmer fighters, effects and menus.</small></span><button type="button" class="prefs-switch" id="settings-motion" role="switch" aria-labelledby="prefs-motion" aria-checked="${reduced}"><span>${reduced ? "On" : "Off"}</span></button></div>`;
+  const sound = `<section class="prefs-card st-card" aria-labelledby="prefs-sound"><h3 id="prefs-sound">${menuIcon("sound")}Sound</h3>${prefSlider("music", "Music", audio.music, { min: 0, max: 1, step: 0.01 })}${prefSlider("effects", "Sound effects", audio.effects, { min: 0, max: 1, step: 0.01 })}${vibrationRow()}</section>`;
+  let side: string;
+  if (state) {
+    // In a room: what this match offers, then motion.
+    const practiceTools =
+      state.practice && touch.enabled
+        ? `<div class="st-row settings-quick-actions"><span class="st-row-text"><b>Solo test</b><small>Fighter, cooldowns, target and your numbers.</small></span><button id="settings-practice" class="secondary btn-secondary">${iconLabel("target", "Practice tools")}</button></div>`
+        : "";
+    const note = state.practice
+      ? ""
+      : `<p class="st-note">Online matches keep running while this is open.</p>`;
+    // What each of your skills does: on a phone there is no hover to read
+    // it, and holding a skill button casts it.
+    const skills = state.players.some((p) => p.id === myId)
+      ? `<div class="st-row"><span class="st-row-text"><b>Your skills</b><small>What each one does, and its cooldown.</small></span><button id="settings-skills" class="secondary btn-secondary">${iconLabel("info", "Skills")}</button></div>`
+      : "";
+    side = `<section class="prefs-card st-card" aria-labelledby="prefs-match"><h3 id="prefs-match">${menuIcon("battle")}This match</h3>${note}${practiceTools}${skills}${motion}</section>`;
+  } else
+    side = `<section class="prefs-card st-card" aria-labelledby="prefs-display"><h3 id="prefs-display">${menuIcon("fullscreen")}Display</h3>${graphicsRow()}${isNativeApp() ? "" : fullscreenRow()}${motion}</section>`;
+  const appIcon = !state && isNativeApp() ? appIconCardHTML() : "";
+  const leave = myId
+    ? leaveButton()
+    : watching
+      ? `<button id="exit-room" class="secondary btn-secondary leave-button">${iconLabel("stop-watching", "Stop watching")}</button>`
+      : "";
+  return `<div class="settings-screen st"><h2>Settings</h2><div class="st-cols">${sound}${side}${appIcon}</div><div class="settings-actions"><button id="open-controls" class="secondary btn-secondary">${iconLabel(touch.enabled ? "settings" : "keyboard", touch.enabled ? "Controls" : "Controls &amp; keys")}</button>${leave}<button id="settings-report" class="quiet">${iconLabel("report", "Report a problem")}</button><button id="settings-credits" class="quiet">${iconLabel("star", "Credits")}</button></div></div>`;
+}
+/**
+ * Settings → Sound → Vibration (owner, 25 Nov 2026): the buzz when hits land
+ * (and the Plaza's fishing), on or off. In the Sound card so it is there in
+ * a match too.
+ */
+function vibrationRow() {
+  const on = vibrationOn();
+  return `<div class="st-row"><span class="st-row-text"><b id="prefs-vibration">Vibration</b><small>Buzz when hits land.</small></span><button type="button" class="prefs-switch" id="settings-vibration" role="switch" aria-labelledby="prefs-vibration" aria-checked="${on}"><span>${on ? "On" : "Off"}</span></button></div>`;
+}
+function bindVibrationRow() {
+  const button = document.getElementById("settings-vibration");
+  if (!button) return;
+  button.onclick = () => {
+    const on = !vibrationOn();
+    setVibration(on);
+    button.setAttribute("aria-checked", String(on));
+    button.querySelector("span")!.textContent = on ? "On" : "Off";
+    // A short buzz so you feel it's back on.
+    if (on) rumble(40, 0.5);
+  };
+}
+function bindMotionRow() {
+  const button = document.getElementById("settings-motion");
+  if (!button) return;
+  button.onclick = () => {
+    const on = !reducedMotionChoice();
+    setReducedMotion(on);
+    button.setAttribute("aria-checked", String(on));
+    button.querySelector("span")!.textContent = on ? "On" : "Off";
+  };
+}
 function showSettings() {
   settingsOpen = true;
-  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  dialog(
-    `<div class="settings-screen"><h2>Settings</h2>${state?.practice && touch.enabled ? `<div class="settings-quick-actions"><button id="settings-practice" class="secondary btn-secondary">${iconLabel("target", "Practice")}</button></div>` : ""}<p class="prefs-note">Online matches keep running while this is open.</p><div class="prefs-grid${state ? "" : isNativeApp() ? " has-graphics" : " has-display has-graphics"}"><section class="prefs-card" aria-labelledby="prefs-sound"><h3 id="prefs-sound">${menuIcon("sound")}Sound</h3>${prefSlider("music", "Music", audio.music, { min: 0, max: 1, step: 0.01 })}${prefSlider("effects", "Sound effects", audio.effects, { min: 0, max: 1, step: 0.01 })}</section><section class="prefs-card" aria-labelledby="prefs-motion"><h3 id="prefs-motion">${menuIcon("motion")}Motion</h3><p class="prefs-status"><b class="${reduced ? "is-on" : ""}">Reduced motion ${reduced ? "on" : "off"}</b><span>Follows your device's accessibility setting.</span></p></section>${state ? "" : isNativeApp() ? graphicsCard() + appIconCardHTML() : displayCard() + graphicsCard()}</div><div class="settings-actions"><button id="open-controls" class="secondary btn-secondary">${iconLabel("keyboard", "Controls &amp; key bindings")}</button>${myId ? leaveButton() : watching ? `<button id="exit-room" class="secondary btn-secondary leave-button">${iconLabel("stop-watching", "Stop watching")}</button>` : ""}<button id="settings-report" class="quiet">${iconLabel("report", "Report a problem")}</button><button id="settings-credits" class="quiet">${iconLabel("star", "Credits")}</button></div></div>`,
-  );
+  dialog(settingsMarkup(reducedMotion));
   bindGraphicsCard();
   void bindAppIconCard(toast);
   for (const kind of ["music", "effects"] as const)
@@ -4673,9 +5884,13 @@ function showSettings() {
       ($("practice-settings") as HTMLDetailsElement).open = true;
     };
   bindDisplayCard();
+  bindVibrationRow();
+  bindMotionRow();
   $("open-controls").onclick = showControls;
   $("settings-report").onclick = () => accountsUI.showReport(reportContext());
   $("settings-credits").onclick = showCredits;
+  const skills = document.getElementById("settings-skills");
+  if (skills) skills.onclick = showSkills;
   const exitRoom = $("exit-room");
   if (exitRoom) exitRoom.onclick = () => void leave();
 }
@@ -4686,9 +5901,9 @@ function showSettings() {
 const fullscreenSupported = () =>
   !!document.documentElement.requestFullscreen &&
   document.fullscreenEnabled !== false;
-function displayCard() {
+function fullscreenRow() {
   const on = !!document.fullscreenElement;
-  return `<section class="prefs-card prefs-display" aria-labelledby="prefs-display"><h3 id="prefs-display">${menuIcon("fullscreen")}Display</h3><div class="prefs-toggle-row"><span><b>Full screen</b><small>${fullscreenSupported() ? "Hide the browser's bars while you play." : "On iPhone, add the game to your Home Screen to play full screen."}</small></span><button type="button" class="prefs-switch" id="settings-fullscreen" role="switch" aria-checked="${on}" ${fullscreenSupported() ? "" : "disabled"}><span>${on ? "On" : "Off"}</span></button></div></section>`;
+  return `<div class="st-row"><span class="st-row-text"><b id="prefs-fullscreen">Full screen</b><small>${fullscreenSupported() ? "Hide the browser's bars while you play." : "On iPhone, add the game to your Home Screen to play full screen."}</small></span><button type="button" class="prefs-switch" id="settings-fullscreen" role="switch" aria-labelledby="prefs-fullscreen" aria-checked="${on}" ${fullscreenSupported() ? "" : "disabled"}><span>${on ? "On" : "Off"}</span></button></div>`;
 }
 function syncDisplayCard() {
   const button = document.getElementById("settings-fullscreen");
@@ -4711,6 +5926,31 @@ function bindDisplayCard() {
     syncDisplayCard();
   };
 }
+/** Settings → Your skills: the fighter you play now, with a way back. */
+function showSkills() {
+  const me = state?.players.find((p) => p.id === myId);
+  if (!me) return showSettings();
+  const c = CHARACTERS[me.character];
+  const kit = kitOf(me.character, me.rites);
+  const row = (name: string, when: string, text: string) =>
+    `<li class="sk-row"><span class="sk-icon">${abilityIcon(name)}</span><span class="sk-text"><b>${escape(name)}</b><small>${escape(when)}</small><span>${escape(text)}</span></span></li>`;
+  const list = [
+    row(c.basic.name, "Basic attack · no cooldown", c.basic.description),
+    ...kit.skills.map((a, i) =>
+      row(
+        a.name,
+        i === ULT_SLOT
+          ? "Ultimate · fills by fighting"
+          : `Skill ${i + 1} · ${a.cooldown}s cooldown`,
+        a.description,
+      ),
+    ),
+  ].join("");
+  dialog(
+    `<div class="skills-screen"><button type="button" class="quiet" id="skills-back">${iconLabel("back", "Settings")}</button><h2>${escape(c.name)}'s skills</h2><ul class="sk-list">${list}</ul></div>`,
+  );
+  $("skills-back").onclick = showSettings;
+}
 /** Who and what made the game (opened from Settings, with a way back). */
 function showCredits() {
   dialog(
@@ -4726,24 +5966,7 @@ function showControls() {
     box: $<HTMLDialogElement>("dialog"),
     onBack: showSettings,
     padConnected: !!firstPad(),
-    // Touch controls live here (Settings keeps room for Graphics).
-    touch: touch.available
-      ? {
-          html: touch.settingsHTML(),
-          bind() {
-            touch.bindSettings();
-            const box = $<HTMLDialogElement>("dialog");
-            // Same function each time, so reopening doesn't stack listeners.
-            box.addEventListener("input", syncDialogPrefs);
-            // Reset sets the knobs directly (no input event), so refresh after it.
-            document
-              .getElementById("control-reset")
-              ?.addEventListener("click", () =>
-                setTimeout(() => syncPrefOutputs(box)),
-              );
-          },
-        }
-      : undefined,
+    touch: touch.available,
   });
 }
 $("mobile-settings").onclick = showSettings;
@@ -4771,7 +5994,9 @@ $("privacy-policy").onclick = () => {
   headerMenu.open = false;
   window.open(PRIVACY_URL, "_blank", "noopener");
 };
-$("leaderboard").onclick = () => void accountsUI.showLeaderboard();
+$("leaderboard").onclick = () => {
+  if (!tellLocked("ranks")) void accountsUI.showLeaderboard();
+};
 // In the hub the header's log-out button is folded into this menu.
 $("menu-logout").onclick = () => {
   headerMenu.open = false;
@@ -4783,10 +6008,193 @@ $("guide-open").onclick = () => {
   if (myId) return toast("Finish or leave this room first.");
   guide.reopen();
 };
-$("help").onclick = () =>
-  dialog(
-    `<div class="help-screen"><div class="eyebrow">How to play</div><h2>Welcome to Elemental Plaza.</h2><p>Press <b>PLAY</b> in the Lobby to start a match. Switch between the Lobby and the Plaza at the top of the screen. In battle, win three rounds to take the match.</p><div class="eyebrow help-battle-eyebrow">In battle</div><div class="help-layout"><section class="help-controls" aria-label="Game controls">${controlsList(true)}</section>${illustratedHelp()}</div></div>`,
+function helpControls(): HelpControls {
+  const bindings = controlPrefs().bindings;
+  const pad = (a: PadAction) => PAD_LABELS[a];
+  return {
+    device: touch.enabled && !usingPad ? "touch" : usingPad ? "pad" : "keys",
+    keys: {
+      move: movementLabel(bindings),
+      basic: actionLabel(bindings, "basic"),
+      skills: skillLabels(bindings).join(" "),
+      dash: actionLabel(bindings, "dash"),
+      jump: actionLabel(bindings, "jump"),
+    },
+    pad: {
+      move: "L-STICK",
+      basic: pad("basic"),
+      skills: SKILL_ACTIONS.map((a) => PAD_LABELS[a]).join(" "),
+      dash: pad("dash"),
+      jump: pad("jump"),
+    },
+    preview: controlPrefs().cast === "preview",
+  };
+}
+function showHowToPlay(topic: HelpTopicId = "basics") {
+  const controls = helpControls();
+  const inHub = !myId && !state && !watching && !!accountsUI?.account;
+  helpState = {
+    topic,
+    device: controls.device,
+    canTour: inHub,
+    canGo: inHub,
+  };
+  dialog(howToPlayMarkup(helpState, controls));
+}
+/** Tabs, devices and buttons inside How to play. */
+$<HTMLDialogElement>("dialog").addEventListener("click", (event) => {
+  const root =
+    $<HTMLDialogElement>("dialog").querySelector<HTMLElement>(".htp");
+  if (!root || !helpState) return;
+  const t = (event.target as Element).closest<HTMLElement>(
+    "[data-htp-topic], [data-htp-device], [data-htp-go], [data-htp-tour], [data-htp-guide]",
   );
+  // (The foot sits in the dialog's own footer, outside .htp.)
+  if (!t) return;
+  const body = root.querySelector<HTMLElement>(".htp-body")!;
+  if (t.dataset.htpTopic || t.dataset.htpDevice) {
+    if (t.dataset.htpTopic) {
+      helpState.topic = t.dataset.htpTopic as HelpTopicId;
+      root.dataset.topic = helpState.topic;
+      for (const tab of Array.from(
+        root.querySelectorAll<HTMLElement>("[data-htp-topic]"),
+      )) {
+        const on = tab === t;
+        tab.setAttribute("aria-selected", String(on));
+        tab.tabIndex = on ? 0 : -1;
+      }
+      body.setAttribute("aria-labelledby", t.id);
+      t.scrollIntoView({ block: "nearest", inline: "nearest" });
+    } else helpState.device = t.dataset.htpDevice as HelpDevice;
+    body.innerHTML = helpTopicMarkup(helpState, helpControls());
+    body.scrollTop = 0;
+    body.closest<HTMLElement>(".dialog-content")?.scrollTo({ top: 0 });
+    return;
+  }
+  if (t.dataset.htpGo === "controls") return showControls();
+  $<HTMLDialogElement>("dialog").close();
+  menuOpen = false;
+  if (t.dataset.htpGo) helpGo(t.dataset.htpGo as HelpGo);
+  else if (t.hasAttribute("data-htp-tour")) startTour(true);
+  else $("guide-open").click();
+});
+/** Arrow keys move between How to play's tabs. */
+$<HTMLDialogElement>("dialog").addEventListener("keydown", (event) => {
+  const tab = (event.target as Element).closest<HTMLElement>(
+    "[data-htp-topic]",
+  );
+  if (!tab || (event.key !== "ArrowRight" && event.key !== "ArrowLeft")) return;
+  const all = Array.from(
+    tab.parentElement!.querySelectorAll<HTMLElement>("[data-htp-topic]"),
+  );
+  const next =
+    all[
+      (all.indexOf(tab) + (event.key === "ArrowRight" ? 1 : -1) + all.length) %
+        all.length
+    ];
+  event.preventDefault();
+  next.focus();
+  next.click();
+});
+/** A How to play card's Go: the screen it is about, from the hub. */
+function helpGo(to: HelpGo) {
+  if (myId) return toast("Finish or leave this room first.");
+  if (to === "plaza") return setHubScene("plaza");
+  if (to === "practice") return void lobbyPlay("practice");
+  if (hubScene !== "lobby") setHubScene("lobby");
+  if (to === "play")
+    return requestAnimationFrame(() =>
+      document.querySelector<HTMLElement>("#lobby-mode")?.click(),
+    );
+  if (to === "controls") return showControls();
+  lobbyAction(to);
+}
+$("help").onclick = () => showHowToPlay();
+$("daily-gift").onclick = () => showGift();
+/** Start it now (replay), or when it is due for a new account. */
+function startTour(replay = false) {
+  const account = accountsUI?.account?.id;
+  if (!account || tour?.open) return;
+  if (hubScene !== "lobby") setHubScene("lobby");
+  // The Lobby lays itself out first (and glides in); then the tour.
+  clearTimeout(tourTimer);
+  tourTimer = setTimeout(
+    () => {
+      tourTimer = undefined;
+      // A new guest answers their guest pass warning first; the tour
+      // follows (owner, 22 Nov 2026: it opened over the warning).
+      if (
+        !lobby ||
+        myId ||
+        $<HTMLDialogElement>("dialog").open ||
+        screenInFront() ||
+        document.querySelector("[data-ui-confirm]") ||
+        accountsUI?.guestWarningPending
+      )
+        return;
+      tour = runTour({
+        reduced: reducedMotion,
+        onEnd: (result, reached) => {
+          tour = undefined;
+          saveTour(account, result);
+          // Kept with the account too (another device won't show it), and
+          // counted for the new-player funnel (docs/player-funnel.md).
+          const end: TourEnd = {
+            result,
+            reached,
+            steps: TOUR_STEPS.length,
+            replay,
+          };
+          accountsUI.api("/api/account/tour", end).catch(() => {
+            /* Kept on this device; the account learns next time. */
+          });
+        },
+      });
+    },
+    replay ? 250 : 900,
+  );
+}
+// The guest warning answered (Got it, or Save account and its card closed):
+// the tour, if it is still due.
+window.addEventListener("guest-warning-done", () => maybeStartTour());
+// Save account opens the player card first: the tour once it closes.
+document.addEventListener(PANEL_EVENT, () => {
+  if (hubScene === "lobby" && !myId) {
+    maybeStartTour();
+    maybeShowUnlocks();
+    maybeShowGift();
+  }
+});
+/** A new account's first Lobby: the tour, once. */
+function maybeStartTour() {
+  const account = accountsUI?.account?.id;
+  if (!account || tour?.open || tourTimer !== undefined) return;
+  const journey = accountsUI.economy?.journey;
+  const level = journey ? playerLevel(journey.xp).level : undefined;
+  if (!tourDue(loadTour(account), level)) return;
+  // This browser hasn't seen it end; ask the account (another device may
+  // have), once, and decide when it answers. No answer: show it.
+  if (tourAsked?.account !== account) {
+    tourAsked = { account, answered: false };
+    const asked = tourAsked;
+    accountsUI
+      .api("/api/account/tour")
+      .then(
+        (body) => {
+          const ended = tourFromServer(body);
+          if (ended) saveTour(account, ended);
+        },
+        () => {},
+      )
+      .finally(() => {
+        asked.answered = true;
+        if (tourAsked === asked) maybeStartTour();
+      });
+    return;
+  }
+  if (!tourAsked.answered) return;
+  startTour();
+}
 $<HTMLDialogElement>("dialog").addEventListener("close", () => {
   settingsOpen = false;
   menuOpen = false;
@@ -4831,7 +6239,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
   layerAt: LayerAt = (key, groundY) => {
     let layer = this.layers.get(key);
     if (!layer) {
-      layer = battleCurves(this.add.graphics());
+      layer = kit.battleCurves(this.add.graphics());
       this.layers.set(key, layer);
     }
     if (!this.layersUsed.has(key)) {
@@ -4854,6 +6262,11 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
   floorArena: string = "classic";
   floorScale = new Map<string, number>();
   /**
+   * Illustrated raid floors still downloading (their stand-in floor shows
+   * meanwhile): the briefing's I'm ready waits for them (arenaLoading).
+   */
+  floorPending = new Set<string>();
+  /**
    * Each duel court's stone blocks, as pictures that sort with the fighters
    * by where they stand (so you can be in front of or behind one). The
    * Shifting Ruins centre block is flagged so it can rise and sink.
@@ -4875,7 +6288,9 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
   /** Its pillars, shadows, rubble and crumbles (raid-grumble-pillars-rig.ts). */
   pillarRig?: PillarRig;
   /** Shared floor textures continue into dim, non-playable scenery around the court. */
-  raidSurround: Phaser.GameObjects.Image[] = [];
+  /** The world round a raid court (world-art/), painted once per arena. */
+  raidWorld: Phaser.GameObjects.Image[] = [];
+  private raidWorldId = "";
   /** The Spire's court: sky, cover, stairs and number (spire-court-rig.ts). */
   spireRig?: SpireCourtRig;
   /** The Spire floor on show, and the next one already painted. */
@@ -4884,8 +6299,6 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
   /** Bake an arena's floor once (2x on dense screens); returns its texture key. */
   floorTexture(id: string) {
     const key = `arena-floor-${id}`;
-    // The illustrated version, once its picture has arrived (see below).
-    if (this.textures.exists(`${key}:art`)) return `${key}:art`;
     const bake = floorBake();
     if (!this.textures.exists(key)) {
       this.floorScale.set(key, bake);
@@ -4893,25 +6306,30 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       const court = id.startsWith("court-")
         ? id.slice(6).replace(/-bare$/, "")
         : "";
-      if (isCourt(court)) {
+      if (kit.isCourt(court)) {
         const canvas = document.createElement("canvas");
         canvas.width = RULES.width * bake;
         canvas.height = RULES.height * bake;
         const ctx = canvas.getContext("2d")!;
         ctx.scale(bake, bake);
-        paintCourtFloor(ctx, court, bare);
+        kit.paintCourtFloor(ctx, court, bare);
         addCanvasTexture(this.textures, key, canvas);
-      } else if (isSpireFloorId(id)) {
+      } else if (kit.isSpireFloorId(id)) {
         const canvas = document.createElement("canvas");
         canvas.width = RULES.width * bake;
         canvas.height = RULES.height * bake;
         const ctx = canvas.getContext("2d")!;
         ctx.scale(bake, bake);
-        paintSpireFloorId(ctx, id);
+        kit.paintSpireFloorId(ctx, id);
         addCanvasTexture(this.textures, key, canvas);
-      } else if (isIllustratedRaidFloor(id) || isSpireSummitFloorId(id)) {
+      } else if (
+        kit.isIllustratedRaidFloor(id) ||
+        kit.isSpireSummitFloorId(id)
+      ) {
         // The Spire's boss floor: its raid's court with the summit grade.
-        const summit = isSpireSummitFloorId(id) ? spireSummitArt(id) : null;
+        const summit = kit.isSpireSummitFloorId(id)
+          ? kit.spireSummitArt(id)
+          : null;
         const picture: IllustratedRaidFloor = summit
           ? summit.picture
           : (id as IllustratedRaidFloor);
@@ -4920,35 +6338,15 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         canvas.height = RULES.height * bake;
         const ctx = canvas.getContext("2d")!;
         ctx.scale(bake, bake);
-        if (isRaidFloor(picture)) paintRaidFloor(ctx, picture);
-        else paintCourtFloor(ctx, "classic", true);
+        // Painted in code (world-art/): ready at once, nothing to fetch.
+        kit.paintIllustratedRaidFloor(ctx, picture);
         summit?.grade(ctx);
+        canvas.dataset.raidArtwork = id;
         addCanvasTexture(this.textures, key, canvas);
-        loadRaidArenaArt(picture, (image) => {
-          if (!this.textures?.exists(key)) return;
-          ctx.save();
-          ctx.setTransform(bake, 0, 0, bake, 0, 0);
-          paintIllustratedRaidFloor(ctx, picture, image);
-          summit?.grade(ctx);
-          ctx.restore();
-          canvas.dataset.raidArtwork = id;
-          // A new texture rather than re-uploading the old one in place: on
-          // some phones the in-place update never showed, and the whole first
-          // fight stayed on the stand-in floor (the next fight, painted
-          // already, was fine). Whatever shows the stand-in switches over.
-          const art = `${key}:art`;
-          if (!this.textures.exists(art))
-            addCanvasTexture(this.textures, art, canvas);
-          this.floorScale.set(art, bake);
-          for (const img of [this.floor, ...this.raidSurround])
-            if (img?.texture.key === key) img.setTexture(art);
-          if (this.floor?.texture.key === art) this.floor.setScale(1 / bake);
-          for (const img of this.raidSurround) img.setDisplaySize(1600, 900);
-        });
       } else {
         const g = this.make.graphics({}, false);
-        paintArenaFloor(scaledPainter(g, bake), ARENAS[id as ArenaId]);
-        generateGraphicsTexture(
+        kit.paintArenaFloor(kit.scaledPainter(g, bake), ARENAS[id as ArenaId]);
+        kit.generateGraphicsTexture(
           g,
           key,
           RULES.width * bake,
@@ -4971,7 +6369,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     // both go, and only when no picture shows either.
     const base = key.replace(/:art$/, "");
     const keys = [base, `${base}:art`];
-    const shown = [this.floor, ...this.raidSurround].some(
+    const shown = [this.floor].some(
       (img) => !!img && keys.includes(img.texture.key),
     );
     if (shown) return;
@@ -4984,15 +6382,84 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       if (source instanceof HTMLCanvasElement) source.width = source.height = 0;
     }
   }
+  /**
+   * Show the painted world round this raid court (undefined: none). Only one
+   * is kept, like the floor: the last arena's goes. It is one canvas, shown
+   * as four bands round the court (above, below, left, right) and never
+   * under it: the court's own floor covers the middle, so drawing the world
+   * there too would paint most of the screen twice every frame (+11–15%
+   * frame time on every raid, measured at Low on 844×390). The camera's
+   * background takes the painting's edge colour, so a view even wider than
+   * the painting (a tall portrait screen) carries on in the same tone.
+   */
+  private showRaidWorld(id: IllustratedRaidFloor | undefined) {
+    if (id === this.raidWorldId) {
+      for (const band of this.raidWorld) band.setVisible(!!id);
+      return;
+    }
+    const old = this.raidWorldId ? `raid-world-${this.raidWorldId}` : "";
+    this.raidWorldId = id ?? "";
+    for (const band of this.raidWorld)
+      band.setTexture("__DEFAULT").setVisible(false);
+    if (old && this.textures.exists(old)) {
+      const source = this.textures.get(old).getSourceImage();
+      this.textures.remove(old);
+      if (source instanceof HTMLCanvasElement) source.width = source.height = 0;
+    }
+    if (!id) {
+      this.cameras.main.setBackgroundColor(ARENA_BACKGROUND);
+      return;
+    }
+    const key = `raid-world-${id}`;
+    const s = kit.WORLD_DENSITY;
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(kit.WORLD.width * s);
+    canvas.height = Math.round(kit.WORLD.height * s);
+    const ctx = canvas.getContext("2d")!;
+    ctx.setTransform(s, 0, 0, s, -kit.WORLD.x * s, -kit.WORLD.y * s);
+    kit.paintRaidWorld(ctx, id, "all");
+    const texture = addCanvasTexture(this.textures, key, canvas);
+    // The four bands, in world px: everything in WORLD but the court.
+    const { width: W, height: H } = RULES;
+    const right = kit.WORLD.x + kit.WORLD.width,
+      bottom = kit.WORLD.y + kit.WORLD.height;
+    const bands: [string, number, number, number, number][] = [
+      ["top", kit.WORLD.x, kit.WORLD.y, kit.WORLD.width, -kit.WORLD.y],
+      ["bottom", kit.WORLD.x, H, kit.WORLD.width, bottom - H],
+      ["left", kit.WORLD.x, 0, -kit.WORLD.x, H],
+      ["right", W, 0, right - W, H],
+    ];
+    bands.forEach(([name, x, y, w, h], i) => {
+      texture?.add(
+        name,
+        0,
+        Math.round((x - kit.WORLD.x) * s),
+        Math.round((y - kit.WORLD.y) * s),
+        Math.round(w * s),
+        Math.round(h * s),
+      );
+      this.raidWorld[i] ??= this.add
+        .image(0, 0, key, name)
+        .setOrigin(0)
+        .setDepth(-12);
+      this.raidWorld[i]
+        .setTexture(key, name)
+        .setPosition(x, y)
+        .setDisplaySize(w, h)
+        .setName(`raid-world-${name}`)
+        .setVisible(true);
+    });
+    this.cameras.main.setBackgroundColor(kit.RAID_WORLDS[id].edge);
+  }
   /** Bake and place a court's blocks (once per court). */
   private ensureBlocks(id: CourtId) {
     if (this.courtBlocks.has(id)) return this.courtBlocks.get(id)!;
     const bake = floorBake();
-    const list = courtBlocks(id).map((o) => ({ o, shifting: false }));
+    const list = kit.courtBlocks(id).map((o) => ({ o, shifting: false }));
     if (id === "shifting-ruins")
-      list.push({ o: SHIFTING_BLOCK, shifting: true });
+      list.push({ o: kit.SHIFTING_BLOCK, shifting: true });
     const made = list.map(({ o, shifting }, i) => {
-      const frame = courtBlockFrame(o),
+      const frame = kit.courtBlockFrame(o),
         key = `court-block-${id}-${i}`;
       if (!this.textures.exists(key)) {
         const canvas = document.createElement("canvas");
@@ -5000,7 +6467,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         canvas.height = Math.ceil(frame.h * bake);
         const ctx = canvas.getContext("2d")!;
         ctx.scale(bake, bake);
-        paintCourtBlock(ctx, o, i, id);
+        kit.paintCourtBlock(ctx, o, i, id);
         addCanvasTexture(this.textures, key, canvas);
       }
       const img = this.add
@@ -5023,7 +6490,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     // Every raid but Grumblecrag's brings its own arena; its pillars are the
     // Coliseum's blocks, so it fights on that court.
     const court =
-      !spireCourt && isCourt(arena) && (!raid || arena === "classic")
+      !spireCourt && kit.isCourt(arena) && (!raid || arena === "classic")
         ? arena
         : undefined;
     const id = spire
@@ -5047,9 +6514,9 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     }
     const key = this.floorTexture(
       spireCourt
-        ? spireFloorId(spireCourt)
-        : spire && (this.courtRaid || hasSpireSummitArena(arena))
-          ? spireSummitFloorOf(arena)
+        ? kit.spireFloorId(spireCourt)
+        : spire && (this.courtRaid || kit.hasSpireSummitArena(arena))
+          ? kit.spireSummitFloorOf(arena)
           : this.courtRaid
             ? "raid-coliseum"
             : court
@@ -5063,34 +6530,24 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       // The Spire's platform takes the light of its height.
       .setTint(
         spireCourt
-          ? spireFloorTint(spireCourt.floor, spireCourt.zone)
+          ? kit.spireFloorTint(spireCourt.floor, spireCourt.zone)
           : 0xffffff,
       );
     this.releaseFloor(previous);
     // Round the Spire's courts: its sky, not the raid's dimmed floor.
-    if (spire) this.spireRig ??= new SpireCourtRig(this, fighterDepth);
+    if (spire) this.spireRig ??= new kit.SpireCourtRig(this, fighterDepth);
     this.spireRig?.show(spire);
-    if (raid && !spire && !this.raidSurround.length) {
-      for (const x of [-1600, 0, 1600])
-        for (const y of [-900, 0, 900]) {
-          if (!x && !y) continue;
-          this.raidSurround.push(
-            this.add
-              .image(x, y, key)
-              .setOrigin(0)
-              .setFlipX(x !== 0)
-              .setFlipY(y !== 0)
-              .setDisplaySize(1600, 900)
-              .setTint(0x627185)
-              .setDepth(-12),
-          );
-        }
-    }
-    for (const image of this.raidSurround)
-      image
-        .setTexture(key)
-        .setDisplaySize(1600, 900)
-        .setVisible(raid && !spire);
+    // Round a raid court: its own painted world, out past anything the
+    // camera shows. The Spire keeps its sky instead.
+    this.showRaidWorld(
+      raid && !spire
+        ? this.courtRaid
+          ? "raid-coliseum"
+          : kit.isIllustratedRaidFloor(arena)
+            ? arena
+            : undefined
+        : undefined,
+    );
     if (court) this.ensureBlocks(court);
     // Grumblecrag's raid shows its own pillars (the PvP blocks stay as they are).
     for (const [cid, list] of this.courtBlocks)
@@ -5102,16 +6559,16 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       if (!this.textures.exists(skey)) {
         const canvas = document.createElement("canvas");
         canvas.width = RULES.width * bake;
-        canvas.height = STANDS * bake;
+        canvas.height = kit.STANDS * bake;
         const ctx = canvas.getContext("2d")!;
         ctx.scale(bake, bake);
-        paintCourtStands(ctx, court);
+        kit.paintCourtStands(ctx, court);
         addCanvasTexture(this.textures, skey, canvas);
       }
       this.stands.set(
         court,
         this.add
-          .image(0, -STANDS, skey)
+          .image(0, -kit.STANDS, skey)
           .setOrigin(0)
           .setScale(1 / bake)
           .setDepth(-10),
@@ -5125,10 +6582,10 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       if (!this.textures.exists(akey)) {
         const canvas = document.createElement("canvas");
         canvas.width = RULES.width * bake;
-        canvas.height = COURT_APRON * bake;
+        canvas.height = kit.COURT_APRON * bake;
         const ctx = canvas.getContext("2d")!;
         ctx.scale(bake, bake);
-        paintCourtApron(ctx, court);
+        kit.paintCourtApron(ctx, court);
         addCanvasTexture(this.textures, akey, canvas);
       }
       this.courtAprons.set(
@@ -5143,7 +6600,8 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     for (const [cid, img] of this.courtAprons)
       img.setVisible(standsOn && cid === court);
 
-    if (this.courtRaid) this.pillarRig ??= new PillarRig(this, fighterDepth);
+    if (this.courtRaid)
+      this.pillarRig ??= new kit.PillarRig(this, fighterDepth);
     this.pillarRig?.setVisible(this.courtRaid);
     // The frame grows to show the stands on desktop (see .court-view in CSS).
     document.body.classList.toggle("court-view", standsOn);
@@ -5163,11 +6621,13 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         cleared,
         reducedMotion,
         battleQuality.current() === "low",
-        fxFor(this),
+        kit.fxFor(this),
       );
       // While the stairs are open, the next floor is painted (never mid-fight).
       const after =
-        s && s.clearedAt !== undefined ? nextSpireCourtView(spire) : undefined;
+        s && s.clearedAt !== undefined
+          ? kit.nextSpireCourtView(spire)
+          : undefined;
       // (Only a floor this party may climb to.)
       const next =
         after && after.floor <= (s?.ceiling ?? 0) ? after : undefined;
@@ -5176,10 +6636,10 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         this.spirePrepared = ahead;
         this.spireRig.prepare(next);
         if (next.kind === "boss")
-          this.floorTexture(spireSummitFloorId(next.zone));
+          this.floorTexture(kit.spireSummitFloorId(next.zone));
       }
       if (spire.kind !== "boss") {
-        fxFor(this).setOccluders(this.spireRig.fronts, fighterDepth);
+        kit.fxFor(this).setOccluders(this.spireRig.fronts, fighterDepth);
         return;
       }
     }
@@ -5190,17 +6650,19 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         reducedMotion,
         battleQuality.current() === "low",
       );
-      fxFor(this).setOccluders(fronts, fighterDepth);
+      kit.fxFor(this).setOccluders(fronts, fighterDepth);
       return;
     }
     const list = this.activeCourt && this.courtBlocks.get(this.activeCourt);
     // Effects pass behind the blocks on show (see Fx.at); none off the courts.
-    fxFor(this).setOccluders(
-      list
-        ? list.filter(({ img }) => img.visible).map(({ o }) => o.y + o.h)
-        : [],
-      fighterDepth,
-    );
+    kit
+      .fxFor(this)
+      .setOccluders(
+        list
+          ? list.filter(({ img }) => img.visible).map(({ o }) => o.y + o.h)
+          : [],
+        fighterDepth,
+      );
     if (!list) return;
     for (const { img, shifting } of list) {
       if (shifting) img.setVisible(shiftingUp(ARENAS["shifting-ruins"], t));
@@ -5212,11 +6674,288 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
   /** Knockout moment: camera push-in multiplier and its end time. */
   koZoom = 1;
   koUntil = 0;
-  accumulator = 0;
+  private inputClock = new BattleInputClock(
+    () => this.sendInput(),
+    () =>
+      scene === this &&
+      connected &&
+      socket.connected &&
+      inputSessionReady &&
+      !!state &&
+      state.phase === "playing" &&
+      !!local &&
+      !!this.aimView &&
+      !$("battle").hidden &&
+      !document.hidden &&
+      !backgroundExit.away,
+    RULES.tick,
+  );
+  syncInputClock() {
+    this.inputClock.sync();
+  }
+  stopInputClock() {
+    this.inputClock.stop();
+    netMeter.pauseInput();
+  }
+  clearActions() {
+    this.actions = { skill: -1, dash: false, jump: false, basic: false };
+    netMeter.clearPresses();
+  }
+  /** One input, one pending entry and one predicted step, on the input clock. */
+  private sendInput() {
+    if (!state || !local) return;
+    const pad = pollPad();
+    this.keepTargetLock();
+    if (!this.canControl()) this.clearActions();
+    prepareBattlePrediction();
+    const aim = this.aimView
+      ? screenToWorld(
+          this.input.activePointer.x,
+          this.input.activePointer.y,
+          this.scale.width,
+          this.scale.height,
+          this.aimView,
+        )
+      : this.aimPoint;
+    const active =
+      this.canControl() &&
+      !settingsOpen &&
+      !menuOpen &&
+      !$<HTMLDialogElement>("dialog").open &&
+      (touch.enabled ? touch.focused : document.hasFocus()) &&
+      !document.hidden;
+    const { enemies, extra, bodies, target } = this.aimTargets(local);
+    const combatActive = active && local.hp > 0 && !local.out;
+    let skill = combatActive ? this.actions.skill : -1;
+    // EX skills: the ultimate button before the meter is full arms an EX
+    // version of your next skill (costs a third of the meter).
+    const meter = local.ult ?? 0;
+    let ex = false;
+    if (
+      skill === ULT_SLOT &&
+      meter < RULES.ultMax &&
+      !state.practice?.unlimitedCooldowns
+    ) {
+      if (meter >= EX.cost) {
+        exArmedUntil = exArmedUntil
+          ? 0
+          : performance.now() + EX.armSeconds * 1000;
+        if (exArmedUntil) audio.cue("ex-armed");
+      }
+      skill = -1;
+    } else if (skill >= 0 && skill < ULT_SLOT && exArmedUntil) {
+      if (performance.now() < exArmedUntil && meter >= EX.cost) ex = true;
+      exArmedUntil = 0;
+    } else if (skill >= 0 && skill < ULT_SLOT && practiceExOn()) ex = true;
+    if (exArmedUntil && performance.now() >= exArmedUntil) exArmedUntil = 0;
+    const keyX = heldAxis("left", "right"),
+      keyY = heldAxis("up", "down");
+    // Aim: touch and an idle right stick follow the nearest opponent;
+    // the right stick aims by direction and tilt; otherwise the mouse.
+    let aimAt = { x: aim.x, y: aim.y };
+    if (touch.enabled && target) aimAt = target;
+    else if (usingPad && pad?.aim) {
+      const tilt = Math.hypot(pad.aim.x, pad.aim.y),
+        reach = 90 + 410 * tilt;
+      aimAt = {
+        x: local.x + (pad.aim.x / tilt) * reach,
+        y: local.y + (pad.aim.y / tilt) * reach,
+      };
+    } else if (usingPad && target) aimAt = target;
+    else if (usingPad) aimAt = this.aimPoint;
+    else if (controlPrefs().aimAssist && skill < 0)
+      aimAt = assistAim(aimAt, bodies ?? enemies);
+    // A skill dragged on a phone aims where it was dragged, for as long as
+    // its cast reads the aim (touch-aim.ts).
+    const dragged = touch.enabled
+      ? this.draggedAim(local, extra ?? enemies)
+      : undefined;
+    if (dragged) aimAt = dragged;
+    const stormAim = state ? stormTarget(state, local.id) : undefined;
+    if (stormAim) aimAt = stormAim;
+    const prismAim = state ? prismatailAim(state, local) : undefined;
+    if (prismAim) aimAt = prismAim;
+    aimAt = {
+      x: Ph.Math.Clamp(aimAt.x, 0, RULES.width),
+      y: Ph.Math.Clamp(aimAt.y, 0, RULES.height),
+    };
+    this.aimPoint = aimAt;
+    const input: Input = {
+      seq: ++seq,
+      dx: active ? (touch.enabled ? touch.dx : keyX || (pad?.dx ?? 0)) : 0,
+      dy: active ? (touch.enabled ? touch.dy : keyY || (pad?.dy ?? 0)) : 0,
+      aimX: aimAt.x,
+      aimY: aimAt.y,
+      basic:
+        combatActive &&
+        (prismAim
+          ? prismAim.basic
+          : (touch.enabled
+              ? touch.basic
+              : heldAction("basic") || !!pad?.held.has("basic")) ||
+            this.actions.basic),
+      skill,
+      ...(ex ? { ex: true } : {}),
+      dash: combatActive && this.actions.dash,
+      jump: combatActive && this.actions.jump,
+    };
+    this.actions = { skill: -1, dash: false, jump: false, basic: false };
+    const emittedAt = performance.now();
+    socket.emit("input", input);
+    netMeter.input(input, emittedAt);
+    if (combatActive && coach.running) coach.note(input);
+    // Show your own cast now (before this step's movement changes the
+    // fighter), at the time this input is predicted to run.
+    this.predictCasts(
+      local,
+      input,
+      state.time + Math.max(1, pending.length + 1 - owedSteps) / RULES.tick,
+    );
+    pending.push(input);
+    if (pending.length > 90) pending.shift();
+    const next = newestStep(pending, owedSteps);
+    if (next) predict(local, next.input, state.time + next.tick / RULES.tick);
+  }
   actions = { skill: -1, dash: false, jump: false, basic: false };
+  /**
+   * What the automatic aim can pick, and what it picks: a locked enemy
+   * (touch or controller) before the nearest one. Gloomshade's bodies are
+   * aimed at alike (real or copy), and its unlit lanterns and Tidewyrm's
+   * bubbles holding teammates can be locked on to (raid-targets.ts).
+   */
+  private aimTargets(me: Fighter) {
+    const enemies = visibleEnemies(me, me);
+    const extra = state ? raidTargets(state, me) : undefined;
+    const found = extra?.filter((t) => t.kind === "shade" || t.kind === "boss");
+    const bodies = found?.length ? found : undefined;
+    const target =
+      targetLock.resolve<Targetable>(extra ?? enemies) ??
+      (bodies ? bodies[0] : enemies[0]);
+    return { enemies, extra, bodies, target };
+  }
+  /** The drag being honoured: its aim, for `steps` more inputs. */
+  private dragged?: {
+    from: NonNullable<TouchControls["drag"]>;
+    dir: { x: number; y: number };
+    /**
+     * Inputs left that carry it, counted in inputs (the server's ticks),
+     * not time: a janky phone's late inputs are still the ticks a
+     * buffered or winding-up cast reads.
+     */
+    steps: number;
+    /** A target skill's pick (its id), chosen at the first input. */
+    pick?: string;
+  };
+  /**
+   * The aim of a skill dragged on a phone (touch-aim.ts), kept after the
+   * finger lifts for as long as its cast reads the aim: a buffered tap's
+   * wait, a wind-up, a storm's waves. A target skill stays on the enemy the
+   * drag picked. Undefined: the automatic aim.
+   */
+  private draggedAim(me: Fighter, candidates: Targetable[]) {
+    const drag = touch.drag;
+    if (!drag) {
+      this.dragged = undefined;
+      return undefined;
+    }
+    const spec = aimSpecs[drag.slot];
+    if (this.dragged?.from !== drag) {
+      const view = this.aimView;
+      this.dragged = {
+        from: drag,
+        dir: courtDirection(drag.dx, drag.dy, view?.zoomX, view?.zoomY),
+        // The input that carries the cast, then the hold's ticks. A drag
+        // released long ago (another match) carries nothing.
+        steps:
+          performance.now() - drag.at < 1000
+            ? 1 + Math.ceil((spec?.hold ?? 0) * RULES.tick)
+            : 0,
+      };
+    }
+    const held = this.dragged;
+    if (!spec || spec.kind === "self" || held.steps <= 0) return undefined;
+    held.steps--;
+    const point = aimPoint(spec, me, held.dir, drag.t);
+    if (spec.kind !== "target") return point;
+    held.pick ??= pickNear(candidates, point, me, spec.range)?.id ?? "";
+    const picked = candidates.find((c) => c.id === held.pick);
+    return picked ? { x: picked.x, y: picked.y } : point;
+  }
+  /** The guide on the court while a skill is held on a phone (touch-aim.ts). */
+  private drawTouchAim(g: Phaser.GameObjects.Graphics, me: Fighter) {
+    const guide = touch.aimGuide;
+    const spec = guide && aimSpecs[guide.slot];
+    if (!guide || !spec || spec.kind === "self") return;
+    const drawn = this.positions.get(me.id);
+    const from = { x: drawn?.x ?? me.x, y: drawn?.y ?? me.y };
+    const { enemies, extra, target } = this.aimTargets(me);
+    const view = this.aimView;
+    let at: { x: number; y: number };
+    if (guide.firm)
+      at = aimPoint(
+        spec,
+        from,
+        courtDirection(guide.dx, guide.dy, view?.zoomX, view?.zoomY),
+        guide.t,
+      );
+    else if (target) {
+      // Not dragged yet: where a tap would aim (the reach caps a spot).
+      const d = Math.hypot(target.x - from.x, target.y - from.y) || 1;
+      const k = spec.kind === "point" ? Math.min(1, spec.range / d) : 1;
+      at = {
+        x: from.x + (target.x - from.x) * k,
+        y: from.y + (target.y - from.y) * k,
+      };
+    } else
+      at = aimPoint(
+        spec,
+        from,
+        { x: Math.cos(me.angle), y: Math.sin(me.angle) },
+        1,
+      );
+    const picked =
+      spec.kind !== "target"
+        ? undefined
+        : guide.firm
+          ? pickNear<Targetable>(extra ?? enemies, at, from, spec.range)
+          : target;
+    drawAimGuide(g, spec, from, at, {
+      firm: guide.firm,
+      cancel: guide.cancel,
+      pxPerUnit: this.cameras.main.zoomX * this.scale.zoom,
+      picked,
+    });
+  }
+  /** Reused each frame for the enemies' places on the screen (setCovered). */
+  private coverXs: number[] = [];
+  private coverYs: number[] = [];
+  /**
+   * Phones: the buttons an enemy stands behind fade (touch-controls.ts
+   * setCovered). The camera of the last frame, the canvas box Phaser keeps:
+   * no layout read.
+   */
+  private markCovered(me: Fighter | undefined) {
+    if (!touch.enabled) return;
+    let n = 0;
+    if (me && state?.phase === "playing") {
+      const cam = this.cameras.main,
+        box = this.scale.canvasBounds,
+        k = box.width / Math.max(1, this.scale.width);
+      for (const e of visibleEnemies(me, me)) {
+        const at = this.positions.get(e.id) ?? e;
+        // The body, a little above the feet.
+        this.coverXs[n] = box.x + (at.x - cam.worldView.x) * cam.zoomX * k;
+        this.coverYs[n] = box.y + (at.y - 36 - cam.worldView.y) * cam.zoomY * k;
+        n++;
+      }
+    }
+    touch.setCovered(this.coverXs, this.coverYs, n);
+  }
   canControl(): boolean {
     return (
       connected &&
+      socket.connected &&
+      inputSessionReady &&
       state?.phase === "playing" &&
       !!local &&
       !local.out &&
@@ -5225,6 +6964,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       !$<HTMLDialogElement>("dialog").open &&
       (touch.enabled ? touch.focused : document.hasFocus()) &&
       !document.hidden &&
+      !backgroundExit.away &&
       !["INPUT", "TEXTAREA", "SELECT"].includes(
         document.activeElement?.tagName ?? "",
       )
@@ -5236,21 +6976,45 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     super("arena");
   }
   private rigs = new Map<string, FighterVisual>();
-  /** Only the fighters on the court are built and loaded (fighter-loading.ts). */
-  private fighters = new FighterLoading({
-    build: (id) => rigAssets(id),
-    keys: fighterTextureKeys,
+  /**
+   * Only the fighters on the court are built and loaded, each in the look
+   * it wears (fighter-loading.ts), by look name: `looks` has each one's
+   * champion and skin.
+   */
+  private looks = new Map<string, FighterLook>();
+  private fighters = new FighterLoading<string>({
+    build: (name) => {
+      const f = this.looks.get(name)!;
+      return rigAssets(f.character, f.look);
+    },
+    keys: (name, layers) =>
+      kit.fighterTextureKeys(this.looks.get(name)!.character, layers),
     exists: (key) => this.textures.exists(key),
   });
+  /** The looks this snapshot's fighters are drawn in, by name, once each. */
+  private sceneLooks(s: Snapshot) {
+    const looks = neededLooks(sceneLooks(s), skinSuffix);
+    for (const [name, f] of looks) this.looks.set(name, f);
+    return [...looks.keys()];
+  }
+  /** The name of the look a fighter is drawn in (see sceneLooks). */
+  private lookName(p: LookedFighter) {
+    const [[name, f]] = neededLooks(
+      [{ character: p.character, look: lookOf(p) }],
+      skinSuffix,
+    );
+    this.looks.set(name, f);
+    return name;
+  }
   private loadReported = false;
   private perfOverlay?: PerfOverlay;
   /** Every fighter in this snapshot has its textures (or gave up loading). */
   fightersReady(s: Snapshot) {
-    return this.fighters.allReady(sceneFighters(s));
+    return this.fighters.allReady(this.sceneLooks(s));
   }
   /** How many of this snapshot's fighters are ready, of how many. */
   fighterProgress(s: Snapshot) {
-    const ids = sceneFighters(s);
+    const ids = this.sceneLooks(s);
     return {
       ready: ids.filter((id) => this.fighters.isReady(id)).length,
       total: ids.length,
@@ -5260,12 +7024,12 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
   private requestFighters(s: Snapshot) {
     if (this.fightersReady(s)) return;
     // Layers rasterized ahead (fighter-prepaint.ts) are added at once.
-    for (const id of sceneFighters(s))
-      addPrepaintedLayers(this, this.fighters.assetsFor(id));
-    const ids = this.fighters.toRequest(sceneFighters(s));
-    if (!ids.length) return;
-    for (const id of ids)
-      queueFighterAssets(this, id, this.fighters.assetsFor(id));
+    const looks = this.sceneLooks(s);
+    for (const name of looks)
+      addPrepaintedLayers(this, this.fighters.assetsFor(name));
+    const names = this.fighters.toRequest(looks);
+    if (!names.length) return;
+    for (const name of names) this.queueLook(name);
     // Files added mid-load join the running load, whoever started it (a
     // skin, boss art), and settle with its COMPLETE (listener in preload).
     if (!this.load.isLoading()) this.load.start();
@@ -5277,19 +7041,37 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
    * of the battle (other fighters, your controls and input, attack warnings)
    * carries on. A rig of the fighter it was before is removed.
    */
-  private readyRig(id: string, character: CharacterId) {
-    if (this.fighters.hasArt(character)) return this.getRig(id, character);
-    const old = this.rigs.get(id);
+  private readyRig(p: LookedFighter) {
+    // A raid boss's seat is drawn as the boss (its own art), never as a rig.
+    if (p.raidBoss) return undefined;
+    const old = this.rigs.get(p.id);
+    // A rig keeps its look until a new one it is given has loaded
+    // (FighterRig.wear); its art going blank removes it (runArtChecks).
+    if (old?.character === p.character) return old;
+    const name = this.lookName(p);
+    if (this.fighters.hasArt(name)) return this.getRig(p.id, p.character, name);
     if (old) {
       old.destroy();
-      this.rigs.delete(id);
+      this.rigs.delete(p.id);
     }
     return undefined;
+  }
+  /** Queue a look's layers for the loader. */
+  private queueLook(name: string) {
+    const f = this.looks.get(name)!;
+    kit.queueFighterAssets(this, f.character, this.fighters.assetsFor(name));
   }
   private animationLive = false;
   private needsHydration = true;
   private followCamera = new FollowCamera();
+  private raidCamera = new RaidCamera();
+  private allyBearings = new AllyBearings(
+    () => document.getElementById("game")?.parentElement ?? null,
+  );
   private enemyBearing = document.createElement("div");
+  /** Its arrow and name, found once (they are written every frame). */
+  private enemyBearingArrow!: HTMLElement;
+  private enemyBearingName!: HTMLElement;
   /** The camera view of the last frame (the target button's on-screen test). */
   private aimView: CameraView | undefined;
   /** Where each fighter's nameplate was drawn last frame (the arrow keeps
@@ -5298,7 +7080,81 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
   hydrateNextSnapshot() {
     this.needsHydration = true;
   }
-  private getRig(id: string, character: CharacterId) {
+  /** Art checks to run (rig-health.ts), at these times (performance.now). */
+  private artChecks: { at: number; trigger: ArtTrigger }[] = [];
+  /** Fighters still to look at in the current check, one a frame. */
+  private artQueue: string[] = [];
+  private artTrigger: ArtTrigger = "renderer";
+  /** Fighters whose art was loaded again in this renderer, and how often. */
+  private artRepairs = new Map<CharacterId, number>();
+  /**
+   * After a moment that can lose a canvas's pixels (the page shown again, a
+   * resumed connection, a new renderer, a restored WebGL context), look at
+   * every fighter's art twice, soon and a little later (a reload settles).
+   */
+  checkArtSoon(trigger: ArtTrigger) {
+    const now = performance.now();
+    this.artChecks.push(
+      { at: now + 700, trigger },
+      { at: now + 3000, trigger },
+    );
+  }
+  /**
+   * A fighter drawn as nothing: every texture its rig uses came back blank.
+   * Its rig and textures go, its art is forgotten and loads again (the
+   * fighter is a plain stand-in meanwhile), and the server hears of it
+   * ("arena-art-blank"). Twice per fighter per renderer at most: art that
+   * keeps coming back blank is only reported.
+   */
+  private runArtChecks(now: number) {
+    if (document.hidden) return;
+    // Due: queue every fighter on the court, then look at one per frame
+    // (reading canvases back costs; a court of eight in one frame stalled).
+    if (this.artChecks.some((c) => c.at <= now)) {
+      const due = this.artChecks.filter((c) => c.at <= now);
+      this.artChecks = this.artChecks.filter((c) => c.at > now);
+      this.artTrigger = due[due.length - 1].trigger;
+      for (const id of this.rigs.keys())
+        if (!this.artQueue.includes(id)) this.artQueue.push(id);
+    }
+    const id = this.artQueue.shift();
+    const rig = id === undefined ? undefined : this.rigs.get(id);
+    if (!id || !rig) return;
+    const health = kit.rigArtHealth(rig.root as unknown as ArtNode);
+    if (!health.blank) return;
+    const character = rig.character;
+    const times = this.artRepairs.get(character) ?? 0;
+    const repaired = times < 2;
+    if (repaired) {
+      this.artRepairs.set(character, times + 1);
+      // Every rig drawing from the same art goes too (a teammate on the
+      // same fighter): its textures are about to be removed.
+      for (const [other, r] of this.rigs)
+        if (r.character === character) {
+          r.destroy();
+          this.rigs.delete(other);
+        }
+      for (const key of health.keys) {
+        forgetPrepainted(key);
+        if (this.textures.exists(key)) this.textures.remove(key);
+      }
+      for (const [name, f] of this.looks)
+        if (f.character === character) this.fighters.forget(name);
+    }
+    if (connected)
+      socket.emit("battle-art", {
+        character,
+        mine: id === myId,
+        textures: health.total,
+        blank: health.keys.length,
+        trigger: this.artTrigger,
+        repaired,
+        build: BUILD,
+        ...deviceKind(),
+      });
+  }
+
+  private getRig(id: string, character: CharacterId, look: string) {
     let rig = this.rigs.get(id);
     if (rig && rig.character !== character) {
       rig.destroy();
@@ -5306,10 +7162,10 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       rig = undefined;
     }
     if (!rig) {
-      rig = createFighterVisual(
+      rig = kit.createFighterVisual(
         this,
         character,
-        this.fighters.assetsFor(character),
+        this.fighters.assetsFor(look),
       );
       this.rigs.set(id, rig);
     }
@@ -5330,15 +7186,33 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     // used to switch the Lobby and the Plaza to Low for good as well, so a
     // heavy raid on an iPad Pro 13" M4 left it on Low everywhere (owner,
     // 17 Nov 2026); the Plaza measures itself.
-    if (live) battleQuality.frame(now);
-    else battleQuality.pause();
-    battlePerf.frame(now, live);
+    if (live) {
+      netMeter.frame(performance.now());
+      battleQuality.frame(now);
+    } else battleQuality.pause();
+    const fx = kit.fxFor(this);
+    const raid = state?.raid;
+    battlePerf.frame(
+      now,
+      live,
+      live
+        ? {
+            work: frameWork,
+            glow: fx.stats.glowCover,
+            soft: fx.stats.softCover,
+            particles: fx.stats.particles,
+            objects: this.children.length,
+            ...(raid
+              ? { phase: raid.phase, attacks: raidAttackKey(raid.warnings) }
+              : {}),
+          }
+        : undefined,
+    );
     const knobs = battleQuality.knobs();
-    const fx = fxFor(this);
     fx.density = knobs.particles;
     fx.trailScale = knobs.trails;
     fx.glowBudget = knobs.glowBudget;
-    setRaidMapLow(knobs.stillBackground);
+    kit.setRaidMapLow(knobs.stillBackground);
     this.perfOverlay?.update(
       now,
       battlePerf.summary(1000),
@@ -5370,7 +7244,10 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     this.animationLive = !this.needsHydration && previous?.code === next.code;
     this.needsHydration = false;
     const reset = !this.animationLive || previous?.round !== next.round;
-    if (reset) this.followCamera = new FollowCamera();
+    if (reset) {
+      this.followCamera = new FollowCamera();
+      this.raidCamera = new RaidCamera();
+    }
     const alive = new Set(
       next.players.flatMap((p) => [
         p.id,
@@ -5383,7 +7260,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         this.rigs.delete(id);
       }
     for (const p of next.players) {
-      const rig = this.readyRig(p.id, p.character);
+      const rig = this.readyRig(p);
       if (!rig) continue;
       if (reset) rig.controller.reset();
       const old = previous?.players.find((other) => other.id === p.id);
@@ -5397,30 +7274,22 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
   preload() {
     battleLoadMarks.preload ||= performance.now();
     if (state?.raid) {
-      queueBossArt(this, state.raid.boss);
-      queueBossSpellArt(this);
+      kit.queueBossArt(this, state.raid.boss);
+      kit.queueBossSpellArt(this);
     }
     // Only the fighters in this room: the rest load if they ever appear.
     // Their layers rasterized ahead (fighter-prepaint.ts) are added now;
     // the loader skips those and loads only what's missing.
-    if (state)
-      for (const id of neededFighters(state.players))
-        addPrepaintedLayers(this, this.fighters.assetsFor(id));
-    if (state)
-      for (const id of this.fighters.toRequest(sceneFighters(state)))
-        queueFighterAssets(this, id, this.fighters.assetsFor(id));
-    // The Shop skins they wear load here too, behind the loading screen: a
-    // rig would otherwise ask for them on its first frame, mid-battle (a
-    // stall while they rasterize, then the skin popping in).
-    if (state)
-      for (const p of state.players) {
-        const look = p.championLooks?.[p.character];
-        if (!p.raidBoss && look && skinSuffix(p.character, look)) {
-          const layers = rigAssets(p.character, look);
-          addPrepaintedLayers(this, layers);
-          loadRigTextures(this, layers);
-        }
-      }
+    // Each in the look it wears: a Shop skin's layers load here, behind the
+    // loading screen (a rig asking for them on its first frame stalled
+    // mid-battle while they rasterized, then the skin popped in), and the
+    // champion's own look only for someone who shows it.
+    if (state) {
+      const looks = this.sceneLooks(state);
+      for (const name of looks)
+        addPrepaintedLayers(this, this.fighters.assetsFor(name));
+      for (const name of this.fighters.toRequest(looks)) this.queueLook(name);
+    }
     // Every load that finishes (this one, and later ones started for a new
     // fighter, a skin or boss art) settles what was requested: art still
     // missing may be asked for again. The scene's loader drops its
@@ -5430,26 +7299,32 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
   create() {
     battleLoadMarks.create ||= performance.now();
     scene = this;
+    // A new renderer, often rebuilt mid-fight after a reconnect, and a
+    // WebGL context given back: check the fighters' art (rig-health.ts).
+    this.checkArtSoon("renderer");
+    this.game.canvas?.addEventListener("webglcontextrestored", () =>
+      this.checkArtSoon("context"),
+    );
     // The boss's pieces are drawn once into an atlas: now, not on its first frame.
     if (state?.raid)
-      prewarmBossAtlas(
+      kit.prewarmBossAtlas(
         this,
         state.raid.boss,
         state.raid.phase,
-        bossLookOf(state.raid),
+        kit.bossLookOf(state.raid),
       );
     // So are the arena's pieces (lanterns, conductor posts, light, marks).
-    if (state?.raid) prewarmRaidArena(this, state.raid);
+    if (state?.raid) kit.prewarmRaidArena(this, state.raid);
     // So are its arena's (pillars, braziers and burning ground).
-    if (state?.raid?.boss === "grumblecrag") prewarmPillars(this);
-    if (state?.raid?.boss === "emberwing") prewarmTerrace(this);
+    if (state?.raid?.boss === "grumblecrag") kit.prewarmPillars(this);
+    if (state?.raid?.boss === "emberwing") kit.prewarmTerrace(this);
     // The Spire's court: the floor it starts on (the next one is painted
     // while its stairs are open; the boss floor's pillars just above).
-    prewarmSpireCourt(this, spireCourtView(state?.raid));
+    kit.prewarmSpireCourt(this, kit.spireCourtView(state?.raid));
     // So are the arena's painted pieces (islands, rune pads and the rest).
     if (state?.raid) {
-      prewarmLagoon(this, state);
-      prewarmCloudDeck(this, state);
+      kit.prewarmLagoon(this, state);
+      kit.prewarmCloudDeck(this, state);
     }
     battleQuality.restart();
     battlePerf.reset();
@@ -5462,7 +7337,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       this.perfOverlay = new PerfOverlay($("game").parentElement!);
       // The same numbers for the budget tests (tests/visual/effect-budget).
       (window as unknown as Record<string, unknown>).__arenaPerf = {
-        fx: () => ({ ...fxFor(this).stats }),
+        fx: () => ({ ...kit.fxFor(this).stats }),
         summary: (ms?: number) => battlePerf.summary(ms),
         quality: () => battleQuality.current(),
         density: () => renderScale(),
@@ -5472,27 +7347,31 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     this.enemyBearing.hidden = true;
     this.enemyBearing.innerHTML =
       '<span aria-hidden="true">➜</span><strong></strong>';
+    this.enemyBearingArrow = this.enemyBearing.querySelector("span")!;
+    this.enemyBearingName = this.enemyBearing.querySelector("strong")!;
     $("game").parentElement!.append(this.enemyBearing);
     this.cameras.main.setBackgroundColor("#142746");
     // Effect sprites are painted now, not when they first appear mid-fight
     // (the first hit, the first skill, the first pillar to crumble).
-    fxFor(this);
-    prepareSurfaceTextures(this);
+    kit.fxFor(this);
+    kit.prepareSurfaceTextures(this);
     // The floor picture: showArena bakes the room's court (once per arena,
     // at floorBake's density) on the first frame. No stand-in court is
     // painted first: that was a whole extra full-court canvas per battle.
     this.floor = this.add.image(0, 0, "__DEFAULT").setOrigin(0).setDepth(-10);
     this.floorArena = "";
     const clearDom = () => {
+      this.stopInputClock();
       this.perfOverlay?.remove();
       this.perfOverlay = undefined;
       this.enemyBearing.remove();
+      this.allyBearings.clear();
       for (const label of this.labels.values()) label.remove();
       this.labels.clear();
     };
     this.events.once(Ph.Scenes.Events.SHUTDOWN, clearDom);
     this.events.once(Ph.Scenes.Events.DESTROY, clearDom);
-    this.graphics = battleCurves(this.add.graphics());
+    this.graphics = kit.battleCurves(this.add.graphics());
     this.bossGraphics = this.add.graphics();
     // Keys and mouse buttons are read through the player's bindings (see pressAction).
     this.input.mouse!.disableContextMenu();
@@ -5574,13 +7453,13 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       if (castPredictor.waiting(action, now)) {
         // Already shown; the server has it.
       } else if (canCastSkill(local, input.skill, time, free)) {
-        this.readyRig(local.id, local.character)?.trigger(
+        this.readyRig(local)?.trigger(
           windUp > 0 ? "skill3" : (action as "skill0"),
           this.feelClock,
           windUp > 0 ? windUp * 1000 : castDuration(c, input.skill),
         );
         if (windUp <= 0) {
-          audio.play("cast");
+          audio.cast(c.skills[input.skill].id, local.id);
           this.predictCastEffect(local, c.skills[input.skill], input);
         }
         castPredictor.predict(action, now);
@@ -5600,12 +7479,12 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       !castPredictor.waiting("basic", now) &&
       canBasic(local, time)
     ) {
-      this.readyRig(local.id, local.character)?.trigger(
+      this.readyRig(local)?.trigger(
         "basic",
         this.feelClock,
         castDuration(c, -1),
       );
-      audio.play("cast");
+      audio.cast(c.basic.id, local.id);
       this.predictCastEffect(local, c.basic, input);
       castPredictor.predict("basic", now);
     }
@@ -5614,7 +7493,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       !castPredictor.waiting("dash", now) &&
       canDash(local, time)
     ) {
-      audio.play("dash");
+      audio.cue("dash");
       castPredictor.predict("dash", now);
     }
   }
@@ -5633,8 +7512,15 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     // runs after this, so local.angle is still the last step's).
     const angle = Math.atan2(input.aimY - local.y, input.aimX - local.x);
     const color = fighterSkillColor(local) ?? CHARACTERS[local.character].color;
-    playCast(this, ability, local.x, local.y, angle, color, reducedMotion, () =>
-      this.positions.get(local.id),
+    kit.playCast(
+      this,
+      ability,
+      local.x,
+      local.y,
+      angle,
+      color,
+      reducedMotion,
+      () => this.positions.get(local.id),
     );
     this.shownEffects.set(ability.id, performance.now());
   }
@@ -5671,12 +7557,12 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     // Effects pose only fighters whose art has loaded (readyRig); sounds,
     // impacts and the other fighters' poses play as usual meanwhile.
     // Somnara's correct steps and Nightmare are drawn with its arena's pieces.
-    const deck = noteCloudDeckEvent(event, state);
+    const deck = kit.noteCloudDeckEvent(event, state);
     if (
       event.kind === "raid-impact" &&
       this.courtRaid &&
       this.pillarRig &&
-      event.raidRadius === IMPACT_RADIUS &&
+      event.raidRadius === kit.IMPACT_RADIUS &&
       event.color === 0xffd65b
     )
       // A pillar breaking: its ring is drawn with the pillars.
@@ -5685,7 +7571,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       event.kind === "raid-impact" &&
       !deck &&
       // A mirror turning rings its own chime (raid-prismatail-atrium.ts).
-      !isMirrorTurnImpact(state?.raid, event)
+      !kit.isMirrorTurnImpact(state?.raid, event)
     ) {
       const ring = this.add
         .circle(event.x, event.y, event.raidRadius ?? 90, event.color, 0.12)
@@ -5702,15 +7588,9 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     // Your own cast or dash that was already shown on the key press (a
     // predicted cast) is not played a second time when the server confirms.
     const echo = event.owner === myId && this.predictedEcho(event);
-    if (
-      ((event.owner === myId &&
-        event.kind !== "impact" &&
-        event.kind !== "raid-impact") ||
-        event.kind === "hit" ||
-        event.kind === "round") &&
-      !echo
-    )
-      audio.play(event.kind);
+    // Which sound, how loud and where: battle-sounds.ts.
+    const listener = state?.players.find((p) => p.id === myId);
+    audio.event(event, { me: myId, x: listener?.x, y: listener?.y, echo });
     if (
       this.animationLive &&
       event.kind === "cast" &&
@@ -5723,7 +7603,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         const c = CHARACTERS[p.character];
         const slot = c.skills.findIndex((a) => a.id === event.abilityId);
         if (slot >= 0 || event.abilityId === c.basic.id)
-          this.readyRig(p.id, p.character)?.trigger(
+          this.readyRig(p)?.trigger(
             slot >= 0
               ? (`skill${slot}` as "skill0" | "skill1" | "skill2" | "skill3")
               : "basic",
@@ -5740,7 +7620,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     ) {
       const p = state?.players.find((p) => p.id === event.owner);
       if (p)
-        this.readyRig(p.id, p.character)?.trigger(
+        this.readyRig(p)?.trigger(
           event.kind,
           this.feelClock,
           event.kind === "dash"
@@ -5763,7 +7643,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       event.tx !== undefined &&
       event.ty !== undefined
     )
-      playBeam(
+      kit.playBeam(
         this,
         ability,
         event.x,
@@ -5794,9 +7674,18 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         "lure",
         "leap",
         "garden",
+        // Shell Up bursting open.
+        "rest",
       ].includes(ability.kind)
     ) {
-      playImpact(this, ability, event.x, event.y, event.color, reducedMotion);
+      kit.playImpact(
+        this,
+        ability,
+        event.x,
+        event.y,
+        event.color,
+        reducedMotion,
+      );
       // Halcyon Rewind: the dive back from where it left.
       if (
         ability.kind === "rewind" &&
@@ -5804,7 +7693,14 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         event.ty !== undefined &&
         !reducedMotion
       )
-        playRewindDive(this, event.tx, event.ty, event.x, event.y, event.color);
+        kit.playRewindDive(
+          this,
+          event.tx,
+          event.ty,
+          event.x,
+          event.y,
+          event.color,
+        );
     }
     // Novas play on their burst event; every other move plays on cast.
     else if (ability && event.kind === "burst") {
@@ -5813,13 +7709,21 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         event.combo && combo?.radius
           ? { ...ability, radius: ability.radius * combo.radius }
           : ability;
-      playCast(this, shown, event.x, event.y, 0, event.color, reducedMotion);
+      kit.playCast(
+        this,
+        shown,
+        event.x,
+        event.y,
+        0,
+        event.color,
+        reducedMotion,
+      );
     }
     if (event.kind === "hazard") this.hazardBurst(event);
     // Pangrove's plates break and grow back.
     if (event.kind === "burst" && !reducedMotion) {
       if (event.abilityId === "plate-break" || event.abilityId === "plate-grow")
-        plateFx(this, event.x, event.y, event.abilityId === "plate-grow");
+        kit.plateFx(this, event.x, event.y, event.abilityId === "plate-grow");
     }
     if (event.combo && (event.kind === "burst" || event.kind === "hit"))
       this.comboText(event);
@@ -5841,7 +7745,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       !(echo && event.abilityId && this.effectShown(event.abilityId))
     ) {
       const caster = event.owner;
-      playCast(
+      kit.playCast(
         this,
         ability,
         event.x,
@@ -5853,12 +7757,28 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         caster ? () => this.positions.get(caster) : undefined,
       );
     }
-    if (ability && event.kind === "impact")
-      playImpact(this, ability, event.x, event.y, event.color, reducedMotion);
+    // Your shot's blast may already have played when the drawn shot reached
+    // its target (ImpactPrediction): the server's impact is the same one.
+    if (
+      ability &&
+      event.kind === "impact" &&
+      !(
+        event.owner === myId &&
+        impacts.confirm(event.abilityId, event.x, event.y, performance.now())
+      )
+    )
+      kit.playImpact(
+        this,
+        ability,
+        event.x,
+        event.y,
+        event.color,
+        reducedMotion,
+      );
     if (event.kind === "hit" && event.target) this.feelHit(event);
     this.surfaceEffect(event);
     if (event.kind === "hit")
-      playHit(
+      kit.playHit(
         this,
         ability?.element ?? "",
         event.x,
@@ -5889,8 +7809,9 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       const value = event.value.toLocaleString(undefined, {
         maximumFractionDigits: 1,
       });
-      const label = this.add
-        .text(
+      const label = kit
+        .addBattleText(
+          this,
           event.x,
           event.y - 45,
           bank
@@ -5920,10 +7841,10 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
             stroke: "#0b1020",
             strokeThickness: 5,
           },
+          renderScale(),
         )
         .setOrigin(0.5)
-        .setDepth(45)
-        .setResolution(renderScale());
+        .setDepth(45);
       this.tweens.add({
         targets: label,
         y: reducedMotion ? event.y - 45 : event.y - 95,
@@ -5940,7 +7861,6 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       (h) => Math.hypot(h.x - event.x, h.y - event.y) < 2,
     );
     const radius = hazard?.radius ?? 90;
-    audio.play("hit");
     if (reducedMotion) return;
     const ring = this.add
       .circle(event.x, event.y, radius * 0.4, event.color, 0.35)
@@ -5963,8 +7883,9 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     const now = performance.now();
     if ((this.comboShown.get(key) ?? 0) > now) return;
     this.comboShown.set(key, now + 600);
-    const label = this.add
-      .text(
+    const label = kit
+      .addBattleText(
+        this,
         event.x,
         event.y - 75,
         text ??
@@ -5979,10 +7900,10 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
           stroke: "#3a1f00",
           strokeThickness: 5,
         },
+        renderScale(),
       )
       .setOrigin(0.5)
-      .setDepth(40)
-      .setResolution(renderScale());
+      .setDepth(40);
     if (reducedMotion) {
       this.time.delayedCall(800, () => label.destroy());
       return;
@@ -6018,7 +7939,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     } else if (event.kind === "land") kind = "land";
     else if (event.kind === "dash") kind = "dash";
     else return;
-    surfaceBurst(
+    kit.surfaceBurst(
       this,
       this.activeCourt,
       x,
@@ -6073,6 +7994,8 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     }
   }
   update(_time: number, delta: number) {
+    // Art found blank goes first, so its fighter is asked for again below.
+    this.runArtChecks(performance.now());
     // A fighter still loading is drawn as a stand-in (readyRig) while its
     // art loads; nothing else waits for it.
     if (state) this.requestFighters(state);
@@ -6108,17 +8031,78 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     const presented = follow
       ? (this.positions.get(follow.id) ?? follow)
       : undefined;
-    // Raid camera fits all mechanics; only PvP/practice follows a fighter.
+    // Raids: the whole court on desktop; landscape phones follow the raider
+    // (or, downed, stay on them) and pull out for court-wide mechanics.
+    // Phones only (the CSS's landscape phone breakpoint): a tablet already
+    // shows the whole court large enough.
+    // Watching (no seat): always the whole court, never a follow or a zoom.
+    const ringside = !myId && !!watching;
+    // Kept, not read from the window each frame (viewport-size.ts): a read
+    // here made the browser restyle the page in the middle of the frame.
+    const landscape = viewportLandscape();
+    const raidFollow =
+      !ringside &&
+      !!state?.raid &&
+      touch.enabled &&
+      landscape &&
+      viewportHeight() <= 600 &&
+      !controlPrefs().raidCourt;
+    const raidFocus =
+      state?.raid && me && state.raid.downed[me.id]
+        ? (this.positions.get(me.id) ?? me)
+        : presented;
+    const raidBoss =
+      state?.raid && raidFocus
+        ? state.players
+            .filter((p) => p.raidBoss && p.hp > 0 && !p.out)
+            .sort(
+              (a, b) =>
+                Math.hypot(a.x - raidFocus.x, a.y - raidFocus.y) -
+                Math.hypot(b.x - raidFocus.x, b.y - raidFocus.y),
+            )[0]
+        : undefined;
     const view = state?.raid
-      ? raidCameraView(this.scale.width, this.scale.height, raidCameraHudBottom)
+      ? this.raidCamera.update(
+          this.scale.width,
+          this.scale.height,
+          raidCameraHudBottom,
+          raidFollow,
+          state.phase === "playing" && raidFocus
+            ? {
+                x: raidFocus.x,
+                y: raidFocus.y,
+                vx: (follow ?? me)?.vx ?? 0,
+                vy: (follow ?? me)?.vy ?? 0,
+              }
+            : undefined,
+          raidBoss ? (this.positions.get(raidBoss.id) ?? raidBoss) : undefined,
+          raidFrame(
+            state.raid,
+            state.time,
+            state.players
+              .filter(
+                (p) => !p.out && (p.hp > 0 || !!state!.raid!.downed[p.id]),
+              )
+              .map((p) => this.positions.get(p.id) ?? p),
+          ),
+          `${state.code}:${state.round ?? 0}:${myId ?? ""}`,
+          delta,
+          feelNow / 1000,
+          reducedMotion,
+          raidFollow ? (raidControlSides ??= measureRaidControls()) : undefined,
+          raidFollow ? raidControlBoxes : undefined,
+        )
       : this.followCamera.update(
           this.scale.width,
           this.scale.height,
-          touch.enabled &&
+          // Watching fits the whole court (a phone fills the box only when
+          // its camera follows your own fighter).
+          !ringside &&
+            touch.enabled &&
             !state?.raid &&
             document.body.classList.contains("battle-active") &&
-            innerWidth > innerHeight,
-          ((touch.enabled && innerWidth > innerHeight) || !!spectated) &&
+            landscape,
+          ((touch.enabled && landscape) || !!spectated) &&
             follow &&
             presented &&
             !state?.arcade &&
@@ -6127,31 +8111,35 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
                 ...follow,
                 x: presented.x,
                 y: presented.y,
-                attacking: attacking(
-                  this.readyRig(follow.id, follow.character),
-                ),
+                attacking: attacking(this.readyRig(follow)),
               }
             : undefined,
           `${state?.code ?? "menu"}:${state?.round ?? 0}:${myId ?? ""}`,
           delta,
           reducedMotion,
-          this.activeCourt && !this.courtRaid ? STANDS : 0,
+          this.activeCourt && !this.courtRaid ? kit.STANDS : 0,
           state?.practice ? 1.65 : 1.2,
-          touch.enabled &&
-            innerWidth > innerHeight &&
+          !ringside &&
+            touch.enabled &&
+            landscape &&
             this.activeCourt &&
             !this.courtRaid
-            ? COURT_APRON
+            ? kit.COURT_APRON
             : 0,
           // The PvP badge covers the top of a phone's arena: the court may
           // scroll below it (badge pixels → game pixels).
-          touch.enabled && badgeClear ? badgeClear.bottom / this.scale.zoom : 0,
+          !ringside && touch.enabled && badgeClear
+            ? badgeClear.bottom / this.scale.zoom
+            : 0,
         );
-    const hitZoom = state?.raid ? 1 : this.koZoom;
+    // No knockout push-in while watching either: the view stays whole.
+    const hitZoom = state?.raid || ringside ? 1 : this.koZoom;
     this.cameras.main
       .setZoom(view.zoomX * hitZoom, view.zoomY * hitZoom)
       .centerOn(view.x, view.y);
     this.aimView = view;
+    this.syncInputClock();
+    this.markCovered(local);
     const aim = screenToWorld(
       this.input.activePointer.x,
       this.input.activePointer.y,
@@ -6161,28 +8149,48 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     );
     const opponent =
       tracked && presented ? nearestEnemy(presented, tracked) : undefined;
-    this.enemyBearing.hidden =
+    setHudHidden(
+      this.enemyBearing,
       !follow ||
-      !opponent ||
-      !outsideView(
-        opponent.x,
-        opponent.y,
-        this.scale.width,
-        this.scale.height,
-        view,
-      );
-    // PvP: an arrow circling the fighter you follow, in the nearest
-    // off-screen opponent's colour (owner, 7 Nov 2026: no chip at the top,
-    // where the score badge is). Raids keep the named chip.
-    const orbit = !state?.raid;
+        !opponent ||
+        // A downed raider's phone camera stays on them, not on the partner.
+        (raidFollow && raidFocus !== presented) ||
+        (!outsideView(
+          opponent.x,
+          opponent.y,
+          this.scale.width,
+          this.scale.height,
+          view,
+        ) &&
+          // On a phone raid, a boss under the skill buttons or the joystick
+          // counts as off screen too: the arrow says where it is.
+          !(
+            raidFollow &&
+            raidControlSides &&
+            underControls(
+              (opponent.x - view.x) * view.zoomX + this.scale.width / 2,
+              this.scale.width,
+              raidControlSides,
+            )
+          )),
+    );
+    // PvP and phone raids: an arrow circling the fighter you follow, in the
+    // nearest off-screen opponent's colour (owner, 7 Nov 2026: no chip at
+    // the top, where the score badge is; on phones the raid HUD is there).
+    // Desktop raids show the whole court, so their named chip rarely shows.
+    const orbit = !state?.raid || raidFollow;
     this.enemyBearing.classList.toggle("is-orbit", orbit);
     if (opponent && presented && !this.enemyBearing.hidden) {
-      this.enemyBearing.querySelector("strong")!.textContent =
+      // Every frame: the same name must not become a new text node
+      // (hud-dom.ts).
+      setHudText(
+        this.enemyBearingName,
         opponent.raidBoss && state?.raid
           ? state.raid.boss === "storm-twins"
             ? opponent.name
             : state.raid.name
-          : CHARACTERS[opponent.character].name;
+          : CHARACTERS[opponent.character].name,
+      );
       const css = this.scale.zoom;
       const from = {
         x: ((presented.x - view.x) * view.zoomX + this.scale.width / 2) * css,
@@ -6201,8 +8209,12 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
             (opponent.y - view.y) * view.zoomY,
             (opponent.x - view.x) * view.zoomX,
           );
-      this.enemyBearing.querySelector<HTMLElement>("span")!.style.transform =
-        `rotate(${angle}rad)`;
+      // A hundredth of a degree: the arrow does not turn for less.
+      setHudStyle(
+        this.enemyBearingArrow,
+        "transform",
+        `rotate(${angle.toFixed(4)}rad)`,
+      );
       const spot = bearingSpot(
         from.x + Math.cos(angle) * BEARING_RADIUS,
         from.y + Math.sin(angle) * BEARING_RADIUS,
@@ -6219,6 +8231,50 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         `#${CHARACTERS[opponent.character].color.toString(16).padStart(6, "0")}`,
       );
     }
+    this.allyBearings.update(
+      raidFollow && me && state?.phase === "playing"
+        ? state.players
+            .filter(
+              (p) =>
+                p.id !== me.id &&
+                !p.raidBoss &&
+                !p.out &&
+                teamOf(p) === myTeam &&
+                (p.hp > 0 || !!state!.raid!.downed[p.id]) &&
+                outsideView(
+                  p.x,
+                  p.y,
+                  this.scale.width,
+                  this.scale.height,
+                  view,
+                ),
+            )
+            .map((p) => {
+              const at = this.positions.get(p.id) ?? p,
+                css = this.scale.zoom;
+              return {
+                id: p.id,
+                x: ((at.x - view.x) * view.zoomX + this.scale.width / 2) * css,
+                y:
+                  ((at.y - BEARING_LIFT - view.y) * view.zoomY +
+                    this.scale.height / 2) *
+                  css,
+                downed: !!state!.raid!.downed[p.id],
+              };
+            })
+        : [],
+      {
+        left: 18,
+        top: raidCameraHudBottom * this.scale.zoom + 18,
+        // Right-side arrows sit by the skill buttons, never under them or
+        // over the clock in the corner.
+        right:
+          (this.scale.width - (raidControlSides?.right ?? 0)) *
+            this.scale.zoom -
+          18,
+        bottom: this.scale.height * this.scale.zoom - 18,
+      },
+    );
     for (const [id, label] of this.labels)
       if (!state?.players.some((p) => p.id === id)) {
         label.remove();
@@ -6228,7 +8284,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     const pad = pollPad();
     this.keepTargetLock();
     if (!this.canControl()) {
-      this.actions = { skill: -1, dash: false, jump: false, basic: false };
+      this.clearActions();
       caster.cancel();
       touch.reset();
       castPredictor.clear();
@@ -6239,150 +8295,31 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     if (refused.length && local)
       for (const action of refused)
         if (action !== "dash" && action !== "charge")
-          this.readyRig(local.id, local.character)?.controller.cancel(action);
+          this.readyRig(local)?.controller.cancel(action);
     if (!state || state.phase === "lobby") {
       this.rigs.forEach((rig) => rig.setVisible(false));
       this.labels.forEach((label) => (label.hidden = true));
       audio.setAmbience(null);
       return;
     }
-    // Walls for prediction (the Shifting Ruins block comes and goes) and the floor.
-    useObstacles(
-      state.raid
-        ? (spireCourtWalls(state.raid.spire) ??
-            (state.arena === "lagoon" ||
-            state.arena === "lantern-yard" ||
-            state.arena === "cloud-deck" ||
-            state.arena === "sun-atrium" ||
-            state.arena === "sky-terrace" ||
-            state.arena === "conductor-ring"
-              ? []
-              : OBSTACLES.filter((_, i) => !state!.raid!.pillars[i]?.broken)))
-        : obstaclesAt(state.arena, arenaClock()),
-    );
-    useSpeedScale(state.mutators?.includes("speed") ? MUTATOR_RULES.speed : 1);
+    prepareBattlePrediction();
     this.showArena(
       state.arena ?? "classic",
       !!state.raid,
-      spireCourtView(state.raid),
+      kit.spireCourtView(state.raid),
     );
     // Duel courts have their own background sound (crowd, sea, forge, wind).
     audio.setAmbience(
       this.activeCourt && !this.courtRaid ? this.activeCourt : null,
     );
     this.updateBlocks(arenaClock(), state.raid?.pillars);
-    this.accumulator += Math.min(delta, 100);
-    while (this.accumulator >= 1000 / RULES.tick) {
-      this.accumulator -= 1000 / RULES.tick;
-      if (!connected || state.phase !== "playing" || !local) continue;
-      const active =
-        this.canControl() &&
-        !settingsOpen &&
-        !menuOpen &&
-        !$<HTMLDialogElement>("dialog").open &&
-        (touch.enabled ? touch.focused : document.hasFocus()) &&
-        !document.hidden;
-      const enemies = visibleEnemies(local, local);
-      // Gloomshade's bodies are aimed at alike (real or copy), and its unlit
-      // lanterns can be locked on to (raid-targets.ts).
-      // Tidewyrm's bubbles holding teammates can be locked on to too.
-      const extra = raidTargets(state, local);
-      const found = extra?.filter(
-        (t) => t.kind === "shade" || t.kind === "boss",
-      );
-      const bodies = found?.length ? found : undefined;
-      // A locked enemy (touch or controller) before the nearest one.
-      const target =
-        targetLock.resolve<Targetable>(extra ?? enemies) ??
-        (bodies ? bodies[0] : enemies[0]);
-      const combatActive = active && local.hp > 0 && !local.out;
-      let skill = combatActive ? this.actions.skill : -1;
-      // EX skills: the ultimate button before the meter is full arms an EX
-      // version of your next skill (costs a third of the meter).
-      const meter = local.ult ?? 0;
-      let ex = false;
-      if (
-        skill === ULT_SLOT &&
-        meter < RULES.ultMax &&
-        !state.practice?.unlimitedCooldowns
-      ) {
-        if (meter >= EX.cost) {
-          exArmedUntil = exArmedUntil
-            ? 0
-            : performance.now() + EX.armSeconds * 1000;
-          if (exArmedUntil) audio.play("orb");
-        }
-        skill = -1;
-      } else if (skill >= 0 && skill < ULT_SLOT && exArmedUntil) {
-        if (performance.now() < exArmedUntil && meter >= EX.cost) ex = true;
-        exArmedUntil = 0;
-      }
-      if (exArmedUntil && performance.now() >= exArmedUntil) exArmedUntil = 0;
-      const keyX = heldAxis("left", "right"),
-        keyY = heldAxis("up", "down");
-      // Aim: touch and an idle right stick follow the nearest opponent;
-      // the right stick aims by direction and tilt; otherwise the mouse.
-      let aimAt = { x: aim.x, y: aim.y };
-      if (touch.enabled && target) aimAt = target;
-      else if (usingPad && pad?.aim) {
-        const tilt = Math.hypot(pad.aim.x, pad.aim.y),
-          reach = 90 + 410 * tilt;
-        aimAt = {
-          x: local.x + (pad.aim.x / tilt) * reach,
-          y: local.y + (pad.aim.y / tilt) * reach,
-        };
-      } else if (usingPad && target) aimAt = target;
-      else if (usingPad) aimAt = this.aimPoint;
-      else if (controlPrefs().aimAssist && skill < 0)
-        aimAt = assistAim(aimAt, bodies ?? enemies);
-      const stormAim = state ? stormTarget(state, local.id) : undefined;
-      if (stormAim) aimAt = stormAim;
-      const prismAim = state ? prismatailAim(state, local) : undefined;
-      if (prismAim) aimAt = prismAim;
-      aimAt = {
-        x: Ph.Math.Clamp(aimAt.x, 0, RULES.width),
-        y: Ph.Math.Clamp(aimAt.y, 0, RULES.height),
-      };
-      this.aimPoint = aimAt;
-      const input: Input = {
-        seq: ++seq,
-        dx: active ? (touch.enabled ? touch.dx : keyX || (pad?.dx ?? 0)) : 0,
-        dy: active ? (touch.enabled ? touch.dy : keyY || (pad?.dy ?? 0)) : 0,
-        aimX: aimAt.x,
-        aimY: aimAt.y,
-        basic:
-          combatActive &&
-          (prismAim
-            ? prismAim.basic
-            : (touch.enabled
-                ? touch.basic
-                : heldAction("basic") || !!pad?.held.has("basic")) ||
-              this.actions.basic),
-        skill,
-        ...(ex ? { ex: true } : {}),
-        dash: combatActive && this.actions.dash,
-        jump: combatActive && this.actions.jump,
-      };
-      this.actions = { skill: -1, dash: false, jump: false, basic: false };
-      socket.emit("input", input);
-      if (!document.hidden) netMeter.input();
-      if (combatActive && coach.running) coach.note(input);
-      // Show your own cast now (before this step's movement changes the
-      // fighter), at the time this input is predicted to run.
-      this.predictCasts(
-        local,
-        input,
-        state.time + Math.max(1, pending.length + 1 - owedSteps) / RULES.tick,
-      );
-      pending.push(input);
-      if (pending.length > 90) pending.shift();
-      const next = newestStep(pending, owedSteps);
-      if (next) predict(local, next.input, state.time + next.tick / RULES.tick);
-    }
     const g = this.graphics;
     g.clear();
     this.bossGraphics.clear();
-    retainBossArt(this, state.raid?.boss);
+    // A skill held on a phone: where it will go (touch-aim.ts).
+    if (touch.enabled && local && state.phase === "playing")
+      this.drawTouchAim(g, local);
+    kit.retainBossArt(this, state.raid?.boss);
     // In raids the boss and standing scenery sort with the raiders by where they stand.
     const boss = state.raid ? state.players.find((p) => p.raidBoss) : undefined;
     this.bossGraphics.setDepth(boss ? fighterDepth(boss.y) : 0);
@@ -6414,13 +8351,18 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         );
     }
     const raidCues =
-      drawRaidArena(
+      kit.drawRaidArena(
         g,
         state,
         reducedMotion,
         _time / 1000,
         state.raid
-          ? { boss: this.bossGraphics, at: this.layerAt, court: this.courtRaid }
+          ? {
+              boss: this.bossGraphics,
+              at: this.layerAt,
+              court: this.courtRaid,
+              drawnAt: (id) => this.positions.get(id),
+            }
           : undefined,
       ) ?? [];
     for (const [key, layer] of this.layers)
@@ -6470,24 +8412,67 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       const at = z.ability.follow ? this.positions.get(z.owner) : undefined;
       return at ? { ...z, x: at.x, y: at.y } : z;
     };
-    for (const z of state.zones)
-      drawZone(
-        g,
-        followed(tinted(z)),
-        1 -
-          Math.max(0, z.until - yourTime) / Math.max(0.01, z.ability.duration),
-        _time,
-        reducedMotion,
-      );
-    const walls = currentObstacles();
-    const bubbles = state.zones.filter(
-      (z) => z.ability.kind === "timewarp" && z.until > yourTime,
-    );
     const ownerOf = new Map(state.players.map((p) => [p.id, p] as const));
     const rivals = (a: string, b: string) => {
       const pa = ownerOf.get(a),
         pb = ownerOf.get(b);
       return a !== b && (!pa || !pb || teamOf(pa) !== teamOf(pb));
+    };
+    // An opponent's zone counts down on your timeline (the time you have to
+    // get out); yours and your allies' on the snapshot's clock, so their
+    // blast lands with the damage it deals (timeline-lead.ts zoneClock).
+    const spectating = !ownerOf.has(myId);
+    for (const z of state.zones) {
+      const clock = zoneClock(
+        state.time,
+        !spectating && rivals(z.owner, myId),
+        lead,
+        snapshotAge,
+      );
+      kit.drawZone(
+        g,
+        followed(tinted(z)),
+        1 - Math.max(0, z.until - clock) / Math.max(0.01, z.ability.duration),
+        _time,
+        reducedMotion,
+      );
+    }
+    const walls = currentObstacles();
+    const bubbles = state.zones.filter(
+      (z) => z.ability.kind === "timewarp" && z.until > yourTime,
+    );
+    // The fighters (and decoys) a shot can strike, where they are drawn: a
+    // shot drawn ahead of the server stops on the first it touches, as the
+    // server's does (timeline-lead.ts leadProjectile).
+    const targetsOf = new Map<string, ShotTarget[]>();
+    const fighters = state.players;
+    const shotTargets = (owner: string) => {
+      let list = targetsOf.get(owner);
+      if (list) return list;
+      list = [];
+      for (const p of fighters) {
+        if (!rivals(owner, p.id) || p.hp <= 0 || p.out) continue;
+        // A shot stopping in the air would give away a fighter in stealth.
+        if (p.id !== myId && p.statuses.some((s) => s.kind === "stealth"))
+          continue;
+        const at = this.positions.get(p.id) ?? p;
+        list.push({
+          x: at.x,
+          y: at.y,
+          r: p.raidBoss ? 70 : RULES.radius,
+          // Drawn where the server has it: a shot reaching it hits there too.
+          steady: Math.hypot(at.x - p.x, at.y - p.y) <= 8,
+        });
+        if (p.clone)
+          list.push({
+            x: p.clone.x,
+            y: p.clone.y,
+            r: RULES.radius,
+            steady: true,
+          });
+      }
+      targetsOf.set(owner, list);
+      return list;
     };
     for (const pr of state.projectiles) {
       const seconds = shotTimeline.seconds(
@@ -6506,8 +8491,25 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       const slow = bubble
         ? (bubble.ability.warp ?? STATUS_RULES.warpMultiplier)
         : 1;
-      const drawn = leadProjectile(pr, seconds, walls, slow);
-      drawProjectile(g, tinted(drawn), _time, reducedMotion);
+      const hits = shotTargets(pr.owner);
+      const drawn = leadProjectile(pr, seconds, walls, slow, hits);
+      // Your shot reaching a fighter standing still: its blast plays now,
+      // not a round trip later with the server's impact (ImpactPrediction).
+      if (
+        pr.owner === myId &&
+        drawn.struck?.steady &&
+        impacts.predict(pr.id, pr.ability.id, drawn.x, drawn.y, frameNow)
+      )
+        kit.playImpact(
+          this,
+          pr.ability,
+          drawn.x,
+          drawn.y,
+          tinted(drawn).color,
+          reducedMotion,
+        );
+      if (impacts.hidden(pr.id, frameNow)) continue;
+      kit.drawProjectile(g, tinted(drawn), _time, reducedMotion);
     }
     shotTimeline.keep(state.projectiles.map((pr) => pr.id));
     // Healing orbs: a soft green glow with a white cross, gently pulsing.
@@ -6598,7 +8600,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       }
     }
     // Crown Hill: the circle to hold, with each side's progress as an arc.
-    drawArcade(g, state, reducedMotion);
+    kit.drawArcade(g, state, reducedMotion);
     if (state.crown) {
       const hill = state.arcade?.hill ?? CROWN;
       const targetSeconds = state.arcade?.hill?.target ?? CROWN.holdSeconds;
@@ -6670,9 +8672,9 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
     if (caster.aiming >= 0 && local && previewer && this.canControl()) {
       const ability = CHARACTERS[local.character].skills[caster.aiming];
       if (ability)
-        drawPreview(
+        kit.drawPreview(
           g,
-          previewShape(ability, local, this.aimPoint),
+          kit.previewShape(ability, local, this.aimPoint),
           CHARACTERS[local.character].color,
           skillReady(
             previewer,
@@ -6739,7 +8741,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         serverPlayer.statuses.some((s) => s.kind === "stealth")
       ) {
         const plate = this.labels.get(p.id);
-        if (plate) plate.hidden = true;
+        if (plate) setHudHidden(plate, true);
         this.plates.set(p.id, { x: 0, bottom: 0, w: 0, h: 0 });
         continue;
       }
@@ -6810,7 +8812,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
                   : null) === p.id,
       };
       const clone =
-        serverPlayer.clone && this.readyRig(`${p.id}:clone`, p.character);
+        serverPlayer.clone && this.readyRig({ ...p, id: `${p.id}:clone` });
       if (serverPlayer.clone && clone) {
         clone.root.setScale(view.fighterX * 0.7, view.fighterY * 0.7);
         clone.setVisible(true);
@@ -6866,7 +8868,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
           ECHO_SKILL_COLOR,
           0.7,
         ).strokeEllipse(x, feetY, 84, groundHeight(84));
-        const fx = fxFor(this);
+        const fx = kit.fxFor(this);
         fx.glow(
           x,
           feetY,
@@ -6922,7 +8924,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
           38,
         );
       }
-      const rig = shown > 0 ? this.readyRig(p.id, p.character) : undefined;
+      const rig = shown > 0 ? this.readyRig(p) : undefined;
       if (rig) {
         // The rig keeps this as its base scale (squash and stretch multiply it).
         rig.root.setScale(
@@ -6960,7 +8962,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         )
           drawEliteCrown(
             rig.front,
-            fxFor(this),
+            kit.fxFor(this),
             x,
             y -
               jump -
@@ -7062,14 +9064,43 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         );
       if (serverPlayer.channel) {
         const cone = c.skills[serverPlayer.channel.skill];
-        if (cone)
-          drawChannel(g, cone, x, y, p.angle, c.color, _time, reducedMotion);
+        // Crest Flare: the flame reaches further as the breath goes on.
+        const grow = cone?.cone?.grow;
+        const shown =
+          cone && grow
+            ? {
+                ...cone,
+                range:
+                  cone.range +
+                  grow *
+                    Math.min(
+                      1,
+                      Math.max(
+                        0,
+                        1 -
+                          (serverPlayer.channel.until - state.time) /
+                            cone.duration,
+                      ),
+                    ),
+              }
+            : cone;
+        if (shown)
+          kit.drawChannel(
+            g,
+            shown,
+            x,
+            y,
+            p.angle,
+            c.color,
+            _time,
+            reducedMotion,
+          );
       }
       if (serverPlayer.charge) {
         // Wind-up telegraph showing the real area of the incoming move.
         const windup = c.skills[serverPlayer.charge.skill];
         if (windup)
-          drawWindup(
+          kit.drawWindup(
             g,
             windup,
             x,
@@ -7162,7 +9193,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
           serverPlayer.cyclone.slot
         ];
         if (storm)
-          drawLeafStorm(
+          kit.drawLeafStorm(
             this,
             p.id,
             x,
@@ -7184,7 +9215,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       if (serverPlayer.tether && wire) {
         const to = this.positions.get(serverPlayer.tether.target);
         if (to)
-          drawLiveWire(
+          kit.drawLiveWire(
             this,
             x,
             y - jump,
@@ -7197,7 +9228,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       } else if (serverPlayer.tether) {
         const to = this.positions.get(serverPlayer.tether.target);
         if (to)
-          drawSiphon(
+          kit.drawSiphon(
             this,
             x,
             y - jump,
@@ -7246,11 +9277,10 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         const r = 22 + 16 * Math.min(1, left / 1.5);
         // The charge sizzles, faster as it runs out.
         if (!reducedMotion)
-          fxFor(this).trail(
-            `clamp-${p.id}`,
-            0.05 + 0.1 * Math.min(1, left),
-            () =>
-              fxFor(this).burst({
+          kit
+            .fxFor(this)
+            .trail(`clamp-${p.id}`, 0.05 + 0.1 * Math.min(1, left), () =>
+              kit.fxFor(this).burst({
                 x,
                 y,
                 z: 30,
@@ -7264,7 +9294,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
                 grav: 1000,
                 bounce: 0.4,
               }),
-          );
+            );
         g.lineStyle(7, 0x2b6f8f, 0.35 * flick).strokeCircle(
           x,
           y - 18 - jump,
@@ -7308,9 +9338,9 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
             g.fillStyle(0xe4d6ff, 0.9).fillCircle(q.x, q.y + 2, 2);
           }
           if (!reducedMotion)
-            fxFor(this).trail(`grasp-${p.id}`, 0.08, () => {
+            kit.fxFor(this).trail(`grasp-${p.id}`, 0.08, () => {
               const q = curve.getPoint(0.3 + Math.random() * 0.6);
-              fxFor(this).burst({
+              kit.fxFor(this).burst({
                 x: q.x,
                 y: q.y + 14,
                 z: 14,
@@ -7400,7 +9430,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       updateNameplateHealth(
         label,
         serverPlayer.hp,
-        maxHealth(p.character, state.mode, state.players.length),
+        fullHealth(state, serverPlayer),
         p.id === myId
           ? "self"
           : (state.raid && !serverPlayer.echo) ||
@@ -7438,7 +9468,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
           (s) => s.kind === "stealth" && p.id !== myId,
         ) ||
         shown <= 0;
-      label.hidden = hidden;
+      setHudHidden(label, hidden);
       setHudStyle(label, "opacity", p.hp > 0 ? "1" : "0.4");
       label.classList.toggle(
         "team-ally",
@@ -7482,6 +9512,33 @@ function sceneFighters(s: Snapshot) {
     ...(s.raid?.spire?.roster ?? []).map((character) => ({ character })),
   ]);
 }
+/** A fighter whose rig the battle draws. */
+type LookedFighter = Pick<
+  Fighter,
+  "id" | "character" | "championLooks" | "raidBoss"
+>;
+/** The Shop skin a fighter's rig wears (as its pose does), or none. */
+function lookOf(p: Pick<Fighter, "character" | "championLooks">) {
+  return p.championLooks?.[p.character] ?? null;
+}
+/**
+ * The looks a battle draws: sceneFighters, each in its skin. Not a raid
+ * boss's seat: the boss is drawn from its own art (a seat on "terradon",
+ * apps/server/src/raid.ts), and its rig was 68 textures, 4.2 MB, in every
+ * raid that nothing showed (26 Nov 2026).
+ */
+function sceneLooks(s: Snapshot): FighterLook[] {
+  return [
+    ...s.players
+      .filter((p) => !p.raidBoss)
+      .map((p) => ({ character: p.character, look: lookOf(p) })),
+    // A Spire climb's Echoes appear mid-fight, in the champion's own look.
+    ...(s.raid?.spire?.roster ?? []).map((character) => ({
+      character,
+      look: null,
+    })),
+  ];
+}
 /** A fighter's skill colour: a worn skin's, or the Echoes' violet. */
 function skillColorOf(p: Fighter) {
   return p.echo ? ECHO_SKILL_COLOR : fighterSkillColor(p);
@@ -7501,6 +9558,8 @@ function fighterDepth(y: number) {
  * screen at most ~930 CSS px wide, so the court never needs more texels than
  * that; a flat 2× cost an iPhone two 23 MB copies of a 3200×1800 floor.
  */
+/** The battle canvas's background, where nothing is painted (the scene sets it at create). */
+const ARENA_BACKGROUND = "#142746";
 function floorBake() {
   return Math.min(2, Math.max(1, Math.round(renderScale() * 4) / 4));
 }
@@ -7583,11 +9642,6 @@ function drawArenaLive(
     g.lineStyle(2, 0xffffff, 0.35 + 0.4 * k).strokeCircle(h.x, h.y, h.radius);
   }
 }
-/** Name of the combo whose mark `by` places (their fighter's combo). */
-function comboOf(by?: string) {
-  const marker = state?.players.find((p) => p.id === by);
-  return marker ? COMBOS[marker.character].name : "Marked";
-}
 /** A small spinning target: "this fighter is primed for a combo". */
 function drawComboMark(
   g: Phaser.GameObjects.Graphics,
@@ -7622,7 +9676,8 @@ function flashWhite(root: Phaser.GameObjects.Container) {
 /**
  * Canvas pixels per CSS pixel. Phones have 2–3x screens; rendering at that density
  * keeps creatures, effects and text sharp. Capped at 2 to protect frame rate,
- * and at 1.5 at Low battle graphics (battle-quality.ts), as on iPhones.
+ * and at 1.25 at Low battle graphics (battle-quality.ts), below the 1.5
+ * iPhones get at every level.
  */
 function renderScale() {
   const density = Math.min(rendererDensity(), battleQuality.knobs().density);
@@ -7657,6 +9712,7 @@ function fitRenderer() {
       ? Math.max(0, raidHud.getBoundingClientRect().bottom - frame.top + 6) *
         dpr
       : 0;
+  raidControlSides = undefined;
   $("battle").style.setProperty("--desktop-arena-width", `${frame.width}px`);
   $("battle").style.setProperty(
     "--desktop-arena-top",
@@ -7704,16 +9760,44 @@ function arenaProgress(s: Snapshot) {
   if (!arenaLoading(s)) return 1;
   if (!scene) return 0.05;
   const { ready, total } = scene.fighterProgress(s);
-  return 0.2 + (0.75 * ready) / Math.max(1, total);
+  // An illustrated raid floor still on its way counts as one more piece.
+  const floor = scene.floorPending.size ? 1 : 0;
+  return 0.2 + (0.75 * ready) / Math.max(1, total + floor);
 }
 function arenaLoading(s: Snapshot) {
-  if ((!gameInstance && !phaserWaitStarted) || scene?.fightersReady(s)) {
+  if (
+    (!gameInstance && !phaserWaitStarted) ||
+    (scene?.fightersReady(s) && !scene.floorPending.size)
+  ) {
     arenaWaitSince = 0;
     return false;
   }
   const now = performance.now();
   if (!arenaWaitSince) arenaWaitSince = now;
-  return now - arenaWaitSince < ARENA_WAIT_MAX_MS;
+  const loading = now - arenaWaitSince < ARENA_WAIT_MAX_MS;
+  if (loading) watchArenaLoad();
+  return loading;
+}
+let arenaLoadWatch = 0;
+/**
+ * While the arena loads, draw the battle's overlays again a few times a
+ * second, and once more when it is ready: a briefing's "I'm ready" and the
+ * Reveal say how far the load is and open when it ends. Only the server's
+ * next snapshot did that before, and a quiet room sends few of them: with
+ * none, the button stayed on "Loading the arena" (the Spire's briefing,
+ * when the battle kit arrived after the room opened).
+ */
+function watchArenaLoad() {
+  if (arenaLoadWatch) return;
+  arenaLoadWatch = window.setInterval(() => {
+    const live = !!state && state.phase !== "lobby";
+    // (renderBattle asks arenaLoading again, which keeps this one watch.)
+    if (live) renderBattle();
+    if (!live || !arenaLoading(state!)) {
+      window.clearInterval(arenaLoadWatch);
+      arenaLoadWatch = 0;
+    }
+  }, 250);
 }
 /**
  * At the end of a match, tell the server how smoothly it ran on this device
@@ -7722,6 +9806,7 @@ function arenaLoading(s: Snapshot) {
  */
 function reportBattlePerf() {
   const summary = battlePerf.summary();
+  const detail = battlePerf.detail();
   const net = netMeter.summary();
   battlePerf.reset();
   netMeter.reset();
@@ -7752,6 +9837,13 @@ function reportBattlePerf() {
     errors,
     ...(softwareRendering() ? { gpu: "software" as const } : {}),
     ...(screenHz(battleFrames) ? { hz: screenHz(battleFrames) } : {}),
+    shell: appShell(nativePlatform(), deviceKind().app),
+    ...deviceModel(nativeDeviceInfo(), {
+      width: window.screen.width,
+      height: window.screen.height,
+      dpr: window.devicePixelRatio,
+    }),
+    ...detail,
   });
 }
 /**
@@ -7780,12 +9872,15 @@ function reportBattleLoad(fighters: number) {
   });
 }
 /**
- * Opening a battle on an iPhone (or a phone with little memory): forget the
- * Plaza's baked sprites first. The scene is closed by now, and the cache
- * (~45 MB of canvases once the Plaza was visited) would otherwise sit beside the battle's floor and textures until iOS ends the page.
+ * Opening a battle on an iPhone or a phone with 4 GB or less: forget the
+ * Plaza's baked sprites first. The Plaza has closed by now, but its sprite
+ * cache lives on (~37 MB of canvases once the Plaza was visited) and would
+ * sit beside the battle's floor and textures until the phone ends the page.
+ * The sprites are painted again on the next visit (the ground is painted
+ * again after a battle on every phone anyway).
  */
 function releaseHubArt() {
-  if (!memoryConstrained()) return;
+  if (!memoryShortInBattle()) return;
   // If the Plaza has not loaded this session the cache holds nothing.
   worlds.loaded("plaza")?.hubGfx.release();
 }
@@ -7818,7 +9913,7 @@ function ensureBattleRenderer() {
   releaseHubArt();
   // Effects, rings and auras are Graphics paths redrawn every frame: draw
   // them without Phaser's per-point garbage (graphics-render.ts).
-  installGraphicsRenderer(Phaser);
+  kit.installGraphicsRenderer(Phaser);
   arenaCssArea = $("game").clientWidth * $("game").clientHeight;
   const dpr = renderScale();
   gameInstance = new Phaser.Game({
@@ -7852,8 +9947,32 @@ function ensureBattleRenderer() {
     callbacks: {
       postBoot: (game) => {
         battleFrames = capGameFrames(game);
+        // The camera's background is the canvas's clear colour, not a
+        // full-screen rectangle drawn over it (camera-clear.ts).
+        kit.clearWithCameraBackdrop(
+          game.renderer as unknown as Parameters<
+            typeof kit.clearWithCameraBackdrop
+          >[0],
+          () => {
+            const s = game.scene.scenes[0];
+            const status = s?.sys.settings.status ?? -1;
+            return s?.sys.settings.visible &&
+              status >= Phaser.Scenes.LOADING &&
+              status < Phaser.Scenes.SLEEPING
+              ? s.cameras?.cameras[0]
+              : undefined;
+          },
+        );
       },
     },
+  });
+  // Our own work per frame, for the match report (frameWork).
+  let stepStart = 0;
+  gameInstance.events.on(Phaser.Core.Events.PRE_STEP, () => {
+    stepStart = performance.now();
+  });
+  gameInstance.events.on(Phaser.Core.Events.POST_RENDER, () => {
+    if (stepStart) frameWork = performance.now() - stepStart;
   });
   // A player can return home while the first texture load is still finishing.
   gameInstance.events.once(Phaser.Core.Events.POST_RENDER, syncBattleLoop);
@@ -7862,13 +9981,19 @@ function ensureBattleRenderer() {
   // The arena box also changes when the HUD or skill bar changes height.
   battleResizeObserver = new ResizeObserver(scheduleBattleLayout);
   battleResizeObserver.observe($("game"));
-  watchRendererLifecycle(gameInstance, () => !$("battle").hidden, fitRenderer);
+  kit.watchRendererLifecycle(
+    gameInstance,
+    () => !$("battle").hidden,
+    fitRenderer,
+  );
 }
 /** A hidden battle canvas must not compete with the menu or Shop preview. */
 function syncBattleLoop() {
   if (!gameInstance) return;
   const Phaser = Ph;
+  scene?.syncInputClock();
   if ($("battle").hidden) {
+    scene?.stopInputClock();
     // Sleeping retains every fighter and arena texture. Release them before
     // opening the hub or the Shop so iOS does not have to evict the whole web app.
     const previous = gameInstance;
@@ -7898,9 +10023,25 @@ function syncBattleLoop() {
   } else if (gameInstance.isRunning && !gameInstance.loop.running)
     gameInstance.loop.wake();
 }
+// The startup curtain (docs/loading-screens.md): one loading screen from
+// the first frame until the first screen is complete underneath.
+function startupStage(): StartupStage {
+  if (screen.startsWith("gate:")) {
+    const status = screen.split(":")[1];
+    if (status === "loading")
+      return accountsUI?.account ? "profile" : "account";
+    return status === "connecting" ? "connecting" : "gate";
+  }
+  if (screen || document.body.classList.contains("battle-active"))
+    return accountsUI?.fromCopy ? "provisional" : "scene";
+  return "account";
+}
+startStartupCurtain(startupStage);
 accountsUI = new AccountUI({
   selectedCharacter: () => selected,
   reportPhoto: (photo, name) => reportPhoto(photo, name),
+  // Match history's "Play the Hard bot again": the bot bar's own start.
+  playBot: (level) => void lobbyPlay(`bot-${level}`),
   chooseFighter: (id) => {
     if (id === selected) return;
     selected = id;
@@ -7917,6 +10058,11 @@ accountsUI = new AccountUI({
     syncHub();
   },
   toLobby: () => setHubScene("lobby"),
+  // On the Plaza your card opens over it, not back in the Lobby.
+  profileHost: () =>
+    hubScene === "plaza" && document.body.dataset.hubScene === "plaza"
+      ? (document.querySelector<HTMLElement>(".plaza-layer") ?? undefined)
+      : undefined,
   openDialog: dialog,
   startRaid: (boss, options) => void startRaid(boss, options),
   startSpire: (options) => void startSpire(options),
@@ -7983,6 +10129,7 @@ accountsUI = new AccountUI({
     void watchRoom(code);
   },
   notify: toast,
+  announce: (list) => announcements.receive(list),
   beforeSignOut: async () => {
     roomInvites.clear();
     if (plaza) {
@@ -8004,9 +10151,14 @@ accountsUI = new AccountUI({
     const previous = (
       socket.auth as { accessToken?: string | null } | undefined
     )?.accessToken;
-    socket.auth = { accessToken: token };
+    socket.auth = { accessToken: token, ...SNAPSHOT_AUTH };
     if (replacedAccount) return;
-    if (previous === token && socket.connected) return;
+    // Already connecting or connected with this login: nothing to do. A
+    // second connect() while the first waits for the server sends the
+    // CONNECT again on the same connection, which the server once took for
+    // another device ("Playing on another device" on the sign-up
+    // confirmation link, which announces the login twice; 25 Nov 2026).
+    if (previous === token && socket.active) return;
     if (previous !== token) socket.disconnect();
     void waitForServer()
       .then(() => {
@@ -8022,12 +10174,14 @@ accountsUI = new AccountUI({
   onToken: (token) => {
     // Keep the live connection's login fresh (tokens expire hourly) and use
     // the new token if the socket ever has to reconnect.
-    socket.auth = { accessToken: token };
+    socket.auth = { accessToken: token, ...SNAPSHOT_AUTH };
     if (socket.connected) socket.emit("token", { token });
     // A connection the server refused or closed (an hour-old token on a
     // phone waking up) never retries by itself: without this, a player sat
     // in the game offline to their friends until they reloaded.
-    else if (!replacedAccount && !socket.active) socket.connect();
+    // Not while closed for the background: coming back reconnects.
+    else if (!replacedAccount && !socket.active && !backgroundExit.away)
+      socket.connect();
   },
   onChange: () => {
     loadMastery();

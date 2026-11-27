@@ -24,6 +24,7 @@ import {
   ORB_SHOWER,
   PLAZA,
   PLAZA_BENCHES,
+  PLAZA_DECOR,
   PLAZA_BOARD,
   PLAZA_BUSHES,
   PLAZA_CAFE,
@@ -34,19 +35,28 @@ import {
   PLAZA_GATE,
   PLAZA_HOUSES,
   PLAZA_HURDLE_SEGMENTS,
+  PLAZA_LAP_RUN,
   PLAZA_LAMPS,
   PLAZA_LEADER,
   PLAZA_LED,
   PLAZA_PADS,
-  PLAZA_TREAT_BY_ID,
+  PLAZA_PAIR,
+  PLAZA_PAIR_EMOTES,
   PLAZA_PATHS,
   PLAZA_PHOTO,
   PLAZA_PHOTO_CAMERA,
   PLAZA_LANDINGS,
   PLAZA_PITCH,
   PLAZA_POND,
+  PLAZA_DOCK,
   PLAZA_QUESTS,
+  PLAZA_PLACES,
+  plazaPlaceOf,
   PLAZA_ROCKS,
+  PLAZA_FISH,
+  PLAZA_FISH_RARITY,
+  PLAZA_FISH_TITLE,
+  PLAZA_FISHING,
   PLAZA_SPAWN,
   PLAZA_SQUARE,
   PLAZA_STAGE,
@@ -64,11 +74,32 @@ import {
   plazaCollide,
   plazaDash,
   plazaJump,
+  plazaPairOf,
   plazaStep,
   trackPoint,
   segmentDistance,
   trackPolar,
+  plazaPathGap,
 } from "../../../../packages/shared/src/plaza";
+import {
+  fountainBasin,
+  fountainTiers,
+  waterOf as fountainWater,
+} from "./plaza-fountain-art";
+import { ledGlass, ledRig, ledShade, ledWords } from "./plaza-stage-art";
+import { lilyPad, pondWater } from "./plaza-pond-art";
+import { flowerArch, signWords } from "./plaza-props-art";
+import { floodMast, paintPitch, scoreboardArt } from "./plaza-pitch-art";
+import {
+  cobble as stoneAt,
+  fallenLeaves,
+  grassEdge,
+  grassLight,
+  grit,
+  meadowLife,
+  pathCobble,
+  tuft,
+} from "./plaza-ground-art";
 import { GFX } from "../hub-art/gfx";
 import {
   hubIcon as I,
@@ -89,6 +120,7 @@ import {
 } from "./plaza-album";
 import { bakeSprite } from "./plaza-sprite";
 import "./plaza.css";
+import { iconButton } from "../ui/components";
 import { fadeIn } from "../ui/motion";
 import { setInner } from "../ui/patch";
 import { memoryConstrained, sceneDensity } from "../render-budget";
@@ -96,12 +128,35 @@ import { FrameCap } from "../frame-cap";
 import { PreviewPerf } from "../preview-perf";
 import { sceneLines, setPerfSource } from "../perf-hud";
 import { depthSort, slices, spot } from "./plaza-depth";
+import { createFightView } from "./plaza-fight-view";
 import { plazaPath } from "./plaza-path";
+import { mapFrac, mapPinsHtml, paintPlazaMap } from "./plaza-map";
 import { PlazaPrediction } from "./plaza-predict";
+import { BallPrediction, ServerClock, SnapTrack } from "./plaza-net";
+import {
+  PlazaGifts,
+  drawConfetti,
+  drawFlash,
+  stepConfetti,
+} from "./plaza-gifts";
+import { HUB_BUSY_ATTR, HUB_BUSY_EVENT } from "../pwa-policy";
+import {
+  FIGHT_IN_SECONDS,
+  fishingFrame,
+  fishingLineZone,
+  FISH_SPOT,
+  catchCard,
+  createFishing,
+  fishBook,
+} from "./plaza-fishing";
 import {
   PLAZA_SPRITE_PX,
+  PLAZA_SPRITE_TALL,
+  PLAZA_SPRITE_TOP,
+  cheerWearer,
   drawWornBehind,
   drawWornFront,
+  greetWearer,
 } from "./plaza-cosmetics";
 import {
   PLAZA_MARGIN,
@@ -109,6 +164,7 @@ import {
   plazaCamClamp,
   plazaZoomAt,
   plazaZoomRange,
+  plazaZoomable,
 } from "./plaza-surround";
 import {
   RIVER_LAMPS,
@@ -141,13 +197,13 @@ const PLAZA_HTML = `<div class="pz" id="pz">
     <div class="pz-event" id="pz-event" hidden></div>
     <div class="pz-timer glass" id="pz-timer" hidden></div>
     <button type="button" class="pz-clock glass" id="pz-clock" title="Preview day or night">--:--</button>
-    <aside class="pz-quests glass" id="pz-quests"></aside>
+    <aside class="pz-quests" id="pz-quests"></aside>
     <div class="pz-feed" id="pz-feed" aria-live="polite"></div>
     <div class="pz-runcard glass" id="pz-runcard" hidden></div>
     <div class="pz-joy" id="pz-joy"><div class="ring" id="pz-ring"><div class="knob" id="pz-knob"></div></div></div>
     <div class="pz-left">
-      <button type="button" class="pz-round" id="pz-wheel-btn" aria-label="Quick chat">${I("smile")}<small>Chat</small></button>
-      <button type="button" class="pz-round" id="pz-treat" aria-label="Throw a treat (T)">${I("gift")}<small id="pz-treats">0</small></button>
+      <button type="button" class="pz-round" id="pz-map-btn" aria-label="Plaza map (M)">${I("map")}<small>Map</small></button>
+      <button type="button" class="pz-round" id="pz-treat" aria-label="Toss a gift box (T)">${I("gift")}<small id="pz-treats">0</small></button>
       <button type="button" class="pz-round" id="pz-album-btn" aria-label="Photo album">${I("album")}<small>Album</small></button>
     </div>
     <div class="pz-wheel" id="pz-wheel" hidden>
@@ -158,17 +214,48 @@ const PLAZA_HTML = `<div class="pz" id="pz">
       <button type="button" class="pz-act" id="pz-dash">Dash<small>Shift</small></button>
       <button type="button" class="pz-act big" id="pz-jump">Jump<small>Space</small></button>
     </div>
-    <div class="pz-photo" id="pz-photo" hidden></div>
+    <div class="pz-photo" id="pz-photo" role="dialog" aria-modal="true" aria-label="Photo" hidden></div>
     <div class="pz-album" id="pz-album" role="dialog" aria-modal="true" aria-label="Photo album" hidden>
       <section class="pz-album-panel" id="pz-album-panel">
-        <header><b>${I("album")}<span>Album</span></b><span class="pz-album-count" id="pz-album-count" aria-live="polite">0 / ${ALBUM_LIMIT}</span><button type="button" class="x" data-al="close" aria-label="Close the album">✕</button></header>
+        <header><b>${I("album")}<span>Album</span></b><span class="pz-album-count" id="pz-album-count" aria-live="polite">0 / ${ALBUM_LIMIT}</span>${iconButton("cancel", "Close the album", { class: "x", "data-al": "close" })}</header>
         <div class="pz-album-grid" id="pz-album-grid"></div>
         <p class="pz-album-note">Saved on this device only · the newest ${ALBUM_LIMIT} are kept</p>
       </section>
       <div class="pz-album-view" id="pz-album-view" hidden></div>
     </div>
+    <div class="pz-catch" id="pz-catch" aria-live="polite" hidden></div>
+    <div class="pz-fishhud" id="pz-fishhud" hidden>
+      <button type="button" class="pz-fish-exit" id="pz-fish-exit" aria-label="Leave fishing (Esc)">✕<span>Leave</span></button>
+      <div class="pz-fish-hint" id="pz-fish-hint" aria-live="polite"></div>
+      <div class="pz-fish-side">
+        <span class="pz-round pz-fish-today" id="pz-fish-today" role="status" aria-label="Fish counted today"></span>
+        <button type="button" class="pz-round" id="pz-fish-book2" aria-label="Fish book">${I("fish")}<small>Book</small></button>
+      </div>
+      <button type="button" class="pz-fish-act" id="pz-fish-act"><svg class="ico-rod" viewBox="0 0 32 32" aria-hidden="true"><path d="M5 27 25 5" stroke="#8a5a32" stroke-width="3" stroke-linecap="round"/><circle cx="9" cy="23" r="3.2" fill="#3a2a1a"/><path d="M25 5q4 9 0 17" fill="none" stroke="#fff" stroke-width="1.2"/><circle cx="25" cy="23.5" r="2.6" fill="#ef4f61" stroke="#fff" stroke-width="1"/></svg><b></b><kbd>E</kbd></button>
+    </div>
+    <div class="pz-fishbook" id="pz-fishbook" role="dialog" aria-modal="true" aria-label="Fish book" hidden>
+      <section class="pz-fishbook-panel">
+        <header><b>${I("fish")}<span>Fish book</span></b><span class="pz-fishbook-count" id="pz-fishbook-count" aria-live="polite"></span>${iconButton("cancel", "Close the Fish book", { class: "x", "data-fb": "close" })}</header>
+        <ul class="pz-fishbook-list" id="pz-fishbook-list"></ul>
+        <p class="pz-fishbook-note" id="pz-fishbook-note"></p>
+      </section>
+    </div>
+    <div class="pz-map" id="pz-map" role="dialog" aria-modal="true" aria-label="Plaza map" hidden>
+      <section class="pz-map-panel">
+        <header><b>${I("map")}<span>Plaza map</span></b><span class="pz-map-hint" id="pz-map-hint">Tap a place to walk there</span>${iconButton("cancel", "Close the map", { class: "x", "data-map": "close" })}</header>
+        <div class="pz-map-body">
+          <div class="pz-map-view" id="pz-map-view">
+            <canvas id="pz-map-cv" aria-hidden="true"></canvas>
+            <div class="pz-map-dots" id="pz-map-dots" aria-hidden="true"></div>
+            <div class="pz-map-pins" id="pz-map-pins"></div>
+          </div>
+          <ul class="pz-map-list" id="pz-map-list"></ul>
+        </div>
+      </section>
+    </div>
     <div class="pz-card glass" id="pz-card" role="dialog" aria-label="Player" hidden></div>
-    <div class="pz-start" id="pz-start" hidden><b>Plaza</b><span>Click to start</span><div class="pz-keys"><span><kbd>WASD</kbd> move</span><span><kbd>Space</kbd> jump</span><span><kbd>Shift</kbd> dash</span><span><kbd>E</kbd> interact</span><span><kbd>Q</kbd> emote</span><span><kbd>T</kbd> treat</span></div></div>
+    <div class="pz-ask glass" id="pz-ask" role="alertdialog" aria-label="Pair emote request" hidden></div>
+    <div class="pz-start" id="pz-start" hidden><b>Plaza</b><span>Click to start</span><div class="pz-keys"><span><kbd>WASD</kbd> move</span><span><kbd>Space</kbd> jump</span><span><kbd>Shift</kbd> dash</span><span><kbd>E</kbd> interact</span><span><kbd>Q</kbd> emote</span><span><kbd>T</kbd> gift box</span><span><kbd>M</kbd> map</span><span><kbd>B</kbd> Fish book</span></div></div>
   </div>
 </div>`;
 
@@ -196,6 +283,19 @@ export function openPlaza(options) {
   // Auto (Settings → Graphics) watches the frame rate and may switch to Low.
   let probe =
     graphicsSetting() === "auto" && !low ? new FrameRateProbe() : undefined;
+  /**
+   * Draw at up to 2x on iPhones too (sceneDensity's `sharp`), so fighters
+   * and names are crisp. Where Auto finds that too slow, this device steps
+   * back to 1.5x for good (SOFT_KEY) before anything goes Low.
+   */
+  const SOFT_KEY = "ea-plaza-soft";
+  let sharp = (() => {
+    try {
+      return localStorage.getItem(SOFT_KEY) !== "1";
+    } catch {
+      return true;
+    }
+  })();
   const pzToast = (m) => options.toast(m);
   const syncPhone = () => {
     layer.classList.toggle("phone", innerHeight < 500);
@@ -294,6 +394,16 @@ export function openPlaza(options) {
    * picture, PLAZA_MARGIN past each edge, so there is no seam where a
    * separate picture would meet it. World (0, 0) is at (GM, GM) in it.
    */
+  /** The stage front's bulbs (none across the catwalk's mouth) and the
+   * catwalk's (starting below the stage's front band and its steps). */
+  const STAGE_BULBS = [],
+    WALK_BULBS = [];
+  for (let x = STAGE.x0 + 14; x < STAGE.x1; x += 26)
+    if (x < WALK.x0 - 8 || x > WALK.x1 + 8) STAGE_BULBS.push([x, STAGE.y1 + 9]);
+  // (The first pair sits level with the stage front's bulbs, filling the
+  // catwalk's mouth, one each side: owner's call.)
+  for (let y = STAGE.y1 + 10; y < WALK.y1 - 4; y += 24)
+    for (const x of [WALK.x0 + 8, WALK.x1 - 8]) WALK_BULBS.push([x, y]);
   const GM = PLAZA_MARGIN,
     GW = W + 2 * GM,
     GH = H + 2 * GM;
@@ -330,42 +440,17 @@ export function openPlaza(options) {
       g.ellipse(x, y, 2.4 + rnd() * 2.6, 1.3 + rnd(), rnd() * 3, 0, 7);
       g.fill();
     }
-    for (let i = 0; i < 2200 * more; i++) {
-      const x = gx(),
-        y = gy();
-      g.strokeStyle = rnd() < 0.5 ? "#4f9a3c" : "#a6e07e";
-      g.lineWidth = 1.6;
-      g.beginPath();
-      g.moveTo(x - 3, y);
-      g.lineTo(x - 4, y - 7);
-      g.moveTo(x, y);
-      g.lineTo(x, y - 9);
-      g.moveTo(x + 3, y);
-      g.lineTo(x + 5, y - 7);
-      g.stroke();
-    }
-    for (let i = 0; i < 520; i++) {
-      const x = rnd() * W,
-        y = rnd() * H;
-      if (!clear(x, y)) continue;
-      const c = ["#ffffff", "#fff3a6", "#ffc4dc", "#cfe2ff"][i % 4];
-      for (let k = 0; k < 5; k++) {
-        g.fillStyle = c;
-        g.beginPath();
-        g.arc(
-          x + Math.cos(k * 1.256) * 2.2,
-          y + Math.sin(k * 1.256) * 2.2,
-          1.8,
-          0,
-          7,
-        );
-        g.fill();
-      }
-      g.fillStyle = "#ffcf3a";
-      g.beginPath();
-      g.arc(x, y, 1.2, 0, 7);
-      g.fill();
-    }
+    // Big soft patches of sunlit and shaded grass, as the land rolls.
+    grassLight(g, rnd, -GM, -GM, GW, GH, Math.round(40 * more));
+    // Tufts: dark at the root, lit at the tips (light from the top left).
+    for (let i = 0; i < 2000 * more; i++)
+      tuft(g, rnd, gx(), gy(), 0.8 + rnd() * 0.5);
+    // Flowers in drifts, clover patches and dandelion clocks, rather than
+    // an even sprinkle of one flower.
+    meadowLife(g, rnd, 0, 0, W, H, (x, y) => clear(x, y), 230);
+    // Leaves (and the odd fruit) fallen round each tree's foot.
+    for (const t of PLAZA_TREES)
+      fallenLeaves(g, rnd, t.x, t.y, t.kind, (x, y) => clear(x, y));
     // stone paths: soft bed + rounded cobbles. Drawn in layers (every
     // path's bed, then every path's sand, then the stones) so where paths
     // meet they run into each other instead of one's edge lying on another.
@@ -394,25 +479,26 @@ export function openPlaza(options) {
       }
       g.fill();
     };
-    strokeAll(18, "rgba(60,90,40,.35)");
-    landings(9, "rgba(60,90,40,.35)");
+    strokeAll(18, "rgba(70,120,50,.22)");
+    landings(9, "rgba(70,120,50,.22)");
     strokeAll(6, "#d9c9a3");
     landings(3, "#d9c9a3");
-    const cobble = (x, y, c) => {
-      g.fillStyle = "rgba(120,100,60,.45)";
-      g.beginPath();
-      g.roundRect(x - 10, y - 7 + 2, 20, 15, 6);
-      g.fill();
-      g.fillStyle = c;
-      g.beginPath();
-      g.roundRect(x - 10, y - 8, 20, 15, 6);
-      g.fill();
-      g.fillStyle = "rgba(255,255,255,.35)";
-      g.beginPath();
-      g.roundRect(x - 7, y - 6, 9, 3.5, 2);
-      g.fill();
-    };
-    const STONES = ["#efe3c8", "#e6d6b4", "#f4ead6", "#dccaa6"];
+    // Grit in the sand: the joints between the stones show it.
+    {
+      const onSand = (x, y) => plazaPathGap(x, y).gap < -2;
+      for (const { pts, w } of PLAZA_PATHS) {
+        const xs = pts.map((p) => p[0]),
+          ys = pts.map((p) => p[1]),
+          x0 = Math.min(...xs) - w / 2,
+          y0 = Math.min(...ys) - w / 2,
+          bw = Math.max(...xs) - x0 + w / 2,
+          bh = Math.max(...ys) - y0 + w / 2;
+        grit(g, rnd, x0, y0, bw, bh, onSand, Math.min(9000, (bw * bh) / 60));
+      }
+    }
+    // A worn stone (plaza-ground-art.ts). Stones lie wider than tall
+    // whichever way the path runs: the ground is seen at a slant.
+    const cobble = (x, y) => pathCobble(g, rnd, x, y);
     // A landing's stones first, in rows; the paths' stones stop at its edge.
     const inLanding = (x, y, inset) =>
       PLAZA_LANDINGS.some(
@@ -425,13 +511,12 @@ export function openPlaza(options) {
       for (let y = l.y - l.ry, row = 0; y <= l.y + l.ry; y += 17, row++)
         for (let x = l.x - l.rx + (row % 2) * 12; x <= l.x + l.rx; x += 24) {
           const sx = x + (rnd() - 0.5) * 4,
-            sy = y + (rnd() - 0.5) * 4,
-            c = STONES[Math.floor(rnd() * 4)];
+            sy = y + (rnd() - 0.5) * 4;
           if (
             ((sx - l.x) / (l.rx - 12)) ** 2 + ((sy - l.y) / (l.ry - 9)) ** 2 <
             1
           )
-            cobble(sx, sy, c);
+            cobble(sx, sy);
         }
     /** Segments already paved: a stone that would land on one is left out. */
     const paved = [];
@@ -446,16 +531,21 @@ export function openPlaza(options) {
           L = Math.hypot(x1 - x0, y1 - y0),
           ux = (x1 - x0) / L,
           uy = (y1 - y0) / L;
-        for (let d = 0; d < L; d += 22)
-          for (let k = -w / 2 + 14; k < w / 2 - 6; k += 24) {
+        // Rows across the path, centred on its line: 0, ±24... on even rows
+        // and ±12, ±36... on odd ones, as far as a stone stays on the sand.
+        for (let d = 0, row = 0; d < L; d += 22, row++)
+          for (
+            let k =
+              -Math.floor((w / 2 - 8 + (row % 2) * 12) / 24) * 24 +
+              (row % 2) * 12;
+            k <= w / 2 - 8;
+            k += 24
+          ) {
             const jx = (rnd() - 0.5) * 6,
               jy = (rnd() - 0.5) * 6,
-              x = x0 + ux * d - uy * (k + ((d / 22) % 2) * 12) + jx,
-              y = y0 + uy * d + ux * (k + ((d / 22) % 2) * 12) + jy;
-            const c = ["#efe3c8", "#e6d6b4", "#f4ead6", "#dccaa6"][
-              Math.floor(rnd() * 4)
-            ];
-            if (!onPaved(x, y)) cobble(x, y, c);
+              x = x0 + ux * d - uy * k + jx,
+              y = y0 + uy * d + ux * k + jy;
+            if (!onPaved(x, y)) cobble(x, y);
           }
         // The segment before this one counts once this one is laid, so a
         // bend's stones don't pile up either.
@@ -468,6 +558,23 @@ export function openPlaza(options) {
       }
       paved.push(mine[mine.length - 1]);
     }
+    // Grass grown up to the paths' edges, leaning over the sand (not where
+    // a path meets another, the square or a landing).
+    {
+      const edgeAt = (x, y) => {
+        const gap = plazaPathGap(x, y).gap;
+        return (
+          gap > -7 &&
+          gap < 2 &&
+          !inSquare(x, y, 1.06) &&
+          !PLAZA_LANDINGS.some(
+            (l) =>
+              ((x - l.x) / (l.rx + 8)) ** 2 + ((y - l.y) / (l.ry + 8)) ** 2 < 1,
+          )
+        );
+      };
+      for (const { pts, w } of PLAZA_PATHS) grassEdge(g, rnd, pts, w, edgeAt);
+    }
     // plaza square: concentric pavers + elemental mosaic
     g.save();
     g.translate(SQ.x, SQ.y);
@@ -476,30 +583,87 @@ export function openPlaza(options) {
     g.beginPath();
     g.arc(0, 14, SQ.rx + 16, 0, 7);
     g.fill();
+    // The kerb round the square: a raised ring of dressed stone, its
+    // front (south) face in shade below a lit top.
+    g.fillStyle = "#9a8a6c";
+    g.beginPath();
+    g.arc(0, 7, SQ.rx + 10, 0, 7);
+    g.fill();
     g.fillStyle = "#b9a98a";
     g.beginPath();
-    g.arc(0, 0, SQ.rx + 8, 0, 7);
+    g.arc(0, 0, SQ.rx + 10, 0, 7);
+    g.fill();
+    // The grout under the pavers: what shows between them.
+    g.fillStyle = "#bba985";
+    g.beginPath();
+    g.arc(0, 0, SQ.rx, 0, 7);
     g.fill();
     const tones = ["#f2e8d4", "#e9dcc2", "#efe2c9", "#e2d3b5", "#f6eedd"];
     for (let r0 = 130; r0 < SQ.rx; r0 += 30) {
       const r1 = Math.min(SQ.rx, r0 + 30),
         n = Math.round((2 * Math.PI * r1) / 44),
-        off = rnd();
+        off = rnd(),
+        edge = r0 > SQ.rx - 40;
       for (let k = 0; k < n; k++) {
         const a0 = ((k + off) / n) * Math.PI * 2,
-          a1 = ((k + 1 + off) / n) * Math.PI * 2;
-        g.beginPath();
-        g.arc(0, 0, r1 - 2, a0 + 0.006, a1 - 0.006);
-        g.arc(0, 0, r0 + 2, a1 - 0.006, a0 + 0.006, true);
-        g.closePath();
-        g.fillStyle =
-          r0 > SQ.rx - 40 ? "#d2c2a2" : tones[Math.floor(rnd() * tones.length)];
+          a1 = ((k + 1 + off) / n) * Math.PI * 2,
+          c = edge
+            ? GFX.mix("#d2c2a2", "#c4b391", rnd() * 0.6)
+            : tones[Math.floor(rnd() * tones.length)];
+        const paver = (i0, i1) => {
+          g.beginPath();
+          g.arc(0, 0, r1 - i1, a0 + 0.008, a1 - 0.008);
+          g.arc(0, 0, r0 + i0, a1 - 0.008, a0 + 0.008, true);
+          g.closePath();
+        };
+        // Each paver: its shaded edge, then its face set up and in from it
+        // so a sliver of shade shows on the side away from the light, and a
+        // lit edge on the side toward it (the top left).
+        paver(2.6, 2.6);
+        g.fillStyle = GFX.dk(c, 0.1);
         g.fill();
+        const mid = (a0 + a1) / 2,
+          lx = Math.cos(mid),
+          ly = Math.sin(mid),
+          // How much this paver's outer edge faces the light (top left).
+          face = -(lx + ly) * 0.7071;
+        g.save();
+        g.translate(-1.2, -1.8);
+        paver(3.2, 3.8);
+        g.fillStyle = c;
+        g.fill();
+        g.restore();
+        g.strokeStyle = `rgba(255,255,255,${0.22 + 0.3 * Math.max(0, -face)})`;
+        g.lineWidth = 2;
+        g.beginPath();
+        g.arc(0, 0, r0 + 3.4, a0 + 0.03, a1 - 0.03);
+        g.stroke();
+        // Now and then a stain or a chip, so the stones read as worn.
+        if (rnd() < 0.18) {
+          const ra = a0 + (a1 - a0) * (0.25 + rnd() * 0.5),
+            rr = r0 + 6 + rnd() * 18;
+          g.fillStyle = "rgba(140,115,75,.16)";
+          g.beginPath();
+          g.ellipse(
+            Math.cos(ra) * rr,
+            Math.sin(ra) * rr,
+            5 + rnd() * 6,
+            3 + rnd() * 3,
+            ra,
+            0,
+            7,
+          );
+          g.fill();
+        }
       }
     }
+    g.fillStyle = "#c2b08c";
+    g.beginPath();
+    g.arc(0, 0, 130, 0, 7);
+    g.fill();
     g.fillStyle = "#e9dcc2";
     g.beginPath();
-    g.arc(0, 0, 128, 0, 7);
+    g.arc(0, 0, 127, 0, 7);
     g.fill();
     const EL = [
       "#ffd84a",
@@ -515,28 +679,70 @@ export function openPlaza(options) {
       const a = (i / 8) * Math.PI * 2 - Math.PI / 2;
       g.save();
       g.rotate(a);
-      g.beginPath();
-      g.moveTo(0, -60);
-      g.lineTo(150, -10);
-      g.lineTo(220, 0);
-      g.lineTo(150, 10);
-      g.lineTo(0, 60);
-      g.closePath();
+      const ray = () => {
+        g.beginPath();
+        g.moveTo(0, -60);
+        g.lineTo(150, -10);
+        g.lineTo(220, 0);
+        g.lineTo(150, 10);
+        g.lineTo(0, 60);
+        g.closePath();
+      };
+      ray();
       g.fillStyle = GFX.rgba(EL[i], 0.5);
       g.fill();
+      // Set in small tiles, with a fine dark edge and a bright spine.
+      g.save();
+      g.clip();
+      g.strokeStyle = "rgba(255,255,255,.28)";
+      g.lineWidth = 1;
+      g.beginPath();
+      for (let t = 14; t < 222; t += 12) {
+        g.moveTo(t, -62);
+        g.lineTo(t, 62);
+      }
+      g.moveTo(0, -24);
+      g.lineTo(222, -24);
+      g.moveTo(0, 24);
+      g.lineTo(222, 24);
+      g.stroke();
+      g.restore();
+      ray();
+      g.strokeStyle = GFX.rgba(GFX.dk(EL[i], 0.4), 0.55);
+      g.lineWidth = 1.5;
+      g.stroke();
+      g.strokeStyle = "rgba(255,255,255,.55)";
+      g.lineWidth = 1.5;
+      g.beginPath();
+      g.moveTo(8, 0);
+      g.lineTo(212, 0);
+      g.stroke();
       g.restore();
     }
     for (let i = 0; i < 8; i++) {
       const a = (i / 8) * Math.PI * 2 - Math.PI / 2,
         x = Math.cos(a) * (SQ.rx - 70),
         y = Math.sin(a) * (SQ.rx - 70);
+      g.fillStyle = "#a99877";
+      g.beginPath();
+      g.arc(x + 1, y + 2.5, 25, 0, 7);
+      g.fill();
       g.fillStyle = "#f8f2e4";
       g.beginPath();
       g.arc(x, y, 24, 0, 7);
       g.fill();
-      g.fillStyle = EL[i];
+      g.strokeStyle = "rgba(180,160,120,.7)";
+      g.lineWidth = 1.5;
+      g.beginPath();
+      g.arc(x, y, 19.5, 0, 7);
+      g.stroke();
+      g.fillStyle = GFX.dk(EL[i], 0.25);
       g.beginPath();
       g.arc(x, y, 15, 0, 7);
+      g.fill();
+      g.fillStyle = EL[i];
+      g.beginPath();
+      g.arc(x - 0.6, y - 1, 13.6, 0, 7);
       g.fill();
       g.fillStyle = "rgba(255,255,255,.6)";
       g.beginPath();
@@ -660,6 +866,25 @@ export function openPlaza(options) {
         g.fillStyle = (i + k) % 2 ? "#1c1c24" : "#fafafa";
         g.fillRect(TRACK.cx - 18 + k * 12, y, 12, 12);
       }
+    {
+      // Lane numbers just past the start line, and arrows the way you run.
+      g.font = "800 22px 'Barlow Condensed', sans-serif";
+      g.textAlign = "center";
+      g.textBaseline = "middle";
+      g.fillStyle = "rgba(255,245,234,.85)";
+      const lw = (TRACK.ro[1] - TRACK.ri[1]) / 3;
+      for (let k = 0; k < 3; k++) {
+        const y = TRACK.cy - TRACK.ri[1] - lw * (k + 0.5);
+        g.fillText(String(k + 1), TRACK.cx + 42, y + 1);
+        g.beginPath();
+        g.moveTo(TRACK.cx + 66, y - 5);
+        g.lineTo(TRACK.cx + 78, y);
+        g.lineTo(TRACK.cx + 66, y + 5);
+        g.closePath();
+        g.fill();
+      }
+      g.textBaseline = "alphabetic";
+    }
     g.save();
     g.beginPath();
     g.ellipse(TRACK.cx, TRACK.cy, TRACK.ri[0] - 3, TRACK.ri[1] - 3, 0, 0, 7);
@@ -669,81 +894,87 @@ export function openPlaza(options) {
       g.fillRect(TRACK.cx - 270 + i * 54, TRACK.cy - 180, 54, 360);
     }
     g.restore();
+    // The infield's kerb: a low concrete ring just inside the lane, lit
+    // on its top, with the infield in its shadow along the north side.
+    g.save();
+    g.lineWidth = 7;
+    g.strokeStyle = "rgba(30,60,30,.25)";
+    g.beginPath();
+    g.ellipse(
+      TRACK.cx + 1,
+      TRACK.cy + 4,
+      TRACK.ri[0] - 7,
+      TRACK.ri[1] - 7,
+      0,
+      0,
+      7,
+    );
+    g.stroke();
+    g.lineWidth = 6;
+    g.strokeStyle = "#d9d6cc";
+    g.beginPath();
+    g.ellipse(TRACK.cx, TRACK.cy, TRACK.ri[0] - 5, TRACK.ri[1] - 5, 0, 0, 7);
+    g.stroke();
+    g.lineWidth = 2;
+    g.strokeStyle = "#f6f4ee";
+    g.beginPath();
+    g.ellipse(
+      TRACK.cx - 0.6,
+      TRACK.cy - 1.2,
+      TRACK.ri[0] - 5,
+      TRACK.ri[1] - 5,
+      0,
+      0,
+      7,
+    );
+    g.stroke();
+    g.restore();
+    // The lane's rubber worn paler where runners run (lane 1's line).
+    g.save();
+    g.lineWidth = 16;
+    g.strokeStyle = "rgba(255,200,170,.07)";
+    g.beginPath();
+    g.ellipse(TRACK.cx, TRACK.cy, TRACK.ri[0] + 22, TRACK.ri[1] + 22, 0, 0, 7);
+    g.stroke();
+    g.restore();
     g.font = "800 50px 'Barlow Condensed', sans-serif";
     g.textAlign = "center";
     g.fillStyle = "rgba(255,255,255,.88)";
     g.fillText("DASH TRACK", TRACK.cx, TRACK.cy + 18);
-    // pitch
-    g.fillStyle = "rgba(30,60,30,.4)";
-    g.beginPath();
-    g.roundRect(
-      PITCH.x0 - 34,
-      PITCH.y0 - 30,
-      PITCH.x1 - PITCH.x0 + 68,
-      PITCH.y1 - PITCH.y0 + 60,
-      18,
-    );
-    g.fill();
-    g.fillStyle = "#4fa443";
-    g.beginPath();
-    g.roundRect(
-      PITCH.x0 - 28,
-      PITCH.y0 - 24,
-      PITCH.x1 - PITCH.x0 + 56,
-      PITCH.y1 - PITCH.y0 + 48,
-      16,
-    );
-    g.fill();
-    for (let i = 0; i < 10; i++) {
-      g.fillStyle = i % 2 ? "#5fb951" : "#56ad48";
-      g.fillRect(
-        PITCH.x0 + (i * (PITCH.x1 - PITCH.x0)) / 10,
-        PITCH.y0,
-        (PITCH.x1 - PITCH.x0) / 10 + 1,
-        PITCH.y1 - PITCH.y0,
-      );
-    }
-    g.strokeStyle = "#f6fff2";
-    g.lineWidth = 5;
-    g.strokeRect(PITCH.x0, PITCH.y0, PITCH.x1 - PITCH.x0, PITCH.y1 - PITCH.y0);
-    const pcx = (PITCH.x0 + PITCH.x1) / 2,
-      pcy = (PITCH.y0 + PITCH.y1) / 2;
-    g.beginPath();
-    g.moveTo(pcx, PITCH.y0);
-    g.lineTo(pcx, PITCH.y1);
-    g.stroke();
-    g.beginPath();
-    g.ellipse(pcx, pcy, 78, 52, 0, 0, 7);
-    g.stroke();
-    g.fillStyle = "#f6fff2";
-    g.beginPath();
-    g.arc(pcx, pcy, 5, 0, 7);
-    g.fill();
-    g.strokeRect(PITCH.x0, PITCH.gy0 - 50, 96, PITCH.gy1 - PITCH.gy0 + 100);
-    g.strokeRect(
-      PITCH.x1 - 96,
-      PITCH.gy0 - 50,
-      96,
-      PITCH.gy1 - PITCH.gy0 + 100,
-    );
+    // pitch: a stadium pitch, painted once (plaza-pitch-art.ts).
+    paintPitch(g, rnd, PITCH);
     // pond rim stones
     g.fillStyle = "rgba(40,60,40,.35)";
     g.beginPath();
     g.ellipse(POND.x, POND.y + 10, POND.rx + 26, POND.ry + 18, 0, 0, 7);
     g.fill();
-    for (let i = 0; i < 64; i++) {
-      const a = (i / 64) * Math.PI * 2,
+    // Bank stones: rounded grey stones of mixed sizes, lit top left, with
+    // moss in the joints and grass growing up between them.
+    for (let i = 0; i < 70; i++) {
+      const a = ((i + (rnd() - 0.5) * 0.4) / 70) * Math.PI * 2,
         x = POND.x + Math.cos(a) * (POND.rx + 10),
         y = POND.y + Math.sin(a) * (POND.ry + 8);
-      const c = ["#c9cdd6", "#b4b9c4", "#d9dce3"][i % 3];
-      g.fillStyle = "#7f8594";
+      const c = ["#c3c8d2", "#aab0bd", "#d2d6de", "#b6bbb0"][i % 4];
+      stoneAt(g, rnd, x, y, 36 + rnd() * 6, 22 + rnd() * 4, c, a);
+    }
+    for (let i = 0; i < 90; i++) {
+      const a = rnd() * Math.PI * 2,
+        x = POND.x + Math.cos(a) * (POND.rx + 10 + (rnd() - 0.5) * 16),
+        y = POND.y + Math.sin(a) * (POND.ry + 8 + (rnd() - 0.5) * 10);
+      g.fillStyle = rnd() < 0.5 ? "rgba(90,140,70,.55)" : "rgba(130,175,90,.5)";
       g.beginPath();
-      g.ellipse(x, y + 3, 18, 11, a, 0, 7);
+      g.ellipse(x, y, 3 + rnd() * 3, 1.6 + rnd() * 1.2, a, 0, 7);
       g.fill();
-      g.fillStyle = c;
-      g.beginPath();
-      g.ellipse(x, y, 17, 10, a, 0, 7);
-      g.fill();
+    }
+    for (let i = 0; i < 40; i++) {
+      const a = rnd() * Math.PI * 2;
+      tuft(
+        g,
+        rnd,
+        POND.x + Math.cos(a) * (POND.rx + 24),
+        POND.y + Math.sin(a) * (POND.ry + 18),
+        0.8 + rnd() * 0.4,
+      );
     }
     // runway floor & catwalk
     g.fillStyle = "rgba(10,5,25,.5)";
@@ -773,6 +1004,98 @@ export function openPlaza(options) {
     fw.addColorStop(1, "#2a1f4c");
     g.fillStyle = fw;
     g.fillRect(WALK.x0, WALK.y0 - 1, WALK.x1 - WALK.x0, WALK.y1 - WALK.y0 + 1);
+    {
+      // The stage dressed for a show: lacquered boards with a sheen, a gold
+      // star in a ring at its centre, and a pink carpet down the catwalk
+      // with gold piping. (It was a bare purple floor.)
+      const sw = STAGE.x1 - STAGE.x0,
+        sh = STAGE.y1 - STAGE.y0,
+        scx = (STAGE.x0 + STAGE.x1) / 2,
+        scy = (STAGE.y0 + STAGE.y1) / 2;
+      g.save();
+      g.beginPath();
+      g.rect(STAGE.x0, STAGE.y0, sw, sh);
+      g.clip();
+      g.strokeStyle = "rgba(10,6,24,.35)";
+      g.lineWidth = 1;
+      for (let y = STAGE.y0 + 11, r = 0; y < STAGE.y1; y += 11, r++) {
+        g.beginPath();
+        g.moveTo(STAGE.x0, y);
+        g.lineTo(STAGE.x1, y);
+        g.stroke();
+        for (let x = STAGE.x0 + ((r * 53) % 90); x < STAGE.x1; x += 90) {
+          g.beginPath();
+          g.moveTo(x, y - 11);
+          g.lineTo(x, y);
+          g.stroke();
+        }
+      }
+      // The sheen: a soft diagonal band of light across the boards.
+      const sg = g.createLinearGradient(STAGE.x0, STAGE.y0, STAGE.x1, STAGE.y1);
+      sg.addColorStop(0.25, "rgba(255,255,255,0)");
+      sg.addColorStop(0.42, "rgba(255,220,255,.12)");
+      sg.addColorStop(0.5, "rgba(255,255,255,.04)");
+      sg.addColorStop(0.62, "rgba(255,220,255,.1)");
+      sg.addColorStop(0.8, "rgba(255,255,255,0)");
+      g.fillStyle = sg;
+      g.fillRect(STAGE.x0, STAGE.y0, sw, sh);
+      g.restore();
+      // The star in its ring (flattened: the floor is seen at a slant).
+      g.save();
+      g.translate(scx, scy + 4);
+      g.scale(1, 0.5);
+      g.strokeStyle = "rgba(255,214,91,.75)";
+      g.lineWidth = 4;
+      g.beginPath();
+      g.arc(0, 0, 70, 0, 7);
+      g.stroke();
+      g.lineWidth = 1.5;
+      g.beginPath();
+      g.arc(0, 0, 80, 0, 7);
+      g.stroke();
+      const star = (r0, r1) => {
+        g.beginPath();
+        for (let i = 0; i < 10; i++) {
+          const a = -Math.PI / 2 + (i * Math.PI) / 5,
+            r = i % 2 ? r1 : r0;
+          g.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+        }
+        g.closePath();
+      };
+      star(56, 23);
+      const st = g.createLinearGradient(0, -56, 0, 56);
+      st.addColorStop(0, "#fff1a8");
+      st.addColorStop(1, "#e0a020");
+      g.fillStyle = st;
+      g.fill();
+      g.strokeStyle = "#8a5a10";
+      g.lineWidth = 2;
+      g.stroke();
+      g.restore();
+      // The catwalk's carpet.
+      const cw = 40,
+        cx0 = (WALK.x0 + WALK.x1) / 2 - cw / 2;
+      const cg = g.createLinearGradient(cx0, 0, cx0 + cw, 0);
+      cg.addColorStop(0, "#d04a8a");
+      cg.addColorStop(0.5, "#ff7fb8");
+      cg.addColorStop(1, "#d04a8a");
+      g.fillStyle = cg;
+      g.fillRect(cx0, STAGE.y1, cw, WALK.y1 - STAGE.y1);
+      g.fillStyle = "#ffd65b";
+      g.fillRect(cx0 - 2, STAGE.y1, 2, WALK.y1 - STAGE.y1);
+      g.fillRect(cx0 + cw, STAGE.y1, 2, WALK.y1 - STAGE.y1);
+      g.fillStyle = "rgba(255,255,255,.18)";
+      for (let y = STAGE.y1 + 8; y < WALK.y1 - 6; y += 16)
+        g.fillRect(cx0 + 6, y, cw - 12, 2);
+      // Steps up at both ends of the stage's front.
+      for (const sx of [STAGE.x0 + 30, STAGE.x1 - 90])
+        for (let k = 0; k < 2; k++) {
+          g.fillStyle = k ? "#3d2d6e" : "#2a1f4c";
+          g.fillRect(sx, STAGE.y1 + 18 + k * 9, 60, 9);
+          g.fillStyle = "rgba(255,214,91,.6)";
+          g.fillRect(sx, STAGE.y1 + 18 + k * 9, 60, 1.5);
+        }
+    }
     g.strokeStyle = "#ffd65b";
     g.lineWidth = 3;
     g.strokeRect(STAGE.x0, STAGE.y0, STAGE.x1 - STAGE.x0, STAGE.y1 - STAGE.y0);
@@ -782,20 +1105,25 @@ export function openPlaza(options) {
     g.lineTo(WALK.x1, WALK.y1);
     g.lineTo(WALK.x1, WALK.y0);
     g.stroke();
-    for (let x = STAGE.x0 + 14; x < STAGE.x1; x += 26) {
-      g.fillStyle = "#fff4c2";
+    // Bulbs: warm white along the stage's front, pink down the catwalk.
+    // The two rows used to meet where the catwalk joins the stage, white
+    // and pink mixed (STAGE_BULBS, WALK_BULBS keep them apart).
+    const bulb = (x, y, r, c) => {
+      g.fillStyle = "#15102a";
       g.beginPath();
-      g.arc(x, STAGE.y1 + 9, 3, 0, 7);
+      g.arc(x, y + 0.6, r + 1.6, 0, 7);
       g.fill();
-    }
-    for (let y = WALK.y0 + 14; y < WALK.y1; y += 24) {
-      g.fillStyle = "#ff9bd2";
-      [WALK.x0 + 8, WALK.x1 - 8].forEach((x) => {
-        g.beginPath();
-        g.arc(x, y, 2.6, 0, 7);
-        g.fill();
-      });
-    }
+      g.fillStyle = c;
+      g.beginPath();
+      g.arc(x, y, r, 0, 7);
+      g.fill();
+      g.fillStyle = "rgba(255,255,255,.85)";
+      g.beginPath();
+      g.arc(x - r * 0.35, y - r * 0.35, r * 0.35, 0, 7);
+      g.fill();
+    };
+    for (const [x, y] of STAGE_BULBS) bulb(x, y, 3, "#fff4c2");
+    for (const [x, y] of WALK_BULBS) bulb(x, y, 2.6, "#ff9bd2");
     // photo spot pad
     // (On the landing's stones, so a warm outline that shows on them.)
     g.fillStyle = "rgba(255,255,255,.14)";
@@ -807,49 +1135,147 @@ export function openPlaza(options) {
     g.lineWidth = 2.5;
     g.stroke();
     g.setLineDash([]);
-    // garden strip beyond the gate
+    // The flower border along the south fence. (It was rows of vegetable
+    // beds, left from the Farm that has gone: now a park's flower walk, a
+    // trimmed box hedge with beds of tulips in drifts of one colour.)
     g.fillStyle = "#5fa444";
     g.fillRect(0, GATE.y + 20, W, H - GATE.y - 20);
-    for (let r = 0; r < 2; r++)
-      for (let x = 80; x < W - 60; x += 150) {
-        if (Math.abs(x + 55 - GATE.x) < 170) continue;
-        g.fillStyle = "#7a5534";
+    {
+      const y0 = GATE.y + 34,
+        y1 = H - 8;
+      const BLOOM = [
+        ["#ff6f9a", "#ffd0de"],
+        ["#ffd65b", "#fff4b8"],
+        ["#ffffff", "#ffe9f2"],
+        ["#c47dff", "#ecd6ff"],
+        ["#ff8a3d", "#ffd2a8"],
+        ["#4fb3ff", "#d3ecff"],
+      ];
+      for (let x = 30, k = 0; x < W - 30; k++) {
+        const w = 150 + ((k * 37) % 60);
+        if (Math.abs(x + w / 2 - GATE.x) < 110 + w / 2) {
+          x += 40;
+          continue;
+        }
+        // The bed: dark soil inside a clipped box edge.
+        g.fillStyle = "#3f8a37";
         g.beginPath();
-        g.roundRect(x, GATE.y + 42 + r * 30, 110, 20, 8);
+        g.roundRect(x - 6, y0 - 6, w + 12, y1 - y0 + 12, 14);
         g.fill();
-        for (let k = 0; k < 5; k++) {
-          g.fillStyle = "#3f8f3a";
+        g.fillStyle = "#6a4a2c";
+        g.beginPath();
+        g.roundRect(x, y0, w, y1 - y0, 10);
+        g.fill();
+        g.fillStyle = "rgba(255,255,255,.08)";
+        for (let i = 0; i < 40; i++)
+          g.fillRect(x + rnd() * w, y0 + rnd() * (y1 - y0), 2, 2);
+        // Box hedge highlights along its top edge.
+        g.fillStyle = "#5fb34c";
+        for (let hx = x; hx < x + w; hx += 12) {
           g.beginPath();
-          g.arc(x + 11 + k * 22, GATE.y + 46 + r * 30, 7, 0, 7);
-          g.fill();
-          g.fillStyle = "#8fdc66";
-          g.beginPath();
-          g.arc(x + 9 + k * 22, GATE.y + 44 + r * 30, 4, 0, 7);
+          g.arc(hx + 6, y0 - 4, 5, 0, 7);
           g.fill();
         }
+        // Tulips: leaves, then a cup of petals, in rows staggered.
+        const [c, hi] = BLOOM[k % BLOOM.length];
+        for (let ty = y0 + 12, row = 0; ty < y1 - 4; ty += 14, row++)
+          for (let tx = x + 10 + (row % 2) * 8; tx < x + w - 8; tx += 16) {
+            const jx = (rnd() - 0.5) * 4,
+              jy = (rnd() - 0.5) * 3;
+            g.fillStyle = "#3f9a3a";
+            g.beginPath();
+            g.ellipse(tx + jx - 3, ty + jy + 2, 2, 5, -0.5, 0, 7);
+            g.ellipse(tx + jx + 3, ty + jy + 2, 2, 5, 0.5, 0, 7);
+            g.fill();
+            g.fillStyle = c;
+            g.beginPath();
+            g.moveTo(tx + jx - 4.5, ty + jy - 6);
+            g.lineTo(tx + jx - 2, ty + jy - 3);
+            g.lineTo(tx + jx, ty + jy - 7);
+            g.lineTo(tx + jx + 2, ty + jy - 3);
+            g.lineTo(tx + jx + 4.5, ty + jy - 6);
+            g.quadraticCurveTo(tx + jx + 5, ty + jy + 1, tx + jx, ty + jy + 1);
+            g.quadraticCurveTo(
+              tx + jx - 5,
+              ty + jy + 1,
+              tx + jx - 4.5,
+              ty + jy - 6,
+            );
+            g.fill();
+            g.fillStyle = hi;
+            g.fillRect(tx + jx - 2.5, ty + jy - 4, 1.5, 3);
+          }
+        x += w + 26;
       }
+    }
+    // The south fence: pickets with pointed tops, lit on their left, each
+    // throwing a short shadow down-right, and two rails with a lit top
+    // edge and grain.
     for (let x = 10; x < W; x += 30) {
       if (Math.abs(x - GATE.x) < 72) continue;
-      g.fillStyle = "#9a6a3a";
+      g.fillStyle = "rgba(30,50,20,.28)";
       g.beginPath();
-      g.roundRect(x, GATE.y + 2, 10, 28, 3);
+      g.ellipse(x + 9, GATE.y + 31, 8, 3, 0, 0, 7);
       g.fill();
-      g.fillStyle = "#c48a4a";
-      g.fillRect(x, GATE.y + 2, 10, 4);
+      const picket = () => {
+        g.beginPath();
+        g.moveTo(x, GATE.y + 30);
+        g.lineTo(x, GATE.y + 4);
+        g.lineTo(x + 5, GATE.y - 2);
+        g.lineTo(x + 10, GATE.y + 4);
+        g.lineTo(x + 10, GATE.y + 30);
+        g.closePath();
+      };
+      picket();
+      g.fillStyle = "#8f6034";
+      g.fill();
+      g.fillStyle = "#b57d45";
+      g.fillRect(x + 1, GATE.y + 4, 5, 26);
+      g.fillStyle = "rgba(255,228,180,.55)";
+      g.fillRect(x + 1, GATE.y + 4, 1.4, 26);
+      g.strokeStyle = "#5e3c1e";
+      g.lineWidth = 1;
+      picket();
+      g.stroke();
+      g.strokeStyle = "rgba(94,60,30,.4)";
+      g.beginPath();
+      g.moveTo(x + 6.5, GATE.y + 8);
+      g.lineTo(x + 6, GATE.y + 26);
+      g.stroke();
     }
-    g.fillStyle = "#b07a42";
-    g.fillRect(0, GATE.y + 10, GATE.x - 72, 5);
-    g.fillRect(GATE.x + 72, GATE.y + 10, W - GATE.x - 72, 5);
-    g.fillRect(0, GATE.y + 21, GATE.x - 72, 4);
-    g.fillRect(GATE.x + 72, GATE.y + 21, W - GATE.x - 72, 4);
+    for (const [x0, x1] of [
+      [0, GATE.x - 72],
+      [GATE.x + 72, W],
+    ])
+      for (const ry of [GATE.y + 10, GATE.y + 21]) {
+        g.fillStyle = "#8f6034";
+        g.fillRect(x0, ry, x1 - x0, 5);
+        g.fillStyle = "#c48a4a";
+        g.fillRect(x0, ry, x1 - x0, 2);
+        g.fillStyle = "rgba(60,40,20,.25)";
+        g.fillRect(x0, ry + 5, x1 - x0, 1.5);
+        g.strokeStyle = "rgba(94,60,30,.35)";
+        g.lineWidth = 0.7;
+        g.beginPath();
+        for (let gx = x0 + 12; gx < x1; gx += 47) {
+          g.moveTo(gx, ry + 3.2);
+          g.lineTo(gx + 16, ry + 3.4);
+        }
+        g.stroke();
+      }
     // The river bank's verge and railing along the north edge, and the
     // world past the edges.
     paintVerge(g);
     paintSurroundings(g);
     g.setTransform(1, 0, 0, 1, 0, 0);
   }
+  /** The map board's small picture of the Plaza: made once, with the
+   * ground, while the Plaza opens (scaling the whole ground down is the
+   * costly part, too slow to do mid-frame on a slow phone). */
+  let boardPic = null;
   function prep() {
     paintBg();
+    boardPic = paintPlazaMap(bg, GM, 264);
     ready = true;
   }
 
@@ -913,6 +1339,27 @@ export function openPlaza(options) {
     id === meId ? P.name : (profiles.get(id)?.name ?? "Someone");
   const imgOf = (id) => (id === meId ? P.img : (others.get(id)?.img ?? P.img));
   const BODIES = () => [P, ...others.values()];
+  /** Who draws a skin's ambient particles this frame (pickFullFx). */
+  const FULL_FX_NEAREST = 5;
+  let fullFx = new Set();
+  function pickFullFx() {
+    const near = [...others.values()]
+      .map((b) => [Math.hypot(b.x - P.x, b.y - P.y), b])
+      .sort((a, b) => a[0] - b[0])
+      .slice(0, FULL_FX_NEAREST)
+      .map((e) => e[1]);
+    fullFx = new Set([P, ...near]);
+  }
+  /** Entrances play for who arrives while you're here, not for everyone
+   *  already in the Plaza when you join (a burst for the whole crowd). */
+  const enteredAt = performance.now();
+  const ARRIVAL_MS = 4000;
+  function greetArrival(b) {
+    if (b.greeted || performance.now() > (b.arrived ?? 0) + ARRIVAL_MS) return;
+    if (!b.entrance && !b.skin?.skin) return;
+    b.greeted = true;
+    greetWearer(b);
+  }
   /** The server's latest position for you, to correct the prediction. */
   let srv = null;
   /** Your sticks, jumps and dashes go out numbered and timed on this clock
@@ -939,17 +1386,35 @@ export function openPlaza(options) {
     spin: 0,
     lock: 0,
   };
+  /** Smooth others and a ball you can kick at once (plaza-net.ts). */
+  const net = {
+    clock: new ServerClock(),
+    tracks: new Map(),
+    ball: null,
+    /** The last network lag measured (ms): a phone's usual until then. */
+    lag: 150,
+  };
   let score = [0, 0];
   const FX = [];
-  const DUCKS = ["drake", "hen", "hen", "drake"].map((k, i) => ({
-    k,
-    a: i * 1.6,
-    s: (0.1 + i * 0.02) * (i % 2 ? 1 : -1),
+  /** The fishing line's run (rod tip to bobber), and how far east of the
+   * bobber the ducks' paths end (a duck's half width and the ripples). */
+  const LINE_ZONE = fishingLineZone(),
+    DUCK_CLEAR = 75;
+  /** Two ducks, a drake and a hen (owner: four kept swimming over each
+   * other). They go round together, half a turn apart on paths of
+   * different sizes, so they never meet; when one stops to dabble both
+   * slow down, keeping the gap. */
+  const DUCKS = [
+    { k: "drake", off: 0, r: 0.54 },
+    { k: "hen", off: Math.PI, r: 0.42 },
+  ].map((d) => ({
+    ...d,
+    a: d.off,
+    s: 0.12,
     x: 0,
     y: 0,
     face: 1,
     dab: 0,
-    r: 0.4 + (i % 2) * 0.25,
   }));
   const FISH = [0, 1, 2].map((i) => ({
     a: i * 2,
@@ -959,23 +1424,21 @@ export function openPlaza(options) {
     jump: 0,
     c: ["#ff8a3d", "#ffffff", "#ffd65b"][i],
   }));
-  const HENS = ["white", "brown", "white"].map((k, i) => ({
-    k,
-    x: GATE.x - 220 + i * 190,
-    y: GATE.y - 100 + i * 18,
-    tx: null,
-    ty: null,
-    wait: 1 + i,
-    face: 1,
-    st: "idle",
-    t0: 0,
-  }));
   const PIGEONS = Array.from({ length: 9 }, (_, i) => {
     const a = i * 0.7 + 1,
-      r = 0.35 + (i % 3) * 0.18;
+      r = 0.35 + (i % 3) * 0.18,
+      x = SQ.x + Math.cos(a) * SQ.rx * r;
+    let y = SQ.y + Math.sin(a) * SQ.ry * r + 30;
+    // Never placed in the fountain's basin (one of the nine was, and only
+    // stepped out on its first update: on a slow first frame it stood in
+    // the water). The same ellipse as inFount, with a margin.
+    const fy = FOUNT.y + FOUNT.wall / 2,
+      fry = FOUNT.ry + FOUNT.wall / 2 + 16;
+    if (((x - FOUNT.x) / (FOUNT.rx + 16)) ** 2 + ((y - fy) / fry) ** 2 < 1)
+      y = FOUNT.y + FOUNT.wall + FOUNT.ry + 24;
     return {
-      x: SQ.x + Math.cos(a) * SQ.rx * r,
-      y: SQ.y + Math.sin(a) * SQ.ry * r + 30,
+      x,
+      y,
       z: 0,
       st: "idle",
       face: i % 2 ? 1 : -1,
@@ -1026,8 +1489,7 @@ export function openPlaza(options) {
     low = true;
     layer.dataset.graphics = "low";
     syncHubGraphics();
-    for (const list of [DUCKS, FISH, HENS, PIGEONS, BUTTER, SMOKE])
-      list.length = 0;
+    for (const list of [DUCKS, FISH, PIGEONS, BUTTER, SMOKE]) list.length = 0;
     flock = null;
     // Redraw at 1x (before the first resize, that sizes it anyway).
     if (sized) resize();
@@ -1107,34 +1569,62 @@ export function openPlaza(options) {
 
   /* ---------- Plaza today (quests) and TOP DASH, from the server ---------- */
   let progress = null;
-  const qmin = { desk: false, phone: true };
-  const qk = () => (layer.classList.contains("phone") ? "phone" : "desk");
+  /**
+   * Plaza today: a round button, as the Lobby rail's Missions, with the
+   * quests still to do on a blue badge and the day's progress as a ring
+   * round it. A tap opens the list over it, wide enough that a quest reads
+   * on one line, its progress and coins beside it; a row still to do walks
+   * you to its place (owner, 22 Nov: the folded pill and its narrow rows
+   * broke quests over three lines).
+   */
+  let questsOpen = false;
   function renderQuests() {
     const box = $("pz-quests");
     const q = progress?.quests;
+    const total = PLAZA_QUESTS.length;
     const done = q ? PLAZA_QUESTS.filter((x) => q[x.id]?.done).length : 0;
-    box.className = `pz-quests glass${qmin[qk()] ? " min" : ""}`;
+    const left = PLAZA_QUESTS.filter((x) => !q?.[x.id]?.done).reduce(
+      (a, x) => a + x.coins,
+      0,
+    );
+    const todo = total - done;
+    box.classList.toggle("open", questsOpen);
+    const rows = PLAZA_QUESTS.map((x) => {
+      const n = Math.min(q?.[x.id]?.n ?? 0, x.max),
+        paid = !!q?.[x.id]?.done,
+        place = plazaPlaceOf(x.id),
+        shown = paid ? x.max : n;
+      const inner = `<span class="ic" aria-hidden="true">${I(place?.icon ?? "star")}</span><span class="tx"><b>${esc(x.text)}</b><span class="pg"><span class="bar"><i style="width:${(shown / x.max) * 100}%"></i></span><small>${shown}/${x.max}</small></span></span><span class="rw">${paid ? `<span class="ok">✓</span>` : `+${x.coins}${I("coin", "coin")}`}</span>`;
+      // Go: walk to where it is done (the map's places, shared data).
+      return place && !paid
+        ? `<li class="pz-q"><button type="button" class="row" data-go="${place.id}" aria-label="${esc(x.text)}, ${shown} of ${x.max}, ${x.coins} coins. Go to ${esc(place.name)}">${inner}<i class="go" aria-hidden="true"></i></button></li>`
+        : `<li class="pz-q${paid ? " done" : ""}"><div class="row">${inner}</div></li>`;
+    }).join("");
     setInner(
       box,
-      `<h5><span>Plaza today · ${done}/${PLAZA_QUESTS.length}</span><button type="button" data-qmin aria-label="${qmin[qk()] ? "Expand" : "Collapse"}">${qmin[qk()] ? "▾" : "▴"}</button></h5>${PLAZA_QUESTS.map(
-        (x) => {
-          const n = q?.[x.id]?.n ?? 0,
-            paid = q?.[x.id]?.done;
-          return `<div class="pz-q${paid ? " done" : ""}"><span>${x.text}</span><span class="rw">${paid ? "✓" : `+${x.coins} ${I("coin", "coin")}`}</span><span class="bar"><i style="width:${(Math.min(n, x.max) / x.max) * 100}%"></i></span></div>`;
-        },
-      ).join("")}`,
+      `<button type="button" class="pz-round pz-qbtn" data-qopen aria-expanded="${questsOpen}" aria-controls="pz-qpanel" aria-label="Plaza today, ${done} of ${total} done${left ? `, ${left} coins to earn` : ""}" title="Plaza today"><i class="pz-qring" style="--p:${done / total}" aria-hidden="true"></i>${I("quests")}<small>Today</small><b class="pz-qbadge${todo ? "" : " ok"}" aria-hidden="true">${todo || "✓"}</b></button><section class="pz-qpanel glass" id="pz-qpanel" aria-label="Plaza today"${questsOpen ? "" : " hidden"}><header><h5><span class="t">Plaza today</span><span class="n">${done}/${total}</span></h5>${left ? `<span class="c">+${left}${I("coin", "coin")}<small>to earn</small></span>` : `<span class="c ok">All done</span>`}<button type="button" class="x" data-qclose aria-label="Close Plaza today">✕</button></header><ul class="pz-qlist">${rows}</ul></section>`,
     );
   }
+  function showQuests(on = !questsOpen) {
+    if (questsOpen === on) return;
+    questsOpen = on;
+    renderQuests();
+    if (on) toggleWheel(false);
+  }
   $("pz-quests").addEventListener("click", (e) => {
-    if (e.target.closest("[data-qmin]")) {
-      qmin[qk()] = !qmin[qk()];
-      renderQuests();
+    if (e.target.closest("[data-qopen]")) showQuests();
+    else if (e.target.closest("[data-qclose]")) showQuests(false);
+    const go = e.target.closest("[data-go]");
+    if (go) {
+      showQuests(false);
+      goToPlace(go.dataset.go);
     }
   });
   function setProgress(p) {
     if (!p?.quests) return;
     const before = progress;
     progress = p;
+    if (typeof p.gifts === "number") setGifts(p.gifts);
     let paid = false;
     if (before)
       for (const x of PLAZA_QUESTS)
@@ -1146,9 +1636,30 @@ export function openPlaza(options) {
           pzToast(`+${x.coins} coins`);
           paid = true;
         }
+    // Fishing: a first catch pays coins once; the whole book earns a title.
+    if (before) {
+      for (const f of PLAZA_FISH)
+        if (
+          p.fishBook?.[f.id] !== undefined &&
+          before.fishBook?.[f.id] === undefined
+        ) {
+          const c = PLAZA_FISH_RARITY[f.rarity].firstCoins;
+          feed(
+            null,
+            `First catch: <b>${esc(f.name)}</b> · +${c} ${I("coin", "coin")}`,
+          );
+          paid = true;
+        }
+      if (p.fishTitle && !before.fishTitle) {
+        feed(null, `Title earned: <b>${esc(PLAZA_FISH_TITLE.name)}</b>`);
+        pzToast(`Fish book complete! Title earned: ${PLAZA_FISH_TITLE.name}`);
+      }
+    }
     // Quests pay coins on the server: the top bar's balance follows.
     if (paid) options.onCoins?.();
     renderQuests();
+    if (fishing.active) renderFishHud();
+    if (!$("pz-fishbook").hidden) renderFishBook();
   }
   socket.on("plaza-progress", setProgress);
   const bestLap = () =>
@@ -1179,6 +1690,12 @@ export function openPlaza(options) {
   socket.on("plaza-news", onNews);
   function onNews(n) {
     const who = n.id === meId ? "You" : `<b>${esc(n.name)}</b>`;
+    // Scoring and finishing a lap play the Victory slot (and the skin's
+    // celebration), as winning a match does.
+    if (n.kind === "goal" || n.kind === "lap") {
+      const b = n.id === meId ? P : others.get(n.id);
+      if (b) cheerWearer(b, performance.now());
+    }
     if (n.kind === "goal") {
       FX.push({ text: "GOAL!", x: ball.x, y: ball.y - 50, t: 0, life: 1.5 });
       burst(
@@ -1211,20 +1728,37 @@ export function openPlaza(options) {
       feed(n.id, `${who} hit the runway`);
   }
 
-  /* ---------- zoom: pinch, the wheel, + and − ---------- */
+  /* ---------- zoom: pinch (tablets), the wheel, + and − ---------- */
   /** The player's zoom against the usual one (kept on this device). */
   let zoomF = 1;
+  /** The zoom the player chose, and fishing mode's extra on top of it. */
+  let zBase = 1,
+    fz = 1;
   try {
     zoomF = Number(localStorage.getItem("ea-plaza-zoom")) || 1;
   } catch {
     /* no storage */
   }
+  /** Phones always show the usual zoom (plazaZoomable); a zoom kept from
+   *  before is left in storage but not used there. */
+  const zoomable = () =>
+    plazaZoomable(matchMedia("(pointer: coarse)").matches, NW, NH);
   function setZoom(f, keep = true) {
+    if (!zoomable()) {
+      // Fishing's frame stays on top (fz), so turning a phone mid-fishing
+      // keeps the fishing zoom.
+      zBase = plazaZoomAt(NW, NH, 1);
+      Z = zBase * fz;
+      cam = plazaCamClamp(cam.x, cam.y, NW, NH, Z);
+      return;
+    }
     const r = plazaZoomRange(NW, NH);
-    Z = plazaZoomAt(NW, NH, f);
+    zBase = plazaZoomAt(NW, NH, f);
     // What was asked for past a limit is not kept: a wider screen later
     // starts from what was really shown.
-    zoomF = Z / r.base;
+    zoomF = zBase / r.base;
+    // Fishing mode's frame on top (fz eases to fishingFrame's zoom).
+    Z = zBase * fz;
     // Inside at once (the camera eases after this): zooming or resizing
     // never shows past what is painted.
     cam = plazaCamClamp(cam.x, cam.y, NW, NH, Z);
@@ -1252,7 +1786,7 @@ export function openPlaza(options) {
     return Math.hypot(a.x - b.x, a.y - b.y);
   };
   cv.addEventListener("pointerdown", (e) => {
-    if (e.pointerType !== "touch") return;
+    if (e.pointerType !== "touch" || !zoomable()) return;
     fingers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (fingers.size === 2) {
       pinchFrom = spread();
@@ -1282,6 +1816,9 @@ export function openPlaza(options) {
   function onKey(e) {
     if (!running) return;
     if (e.target.closest && e.target.closest("input, textarea, select")) return;
+    // A hub screen over the Plaza (your card) keeps its keys: Space presses
+    // its buttons, Escape closes it.
+    if (e.target.closest && e.target.closest(".ui-panel-host")) return;
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     const k = e.key.toLowerCase();
     const albumOpen = !$("pz-album").hidden,
@@ -1304,6 +1841,49 @@ export function openPlaza(options) {
     if (albumOpen) {
       if (k === "escape") albumBack();
       else if (k === "tab") keepTabInAlbum(e);
+      return;
+    }
+    if (mapOpen()) {
+      if (k === "escape" || k === "m") hideMap();
+      return;
+    }
+    // Esc folds Plaza today away (walking keys still walk).
+    if (questsOpen && k === "escape") {
+      showQuests(false);
+      return;
+    }
+    if (!$("pz-fishbook").hidden) {
+      if (k === "escape") hideFishBook();
+      else if (k === "tab") {
+        // Its only button: Tab stays on it, not on the HUD behind.
+        e.preventDefault();
+        $("pz-fishbook").querySelector('[data-fb="close"]').focus();
+      }
+      return;
+    }
+    // Fishing mode: its own keys. E, Space or Enter casts and reels; Esc
+    // or a step leaves.
+    if (fishing.active) {
+      if (!onButton) e.preventDefault();
+      if (e.repeat) return;
+      if (k === "e" || k === " " || k === "enter") {
+        if (fishing.phase === "fight") fishing.hold(true);
+        else fishing.act();
+      } else if (
+        [
+          "escape",
+          "w",
+          "a",
+          "s",
+          "d",
+          "arrowup",
+          "arrowdown",
+          "arrowleft",
+          "arrowright",
+        ].includes(k)
+      )
+        exitFishing();
+      else if (k === "b") showFishBook();
       return;
     }
     if (photoOpen) {
@@ -1331,16 +1911,25 @@ export function openPlaza(options) {
     )
       return;
     keys.add(k);
-    target = null;
+    // A movement key takes back a walk that Go or a click started; jumping,
+    // dashing, emotes and gift boxes don't.
+    if (MOVE_KEYS.includes(k)) cancelWalk();
     if (k === " ") jump();
     if (k === "shift" || k === "j") dash();
     if (k === "e") interact();
     if (k === "q") toggleWheel();
-    if (k === "t") throwTreat();
+    if (k === "t") tossGift();
+    if (k === "m") showMap();
+    if (k === "b") showFishBook();
     if ("12345678".includes(k) && k.length === 1) emote(EMOTE_KEYS[+k - 1]);
   }
   screen.addEventListener("keydown", onKey);
-  screen.addEventListener("keyup", (e) => keys.delete(e.key.toLowerCase()));
+  screen.addEventListener("keyup", (e) => {
+    const k = e.key.toLowerCase();
+    keys.delete(k);
+    // Letting go of the reel key in a fight gives line.
+    if (k === "e" || k === " " || k === "enter") fishing.hold(false);
+  });
   screen.addEventListener("blur", () => keys.clear());
   function start() {
     $("pz-start").hidden = true;
@@ -1382,17 +1971,15 @@ export function openPlaza(options) {
   });
   onPress($("pz-treat"), () => {
     start();
-    throwTreat();
+    tossGift();
     screen.focus({ preventScroll: true });
   });
-  $("pz-wheel-btn").onclick = () => {
-    start();
-    toggleWheel();
-  };
   $("pz-album-btn").onclick = () => {
     start();
     showAlbum();
   };
+  // The Fish book opens from fishing's Book (or with B): the map's and
+  // the HUD's buttons went, to keep the screens short (owner, 22 Nov).
   $("pz-wheel").addEventListener("click", (e) => {
     const b = e.target.closest("[data-emote]");
     if (b) {
@@ -1401,33 +1988,21 @@ export function openPlaza(options) {
       screen.focus({ preventScroll: true });
     }
   });
+  /**
+   * The emote wheel, from Q (or 1-8 straight away) on a keyboard. Touch
+   * screens send emotes from the Chat button's quick chips: the wheel's
+   * own Chat button went to keep the row over Dash short and to lead
+   * players to the one chat (owner, 22 Nov). It opens over you.
+   */
   function toggleWheel(on) {
     const w = $("pz-wheel"),
       show = on ?? w.hidden;
     w.hidden = !show;
-    // The Emote button lights up while its wheel is open (plaza.css).
-    $("pz-wheel-btn").setAttribute("aria-expanded", String(show));
     if (show) {
-      const r = $("pz-wheel-btn").getBoundingClientRect(),
-        sr = $("pz").querySelector(".pz-hud").getBoundingClientRect();
-      if (layer.classList.contains("phone")) {
-        // Phones: the Emote button sits in the row over Jump, right of
-        // the stage, and above it a 360-430px screen has no room for the
-        // wheel (it ran up over the coins, the gear and the clock). It
-        // opens left of that row instead, by the thumb, kept under the
-        // header's row and above the screen's bottom edge.
-        const row = layer.querySelector(".pz-left").getBoundingClientRect(),
-          rad = (220 * 0.85) / 2,
-          top =
-            document.getElementById("account-profile")?.getBoundingClientRect()
-              .bottom ?? sr.top + 52,
-          cy = row.top + row.height / 2 - sr.top;
-        w.style.left = `${row.left - sr.left - 10 - rad}px`;
-        w.style.top = `${Math.min(sr.height - 8 - rad, Math.max(top - sr.top + 10 + rad, cy))}px`;
-        return;
-      }
-      w.style.left = `${Math.min(sr.width - 120, r.left + r.width / 2 - sr.left + 100)}px`;
-      w.style.top = `${Math.max(120, r.top - sr.top - 90)}px`;
+      const sr = $("pz").querySelector(".pz-hud").getBoundingClientRect(),
+        rad = 110;
+      w.style.left = `${sr.width / 2}px`;
+      w.style.top = `${Math.max(rad + 60, Math.min(sr.height - rad - 8, sr.height / 2 - 70))}px`;
     }
   }
   // A press anywhere outside the emote wheel or a player's card closes it
@@ -1437,11 +2012,13 @@ export function openPlaza(options) {
     "pointerdown",
     (e) => {
       const t = e.target,
-        wheel = !$("pz-wheel").hidden && !t.closest("#pz-wheel, #pz-wheel-btn"),
+        quests = questsOpen && !t.closest("#pz-quests"),
+        wheel = !$("pz-wheel").hidden && !t.closest("#pz-wheel"),
         card = !$("pz-card").hidden && !t.closest("#pz-card");
+      if (quests) showQuests(false);
       if (wheel) toggleWheel(false);
       if (card) hideCard();
-      if ((wheel || card) && t === cv) {
+      if ((quests || wheel || card) && t === cv) {
         e.stopPropagation();
         screen.focus({ preventScroll: true });
       }
@@ -1473,10 +2050,29 @@ export function openPlaza(options) {
       );
     if (who) return showCard(who);
     hideCard();
+    // Fishing: the playground doesn't take you anywhere (Leave does).
+    if (fishing.active) return;
     // A click walks you there, round whatever is in the way (plaza-path.ts).
     if (e.pointerType === "mouse") walkTo(w, true);
   });
   /** The rest of the way after `target`, and where it ends. */
+  const MOVE_KEYS = [
+    "w",
+    "a",
+    "s",
+    "d",
+    "arrowup",
+    "arrowdown",
+    "arrowleft",
+    "arrowright",
+  ];
+  /** Stop a walk Go or a click started: you're steering yourself now. */
+  function cancelWalk() {
+    target = null;
+    route = [];
+    routeEnd = null;
+    if (clickMark?.ok) clickMark = null;
+  }
   let route = [],
     routeEnd = null,
     replannedAt = 0;
@@ -1587,7 +2183,7 @@ export function openPlaza(options) {
     const card = $("pz-card");
     // Who they are: their avatar (docs/hidden-picks.md, "Avatars").
     const photo = photoIdOf(p.avatar);
-    card.innerHTML = `<div class="pc-h"><img class="pc-avatar" src="${avatarSrc(p.avatar)}" alt=""><div><b>${esc(p.name)}</b><small>${p.level ? `Lv ${p.level}` : ""}${p.title ? ` · <span style="color:${esc(p.titleColor ?? "#ffd65b")}">${esc(p.title)}</span>` : ""}</small></div><button type="button" class="x" data-pc="close" aria-label="Close">✕</button></div><div class="pc-acts"><button type="button" data-pc="friend">${iconLabel("add-friend", "Add friend")}</button><button type="button" data-pc="party">${iconLabel("friends", "Invite to party")}</button></div><div class="pc-acts pc-safety">${photo ? `<button type="button" data-pc="report-photo">${iconLabel("report", "Report picture")}</button>` : ""}<button type="button" data-pc="report">${iconLabel("report", "Report")}</button><button type="button" data-pc="block" class="pc-block">${iconLabel("block", "Block")}</button></div>`;
+    card.innerHTML = `<div class="pc-h"><img class="pc-avatar" src="${avatarSrc(p.avatar)}" alt=""><div><b>${esc(p.name)}</b><small>${p.level ? `Lv ${p.level}` : ""}${p.title ? ` · <span style="color:${esc(p.titleColor ?? "#ffd65b")}">${esc(p.title)}</span>` : ""}</small></div><button type="button" class="x" data-pc="close" aria-label="Close">✕</button></div><div class="pc-acts pc-pair">${PLAZA_PAIR_EMOTES.map((e) => `<button type="button" data-pc="pair" data-kind="${e.id}"><span class="pc-emo" aria-hidden="true">${e.icon}</span>${e.label}</button>`).join("")}</div><div class="pc-acts"><button type="button" data-pc="friend">${iconLabel("add-friend", "Add friend")}</button><button type="button" data-pc="party">${iconLabel("friends", "Invite to party")}</button></div><div class="pc-acts pc-safety">${photo ? `<button type="button" data-pc="report-photo">${iconLabel("report", "Report picture")}</button>` : ""}<button type="button" data-pc="report">${iconLabel("report", "Report")}</button><button type="button" data-pc="block" class="pc-block">${iconLabel("block", "Block")}</button></div>`;
     card.hidden = false;
   }
   function hideCard() {
@@ -1598,6 +2194,12 @@ export function openPlaza(options) {
     const b = e.target.closest("[data-pc]");
     if (!b) return;
     if (b.dataset.pc === "close" || !cardFor) return hideCard();
+    if (b.dataset.pc === "pair") {
+      askPair(cardFor.id, b.dataset.kind);
+      hideCard();
+      screen.focus({ preventScroll: true });
+      return;
+    }
     b.disabled = true;
     let close = false;
     try {
@@ -1627,6 +2229,9 @@ export function openPlaza(options) {
     ring.style.left = `${(e.clientX - r.left) / k}px`;
     ring.style.top = `${(e.clientY - r.top) / k}px`;
     knob.style.transform = "";
+    // How far the knob may go: half the ring, which is bigger on tablets
+    // (plaza.css --pz-joy). Read once per press, not per move.
+    joy.max = ring.offsetWidth / 2 || 55;
     try {
       joyEl.setPointerCapture(e.pointerId);
     } catch {
@@ -1638,10 +2243,13 @@ export function openPlaza(options) {
     const dx = (e.clientX - joy.ox) / joy.k,
       dy = (e.clientY - joy.oy) / joy.k,
       m = Math.hypot(dx, dy),
-      max = 55,
+      max = joy.max || 55,
       k = m > max ? max / m : 1;
     joy.x = (dx / max) * k;
     joy.y = (dy / max) * k;
+    // Moving the stick takes back a walk that Go or a tap started (it used
+    // to carry on toward it as soon as the stick was let go).
+    if (Math.hypot(joy.x, joy.y) > 0.2) cancelWalk();
     if (
       !Number.isFinite(joy.x) ||
       !Number.isFinite(joy.y) ||
@@ -1704,8 +2312,87 @@ export function openPlaza(options) {
   function showEmote(b, e) {
     b.emote = e;
     b.emoteT = PLAZA.emoteSeconds;
-    if (e === "💃") b.dance = 4;
+    if (e === "💃") {
+      b.dance = 4;
+      // A dance shows off the Victory slot (and the skin's celebration).
+      cheerWearer(b, performance.now());
+    }
   }
+  /* ---------- pair emotes (asked from a player's card) ---------- */
+  /** Play pair emote `pair` (PLAZA_PAIR_EMOTES) on body `b`. */
+  function startPair(b, pair) {
+    if (b.pairT > 0 && b.pairKind === pair.id) return;
+    b.pairKind = pair.id;
+    b.pairT = PLAZA_PAIR.playSeconds;
+    b.emote = pair.icon;
+    b.emoteT = PLAZA_PAIR.playSeconds;
+    b.dance = pair.id === "dance" ? PLAZA_PAIR.playSeconds : 0;
+    burst(b.x + b.face * 22, b.y, 70, pair.icon, low ? 2 : 4, null, 0.5);
+  }
+  function askPair(to, kind) {
+    const pair = PLAZA_PAIR_EMOTES.find((e) => e.id === kind);
+    if (!pair) return;
+    socket.timeout(5000).emit("plaza-pair-ask", { to, kind }, (err, r) => {
+      if (err) return pzToast("That didn't go through. Try again.");
+      if (!r?.ok) return pzToast(r?.error ?? "They can't be asked right now.");
+      pzToast(`Asked ${nameOf(to)} for a ${pair.label.toLowerCase()}…`);
+    });
+  }
+  /** A request to you: a small prompt, open for its few seconds. */
+  let askFrom = null,
+    askTimer = 0;
+  function hideAsk() {
+    askFrom = null;
+    clearTimeout(askTimer);
+    $("pz-ask").hidden = true;
+  }
+  const onPairAsk = (a) => {
+    const pair = PLAZA_PAIR_EMOTES.find((e) => e.id === a?.kind);
+    if (!pair || typeof a.from !== "number") return;
+    const acc = profiles.get(a.from)?.accountId;
+    if (acc && options.isBlocked?.(acc)) return;
+    askFrom = a.from;
+    const el = $("pz-ask");
+    el.innerHTML = `<span class="pa-emo" aria-hidden="true">${pair.icon}</span><p><b>${esc(a.name)}</b> wants a ${esc(pair.label.toLowerCase())}!</p><button type="button" data-pa="yes">Accept</button><button type="button" class="x" data-pa="no" aria-label="No thanks">✕</button>`;
+    el.hidden = false;
+    clearTimeout(askTimer);
+    askTimer = setTimeout(hideAsk, Math.max(1000, Math.min(a.ms || 0, 10_000)));
+  };
+  $("pz-ask").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-pa]");
+    if (!b || askFrom == null) return;
+    const yes = b.dataset.pa === "yes";
+    socket
+      .timeout(5000)
+      .emit("plaza-pair-answer", { from: askFrom, yes }, (err, r) => {
+        if (yes && (err || !r?.ok))
+          pzToast(
+            err
+              ? "That didn't go through."
+              : (r?.error ?? "That request has ended."),
+          );
+      });
+    hideAsk();
+    screen.focus({ preventScroll: true });
+  });
+  /** Both players: face each other and play it now (others see it in the next snapshot). */
+  const onPair = (m) => {
+    const pair = PLAZA_PAIR_EMOTES.find((e) => e.id === m?.kind);
+    if (!pair) return;
+    const body = (id) => (id === meId ? P : others.get(id));
+    const a = body(m.a),
+      b = body(m.b);
+    if (a && b) {
+      a.face = b.x >= a.x ? 1 : -1;
+      b.face = -a.face;
+    }
+    if (a) startPair(a, pair);
+    if (b) startPair(b, pair);
+  };
+  const onPairNo = (m) => pzToast(`${m?.name || "They"} said maybe later.`);
+  socket.on("plaza-pair-ask", onPairAsk);
+  socket.on("plaza-pair", onPair);
+  socket.on("plaza-pair-no", onPairNo);
   function burst(x, y, z, glyph, n = 12, color, spd = 1) {
     if (reduced) n = Math.ceil(n / 3);
     for (let i = 0; i < n; i++) {
@@ -1750,13 +2437,9 @@ export function openPlaza(options) {
       x: BOARD.x,
       y: BOARD.y + 30,
       r: 100,
-      label: "Event board",
-      icon: "clipboard",
-      act: () => {
-        qmin[qk()] = false;
-        renderQuests();
-        pzToast("Plaza quests are open");
-      },
+      label: "Plaza map",
+      icon: "map",
+      act: () => showMap(),
     },
     {
       id: "leader",
@@ -1778,48 +2461,308 @@ export function openPlaza(options) {
       },
     },
   ];
+  // Fishing at the pond (plaza-fishing.ts): a mode with its own buttons, the
+  // camera in close; the server picks the bite and the fish.
+  let catchTimer = 0;
+  const fishing = createFishing({
+    socket,
+    toast: pzToast,
+    low: () => low,
+    changed: () => renderFishHud(),
+    isNew: (f) => progress?.fishBook?.[f.id] === undefined,
+    caught: (f, first) => {
+      // Low graphics: the name only, no splash of particles.
+      if (!low)
+        burst(
+          PLAZA_FISHING.bobber.x,
+          PLAZA_FISHING.bobber.y,
+          20,
+          "●",
+          10,
+          f.color,
+        );
+      // The fish itself, drawn in full, for a moment over the Plaza.
+      const card = $("pz-catch");
+      // New to the book: its first-catch coins (the server pays them).
+      card.innerHTML = catchCard(f, first);
+      card.hidden = false;
+      clearTimeout(catchTimer);
+      catchTimer = setTimeout(() => (card.hidden = true), 2600);
+    },
+  });
+  const fightView = createFightView();
+  /** Where the fight's gauge stands: over the Leave button (measured once
+   * as the fight starts, never per frame). */
+  let fightRoom = { gx: 0, gy0: 0, gy1: 0 };
+  SPOTS.push({ ...FISH_SPOT, act: () => enterFishing() });
+  /** Walking out onto the dock for fishing: turn to the water on arrival. */
+  let toDock = false;
+  function enterFishing() {
+    if (fishing.active) return;
+    standStill();
+    toggleWheel(false);
+    hideCard();
+    showQuests(false);
+    fishing.enter();
+    // Out to the end of the dock (PLAZA_DOCK), as the camera comes in, so
+    // you fish from its planks rather than from wherever you pressed Fish.
+    const S = PLAZA_DOCK.stand;
+    if (Math.hypot(P.x - S.x, P.y - S.y) > 6) walkTo({ x: S.x, y: S.y });
+    toDock = true;
+    screen.focus({ preventScroll: true });
+  }
+  function exitFishing() {
+    fishing.exit();
+    screen.focus({ preventScroll: true });
+  }
+  /* ---------- busy: the update ask waits (pwa.ts) ---------- */
+  // Any of the Plaza's own screens open (map, album, Fish book, a player's
+  // card, the photo, a pair request) or fishing in any phase: the update
+  // ask would cover its buttons (a bite you can't reel in), so it waits,
+  // as it does for a Lobby screen. So it does while a lap's timer shows:
+  // the ask heads the row under the header (plaza.css), over the timer.
+  // Read from the DOM on a change, never per frame (so the per-frame
+  // updates write `hidden` only when it changes: each write was a change).
+  const BUSY_OPEN =
+    "[role=dialog]:not([hidden]), [role=alertdialog]:not([hidden])";
+  function syncBusy() {
+    const busy =
+      fishing.active ||
+      !!layer.querySelector(BUSY_OPEN) ||
+      !$("pz-timer").hidden;
+    if (layer.hasAttribute(HUB_BUSY_ATTR) === busy) return;
+    layer.toggleAttribute(HUB_BUSY_ATTR, busy);
+    document.dispatchEvent(new Event(HUB_BUSY_EVENT));
+  }
+  const busyWatch = new MutationObserver(syncBusy);
+  busyWatch.observe(layer, {
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["hidden"],
+  });
+  /** The fishing HUD, from the mode's phase (only when it changes). */
+  function renderFishHud() {
+    const on = fishing.active;
+    syncBusy();
+    layer.classList.toggle("fishing", on);
+    $("pz-fishhud").hidden = !on;
+    if (!on) return;
+    // A new cast puts the last catch's card away (it would hide the "!").
+    if (fishing.phase === "cast") {
+      clearTimeout(catchTimer);
+      $("pz-catch").hidden = true;
+    }
+    const b = fishing.button(),
+      act = $("pz-fish-act");
+    $("pz-fishhud").dataset.phase = fishing.phase;
+    if (fishing.phase === "fight" && act.dataset.kind !== "fight") {
+      fightView.reset();
+      const r = $("pz-fish-exit").getBoundingClientRect(),
+        l = layer.getBoundingClientRect(),
+        top = r.top - l.top;
+      fightRoom = {
+        gx: r.left - l.left + 22,
+        gy0: Math.max(84, top - 34 - Math.min(230, NH * 0.5)),
+        gy1: top - 34,
+      };
+    }
+    if (b.kind !== "fight") act.classList.remove("held");
+    act.dataset.kind = b.kind;
+    act.querySelector("b").textContent = b.label;
+    act.disabled = b.kind === "busy";
+    $("pz-fish-hint").textContent = fishing.hint();
+    $("pz-fish-hint").dataset.kind = fishing.phase;
+    const caught = Math.min(progress?.fishToday ?? 0, PLAZA_FISHING.perDay),
+      today = `${caught}/${PLAZA_FISHING.perDay}`;
+    if ($("pz-fish-today").dataset.n !== today) {
+      $("pz-fish-today").dataset.n = today;
+      $("pz-fish-today").innerHTML =
+        `<b>${caught}<i>/${PLAZA_FISHING.perDay}</i></b><small>today</small>`;
+    }
+  }
+  onPress($("pz-fish-act"), () => {
+    if (fishing.phase !== "fight") fishing.act();
+  });
+  // In a fight the button is held: down reels, up (or the finger sliding
+  // off, or the page losing it) gives line.
+  {
+    const act = $("pz-fish-act");
+    act.addEventListener("pointerdown", (e) => {
+      if (fishing.phase !== "fight" || e.button !== 0) return;
+      act.setPointerCapture?.(e.pointerId);
+      fishing.hold(true);
+      act.classList.add("held");
+    });
+    const up = () => {
+      fishing.hold(false);
+      act.classList.remove("held");
+    };
+    for (const ev of ["pointerup", "pointercancel", "lostpointercapture"])
+      act.addEventListener(ev, up);
+    act.addEventListener("contextmenu", (e) => e.preventDefault());
+  }
+  $("pz-fish-exit").onclick = exitFishing;
+  $("pz-fish-book2").onclick = () => showFishBook();
+  const onFish = (note) => fishing.onNote(note);
+  socket.on("plaza-fish", onFish);
+  function renderFishBook() {
+    const b = fishBook(progress?.fishBook);
+    $("pz-fishbook-count").textContent = `${b.caught} / ${b.total}`;
+    setInner($("pz-fishbook-list"), b.html);
+    $("pz-fishbook-note").textContent = `${
+      progress?.fishTitle
+        ? `Title earned: ${PLAZA_FISH_TITLE.name} ✓`
+        : `Catch all ${b.total} for the title ${PLAZA_FISH_TITLE.name}`
+    } · today ${Math.min(progress?.fishToday ?? 0, PLAZA_FISHING.perDay)} / ${PLAZA_FISHING.perDay} count`;
+  }
+  function showFishBook() {
+    toggleWheel(false);
+    hideCard();
+    $("pz-fishbook").hidden = false;
+    renderFishBook();
+    $("pz-fishbook").querySelector('[data-fb="close"]').focus();
+  }
+  function hideFishBook() {
+    $("pz-fishbook").hidden = true;
+    screen.focus({ preventScroll: true });
+  }
+  $("pz-fishbook").querySelector('[data-fb="close"]').onclick = hideFishBook;
+
+  /* ---------- the Plaza map (plaza-map.ts): every place, and Go ---------- */
+  let mapPic = null,
+    mapDotsAt = 0;
+  const mapOpen = () => !$("pz-map").hidden;
+  /** Today's unfinished quests done at a place. */
+  const questsAt = (place) =>
+    PLAZA_QUESTS.filter(
+      (x) => place.quests.includes(x.id) && !progress?.quests?.[x.id]?.done,
+    );
+  function renderMap() {
+    if (!mapPic) mapPic = paintPlazaMap(bg, GM, 900);
+    const cvm = $("pz-map-cv");
+    if (cvm.width !== mapPic.width) {
+      cvm.width = mapPic.width;
+      cvm.height = mapPic.height;
+      cvm.getContext("2d").drawImage(mapPic, 0, 0);
+    }
+    setInner(
+      $("pz-map-pins"),
+      mapPinsHtml(PLAZA_PLACES, I, (p) => questsAt(p).length > 0),
+    );
+    setInner(
+      $("pz-map-list"),
+      PLAZA_PLACES.map((p) => {
+        const q = questsAt(p)[0];
+        const line = q
+          ? `<small class="q">${esc(q.text)} · +${q.coins} ${I("coin", "coin")}</small>`
+          : `<small>${esc(p.blurb)}</small>`;
+        return `<li><button type="button" data-place="${p.id}"${q ? ' class="quest"' : ""}>${I(p.icon)}<span><b>${esc(p.name)}</b>${line}</span><i aria-hidden="true">Go</i></button></li>`;
+      }).join(""),
+    );
+    renderMapDots();
+  }
+  /** You and the other players on the map (every quarter second while open). */
+  function renderMapDots() {
+    mapDotsAt = performance.now();
+    const dot = (b, cls) => {
+      const { fx, fy } = mapFrac(b.x, b.y);
+      return `<i class="${cls}" style="left:${(fx * 100).toFixed(2)}%;top:${(fy * 100).toFixed(2)}%"></i>`;
+    };
+    let html = "";
+    for (const b of others.values()) if (!b.bot) html += dot(b, "pl");
+    $("pz-map-dots").innerHTML = html + dot(P, "me");
+  }
+  function showMap() {
+    toggleWheel(false);
+    hideCard();
+    standStill();
+    $("pz-map").hidden = false;
+    renderMap();
+    $("pz-map").querySelector('[data-map="close"]').focus();
+  }
+  function hideMap() {
+    $("pz-map").hidden = true;
+    screen.focus({ preventScroll: true });
+  }
+  /** Walk to a place on the map (round whatever is in the way). */
+  function goToPlace(id) {
+    const p = PLAZA_PLACES.find((x) => x.id === id);
+    if (!p) return;
+    start();
+    if (mapOpen()) hideMap();
+    if (fishing.active) exitFishing();
+    walkTo({ x: p.x, y: p.y }, true);
+    pzToast(`Walking to ${p.name}`);
+  }
+  $("pz-map").querySelector('[data-map="close"]').onclick = hideMap;
+  $("pz-map").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-place]");
+    if (b) goToPlace(b.dataset.place);
+  });
+  $("pz-map-btn").onclick = () => {
+    start();
+    showMap();
+  };
   let near = null;
   function interact() {
     if (near) near.act();
   }
-  /* treats: a free daily allowance (PLAZA.treatsDaily), tossed for everyone */
-  let treats = 0,
-    treatBusy = false;
-  function setTreats(n) {
-    treats = Math.max(0, n | 0);
-    $("pz-treats").textContent = treats > 99 ? "99+" : String(treats);
+  /* gift boxes (PLAZA_GIFT): tossed ahead, they burst open, and their
+     orbs are for everyone else nearby (plaza-gifts.ts) */
+  let giftsLeft = 0,
+    giftBusy = false;
+  function setGifts(n) {
+    giftsLeft = Math.max(0, n | 0);
+    $("pz-treats").textContent = giftsLeft > 99 ? "99+" : String(giftsLeft);
+    $("pz-treat").classList.toggle("empty", giftsLeft < 1);
   }
-  function throwTreat() {
-    if (treatBusy) return;
-    if (treats < 1) return pzToast("No treats left today. More tomorrow!");
-    treatBusy = true;
-    socket.timeout(5000).emit("plaza-treat", {}, (err, r) => {
-      treatBusy = false;
-      if (err) return pzToast("The treat didn't go. Try again.");
-      if (typeof r?.treats === "number") setTreats(r.treats);
+  function tossGift() {
+    if (giftBusy) return;
+    if (giftsLeft < 1)
+      return pzToast(
+        "No gift boxes left today. Plaza quests and rare fish earn more!",
+      );
+    giftBusy = true;
+    socket.timeout(5000).emit("plaza-gift", {}, (err, r) => {
+      giftBusy = false;
+      if (err) return pzToast("The gift box didn't go. Try again.");
+      if (typeof r?.gifts === "number") setGifts(r.gifts);
       if (!r?.ok)
-        return pzToast(r?.error ?? "Treats can't be thrown right now.");
+        return pzToast(r?.error ?? "Gift boxes can't be tossed right now.");
       pzToast(
-        `Tossed ${PLAZA_TREAT_BY_ID[r.treat]?.name ?? "a treat"} to everyone!`,
+        r.golden
+          ? "A golden gift box! Everyone, grab the orbs!"
+          : "Gift box tossed! Its orbs are for everyone nearby.",
       );
     });
   }
-  // Everyone in this Plaza sees a treat burst where it was thrown.
-  const onTreat = (t) => {
-    if (!t || typeof t.x !== "number") return;
-    burst(
-      t.x,
-      t.y,
-      70,
-      "●",
-      18,
-      PLAZA_TREAT_BY_ID[t.treat]?.color ?? "#ff6fae",
-      1.2,
-    );
+  const gifts = new PlazaGifts({
+    fx: FX,
+    me: () => meId,
+    now: () => serverNow(),
+    low: () => low,
+    reduced: () => reduced,
+    caught: (x, y) => {
+      if ((progress?.orbsToday ?? 0) < ORB_SHOWER.perDay)
+        FX.push({
+          text: "+1",
+          icon: "orb",
+          x,
+          y: y - 40,
+          t: 0,
+          life: 0.9,
+          small: 1,
+        });
+    },
+  });
+  const onGift = (g) => gifts.add(g);
+  const onGiftList = (list) => {
+    if (Array.isArray(list)) for (const g of list) gifts.add(g);
   };
-  const onTreats = (t) => setTreats(t?.n ?? 0);
-  socket.on("plaza-treat", onTreat);
-  socket.on("plaza-treats", onTreats);
+  const onGiftGone = (list) => gifts.gone(list);
+  socket.on("plaza-gift", onGift);
+  socket.on("plaza-gifts", onGiftList);
+  socket.on("plaza-gift-gone", onGiftGone);
   let bobaBusy = false;
   function buyTea() {
     if (P.boost > 0) return pzToast("Your boba boost is still active");
@@ -1909,6 +2852,8 @@ export function openPlaza(options) {
   }
   // A tap on the dimmed background around the polaroid puts it away.
   onBackdrop($("pz-photo"), (t) => t.id === "pz-photo", closePhoto);
+  onBackdrop($("pz-fishbook"), (t) => t.id === "pz-fishbook", hideFishBook);
+  onBackdrop($("pz-map"), (t) => t.id === "pz-map", hideMap);
 
   /* the photo album: on this device only (plaza-album.ts, PLAN.md) */
   const album = openAlbum();
@@ -2094,6 +3039,17 @@ export function openPlaza(options) {
   });
 
   /* ---------- your movement ---------- */
+  /** How long the last frame took (s, up to 0.5): the next is likely as
+   *  long, and the stick you send now is played that long. */
+  let frameDt = 1 / 60,
+    /** How much of full speed the walk's stick asks for (1 but near a turn). */
+    steerK = 1;
+  /** Where you stood last frame, for the walk's current target (inputDir). */
+  const endGap: { to: unknown; x: number; y: number } = {
+    to: null,
+    x: 0,
+    y: 0,
+  };
   function inputDir() {
     let x = 0,
       y = 0;
@@ -2106,6 +3062,7 @@ export function openPlaza(options) {
       y += joy.y;
     }
     if (!target) route = [];
+    steerK = 1;
     // Held up on the way (someone in it, a bump): find the way again.
     if (
       !x &&
@@ -2120,13 +3077,38 @@ export function openPlaza(options) {
       const dx = target.x - P.x,
         dy = target.y - P.y,
         d = Math.hypot(dx, dy);
+      // Walked past the end of the way: since last frame you went toward
+      // it, and now it is behind you. On a slow device one long frame can
+      // carry you past it (the stick is held for the whole frame), and
+      // turning back carried you past it the other way, and so on: a walk
+      // to the dock's end swung 50 px back and forth at 20x CPU throttle.
+      // Stop where you came to instead.
+      const prev = endGap.to === target ? { x: endGap.x, y: endGap.y } : null;
+      endGap.to = target;
+      endGap.x = P.x;
+      endGap.y = P.y;
+      let passed = false;
+      if (prev && !route.length && d < 48) {
+        const mx = P.x - prev.x,
+          my = P.y - prev.y;
+        passed =
+          mx * (target.x - prev.x) + my * (target.y - prev.y) > 0 &&
+          mx * dx + my * dy < 0;
+      }
       // A turn on the way is passed a little early, so you round it.
-      if (d < (route.length ? 18 : 10)) {
+      if (passed || d < (route.length ? 18 : 10)) {
         target = route.shift() ?? null;
         if (!target) routeEnd = null;
       } else {
-        x = dx / d;
-        y = dy / d;
+        // Slower as you come in, so a long frame (a slow device, under 20
+        // fps) doesn't carry you past the turn and back again: the stick
+        // is held for the whole frame, by the browser and the server.
+        const reach =
+            PLAZA.speed * (P.boost > 0 ? PLAZA.boba.speed : 1) * frameDt,
+          k = reach > d ? d / reach : 1;
+        steerK = k;
+        x = (dx / d) * k;
+        y = (dy / d) * k;
         if (P.stuckT > 0.12) {
           const c = Math.cos(1.2),
             s = Math.sin(1.2);
@@ -2165,24 +3147,40 @@ export function openPlaza(options) {
     for (const p of list) {
       profiles.set(p.id, p);
       const b = others.get(p.id);
-      if (b)
+      if (b) {
         Object.assign(b, {
           name: p.name,
           bot: !!p.bot,
+          character: p.character,
           skin: p.skin,
           colour: p.look?.skin ?? null,
           aura: p.look?.aura ?? null,
+          entrance: p.look?.entrance ?? null,
+          victory: p.look?.victory ?? null,
           img: imageFor(p.character, p.skin, p.look?.skin ?? null),
         });
+        // Their wardrobe comes a moment after they do.
+        greetArrival(b);
+      }
       // Your own fighter and skins come from your saved wardrobe (look()), at
       // once: the server's copy starts bare until it has read the wardrobe.
       if (p.id === meId) P.name = p.name;
     }
   }
   socket.on("plaza-state", onState);
+  /** When the last snapshot came (tests: a stalled stream). */
+  let stateAt = 0,
+    /** …and when one last had you in it (tests). */
+    stateMeAt = 0;
   function onState(s) {
+    stateAt = performance.now();
     meId = s.me;
     offset = s.now - Date.now();
+    net.clock.sample(s.now, performance.now());
+    {
+      const lag = predict.lag(s.ack, stepClock);
+      if (lag !== undefined && lag < 1500) net.lag = lag;
+    }
     score = s.score;
     if (s.claps > claps && runwayOn)
       for (let i = 0; i < Math.min(4, s.claps - claps); i++) {
@@ -2200,7 +3198,16 @@ export function openPlaza(options) {
       }
     claps = s.claps;
     lapState = s.lap ?? null;
-    if (s.ball) {
+    if (s.ball && s.ball.length >= 7) {
+      // Velocity and the post-goal wait too: run it in your timeline.
+      const [x, y, z, vx, vy, vz, lock] = s.ball;
+      const srvBall = { x, y, z, vx, vy, vz, lock };
+      if (!net.ball) net.ball = new BallPrediction(srvBall);
+      net.ball.server(srvBall, net.lag, performance.now());
+      ball.tx = x;
+      ball.ty = y;
+      ball.tz = z;
+    } else if (s.ball) {
       if (
         ball.tx == null ||
         Math.hypot(s.ball[0] - ball.x, s.ball[1] - ball.y) > 300
@@ -2215,6 +3222,7 @@ export function openPlaza(options) {
     const seen = new Set();
     for (const [id, x, y, z, face, flags, emoteIdx, speed] of s.walkers) {
       if (id === s.me) {
+        stateMeAt = performance.now();
         srv = { x, y, flags };
         if (s.ack) {
           const r = predict.server(srv, s.ack, P);
@@ -2241,9 +3249,14 @@ export function openPlaza(options) {
           y,
           name: p?.name ?? "",
           bot: !!p?.bot,
+          character: p?.character ?? "voltkit",
           skin: p?.skin ?? null,
           colour: p?.look?.skin ?? null,
           aura: p?.look?.aura ?? null,
+          entrance: p?.look?.entrance ?? null,
+          victory: p?.look?.victory ?? null,
+          // Arrived while you're here (not in the crowd you joined).
+          arrived: performance.now() - enteredAt > 1500 ? performance.now() : 0,
           img: imageFor(
             p?.character ?? "voltkit",
             p?.skin ?? null,
@@ -2252,6 +3265,15 @@ export function openPlaza(options) {
           emoteIdx: 0,
         });
         others.set(id, b);
+        greetArrival(b);
+      }
+      {
+        let tr = net.tracks.get(id);
+        if (!tr) net.tracks.set(id, (tr = new SnapTrack()));
+        const nw = tr.newest;
+        if (!nw || Math.hypot(nw.x - x, nw.y - y) > 300)
+          tr.reset(s.now, x, y, z);
+        else tr.push(s.now, x, y, z);
       }
       b.tx = x;
       b.ty = y;
@@ -2262,12 +3284,19 @@ export function openPlaza(options) {
       b.dash = flags & PLAZA_FLAG.dash ? 1 : 0;
       b.stun = flags & PLAZA_FLAG.stun ? 1 : 0;
       b.buff = flags & PLAZA_FLAG.boost ? 1 : 0;
-      if (emoteIdx !== b.emoteIdx) {
-        b.emoteIdx = emoteIdx;
-        if (emoteIdx) showEmote(b, EMOTE_KEYS[emoteIdx - 1]);
+      const pair = plazaPairOf(emoteIdx, flags),
+        ek = pair ? -emoteIdx : emoteIdx;
+      if (ek !== b.emoteIdx) {
+        b.emoteIdx = ek;
+        if (pair) startPair(b, pair);
+        else if (emoteIdx) showEmote(b, EMOTE_KEYS[emoteIdx - 1]);
       }
     }
-    for (const id of others.keys()) if (!seen.has(id)) others.delete(id);
+    for (const id of others.keys())
+      if (!seen.has(id)) {
+        others.delete(id);
+        net.tracks.delete(id);
+      }
   }
   let lapState = null,
     lapShown = null,
@@ -2287,14 +3316,27 @@ export function openPlaza(options) {
     }
     if (lapState && !inLapLane(P.x, P.y)) lapLeft = lapState[0];
     if (!lapState || lapState[0] === lapLeft) {
-      el.hidden = true;
+      if (!el.hidden) el.hidden = true;
       return;
     }
     const t = Math.max(0, (serverNow() - lapState[0]) / 1000);
     el.hidden = false;
+    // Today's lap quest still to do: which lap of the run this is and the
+    // run's time so far, against PLAZA_LAP_RUN (3 in a row in 30 s).
+    const run =
+      lapState.length >= 4 && progress?.quests && !progress.quests.lap?.done
+        ? {
+            lap: lapState[3],
+            t: Math.max(0, (serverNow() - lapState[2]) / 1000),
+          }
+        : null;
+    const over = !!run && run.t * 1000 >= PLAZA_LAP_RUN.ms;
+    el.classList.toggle("over", over);
     setHtml(
       el,
-      `${t.toFixed(2)}<small>${Math.min(3, Math.floor(lapState[1] * 4))}/4${best ? ` · best ${best.toFixed(2)}` : ""}</small>`,
+      run
+        ? `${t.toFixed(2)}<small>lap ${run.lap}/${PLAZA_LAP_RUN.laps} · ${run.t.toFixed(1)}</small>`
+        : `${t.toFixed(2)}<small>${Math.min(3, Math.floor(lapState[1] * 4))}/4${best ? ` · best ${best.toFixed(2)}` : ""}</small>`,
     );
   }
   function updateRunway() {
@@ -2370,6 +3412,23 @@ export function openPlaza(options) {
    * The night's light map: each lamp, floodlight and lit window lifts the
    * darkness around it, so what it lights keeps its colours.
    */
+  /** A soft disc of one colour for the night's glows, made once. */
+  const GLOW_DISCS = new Map();
+  function glowDisc(c) {
+    let d = GLOW_DISCS.get(c);
+    if (!d) {
+      d = document.createElement("canvas");
+      d.width = d.height = 64;
+      const q = d.getContext("2d"),
+        gr = q.createRadialGradient(32, 32, 0, 32, 32, 32);
+      gr.addColorStop(0, `rgba(${c},1)`);
+      gr.addColorStop(1, `rgba(${c},0)`);
+      q.fillStyle = gr;
+      q.fillRect(0, 0, 64, 64);
+      GLOW_DISCS.set(c, d);
+    }
+    return d;
+  }
   function drawNightMap(g, n, vx0, vy0, vx1, vy1) {
     nightLight.begin(g, [255 - 150 * n, 255 - 132 * n, 255 - 62 * n]);
     nightLight.follow(g);
@@ -2386,6 +3445,8 @@ export function openPlaza(options) {
     for (const h of HOUSES)
       for (const [wx, wy, ww, wh] of h.spr.win ?? [])
         L(h.x + (wx + ww / 2) * HK, h.y + (wy + wh) * HK, 100, 0.4, 0.8);
+    for (const h of HOUSES)
+      if (h.spr.lamp) L(h.x + h.spr.lamp[0] * HK, h.y + 6, 60, 0.35, 0.8);
     for (const l of RIVER_LAMPS) L(l.x, l.y - 6, 150, 0.48, 0.6);
     for (const o of ev.orbs) L(o.x, o.y - 10, 90, 0.5, 0.8);
     nightLight.end(g);
@@ -2396,66 +3457,41 @@ export function openPlaza(options) {
   }
   /** A lamp's head above its foot (the lamp sprite, scaled). */
   const LAMP_HEAD = 78 * PLAZA_SCALE.lamp;
+  /** Coins on the fountain's bottom (round its centre, off the column). */
+  const FOUNT_COINS = Array.from({ length: 16 }, (_, k) => {
+    const a = k * 2.399,
+      r = 0.42 + ((k * 37) % 50) / 100;
+    return [Math.cos(a) * 96 * r, 2 + Math.sin(a) * 50 * r, k];
+  });
   function drawFountain(g, time) {
-    const { x, y } = FOUNT;
-    // basin wall (front) + rim + water
-    const brx = 126,
-      bry = 80,
-      wallH = 24;
-    g.fillStyle = "rgba(30,40,40,.3)";
-    g.beginPath();
-    g.ellipse(x + 8, y + wallH + 6, brx + 10, bry + 8, 0, 0, 7);
-    g.fill();
-    g.beginPath();
-    g.ellipse(x, y, brx, bry, 0, 0, Math.PI);
-    g.lineTo(x - brx, y + wallH);
-    g.ellipse(x, y + wallH, brx, bry, 0, Math.PI, 0, true);
-    g.closePath();
-    const wg = g.createLinearGradient(0, y, 0, y + bry + wallH);
-    wg.addColorStop(0, "#efe6d4");
-    wg.addColorStop(1, "#b4a78e");
-    g.fillStyle = wg;
-    g.fill();
-    g.strokeStyle = "#857a64";
-    g.lineWidth = 2;
-    g.stroke();
-    g.strokeStyle = "rgba(133,122,100,.5)";
-    g.lineWidth = 1.2;
-    for (let k = -5; k <= 5; k++) {
-      const a = Math.PI / 2 + k * 0.27,
-        px = x + Math.cos(a) * brx,
-        py = y + Math.sin(a) * bry;
-      g.beginPath();
-      g.moveTo(px, py);
-      g.lineTo(px, py + wallH);
-      g.stroke();
-    }
-    g.fillStyle = "#f7f0e2";
-    g.beginPath();
-    g.ellipse(x, y, brx, bry, 0, 0, 7);
-    g.fill();
-    g.strokeStyle = "#a59a84";
-    g.lineWidth = 2;
-    g.stroke();
-    const water = g.createRadialGradient(x - 30, y - 20, 10, x, y, brx);
-    water.addColorStop(0, "#9ff0ff");
-    water.addColorStop(0.6, "#3fb8d8");
-    water.addColorStop(1, "#1f86b0");
-    g.fillStyle = water;
-    g.beginPath();
-    g.ellipse(x, y + 2, brx - 15, bry - 11, 0, 0, 7);
-    g.fill();
+    // The stonework is baked (plaza-fountain-art.ts); only the water moves.
+    // As big as bodies keep clear of (PLAZA_FOUNTAIN, PLAZA_OBSTACLES).
+    const { x, y } = FOUNT,
+      wr = fountainWater(FOUNT);
+    GFX.blit(g, fountainBasin(FOUNT), x, y);
     g.save();
     g.beginPath();
-    g.ellipse(x, y + 2, brx - 15, bry - 11, 0, 0, 7);
+    g.ellipse(x, y + wr.dy, wr.rx, wr.ry, 0, 0, 7);
     g.clip();
+    // Coins on the bottom, a few catching the light in turn.
+    for (const [cx, cy, k] of FOUNT_COINS) {
+      const tw = low ? 0 : Math.max(0, Math.sin(time * 2.2 + k * 5.3));
+      g.fillStyle = "rgba(160,110,20,.55)";
+      g.beginPath();
+      g.ellipse(x + cx, y + cy, 4.2, 2.4, 0, 0, 7);
+      g.fill();
+      g.fillStyle = `rgba(255,${214 + tw * 30},${91 + tw * 120},${0.55 + tw * 0.45})`;
+      g.beginPath();
+      g.ellipse(x + cx - 0.5, y + cy - 0.6, 3.4, 1.9, 0, 0, 7);
+      g.fill();
+    }
     g.strokeStyle = "rgba(255,255,255,.35)";
     g.lineWidth = 1.6;
     for (let i = 0; i < 9; i++) {
       const yy = y - 50 + i * 12,
         ph = time * 1.4 + i;
       g.beginPath();
-      for (let xx = x - brx; xx < x + brx; xx += 8)
+      for (let xx = x - wr.rx; xx < x + wr.rx; xx += 8)
         g.lineTo(xx, yy + Math.sin(xx * 0.05 + ph) * 2.5);
       g.stroke();
     }
@@ -2467,45 +3503,35 @@ export function openPlaza(options) {
       g.ellipse(x, y - 2, 30 + k * 80, 18 + k * 50, 0, 0, 7);
       g.stroke();
     }
+    if (!low) {
+      // Splashes where the falling water lands, and glints of sun on the
+      // water that come and go.
+      for (let i = -6; i <= 6; i += 2) {
+        const a = Math.PI / 2 + i * 0.2,
+          k = (time * 1.6 + i * 0.37 + 10) % 1,
+          sx = x + Math.cos(a) * 96,
+          sy = y - 56 + Math.sin(a) * 28 + 54;
+        g.strokeStyle = `rgba(255,255,255,${0.55 * (1 - k)})`;
+        g.lineWidth = 1.4;
+        g.beginPath();
+        g.ellipse(sx, sy, 3 + k * 9, 1.5 + k * 4, 0, 0, 7);
+        g.stroke();
+      }
+      g.fillStyle = "#ffffff";
+      for (let i = 0; i < (night() < 0.5 ? 7 : 0); i++) {
+        const tw = Math.sin(time * 3.1 + i * 2.7);
+        if (tw < 0.6) continue;
+        const gx = x - 70 + ((i * 53) % 140),
+          gy = y - 30 + ((i * 29) % 60);
+        g.globalAlpha = (tw - 0.6) * 2.2;
+        g.fillRect(gx - 3, gy - 0.6, 6, 1.2);
+        g.fillRect(gx - 0.6, gy - 2, 1.2, 4);
+      }
+      g.globalAlpha = 1;
+    }
     g.restore();
-    // pillar + middle bowl
-    const pil = (yt, yb, w) => {
-      g.fillStyle = GFX.mix("#f2ead8", "#b9ad94", 0.1);
-      const gg = g.createLinearGradient(x - w, 0, x + w, 0);
-      gg.addColorStop(0, "#fffaf0");
-      gg.addColorStop(1, "#b9ad94");
-      g.fillStyle = gg;
-      g.fillRect(x - w, yt, w * 2, yb - yt);
-      g.strokeStyle = "#857a64";
-      g.lineWidth = 1.5;
-      g.strokeRect(x - w, yt, w * 2, yb - yt);
-    };
-    pil(y - 52, y, 13);
-    const bowl = (by, rx, ry, d) => {
-      g.beginPath();
-      g.ellipse(x, by, rx, ry, 0, 0, Math.PI);
-      g.lineTo(x - rx * 0.55, by + d);
-      g.ellipse(x, by + d, rx * 0.55, ry * 0.5, 0, Math.PI, 0, true);
-      g.closePath();
-      const bg2 = g.createLinearGradient(0, by, 0, by + d + ry);
-      bg2.addColorStop(0, "#f2ead8");
-      bg2.addColorStop(1, "#a99c82");
-      g.fillStyle = bg2;
-      g.fill();
-      g.strokeStyle = "#857a64";
-      g.lineWidth = 1.5;
-      g.stroke();
-      g.fillStyle = "#f7f0e2";
-      g.beginPath();
-      g.ellipse(x, by, rx, ry, 0, 0, 7);
-      g.fill();
-      g.stroke();
-      g.fillStyle = water;
-      g.beginPath();
-      g.ellipse(x, by + 1, rx - 8, ry - 5, 0, 0, 7);
-      g.fill();
-    };
-    bowl(y - 56, 64, 30, 18);
+    // The pillars and bowls.
+    GFX.blit(g, fountainTiers(), x, y);
     // water curtain from middle bowl
     g.strokeStyle = "rgba(220,250,255,.55)";
     g.lineWidth = 3;
@@ -2526,8 +3552,6 @@ export function openPlaza(options) {
       g.stroke();
     }
     g.setLineDash([]);
-    pil(y - 104, y - 56, 9);
-    bowl(y - 108, 34, 16, 10);
     // jet + floating crystal
     g.fillStyle = "rgba(220,250,255,.75)";
     g.beginPath();
@@ -2572,86 +3596,74 @@ export function openPlaza(options) {
     g.stroke();
     g.restore();
   }
+  /** The screen's words, painted again only when they change. */
+  const ledPic = ledWords(LED.x1 - LED.x0, LED.y1 - LED.y0);
   function drawLED(g, time) {
     const { x0, x1, y0, y1 } = LED,
       w = x1 - x0,
       h = y1 - y0;
-    // truss + legs
-    g.fillStyle = "#1a1a24";
-    g.fillRect(x0 - 24, y0 - 34, w + 48, 16);
-    [x0 - 24, x1 + 10].forEach((x) =>
-      g.fillRect(x, y0 - 34, 14, STAGE.y0 - y0 + 34),
-    );
+    // The truss, its towers, the bezel and the speakers (baked).
+    GFX.blit(g, ledRig(x0, y0, x1, y1, STAGE.y0), x0, y0);
+    // The light cans, pulsing.
     for (let i = 0; i < 6; i++) {
       const x = x0 + 30 + (i * (w - 60)) / 5;
-      g.fillStyle = "#2b2b38";
+      g.fillStyle = `rgba(255,240,200,${low ? 0.75 : 0.5 + 0.5 * Math.sin(time * 3 + i)})`;
       g.beginPath();
-      g.arc(x, y0 - 20, 9, 0, 7);
-      g.fill();
-      g.fillStyle = `rgba(255,240,200,${0.5 + 0.5 * Math.sin(time * 3 + i)})`;
-      g.beginPath();
-      g.arc(x, y0 - 14, 5, 0, 7);
+      g.ellipse(x, y0 - 12, 5, 4, 0, 0, 7);
       g.fill();
     }
-    // screen
-    g.fillStyle = "#07060f";
-    g.fillRect(x0 - 6, y0 - 6, w + 12, h + 12);
-    const gr = g.createLinearGradient(x0, y0, x1, y1);
-    const hshift = (time * 30) % 360;
-    gr.addColorStop(0, `hsl(${(300 + hshift) % 360} 80% 28%)`);
-    gr.addColorStop(1, `hsl(${(220 + hshift) % 360} 80% 22%)`);
-    g.fillStyle = gr;
+    // The screen's slowly shifting colour: one flat fill (no gradient
+    // made a frame); the baked glass below darkens it toward the bottom.
+    const hshift = low ? 0 : (time * 30) % 360;
+    g.fillStyle = `hsl(${(280 + hshift) % 360} 80% 30%)`;
     g.fillRect(x0, y0, w, h);
-    g.save();
-    g.beginPath();
-    g.rect(x0, y0, w, h);
-    g.clip();
+    GFX.blit(g, ledShade(w, h), x0, y0);
     const star = runwayOn ? P : [...others.values()].find((n) => inRunway(n));
-    if (star && star.img?.sprite) {
-      g.drawImage(star.img.sprite, x0 + 20, y0 + 6, h * 0.99, h * 1.0);
-      g.textAlign = "left";
-      g.fillStyle = "#ff9bd2";
-      g.font = "800 16px 'DM Sans', sans-serif";
-      g.fillText("ON THE RUNWAY", x0 + h + 34, y0 + 40);
-      g.fillStyle = "#fff";
-      g.font = "800 46px 'Barlow Condensed', sans-serif";
-      g.fillText(String(star.name).toUpperCase(), x0 + h + 34, y0 + 86);
-      g.fillStyle = "#ffd65b";
-      g.font = "700 20px 'DM Sans', sans-serif";
-      g.fillText(starSkin(star), x0 + h + 34, y0 + 118);
-      if (star.me) {
-        const sw = g.measureText(starSkin(star)).width,
-          hi = ICON_IMG("heart");
-        if (hi.complete) g.drawImage(hi, x0 + h + 46 + sw, y0 + 101, 22, 22);
-        g.fillText(String(claps), x0 + h + 72 + sw, y0 + 118);
-      }
-    } else {
-      g.textAlign = "center";
-      g.fillStyle = "#fff";
-      g.font = "800 64px 'Barlow Condensed', sans-serif";
-      g.fillText("RUNWAY", (x0 + x1) / 2, y0 + 84);
-      g.fillStyle = "#ff9bd2";
-      g.font = "700 18px 'DM Sans', sans-serif";
-      g.fillText(
-        ev.on ? "ORB SHOWER IN PROGRESS" : "STEP UP TO SHOW OFF YOUR SKIN",
-        (x0 + x1) / 2,
-        y0 + 118,
-      );
-    }
-    g.fillStyle = "rgba(0,0,0,.18)";
-    for (let y = y0; y < y1; y += 4) g.fillRect(x0, y, w, 1.5);
-    g.restore();
-    // speakers
-    [x0 - 70, x1 + 30].forEach((x) => {
-      g.fillStyle = "#15151f";
-      g.fillRect(x, STAGE.y0 - 120, 40, 120);
-      g.fillStyle = "#2c2c3a";
-      [STAGE.y0 - 96, STAGE.y0 - 46].forEach((y) => {
-        g.beginPath();
-        g.arc(x + 20, y, 14, 0, 7);
-        g.fill();
-      });
-    });
+    const spr = star?.img?.sprite;
+    const words =
+      star && spr
+        ? `star|${star.name}|${starSkin(star)}|${star.me ? claps : ""}|${ICON_IMG("heart").complete}`
+        : `idle|${ev.on}`;
+    // (Painted again once the fonts have loaded, too.)
+    const pic = ledPic(
+      `${words}|${spr ? spr.width : 0}|${document.fonts?.status}`,
+      (q) => {
+        if (star && spr) {
+          q.drawImage(spr, 20, 6, h * 0.99, h * 1.0);
+          q.textAlign = "left";
+          q.fillStyle = "#ff9bd2";
+          q.font = "800 16px 'DM Sans', sans-serif";
+          q.fillText("ON THE RUNWAY", h + 34, 40);
+          q.fillStyle = "#fff";
+          q.font = "800 46px 'Barlow Condensed', sans-serif";
+          q.fillText(String(star.name).toUpperCase(), h + 34, 86);
+          q.fillStyle = "#ffd65b";
+          q.font = "700 20px 'DM Sans', sans-serif";
+          q.fillText(starSkin(star), h + 34, 118);
+          if (star.me) {
+            const sw = q.measureText(starSkin(star)).width,
+              hi = ICON_IMG("heart");
+            if (hi.complete) q.drawImage(hi, h + 46 + sw, 101, 22, 22);
+            q.fillText(String(claps), h + 72 + sw, 118);
+          }
+        } else {
+          q.textAlign = "center";
+          q.fillStyle = "#fff";
+          q.font = "800 64px 'Barlow Condensed', sans-serif";
+          q.fillText("RUNWAY", w / 2, 84);
+          q.fillStyle = "#ff9bd2";
+          q.font = "700 18px 'DM Sans', sans-serif";
+          q.fillText(
+            ev.on ? "ORB SHOWER IN PROGRESS" : "STEP UP TO SHOW OFF YOUR SKIN",
+            w / 2,
+            118,
+          );
+        }
+      },
+    );
+    GFX.blit(g, pic, x0, y0);
+    // Scanlines, the glass's sheen and its darker edges (baked).
+    GFX.blit(g, ledGlass(w, h), x0, y0);
   }
   /**
    * A goal runs away from the viewer (along y), so it is drawn in slices
@@ -2672,6 +3684,29 @@ export function openPlaza(options) {
       GOAL_SLICES,
       hgt,
       (ya, yb, i) => {
+        // The net's light shadow on the grass inside the goal.
+        g.fillStyle = "rgba(40,100,50,.14)";
+        g.fillRect(Math.min(x, x + d), ya, Math.abs(d), yb - ya);
+        // The mesh: strands across the back and the roof every 8 px.
+        g.strokeStyle = "rgba(255,255,255,.32)";
+        g.lineWidth = 0.8;
+        g.beginPath();
+        for (let yy = Math.ceil(ya / 8) * 8; yy < yb; yy += 8) {
+          g.moveTo(x, yy - hgt);
+          g.lineTo(x + d, yy - hgt * 0.6);
+          g.lineTo(x + d, yy);
+        }
+        for (let k = 1; k < 8; k++) {
+          const hh = (hgt * 0.6 * k) / 8;
+          g.moveTo(x + d, ya - hh);
+          g.lineTo(x + d, yb - hh);
+        }
+        for (let k = 1; k < 4; k++) {
+          const t = k / 4;
+          g.moveTo(x + d * t, ya - hgt + hgt * 0.4 * t);
+          g.lineTo(x + d * t, yb - hgt + hgt * 0.4 * t);
+        }
+        g.stroke();
         g.strokeStyle = "rgba(255,255,255,.55)";
         g.lineWidth = 1;
         g.beginPath();
@@ -2692,19 +3727,26 @@ export function openPlaza(options) {
         g.moveTo(x + d, ya);
         g.lineTo(x + d, yb);
         g.stroke();
-        g.strokeStyle = "#fff";
-        g.lineWidth = 5;
+        // The posts: white, with a grey shaded side and a lit edge.
         g.lineCap = "round";
-        g.beginPath();
-        if (i === 0) {
-          g.moveTo(x, y0);
-          g.lineTo(x, y0 - hgt);
+        for (const [w, c, dx] of [
+          [6, "#b9c2cc", 0.8],
+          [4.6, "#ffffff", 0],
+          [1.4, "#ffffff", -1.4],
+        ]) {
+          g.strokeStyle = c;
+          g.lineWidth = w;
+          g.beginPath();
+          if (i === 0) {
+            g.moveTo(x + dx, y0);
+            g.lineTo(x + dx, y0 - hgt);
+          }
+          if (i === GOAL_SLICES - 1) {
+            g.moveTo(x + dx, y1);
+            g.lineTo(x + dx, y1 - hgt);
+          }
+          g.stroke();
         }
-        if (i === GOAL_SLICES - 1) {
-          g.moveTo(x, y1);
-          g.lineTo(x, y1 - hgt);
-        }
-        g.stroke();
         g.lineCap = "butt";
         // The crossbar, in the team's colour.
         g.strokeStyle = left ? "#5ab0ff" : "#ff5d6c";
@@ -2717,39 +3759,168 @@ export function openPlaza(options) {
       { name: left ? "goal-left" : "goal-right" },
     );
   }
-  function drawFlood(g, f, n) {
-    g.fillStyle = "rgba(0,0,0,.25)";
+  /** A corner flag: a white pole and a pennant in the side's colour,
+   * rippling in the breeze (a still pennant on Low graphics). */
+  function drawCornerFlag(g, x, y, i, time) {
+    GFX.shadow(g, x + 2, y + 1, 6, 2);
+    g.fillStyle = "#f6f6f6";
+    g.fillRect(x - 1.5, y - 44, 3, 44);
+    g.fillStyle = "#c9c9c9";
+    g.fillRect(x + 0.5, y - 44, 1, 44);
+    const c = x < (PITCH.x0 + PITCH.x1) / 2 ? "#4fb3ff" : "#ef4f61",
+      t = low ? 0 : time * 6 + i * 1.7;
+    g.fillStyle = c;
     g.beginPath();
-    g.ellipse(f.x + 10, f.y + 2, 16, 6, 0, 0, 7);
+    g.moveTo(x + 1.5, y - 44);
+    for (let k = 1; k <= 4; k++)
+      g.lineTo(x + 1.5 + k * 4.5, y - 44 + Math.sin(t + k) * k * 0.6 + k * 0.5);
+    for (let k = 4; k >= 1; k--)
+      g.lineTo(x + 1.5 + k * 4.5, y - 32 + Math.sin(t + k) * k * 0.6 - k * 0.9);
+    g.lineTo(x + 1.5, y - 31);
+    g.closePath();
     g.fill();
-    g.fillStyle = "#3a3f52";
-    g.fillRect(f.x - 4, f.y - 230, 8, 232);
-    g.fillStyle = "#222634";
-    g.fillRect(f.x - 26, f.y - 252, 52, 26);
-    g.fillStyle = n > 0.3 ? "#fff8d8" : "#c9cfdc";
-    for (let i = 0; i < 3; i++)
-      g.fillRect(f.x - 22 + i * 16, f.y - 248, 12, 18);
+    g.fillStyle = "#ffd65b";
+    g.beginPath();
+    g.arc(x, y - 45, 2.4, 0, 7);
+    g.fill();
+  }
+  /** Dragonflies over the pond: they hover, then dart to a new spot. */
+  const DRAGONFLIES = [0, 1, 2].map((i) => ({
+    x: POND.x - 80 + i * 70,
+    y: POND.y - 30 + i * 18,
+    tx: POND.x,
+    ty: POND.y,
+    wait: i * 0.7,
+    c: ["#4fd0ff", "#ff7fb8", "#8fe36a"][i],
+  }));
+  let dragonT = 0;
+  /**
+   * Petals drifting down from the cherry trees and leaves from the autumn
+   * ones: a few each, on a loop worked out from the time (nothing kept),
+   * swaying as they fall and fading as they land.
+   */
+  const SHEDDERS = TREES.filter((t) => t.k === "cherry" || t.k === "autumn");
+  function drawFalling(g, time, vx0, vy0, vx1, vy1) {
+    for (const t of SHEDDERS) {
+      if (
+        t.x + 160 < vx0 ||
+        t.x - 160 > vx1 ||
+        t.y + 40 < vy0 ||
+        t.y - 220 > vy1
+      )
+        continue;
+      const cols =
+        t.k === "cherry"
+          ? ["#ffd0e2", "#ffffff", "#ff9fc4"]
+          : ["#f2a33a", "#e8742e", "#ffd06a"];
+      for (let i = 0; i < 6; i++) {
+        const life = 5 + (i % 3),
+          k = ((time + i * 1.37 + t.ph) % life) / life,
+          sx = t.x - 60 + ((i * 47 + t.ph * 13) % 120),
+          x = sx + Math.sin(time * 1.6 + i * 2.1) * 14 + k * 30,
+          y = t.y - 150 + k * 170,
+          a = k > 0.85 ? (1 - k) / 0.15 : Math.min(1, k * 6);
+        g.globalAlpha = a * 0.9;
+        g.fillStyle = cols[i % 3];
+        g.beginPath();
+        g.ellipse(
+          x,
+          y,
+          3.2,
+          1.6 + Math.abs(Math.sin(time * 4 + i)) * 1.4,
+          time * 2 + i,
+          0,
+          7,
+        );
+        g.fill();
+      }
+    }
+    g.globalAlpha = 1;
+  }
+  function drawDragonflies(g, time) {
+    const dt = Math.min(0.05, Math.max(0, time - dragonT));
+    dragonT = time;
+    for (const d of DRAGONFLIES) {
+      if ((d.wait -= dt) <= 0) {
+        // A new spot over the water or the reeds by the dock.
+        const a = Math.random() * Math.PI * 2,
+          r = 0.3 + Math.random() * 0.75;
+        d.tx = POND.x + Math.cos(a) * POND.rx * r;
+        d.ty = POND.y + Math.sin(a) * POND.ry * r;
+        d.wait = 1.2 + Math.random() * 2.5;
+      }
+      const k = Math.min(1, dt * 4);
+      d.x += (d.tx - d.x) * k;
+      d.y += (d.ty - d.y) * k;
+      const hx = d.x + Math.sin(time * 3 + d.c.length) * 2,
+        hy = d.y - 34 + Math.sin(time * 5 + d.x) * 2,
+        face = d.tx >= d.x ? 1 : -1;
+      GFX.shadow(g, d.x, d.y, 5, 1.6, 0.14);
+      g.save();
+      g.translate(hx, hy);
+      g.scale(face, 1);
+      // Wings: a blur of four, flickering.
+      const f = 0.55 + 0.45 * Math.abs(Math.sin(time * 40 + d.x));
+      g.fillStyle = `rgba(230,250,255,${0.55 * f})`;
+      for (const [wx, wy, r] of [
+        [-1, -1, -0.5],
+        [-1, 1, 0.5],
+        [2, -1, -0.3],
+        [2, 1, 0.3],
+      ]) {
+        g.beginPath();
+        g.ellipse(wx, wy * 4, 6, 2, r, 0, 7);
+        g.fill();
+      }
+      g.fillStyle = d.c;
+      g.fillRect(-9, -0.8, 12, 1.6);
+      g.beginPath();
+      g.arc(4.5, 0, 2.2, 0, 7);
+      g.fill();
+      g.restore();
+    }
+  }
+  /** How each kind of PLAZA_DECOR is drawn: its picture, footprint half
+   * width, height, and ground shadow (none for reeds and pots). */
+  const DECOR_ART = {
+    rodrack: { spr: () => GFX.rodRack(), foot: 26, h: 90, shadow: [26, 5] },
+    bucket: { spr: () => GFX.bucket(), foot: 14, h: 50, shadow: [14, 5] },
+    tackle: { spr: () => GFX.tackleBox(), foot: 14, h: 50, shadow: [14, 5] },
+    rowboat: { spr: () => GFX.rowboat(), foot: 56, h: 50, shadow: [58, 9] },
+    reeds: { spr: (seed) => GFX.reeds(seed), foot: 14, h: 70 },
+    chalkboard: {
+      spr: () => GFX.chalkboard(),
+      foot: 30,
+      h: 104,
+      shadow: [28, 6],
+    },
+    parasol: {
+      spr: () => GFX.parasol(),
+      foot: 34,
+      h: 118,
+      shadow: [40, 9],
+      sw: 56,
+    },
+    pot: {
+      spr: (seed) => GFX.flowerPot(seed),
+      foot: 12,
+      h: 44,
+      shadow: [11, 4],
+    },
+  };
+  function drawFlood(g, f, n) {
+    GFX.shadow(g, f.x + 10, f.y + 2, 18, 6);
+    // Baked mast, lit at night (plaza-pitch-art.ts).
+    GFX.blit(g, floodMast(n > 0.3), f.x, f.y);
   }
   function drawScoreboard(g) {
-    const x = (PITCH.x0 + PITCH.x1) / 2,
-      y = PITCH.y0 - 50;
-    g.fillStyle = "#1a1a24";
-    g.fillRect(x - 6, y - 10, 12, 50);
-    g.fillStyle = "#0b0b14";
-    g.fillRect(x - 120, y - 92, 240, 84);
-    g.fillStyle = "#162040";
-    g.fillRect(x - 114, y - 86, 228, 72);
-    g.textAlign = "center";
-    g.font = "700 14px 'DM Sans', sans-serif";
-    g.fillStyle = "#9fb0d8";
-    g.fillText("ORB BALL", x, y - 66);
-    g.font = "800 44px 'Barlow Condensed', sans-serif";
-    g.fillStyle = "#5ab0ff";
-    g.fillText(score[0], x - 50, y - 24);
-    g.fillStyle = "#fff";
-    g.fillText(":", x, y - 26);
-    g.fillStyle = "#ff5d6c";
-    g.fillText(score[1], x + 50, y - 24);
+    // Baked, painted again only when the score changes (plaza-pitch-art.ts).
+    GFX.blit(
+      g,
+      scoreboardArt(score[0], score[1]),
+      (PITCH.x0 + PITCH.x1) / 2,
+      PITCH.y0 - 10,
+    );
   }
   /**
    * The lap gantry spans the lane from its outer edge to its inner one,
@@ -2872,41 +4043,222 @@ export function openPlaza(options) {
     g.stroke();
     g.setLineDash([]);
   }
-  function drawLeader(g) {
-    const { x, y } = LEADER;
-    g.fillStyle = "rgba(0,0,0,.25)";
+  /**
+   * The TOP DASH board: a stadium scoreboard on two legs, a gold header with
+   * the trophy, medals for the top three, your row lit, and bulbs along its
+   * top. Painted into a sprite whenever the week's rows change (not every
+   * frame); the bulbs twinkle live.
+   */
+  let leaderSpr = null,
+    leaderKey = "",
+    leaderTry = null,
+    leaderAt = 0;
+  function leaderSprite() {
+    const rows = boardRows().slice(0, 5);
+    const key = rows.map(([n, t, m]) => `${n}|${t}|${m}`).join(";");
+    const ready = ICON_IMG("trophy")?.complete;
+    if (leaderSpr && key === leaderKey) return leaderSpr;
+    // Before the trophy has loaded: the last one, again at most twice a second.
+    if (leaderTry && key === leaderKey && performance.now() - leaderAt < 500)
+      return leaderTry;
+    leaderAt = performance.now();
+    const R = 2,
+      w = 200,
+      h = 262,
+      ax = 100,
+      ay = 254;
+    const c = document.createElement("canvas");
+    c.width = w * R;
+    c.height = h * R;
+    const g = c.getContext("2d");
+    g.scale(R, R);
+    g.translate(ax, ay);
+    // Stone footings, a cross brace between the legs, then the legs.
+    for (const lx of [-66, 58]) {
+      g.fillStyle = "#8f8a80";
+      g.beginPath();
+      g.roundRect(lx - 9, -9, 26, 11, 3);
+      g.fill();
+      g.fillStyle = "#b8b2a6";
+      g.fillRect(lx - 7, -8, 22, 2);
+    }
+    g.strokeStyle = "#2a2f42";
+    g.lineWidth = 2;
     g.beginPath();
-    g.ellipse(x + 10, y + 3, 90, 14, 0, 0, 7);
+    g.moveTo(-62, -86);
+    g.lineTo(62, -30);
+    g.moveTo(62, -86);
+    g.lineTo(-62, -30);
+    g.stroke();
+    for (const lx of [-66, 58]) {
+      const lg = g.createLinearGradient(lx, 0, lx + 8, 0);
+      lg.addColorStop(0, "#4a5068");
+      lg.addColorStop(1, "#262a3a");
+      g.fillStyle = lg;
+      g.fillRect(lx, -110, 8, 110);
+      g.fillStyle = "#1c2030";
+      g.beginPath();
+      g.roundRect(lx - 6, -6, 20, 7, 2);
+      g.fill();
+    }
+    // The cabinet: a bevelled steel frame round a navy screen.
+    g.fillStyle = "rgba(0,0,0,.3)";
+    g.beginPath();
+    g.roundRect(-92, -246, 190, 146, 10);
     g.fill();
-    g.fillStyle = "#2a2f42";
-    g.fillRect(x - 70, y - 150, 8, 152);
-    g.fillRect(x + 62, y - 150, 8, 152);
-    g.fillStyle = "#0b0d16";
-    g.fillRect(x - 90, y - 250, 180, 150);
-    g.fillStyle = "#151b36";
-    g.fillRect(x - 84, y - 244, 168, 138);
+    const fr = g.createLinearGradient(0, -250, 0, -100);
+    fr.addColorStop(0, "#5a6280");
+    fr.addColorStop(0.5, "#2f3550");
+    fr.addColorStop(1, "#1f2438");
+    g.fillStyle = fr;
+    g.beginPath();
+    g.roundRect(-94, -250, 188, 146, 10);
+    g.fill();
+    g.fillStyle = "#0d1226";
+    g.beginPath();
+    g.roundRect(-86, -242, 172, 130, 6);
+    g.fill();
+    for (const [bx, by] of [
+      [-88, -244],
+      [88, -244],
+      [-88, -110],
+      [88, -110],
+    ]) {
+      g.fillStyle = "#8a92b0";
+      g.beginPath();
+      g.arc(bx, by, 2, 0, 7);
+      g.fill();
+    }
+    // Gold header band with the trophy.
+    const hb = g.createLinearGradient(0, -240, 0, -214);
+    hb.addColorStop(0, "#ffe58a");
+    hb.addColorStop(1, "#e0a020");
+    g.fillStyle = hb;
+    g.beginPath();
+    g.roundRect(-84, -240, 168, 26, 5);
+    g.fill();
+    const tr = ICON_IMG("trophy");
+    if (tr?.complete) g.drawImage(tr, -78, -238, 22, 22);
+    g.fillStyle = "#3a2406";
+    g.font = "800 19px 'Barlow Condensed', sans-serif";
     g.textAlign = "left";
-    g.font = "800 20px 'Barlow Condensed', sans-serif";
-    g.fillStyle = "#ffd65b";
-    {
-      const tr = ICON_IMG("trophy");
-      if (tr.complete) g.drawImage(tr, x - 76, y - 238, 22, 22);
-    }
-    g.fillText("TOP DASH", x - 50, y - 220);
-    const rows = boardRows();
+    g.textBaseline = "middle";
+    g.fillText("TOP DASH", -52, -226);
+    g.textAlign = "right";
+    g.font = "800 10px 'DM Sans', sans-serif";
+    g.fillText("THIS WEEK", 78, -226);
+    // Bulbs round the cabinet's frame, a glint on the glass, and a
+    // little gold plate under the screen.
+    for (let bx = -86; bx <= 86; bx += 14)
+      for (const by of [-247, -107]) {
+        g.fillStyle = "#15102a";
+        g.beginPath();
+        g.arc(bx, by, 2.4, 0, 7);
+        g.fill();
+        g.fillStyle = "#fff4c2";
+        g.beginPath();
+        g.arc(bx, by, 1.5, 0, 7);
+        g.fill();
+      }
+    g.fillStyle = "rgba(255,255,255,.06)";
+    g.beginPath();
+    g.moveTo(-86, -212);
+    g.lineTo(-20, -212);
+    g.lineTo(-70, -112);
+    g.lineTo(-86, -112);
+    g.closePath();
+    g.fill();
+    // Rows: medals for the top three, your row lit.
+    const MEDAL = ["#ffd65b", "#d6dbe6", "#e0995a"];
     if (!rows.length) {
-      g.font = "700 14px 'DM Sans', sans-serif";
+      g.textAlign = "center";
       g.fillStyle = "#a0afc8";
-      g.fillText("No laps this week yet", x - 74, y - 196);
+      g.font = "700 13px 'DM Sans', sans-serif";
+      g.fillText("No laps this week yet", 0, -176);
+      g.fillStyle = "#ffd65b";
+      g.font = "800 13px 'DM Sans', sans-serif";
+      g.fillText("Be the first!", 0, -156);
     }
-    rows.slice(0, 5).forEach(([n, t, mine], i) => {
-      g.font = "700 14px 'DM Sans', sans-serif";
-      g.fillStyle = mine ? "#ffd65b" : "#e6ecff";
-      g.fillText(`${i + 1}. ${n}`, x - 74, y - 196 + i * 20);
-      g.textAlign = "right";
-      g.fillText(t.toFixed(2), x + 74, y - 196 + i * 20);
+    rows.forEach(([n, t, mine], i) => {
+      const ry = -198 + i * 20;
+      if (i % 2) {
+        g.fillStyle = "rgba(255,255,255,.04)";
+        g.fillRect(-84, ry - 10, 168, 20);
+      }
+      if (mine) {
+        g.fillStyle = "rgba(255,214,91,.16)";
+        g.fillRect(-84, ry - 10, 168, 20);
+        g.fillStyle = "#ffd65b";
+        g.fillRect(-84, ry - 10, 3, 20);
+      }
+      if (i < 3) {
+        g.fillStyle = MEDAL[i];
+        g.beginPath();
+        g.arc(-70, ry, 7.5, 0, 7);
+        g.fill();
+        g.fillStyle = "rgba(0,0,0,.55)";
+        g.font = "800 10px 'DM Sans', sans-serif";
+        g.textAlign = "center";
+        g.fillText(String(i + 1), -70, ry + 0.5);
+      } else {
+        g.fillStyle = "#7f8bb0";
+        g.font = "800 11px 'DM Sans', sans-serif";
+        g.textAlign = "center";
+        g.fillText(String(i + 1), -70, ry + 0.5);
+      }
       g.textAlign = "left";
+      g.fillStyle = mine ? "#ffd65b" : "#e6ecff";
+      g.font = "700 13px 'DM Sans', sans-serif";
+      let name = String(n);
+      while (name.length > 3 && g.measureText(name).width > 100)
+        name = name.slice(0, -2) + "…";
+      g.fillText(name, -56, ry + 0.5);
+      g.textAlign = "right";
+      g.font = "800 13px 'DM Sans', sans-serif";
+      g.fillText(t.toFixed(2), 78, ry + 0.5);
     });
+    // Empty places, so a short week doesn't leave a dark hole: each a dim
+    // number and a dotted line, waiting for a runner.
+    if (rows.length)
+      for (let i = rows.length; i < 5; i++) {
+        const ry = -198 + i * 20;
+        if (i % 2) {
+          g.fillStyle = "rgba(255,255,255,.04)";
+          g.fillRect(-84, ry - 10, 168, 20);
+        }
+        g.fillStyle = "#4a5578";
+        g.font = "800 11px 'DM Sans', sans-serif";
+        g.textAlign = "center";
+        g.fillText(String(i + 1), -70, ry + 0.5);
+        g.strokeStyle = "rgba(127,139,176,.35)";
+        g.lineWidth = 1;
+        g.setLineDash([2, 3]);
+        g.beginPath();
+        g.moveTo(-56, ry + 1);
+        g.lineTo(78, ry + 1);
+        g.stroke();
+        g.setLineDash([]);
+      }
+    g.textBaseline = "alphabetic";
+    const spr = { c, w, h, ax, ay };
+    leaderKey = key;
+    if (ready) leaderSpr = spr;
+    else leaderSpr = null;
+    return (leaderTry = spr);
+  }
+  function drawLeader(g, time) {
+    const { x, y } = LEADER;
+    GFX.shadow(g, x + 10, y + 3, 92, 14, 0.25);
+    GFX.blit(g, leaderSprite(), x, y);
+    // Bulbs along the top, chasing.
+    for (let i = 0; i < 9; i++) {
+      const bx = x - 80 + i * 20,
+        on = low ? 1 : 0.55 + 0.45 * Math.sin(time * 4 - i * 0.8);
+      g.fillStyle = `rgba(255,236,170,${on})`;
+      g.beginPath();
+      g.arc(bx, y - 254, 2.6, 0, 7);
+      g.fill();
+    }
   }
   /** The Photo Spot's camera, seen from behind: it stands in front of the
    * arch on its own feet (not against a post) and points at the spot. */
@@ -2955,106 +4307,132 @@ export function openPlaza(options) {
     // The two bushes stand together west of the arch, clear of its posts,
     // the tripod, the stage and the lane in front (they used to sit on both
     // posts' feet, half hiding them).
-    const post = (px) => {
-      const gg = g.createLinearGradient(px - 6, 0, px + 6, 0);
-      gg.addColorStop(0, "#fffaf0");
-      gg.addColorStop(1, "#c9bfae");
-      g.fillStyle = gg;
-      g.beginPath();
-      g.roundRect(px - 6, y - 150, 12, 152, 4);
-      g.fill();
-    };
-    post(x - 80);
-    post(x + 80);
-    g.strokeStyle = "#3f8f3a";
-    g.lineWidth = 20;
-    g.beginPath();
-    g.arc(x, y - 150, 80, Math.PI, 0);
-    g.stroke();
-    g.strokeStyle = "#5fbf4f";
-    g.lineWidth = 14;
-    g.stroke();
-    for (let i = 0; i < 15; i++) {
-      const a = Math.PI + (i / 14) * Math.PI,
-        px = x + Math.cos(a) * 80,
-        py = y - 150 + Math.sin(a) * 80,
-        c = ["#ff8fb8", "#ffffff", "#ffd65b"][i % 3];
-      for (let k = 0; k < 5; k++) {
-        g.fillStyle = c;
-        g.beginPath();
-        g.arc(
-          px + Math.cos(k * 1.256) * 4,
-          py + Math.sin(k * 1.256) * 4,
-          3.6,
-          0,
-          7,
-        );
-        g.fill();
-      }
-      g.fillStyle = "#ffcf3a";
-      g.beginPath();
-      g.arc(px, py, 2.4, 0, 7);
-      g.fill();
-    }
-    g.textAlign = "center";
-    g.font = "800 22px 'Barlow Condensed', sans-serif";
-    g.fillStyle = "#fff";
-    g.strokeStyle = "#2a1f4c";
-    g.lineWidth = 4;
-    g.strokeText("PHOTO SPOT", x, y - 246);
-    g.fillText("PHOTO SPOT", x, y - 246);
+    // The arch and its sign, baked (plaza-props-art.ts).
+    GFX.blit(g, flowerArch(80, 150, true), x, y);
+    GFX.blit(g, signWords("PHOTO SPOT", 22), x, y - 246);
   }
   function drawCafe(g) {
     GFX.blit(g, GFX.foodTruck(), CAFE.x, CAFE.y + 4);
   }
-  function drawBoard(g) {
-    GFX.shadow(g, BOARD.x + 8, BOARD.y + 2, 70, 14);
-    GFX.blit(g, GFX.board(), BOARD.x, BOARD.y + 4);
-    g.textAlign = "center";
-    g.font = "800 18px 'Barlow Condensed', sans-serif";
-    g.fillStyle = "#fff";
+  /**
+   * The Plaza map board ("you are here"): the same painted map as the Map
+   * dialog, framed on two posts under a little roof, with a red pin where
+   * the board stands. Painted once, the first time it is drawn.
+   */
+  let boardSpr = null,
+    boardTry = null,
+    boardTryAt = 0;
+  function mapBoard() {
+    if (boardSpr) return boardSpr;
+    // Not all drawn yet: the last try, again at most twice a second.
+    if (boardTry && performance.now() - boardTryAt < 500) return boardTry;
+    boardTryAt = performance.now();
+    const R = 2,
+      w = 168,
+      h = 190,
+      ax = 84,
+      ay = 182;
+    const c = document.createElement("canvas");
+    c.width = w * R;
+    c.height = h * R;
+    const g = c.getContext("2d");
+    g.scale(R, R);
+    g.translate(ax, ay);
+    // Posts.
+    for (const x of [-66, 58]) {
+      const pg = g.createLinearGradient(x, 0, x + 8, 0);
+      pg.addColorStop(0, "#8a5a30");
+      pg.addColorStop(1, "#5a3a1e");
+      g.fillStyle = pg;
+      g.beginPath();
+      g.roundRect(x, -150, 8, 150, 3);
+      g.fill();
+    }
+    // The frame and the map in it.
+    g.fillStyle = "rgba(0,0,0,.3)";
+    g.beginPath();
+    g.roundRect(-72, -138, 148, 102, 8);
+    g.fill();
+    const fg = g.createLinearGradient(0, -142, 0, -40);
+    fg.addColorStop(0, "#c98d52");
+    fg.addColorStop(1, "#8f5a2c");
+    g.fillStyle = fg;
+    g.beginPath();
+    g.roundRect(-74, -142, 148, 102, 8);
+    g.fill();
+    g.strokeStyle = "#4e2c12";
+    g.lineWidth = 2.5;
+    g.stroke();
+    const mw = 132,
+      mh = Math.round((mw * H) / W),
+      mx = -mw / 2,
+      my = -134;
+    g.drawImage(boardPic, mx, my, mw, mh);
+    g.strokeStyle = "rgba(60,30,10,.6)";
+    g.lineWidth = 1.5;
+    g.strokeRect(mx, my, mw, mh);
+    // The places' icons, small, and the red "you are here" pin.
+    for (const p of PLAZA_PLACES) {
+      const im = ICON_IMG(p.icon);
+      const px = mx + (p.x / W) * mw,
+        py = my + (p.y / H) * mh;
+      g.fillStyle = "rgba(255,255,255,.9)";
+      g.beginPath();
+      g.arc(px, py, 5.5, 0, 7);
+      g.fill();
+      if (im?.complete) g.drawImage(im, px - 4.5, py - 4.5, 9, 9);
+    }
+    {
+      const px = mx + (BOARD.x / W) * mw,
+        py = my + (BOARD.y / H) * mh;
+      g.fillStyle = "#ef4f61";
+      g.strokeStyle = "#fff";
+      g.lineWidth = 1.5;
+      g.beginPath();
+      g.moveTo(px, py);
+      g.bezierCurveTo(px - 7, py - 7, px - 5, py - 13, px, py - 13);
+      g.bezierCurveTo(px + 5, py - 13, px + 7, py - 7, px, py);
+      g.fill();
+      g.stroke();
+    }
+    // The roof and its sign.
+    g.beginPath();
+    g.moveTo(-86, -140);
+    g.lineTo(0, -170);
+    g.lineTo(86, -140);
+    g.closePath();
+    const rg = g.createLinearGradient(0, -170, 0, -140);
+    rg.addColorStop(0, "#4fb3a8");
+    rg.addColorStop(1, "#1f6b6a");
+    g.fillStyle = rg;
+    g.fill();
+    g.strokeStyle = "#143f40";
+    g.lineWidth = 2;
+    g.stroke();
+    g.fillStyle = "#fff4d6";
     g.strokeStyle = "#2a1f12";
-    g.lineWidth = 4;
-    g.strokeText("EVENT BOARD", BOARD.x, BOARD.y - 150);
-    g.fillText("EVENT BOARD", BOARD.x, BOARD.y - 150);
+    g.lineWidth = 3.5;
+    g.font = "800 17px 'Barlow Condensed', sans-serif";
+    g.textAlign = "center";
+    g.textBaseline = "middle";
+    g.lineJoin = "round";
+    g.strokeText("PLAZA MAP", 0, -150);
+    g.fillText("PLAZA MAP", 0, -150);
+    // Kept once its icons have drawn (data pictures, a moment after load;
+    // until then it is put together again at most twice a second, from the
+    // map picture made once in prep, never from the whole ground).
+    const done = PLAZA_PLACES.every((p) => ICON_IMG(p.icon)?.complete);
+    const spr = { c, w, h, ax, ay };
+    if (done) boardSpr = spr;
+    return (boardTry = spr);
+  }
+  function drawBoard(g) {
+    GFX.shadow(g, BOARD.x + 8, BOARD.y + 2, 76, 14);
+    GFX.blit(g, mapBoard(), BOARD.x, BOARD.y + 4);
   }
   function drawGate(g) {
-    const { x, y } = GATE;
-    [x - 70, x + 70].forEach((px) => {
-      const gg = g.createLinearGradient(px - 9, 0, px + 9, 0);
-      gg.addColorStop(0, "#c48a4a");
-      gg.addColorStop(1, "#7a5230");
-      g.fillStyle = gg;
-      g.beginPath();
-      g.roundRect(px - 9, y - 116, 18, 120, 4);
-      g.fill();
-    });
-    g.strokeStyle = "#3f8f3a";
-    g.lineWidth = 22;
-    g.beginPath();
-    g.arc(x, y - 112, 70, Math.PI, 0);
-    g.stroke();
-    g.strokeStyle = "#6fcf5a";
-    g.lineWidth = 15;
-    g.stroke();
-    for (let i = 0; i < 12; i++) {
-      const a = Math.PI + (i / 11) * Math.PI;
-      GFX.ball(
-        g,
-        x + Math.cos(a) * 70,
-        y - 112 + Math.sin(a) * 70,
-        6,
-        ["#ff8fb8", "#ffd65b", "#ffffff"][i % 3],
-      );
-    }
-    g.fillStyle = "#7a5230";
-    g.beginPath();
-    g.roundRect(x - 64, y - 206, 128, 36, 8);
-    g.fill();
-    g.fillStyle = "#fff4d6";
-    g.font = "800 22px 'Barlow Condensed', sans-serif";
-    g.textAlign = "center";
-    g.fillText("THE FIELDS", x, y - 181);
+    // The flower arch, baked (plaza-props-art.ts).
+    GFX.blit(g, flowerArch(70, 112), GATE.x, GATE.y);
   }
   const HK = PLAZA_SCALE.house;
   function drawHouse(g, h, n) {
@@ -3067,6 +4445,14 @@ export function openPlaza(options) {
         g.roundRect(h.x + wx * HK, h.y + wy * HK, ww * HK, wh * HK, 3 * HK);
         g.fill();
       });
+    // The porch lantern by the door, lit at dusk.
+    if (n > 0.05 && h.spr.lamp) {
+      const [lx, ly] = h.spr.lamp;
+      g.fillStyle = `rgba(255,236,170,${0.9 * n})`;
+      g.beginPath();
+      g.arc(h.x + lx * HK, h.y + ly * HK, 3.2 * HK, 0, 7);
+      g.fill();
+    }
   }
   function drawBody(g, b, time, photo) {
     const s = PLAZA_SPRITE_PX,
@@ -3091,16 +4477,18 @@ export function openPlaza(options) {
     }
     const sp = im?.sprite;
     if (!sp) return;
-    // What they wear shows here as everywhere: the Aura's ring and the
-    // Colors' motif behind, their near half in front (plaza-cosmetics.ts).
-    const worn = { now: time * 1000, reduced, low };
+    const { bob, rot, sq } = bodyPose(b, time);
+    b.bob = bob;
+    // What they wear shows here as everywhere: the Aura's ring, the Colors'
+    // motif, a skin's own effects, entrances and victories behind, their
+    // near half in front (plaza-cosmetics.ts).
+    const worn = { now: time * 1000, reduced, low, full: fullFx.has(b) };
     drawWornBehind(g, b, worn);
     for (const tr of b.trail) {
       g.globalAlpha = 0.32 * (1 - tr.t / 0.3);
       drawSprite(g, sp, tr.x, tr.y - tr.z, s, b.face, 0, 0);
     }
     g.globalAlpha = 1;
-    const { bob, rot, sq } = bodyPose(b, time);
     drawSprite(g, sp, b.x, b.y - b.z - bob, s, b.face, rot, sq);
     drawWornFront(g, b, worn);
     // Bots (the pitch bots and the townsfolk) wear a quieter, italic name
@@ -3109,10 +4497,14 @@ export function openPlaza(options) {
       ? "italic 600 12px 'DM Sans', sans-serif"
       : "700 13px 'DM Sans', sans-serif";
     g.textAlign = "center";
-    g.lineWidth = 3.5;
-    g.strokeStyle = "rgba(11,16,32,.85)";
+    // A thin, even outline: round joins (the default mitre joins left
+    // spikes on A, M, N, V and W) and 2.6 px, not 3.5 (owner, 22 Nov).
+    g.lineWidth = 2.6;
+    g.miterLimit = 2;
+    g.strokeStyle = "rgba(11,16,32,.8)";
     g.fillStyle = b.me ? "#ffd65b" : b.bot ? "#aebbe0" : "#fff";
     const ny = b.y - b.z - s * 0.92 - 6;
+    g.lineJoin = "round";
     g.strokeText(b.name, b.x, ny);
     g.fillText(b.name, b.x, ny);
     if (b.emoteT > 0) {
@@ -3163,10 +4555,26 @@ export function openPlaza(options) {
   }
   /** How a body bobs, sways and squashes this frame (walk, dance, stun). */
   function bodyPose(b, time) {
-    let bob =
-        b.sp > 10 && !b.air
-          ? Math.abs(Math.sin(time * 12 + b.x * 0.01)) * 4
-          : Math.sin(time * 2.4 + b.x) * 1.2,
+    // Each body breathes on its own phase, fixed once. (It was `b.x`: in a
+    // running jump x moves ~4 px a frame, so the phase leapt and the body
+    // shook ±1.2 px every frame in the air, owner 23 Nov.)
+    b.breathPh ??= Math.random() * Math.PI * 2;
+    // Blend weights, eased over ~80 ms: walking (vs standing) and on the
+    // ground (vs in the air, where the jump's arc carries the body). The
+    // bob used to switch in one frame at take-off, landing, starting and
+    // stopping: up to 4 px, a visible jerk.
+    const dtb = b.bobT === undefined ? 1 : Math.max(0, time - b.bobT);
+    b.bobT = time;
+    const ek = 1 - Math.exp(-dtb / 0.08);
+    const walking = b.sp > 10 ? 1 : 0,
+      grounded = b.air ? 0 : 1;
+    b.wWalk ??= walking;
+    b.wGround ??= grounded;
+    b.wWalk += (walking - b.wWalk) * ek;
+    b.wGround += (grounded - b.wGround) * ek;
+    const walkBob = Math.abs(Math.sin(time * 12 + b.breathPh)) * 4,
+      idleBob = Math.sin(time * 2.4 + b.breathPh) * 1.2;
+    let bob = (idleBob + (walkBob - idleBob) * b.wWalk) * b.wGround,
       rot = 0,
       sq = 0;
     if (b.dance > 0) {
@@ -3175,6 +4583,15 @@ export function openPlaza(options) {
       sq = Math.sin(time * 18) * 0.06;
     }
     if (b.stun > 0) rot = Math.sin(time * 30) * 0.12;
+    if (b.pairT > 0 && b.pairKind !== "dance") {
+      // A high five or a hug: lean in toward the other (`face`), and a
+      // high five hops on the slap.
+      const u = PLAZA_PAIR.playSeconds - b.pairT,
+        k = Math.min(1, u / 0.25, b.pairT / 0.25);
+      rot = b.face * (b.pairKind === "hug" ? 0.16 : 0.24) * k;
+      if (b.pairKind === "hug") sq = -0.04 * k + Math.sin(time * 5) * 0.02;
+      else bob += Math.max(0, Math.sin(Math.min(1, u / 0.6) * Math.PI)) * 10;
+    }
     return { bob, rot, sq };
   }
   // The front art carries its tail, lantern or staff on its right side, so
@@ -3185,7 +4602,7 @@ export function openPlaza(options) {
     g.translate(x, y);
     if (rot) g.rotate(rot);
     g.scale((face > 0 ? -1 : 1) * (1 + sq), 1 - sq);
-    g.drawImage(im, -s / 2, -s * 0.9, s, s * 1.01);
+    g.drawImage(im, -s / 2, -s * PLAZA_SPRITE_TOP, s, s * PLAZA_SPRITE_TALL);
     g.restore();
   }
   function drawBall(g) {
@@ -3220,75 +4637,95 @@ export function openPlaza(options) {
     g.arc(ball.x, y, ball.r * 0.68, ball.spin + 3.1, ball.spin + 5.3);
     g.stroke();
   }
+  /** Lily pads (clear of the dock's end, PLAZA_DOCK): x, y, radius. */
+  const LILIES = [
+    [-110, -55, 22],
+    [100, 40, 18],
+    [30, -60, 16],
+    [-60, 55, 20],
+    [140, -20, 13],
+  ];
+  /** Where rings spread on the pond now and then (a fish rising). */
+  const POND_RINGS = [
+    [-40, 10],
+    [70, -30],
+    [-130, 20],
+    [120, 60],
+  ];
   function drawPond(g, time) {
     const { x, y, rx, ry } = POND;
-    const wg = g.createRadialGradient(x - 40, y - 30, 10, x, y, rx);
-    wg.addColorStop(0, "#7fe0f0");
-    wg.addColorStop(0.7, "#2fa6cc");
-    wg.addColorStop(1, "#1a7aa6");
-    g.fillStyle = wg;
-    g.beginPath();
-    g.ellipse(x, y, rx, ry, 0, 0, 7);
-    g.fill();
+    // What lies under the water and the light on it (baked).
+    GFX.blit(g, pondWater(rx, ry), x, y);
     g.save();
     g.beginPath();
     g.ellipse(x, y, rx, ry, 0, 0, 7);
     g.clip();
+    // Fish under the water: half seen, and a little blue with the depth.
+    g.globalAlpha = 0.82;
     FISH.forEach((f) => {
       if (!f.jump) GFX.fish(g, time, f.x, f.y, f.ang);
     });
-    g.strokeStyle = "rgba(255,255,255,.28)";
-    g.lineWidth = 1.5;
-    for (let i = 0; i < 8; i++) {
-      const yy = y - ry + 20 + i * 26,
-        ph = time * 0.9 + i * 1.7;
-      g.beginPath();
-      for (let xx = x - rx; xx < x + rx; xx += 10)
-        g.lineTo(xx, yy + Math.sin(xx * 0.04 + ph) * 3);
-      g.stroke();
-    }
-    [
-      [x - 120, y - 30, 22],
-      [x + 100, y + 40, 18],
-      [x + 30, y - 60, 16],
-      [x - 60, y + 55, 20],
-    ].forEach(([px, py, r], i) => {
-      const b = Math.sin(time * 1.2 + i) * 1.5;
-      g.fillStyle = "#3f9a46";
-      g.beginPath();
-      g.ellipse(px, py + b, r, r * 0.6, 0, 0.35, Math.PI * 2 - 0.35);
-      g.lineTo(px, py + b);
-      g.fill();
-      g.fillStyle = "#6fcf5a";
-      g.beginPath();
-      g.ellipse(
-        px - 2,
-        py - 2 + b,
-        r * 0.7,
-        r * 0.4,
-        0,
-        0.4,
-        Math.PI * 2 - 0.4,
-      );
-      g.lineTo(px - 2, py - 2 + b);
-      g.fill();
-      if (i % 2 === 0) {
-        for (let k = 0; k < 6; k++) {
-          g.fillStyle = k % 2 ? "#ffd0e4" : "#ff8fbd";
-          g.beginPath();
-          g.ellipse(
-            px + 4 + Math.cos(k) * 4,
-            py - 6 + b + Math.sin(k) * 2,
-            4,
-            2.5,
-            k,
-            0,
-            7,
-          );
-          g.fill();
-        }
+    g.globalAlpha = 1;
+    if (!low) {
+      // Sunlight wavering on the bottom: pale shapes that drift and breathe.
+      g.fillStyle = "rgba(210,255,255,.1)";
+      for (let i = 0; i < 9; i++) {
+        const px = x + Math.sin(time * 0.3 + i * 2.3) * rx * 0.6,
+          py = y + Math.cos(time * 0.25 + i * 1.9) * ry * 0.55,
+          s = 1 + 0.3 * Math.sin(time * 1.3 + i);
+        g.beginPath();
+        g.ellipse(px, py, 16 * s, 6 * s, Math.sin(time * 0.4 + i) * 0.4, 0, 7);
+        g.fill();
       }
+      // Rings spreading where a fish rose, one after another.
+      for (let i = 0; i < POND_RINGS.length; i++) {
+        const k = (time * 0.35 + i * 0.27) % 1,
+          [ox, oy] = POND_RINGS[i];
+        if (k > 0.75) continue;
+        g.strokeStyle = `rgba(255,255,255,${0.5 * (1 - k / 0.75)})`;
+        g.lineWidth = 1.4;
+        g.beginPath();
+        g.ellipse(x + ox, y + oy, 4 + k * 40, 2 + k * 16, 0, 0, 7);
+        g.stroke();
+      }
+    }
+    // Ripples: short broken arcs drifting across, not lines edge to edge.
+    g.strokeStyle = "rgba(255,255,255,.3)";
+    g.lineWidth = 1.5;
+    g.lineCap = "round";
+    g.beginPath();
+    for (let i = 0; i < 18; i++) {
+      const yy = y - ry + 16 + ((i * 37) % (ry * 2 - 30)),
+        xx = x - rx + ((i * 97 + time * (8 + (i % 3) * 3)) % (rx * 2)),
+        w = 14 + (i % 4) * 6;
+      g.moveTo(xx - w, yy);
+      g.quadraticCurveTo(
+        xx,
+        yy - 3 - Math.sin(time * 1.5 + i) * 1.5,
+        xx + w,
+        yy,
+      );
+    }
+    g.stroke();
+    // The lily pads, bobbing.
+    LILIES.forEach(([px, py, r], i) => {
+      const b = low ? 0 : Math.sin(time * 1.2 + i) * 1.5;
+      GFX.blit(g, lilyPad(r, i % 2 === 0), x + px, y + py + b);
     });
+    // Glints of sun on the surface, coming and going (by day).
+    if (!low && night() < 0.5) {
+      g.fillStyle = "#ffffff";
+      for (let i = 0; i < 8; i++) {
+        const tw = Math.sin(time * 2.6 + i * 2.1);
+        if (tw < 0.55) continue;
+        const gx = x - rx * 0.7 + ((i * 61) % (rx * 1.4)),
+          gy = y - ry * 0.6 + ((i * 43) % (ry * 1.2));
+        g.globalAlpha = (tw - 0.55) * 2;
+        g.fillRect(gx - 3.5, gy - 0.6, 7, 1.2);
+        g.fillRect(gx - 0.6, gy - 2.2, 1.2, 4.4);
+      }
+      g.globalAlpha = 1;
+    }
     g.restore();
     FISH.forEach((f) => {
       if (f.jump) {
@@ -3324,10 +4761,44 @@ export function openPlaza(options) {
       ),
     );
   }
+  /**
+   * The fountain's basin, rim to foot, with some room round it: animals
+   * keep out of it as bodies do (PLAZA_OBSTACLES). They used to check only
+   * where they were going, so a straight walk crossed the basin (owner).
+   */
+  const inFount = (x, y, pad = 14) =>
+    ((x - FOUNT.x) / (FOUNT.rx + pad)) ** 2 +
+      ((y - (FOUNT.y + FOUNT.wall / 2)) / (FOUNT.ry + FOUNT.wall / 2 + pad)) **
+        2 <
+    1;
+  /** A straight walk from a to b that keeps clear of the basin. */
+  const clearWalk = (ax, ay, bx, by, pad) => {
+    for (let k = 0; k <= 12; k++) {
+      const t = k / 12;
+      if (inFount(ax + (bx - ax) * t, ay + (by - ay) * t, pad)) return false;
+    }
+    return true;
+  };
   function updateAnimals(dt) {
+    // The first duck leads; the other keeps half a turn behind it.
+    const lead = DUCKS[0];
+    lead.a += lead.s * dt * (DUCKS.some((d) => d.dab > 0) ? 0.2 : 1);
     DUCKS.forEach((d) => {
-      d.a += d.s * dt * (d.dab > 0 ? 0.2 : 1);
-      const nx = POND.x + Math.cos(d.a) * POND.rx * d.r * 1.2,
+      d.a = lead.a + d.off;
+      // Round a point east of the middle, on an egg-shaped path: the
+      // half toward the dock is drawn in so its end stays DUCK_CLEAR east
+      // of the bobber, so ducks keep clear of the line and the bobber
+      // (owner: the line was drawn across a duck). Smooth all round.
+      const cx = POND.x + 80,
+        rx = Math.min(110, POND.rx * d.r * 1.2),
+        c = Math.cos(d.a),
+        nx =
+          cx +
+          c *
+            (c < 0
+              ? // Each duck by its own path's size, so they don't bunch.
+                Math.min(rx, (cx - (LINE_ZONE.bx + DUCK_CLEAR)) * (d.r / 0.55))
+              : rx),
         ny = POND.y + Math.sin(d.a) * POND.ry * d.r * 1.1;
       d.face = nx > d.x ? 1 : -1;
       d.x = nx;
@@ -3349,37 +4820,10 @@ export function openPlaza(options) {
       f.y = ny;
       if (Math.random() < dt * 0.03) f.jump = 0.01;
     });
-    HENS.forEach((h) => {
-      if (h.wait > 0) {
-        h.wait -= dt;
-        if (h.wait <= 0) h.st = "idle";
-        return;
-      }
-      if (h.tx == null) {
-        if (Math.random() < 0.4) {
-          h.st = "peck";
-          h.wait = 1.5 + Math.random() * 2;
-          return;
-        }
-        h.tx = GATE.x - 300 + Math.random() * 600;
-        h.ty = GATE.y - 170 + Math.random() * 130;
-        if (Math.abs(h.tx - GATE.x) < 90) h.tx += 200;
-      }
-      const dx = h.tx - h.x,
-        dy = h.ty - h.y,
-        d = Math.hypot(dx, dy);
-      if (d < 5) {
-        h.tx = null;
-        h.st = "idle";
-        h.wait = 0.6 + Math.random() * 1.5;
-        return;
-      }
-      h.st = "walk";
-      h.face = dx > 0 ? 1 : -1;
-      h.x += (dx / d) * 50 * dt;
-      h.y += (dy / d) * 50 * dt;
-    });
     PIGEONS.forEach((b) => {
+      // (One standing in the basin, as placed at the start, steps out.)
+      if (!(b.fly > 0) && inFount(b.x, b.y, 2))
+        b.y = FOUNT.y + FOUNT.wall + FOUNT.ry + 24;
       const threat =
         BODIES().some(
           (n) =>
@@ -3406,10 +4850,16 @@ export function openPlaza(options) {
         return;
       }
       if (threat) {
-        const a = Math.random() * Math.PI * 2,
-          r = 0.3 + Math.random() * 0.6;
-        b.tx = SQ.x + Math.cos(a) * SQ.rx * r;
-        b.ty = SQ.y + Math.sin(a) * SQ.ry * r;
+        // Fly off and land somewhere on the square, never in the basin.
+        for (let k = 0; k < 8; k++) {
+          const a = Math.random() * Math.PI * 2,
+            r = 0.3 + Math.random() * 0.6;
+          b.tx = SQ.x + Math.cos(a) * SQ.rx * r;
+          b.ty = SQ.y + Math.sin(a) * SQ.ry * r;
+          if (!inFount(b.tx, b.ty, 10)) break;
+        }
+        if (inFount(b.tx, b.ty, 10))
+          b.ty = FOUNT.y + FOUNT.wall + FOUNT.ry + 40;
         b.fly = 2.2;
         return;
       }
@@ -3435,7 +4885,7 @@ export function openPlaza(options) {
         b.ty = b.y + (Math.random() - 0.5) * 70;
         if (
           !inSquare(b.tx, b.ty, 0.95) ||
-          ((b.tx - FOUNT.x) / 140) ** 2 + ((b.ty - FOUNT.y) / 100) ** 2 < 1
+          !clearWalk(b.x, b.y, b.tx, b.ty, 10)
         ) {
           b.tx = null;
           return;
@@ -3452,8 +4902,17 @@ export function openPlaza(options) {
         return;
       }
       b.face = dx > 0 ? 1 : -1;
-      b.x += (dx / d) * 34 * dt;
-      b.y += (dy / d) * 34 * dt;
+      const px = b.x + (dx / d) * 34 * dt,
+        py = b.y + (dy / d) * 34 * dt;
+      // (A walker that finds itself at the basin stops and picks again.)
+      if (inFount(px, py, 6)) {
+        b.tx = null;
+        b.st = "idle";
+        b.wait = 0.3;
+        return;
+      }
+      b.x = px;
+      b.y = py;
     });
     BUTTER.forEach((b) => {
       b.ph += dt;
@@ -3482,6 +4941,7 @@ export function openPlaza(options) {
         ? 1
         : Math.max(0, CAT.awake - dt * 0.5);
     // The corgi trots between spots round the square and barks now and then.
+    if (inFount(PET.x, PET.y, 4)) PET.y = FOUNT.y + FOUNT.wall + FOUNT.ry + 30;
     if (PET.wait > 0) {
       PET.wait -= dt;
       if (PET.bark > 0) {
@@ -3495,11 +4955,7 @@ export function openPlaza(options) {
           r = 0.45 + Math.random() * 0.5;
         PET.tx = SQ.x + Math.cos(a) * SQ.rx * r;
         PET.ty = SQ.y + Math.sin(a) * SQ.ry * r + 20;
-        if (
-          ((PET.tx - FOUNT.x) / 150) ** 2 + ((PET.ty - FOUNT.y) / 105) ** 2 <
-          1
-        )
-          PET.tx = null;
+        if (!clearWalk(PET.x, PET.y, PET.tx, PET.ty, 24)) PET.tx = null;
       }
       if (PET.tx != null) {
         const dx = PET.tx - PET.x,
@@ -3509,25 +4965,22 @@ export function openPlaza(options) {
           PET.tx = null;
           PET.wait = 2 + Math.random() * 4;
         } else {
-          const sp = 120;
-          PET.x += (dx / d) * Math.min(d, sp * dt);
-          PET.y += (dy / d) * Math.min(d, sp * dt);
+          const sp = 120,
+            px = PET.x + (dx / d) * Math.min(d, sp * dt),
+            py = PET.y + (dy / d) * Math.min(d, sp * dt);
+          if (inFount(px, py, 16)) {
+            PET.tx = null;
+            PET.wait = 0.5;
+            return;
+          }
+          PET.x = px;
+          PET.y = py;
           PET.face = dx > 0 ? 1 : -1;
           PET.st = "walk";
         }
       }
     }
-    if (Math.random() < dt * 6)
-      HOUSES.forEach((h) => {
-        if (h.spr.chimney && Math.random() < 0.25)
-          SMOKE.push({
-            x: h.x + h.spr.chimney[0],
-            y: h.y + h.spr.chimney[1],
-            t: 0,
-            life: 2.4,
-            vx: 8 + Math.random() * 6,
-          });
-      });
+    // (No chimney smoke: the owner took it out, 22 Nov.)
     SMOKE.forEach((m) => {
       m.t += dt;
       m.x += m.vx * dt;
@@ -3692,6 +5145,15 @@ export function openPlaza(options) {
       bulbs = [];
     for (let k = 1; k <= n; k++) {
       const [x, y] = bez(a, c, b, k / (n + 1));
+      // No coloured bulb where the wire crosses in front of the catwalk:
+      // it lay over the catwalk's pink bulbs, two kinds mixed.
+      if (
+        x > WALK.x0 - 14 &&
+        x < WALK.x1 + 14 &&
+        y > WALK.y0 - 10 &&
+        y < WALK.y1 + 24
+      )
+        continue;
       bulbs.push({
         x,
         y,
@@ -3774,11 +5236,12 @@ export function openPlaza(options) {
     }
     // The stage's edge and the catwalk's sides (painted bulbs) light up and
     // chase toward the front.
-    for (let x = STAGE.x0 + 14, k = 0; x < STAGE.x1; x += 26, k++)
-      SPARKS.push({ x, y: STAGE.y1 + 9, c: 5, chase: k, r: 9 });
-    for (let y = WALK.y0 + 14, k = 0; y < WALK.y1; y += 24, k++)
-      for (const x of [WALK.x0 + 8, WALK.x1 - 8])
-        SPARKS.push({ x, y, c: 1, chase: k + 4, r: 9 });
+    STAGE_BULBS.forEach(([x, y], k) =>
+      SPARKS.push({ x, y, c: 5, chase: k, r: 9 }),
+    );
+    WALK_BULBS.forEach(([x, y], i) =>
+      SPARKS.push({ x, y, c: 1, chase: (i >> 1) + 4, r: 9 }),
+    );
   }
   /** The strings, wires and bulbs; at night (n > 0) lit, with halos. */
   function drawStringLights(g, time, n, vx0, vy0, vx1, vy1) {
@@ -3889,6 +5352,7 @@ export function openPlaza(options) {
     });
 
     drawPond(g, time);
+    fishing.drawWater(g, time);
     FX.filter((f) => f.ring || f.dust).forEach((f) => {
       const k = f.t / f.life;
       g.strokeStyle = f.dust
@@ -3912,6 +5376,7 @@ export function openPlaza(options) {
       );
       g.stroke();
     });
+    gifts.shadows(g);
     // orbs shadows
     ev.orbs.forEach((o) => {
       g.fillStyle = "rgba(0,0,0,.25)";
@@ -3919,6 +5384,9 @@ export function openPlaza(options) {
       g.ellipse(o.x, o.y, 12 * (1 - o.z / 500), 5, 0, 0, 7);
       g.fill();
     });
+    // A skin's ambient particles: you and the nearest few only (a crowd
+    // costs a phone's GPU; plaza-cosmetics.ts).
+    if (!photo) pickFullFx();
     // Everything standing, each with its footprint on the ground, drawn in
     // depth order (plaza-depth.ts): long things (hurdles, goals, the
     // gantry, the food truck) behind or in front of each walker where they
@@ -3961,6 +5429,21 @@ export function openPlaza(options) {
           { sw: o.spr.w / 2, name: "rock" },
         ),
       ),
+      ...PLAZA_DECOR.map((o) => {
+        const d = DECOR_ART[o.kind];
+        return spot(
+          o.x,
+          o.y,
+          d.foot,
+          d.h,
+          () => {
+            if (d.shadow)
+              GFX.shadow(g, o.x + 3, o.y + 2, d.shadow[0], d.shadow[1]);
+            GFX.blit(g, d.spr(o.seed), o.x, o.y + 4);
+          },
+          { sw: d.sw ?? 0, name: o.kind },
+        );
+      }),
       ...LAMPS.map((o) =>
         spot(o.x, o.y, 9, 110 * PLAZA_SCALE.lamp, () => drawLamp(g, o), {
           sw: 24,
@@ -3998,16 +5481,6 @@ export function openPlaza(options) {
         name: "house",
         draw: () => drawHouse(g, h, night()),
       })),
-      ...HENS.map((h) =>
-        spot(
-          h.x,
-          h.y,
-          10,
-          40,
-          () => GFX.chicken(g, h.k, h.st, time + h.t0, h.x, h.y, 1.15, h.face),
-          { name: "hen" },
-        ),
-      ),
       ...PIGEONS.map((b) =>
         spot(
           b.x,
@@ -4069,18 +5542,32 @@ export function openPlaza(options) {
               { name: "pet" },
             ),
           ]),
+      // Corner flags on the pitch, waving (still on Low graphics).
+      ...[
+        [PITCH.x0, PITCH.y0],
+        [PITCH.x1, PITCH.y0],
+        [PITCH.x0, PITCH.y1],
+        [PITCH.x1, PITCH.y1],
+      ].map(([x, y], i) =>
+        spot(x, y, 4, 48, () => drawCornerFlag(g, x, y, i, time), {
+          sw: 20,
+          name: "corner-flag",
+        }),
+      ),
       ...FLOOD.map((o) =>
         spot(o.x, o.y, 6, 256, () => drawFlood(g, o, night()), {
           sw: 28,
           name: "flood",
         }),
       ),
+      // The basin's foot on the ground: someone in front of the wall is
+      // drawn over it, someone behind the rim under it.
       {
-        x0: FOUNT.x - 126,
-        x1: FOUNT.x + 126,
-        y0: FOUNT.y - 60,
-        y1: FOUNT.y + 60,
-        h: 200,
+        x0: FOUNT.x - FOUNT.rx,
+        x1: FOUNT.x + FOUNT.rx,
+        y0: FOUNT.y + FOUNT.wall - FOUNT.ry,
+        y1: FOUNT.y + FOUNT.wall + FOUNT.ry,
+        h: 230,
         name: "fountain",
         draw: () => drawFountain(g, time),
       },
@@ -4134,7 +5621,7 @@ export function openPlaza(options) {
         y1: LEADER.y,
         h: 252,
         name: "leader",
-        draw: () => drawLeader(g),
+        draw: () => drawLeader(g, time),
       },
       {
         x0: PHOTO.x - 86,
@@ -4196,7 +5683,7 @@ export function openPlaza(options) {
         x1: BOARD.x + 70,
         y0: BOARD.y - 6,
         y1: BOARD.y,
-        h: 170,
+        h: 190,
         name: "board",
         draw: () => drawBoard(g),
       },
@@ -4205,30 +5692,21 @@ export function openPlaza(options) {
         x1: GATE.x + 80,
         y0: GATE.y - 4,
         y1: GATE.y,
-        h: 210,
+        h: 195,
         name: "gate",
         draw: () => drawGate(g),
       },
-      spot(
-        GATE.x + 120,
-        GATE.y + 2,
-        16,
-        60,
-        () => GFX.blit(g, GFX.mailbox(), GATE.x + 120, GATE.y + 2),
-        { name: "mailbox" },
-      ),
-      spot(
-        GATE.x - 140,
-        GATE.y + 4,
-        34,
-        46,
-        () => GFX.blit(g, GFX.hay(), GATE.x - 140, GATE.y + 4),
-        { name: "hay" },
-      ),
       spot(ball.x, ball.y, ball.r || 14, 40, () => drawBall(g), {
         z: ball.z || 0,
         name: "ball",
       }),
+      ...gifts.drawables().map((d) =>
+        spot(d.x, d.y, 14, 50, () => d.draw(g, time), {
+          z: d.z,
+          sw: 24,
+          name: d.name,
+        }),
+      ),
       ...ev.orbs.map((o) =>
         spot(
           o.x,
@@ -4282,7 +5760,10 @@ export function openPlaza(options) {
     const sorted = depthSort(shown);
     if (debugOrder) debugOrder = sorted.map((i) => i.name ?? "?");
     for (const i of sorted) i.draw();
+    if (!photo) fishing.drawRod(g, P);
     BUTTER.forEach((b) => GFX.butterfly(g, time + b.ph, b.x, b.y, b.c, 1.3));
+    if (!low) drawDragonflies(g, time);
+    if (!low) drawFalling(g, time, vx0, vy0, vx1, vy1);
     SMOKE.forEach((m) => {
       g.fillStyle = `rgba(240,240,245,${0.45 * (1 - m.t / m.life)})`;
       g.beginPath();
@@ -4309,6 +5790,7 @@ export function openPlaza(options) {
         if (f.icon)
           textWithIcon(g, f.text, f.icon, f.x, f.y - k * 50 - 8, 24, true);
         else {
+          g.lineJoin = "round";
           g.strokeText(f.text, f.x, f.y - k * 50);
           g.fillText(f.text, f.x, f.y - k * 50);
         }
@@ -4323,6 +5805,10 @@ export function openPlaza(options) {
           if (hi.complete) g.drawImage(hi, x - 13, y - 24, 26, 26);
         }
         g.globalAlpha = 1;
+      } else if (f.cf) {
+        drawConfetti(g, f);
+      } else if (f.flash) {
+        drawFlash(g, f);
       } else if (f.g) {
         g.globalAlpha = 1 - k;
         g.fillStyle = f.c || "#fff";
@@ -4332,6 +5818,7 @@ export function openPlaza(options) {
         g.globalAlpha = 1;
       }
     }
+    if (!photo) fishing.drawCatch(g, P);
     // day / night grading and lights
     const n = night();
     // Golden hour: the late sun warms the whole square.
@@ -4364,16 +5851,15 @@ export function openPlaza(options) {
       drawSpotlightsNight(g, time, n);
       g.save();
       g.globalCompositeOperation = "lighter";
+      // Each glow is a soft disc of its colour, painted once and stamped
+      // at its size and strength (it made a gradient per glow per frame:
+      // 40 fireflies, the lamps and the floodlights).
       const glow = (x, y, r, c, a) => {
-        if (low) return;
+        if (low || a <= 0.005) return;
         if (x + r < vx0 || x - r > vx1 || y + r < vy0 || y - r > vy1) return;
-        const gr = g.createRadialGradient(x, y, 0, x, y, r);
-        gr.addColorStop(0, `rgba(${c},${a})`);
-        gr.addColorStop(1, `rgba(${c},0)`);
-        g.fillStyle = gr;
-        g.beginPath();
-        g.arc(x, y, r, 0, 7);
-        g.fill();
+        g.globalAlpha = Math.min(1, a);
+        g.drawImage(glowDisc(c), x - r, y - r, r * 2, r * 2);
+        g.globalAlpha = 1;
       };
       LAMPS.forEach((l) => {
         glow(l.x, l.y - LAMP_HEAD, 90, "255,214,140", 0.55 * n);
@@ -4392,6 +5878,16 @@ export function openPlaza(options) {
       glow(FOUNT.x, FOUNT.y - 40, 170, "120,220,255", 0.22 * n);
       for (const l of RIVER_LAMPS)
         glow(l.x, l.y - LAMP_HEAD, 90, "255,214,140", 0.55 * n);
+      // The porch lanterns by the houses' doors.
+      for (const h of HOUSES)
+        if (h.spr.lamp)
+          glow(
+            h.x + h.spr.lamp[0] * HK,
+            h.y + h.spr.lamp[1] * HK,
+            26,
+            "255,214,140",
+            0.7 * n,
+          );
       if (!low && vy0 < 0) drawRiverLights(g, time, n, vx0, vx1);
       for (let i = 0; i < 40; i++) {
         const t = TREES[i % TREES.length];
@@ -4409,6 +5905,7 @@ export function openPlaza(options) {
         ev.orbs.forEach((o) =>
           glow(o.x, o.y - 18 - o.z, 40, "220,170,255", 0.5 * n),
         );
+      gifts.glows(glow, n);
       g.restore();
       drawStringLights(g, time, n, vx0, vy0, vx1, vy1);
     } else {
@@ -4446,6 +5943,19 @@ export function openPlaza(options) {
   // events (the Orb Shower).
   const DASH_EVERY = PLAZA.dashEvery;
   let lastDraw = 0;
+  /** How far the frames got (tests' failure reports, __plaza.health()):
+   * called, drawn (past the frame cap), stepped (you moved), spotted (the
+   * nearest spot looked up), each a count and the last time (ms). */
+  const reached = {
+    called: [0, 0],
+    drawn: [0, 0],
+    stepped: [0, 0],
+    spotted: [0, 0],
+  };
+  const reach = (k: keyof typeof reached) => {
+    reached[k][0]++;
+    reached[k][1] = performance.now();
+  };
   /** The last frame's drawing order, once a test asks for it. */
   let debugOrder = false;
   // A 120 Hz phone: about 60 frames a second, as everywhere (frame-cap.ts).
@@ -4457,14 +5967,26 @@ export function openPlaza(options) {
   );
   function step(now) {
     raf = requestAnimationFrame(step);
+    reach("called");
     if (low ? now - lastDraw < 30 : !cap.draw(now)) return;
     lastDraw = now;
+    reach("drawn");
     drawn.draw(now, 0);
     if (probe) {
       if (covered() || document.hidden) probe.pause();
       else {
         const verdict = probe.frame(performance.now());
-        if (verdict === "low") {
+        if (verdict === "low" && sharp && sceneDensity(NW, NH) < PS) {
+          // First a step back to 1.5x (as before 22 Nov), watched afresh.
+          sharp = false;
+          try {
+            localStorage.setItem(SOFT_KEY, "1");
+          } catch {
+            /* private mode: soft for this visit only */
+          }
+          resize();
+          probe = new FrameRateProbe(0);
+        } else if (verdict === "low") {
           rememberAutoLow(`Plaza ran at ${Math.round(probe.lastFps)} fps`);
           probe = undefined;
           goLow();
@@ -4484,14 +6006,58 @@ export function openPlaza(options) {
       }
     } else coveredAt = undefined;
     const dt = Math.max(0, Math.min(0.05, (now - last) / 1000));
+    // You (and the ball you kick) move by the time that really passed, in
+    // the server's own 0.05 s steps, up to a second a frame (the server's
+    // own limit: past it, the two clocks would part, and the server, which
+    // places your stamped inputs on its own clock, would play them late).
+    // With only the capped dt, a device under 20 fps moved you less than
+    // the server did with the same stick: a Go walk stopped where the
+    // browser had you while the server's copy walked on (past the dock's
+    // end on a slow CI runner), and every correction pulled you after it.
+    const moveDt = Math.max(0, Math.min(1, (now - last) / 1000));
+    frameDt = Math.max(1 / 120, moveDt);
     last = now;
     T = now / 1000;
     if (!ready) return;
     const photo = !$("pz-photo").hidden;
+    if (mapOpen() && now - mapDotsAt > 250) renderMapDots();
     if (!photo) {
       if (todHold > 0) todHold -= dt;
       else tod = realTod();
+      reach("stepped");
       // You: the same step as the server, then a gentle pull toward where it says you are.
+      const ox = P.x,
+        oy = P.y;
+      const ev2: {
+        bounced?: number;
+        landed?: boolean;
+        tripped?: boolean;
+        /** When you tripped, on stepClock (ms). */
+        tripAt?: number;
+      } = {};
+      const run = (span) => {
+        for (let left = span; left > 1e-6; left -= 0.05) {
+          const h = Math.min(0.05, left);
+          const e = plazaStep(P, sent, h);
+          if (e.bounced !== undefined) ev2.bounced = e.bounced;
+          if (e.landed) ev2.landed = true;
+          if (e.tripped) {
+            ev2.tripped = true;
+            // The step ends (span - left + h) s in; the trip was the
+            // stumbling already done before that.
+            ev2.tripAt =
+              stepClock +
+              (span - left + h - (PLAZA.stunSeconds - P.stun)) * 1000;
+          }
+          // The ball you run into, step by step with you (plaza-net.ts).
+          net.ball?.step(P, h, performance.now());
+        }
+        stepClock += span * 1000;
+      };
+      // A long frame (under 20 fps): the time that passed beyond one step
+      // was walked, on the server, with the stick it already had.
+      const catchUp = Math.max(0, moveDt - 0.05);
+      run(catchUp);
       let dir = inputDir();
       if (covered()) {
         keys.clear();
@@ -4499,10 +6065,8 @@ export function openPlaza(options) {
         dir = { x: 0, y: 0 };
       }
       sendInput(dir, now);
-      const ox = P.x,
-        oy = P.y;
-      const ev2 = plazaStep(P, sent, dt);
-      stepClock += dt * 1000;
+      // The frame's own step with the stick as sent now.
+      run(moveDt - catchUp);
       if (ev2.bounced !== undefined)
         FX.push({
           ring: 1,
@@ -4514,18 +6078,34 @@ export function openPlaza(options) {
         });
       if (ev2.landed) FX.push({ dust: 1, x: P.x, y: P.y, t: 0, life: 0.4 });
       if (ev2.tripped) {
+        // Tell the server, at the moment it happened: its own hurdles are
+        // lenient (PLAZA_HURDLE), so it trips you when your screen does.
+        const t = Math.round(ev2.tripAt ?? stepClock);
+        socket.emit("plaza-trip", {
+          left: PLAZA.stunSeconds,
+          s: predict.send(t),
+          t,
+        });
         showEmote(P, "💫");
         pzToast("Tripped! Press Space to jump the hurdles.");
       }
+      // What follows the server or a clock goes by the time that really
+      // passed (moveDt), like your step above and the camera below: with
+      // the capped dt it fell behind under 20 fps. Only what is just to look
+      // at (particles, animals, emotes) keeps the capped dt and slows down.
+      // So does the Go walk's stuck timer, on purpose: on real time, one
+      // long frame slowed at a rail (0.3 s at a few fps) passed its 0.12 s
+      // at once and turned the walk aside, off the dock's end (1 of 6 runs
+      // of the dock walk at 6x CPU throttle, 0 of 6 on the capped dt).
       P.stuckT =
-        target && P.speed < PLAZA.speed * 0.5 && P.dash <= 0
+        target && P.speed < PLAZA.speed * 0.5 * steerK && P.dash <= 0
           ? (P.stuckT || 0) + dt
           : Math.max(0, (P.stuckT || 0) - dt * 0.5);
       if (srv?.acked) {
         // Ease in what the server disagreed on (plaza-predict.ts).
         const bx = P.x,
           by = P.y,
-          c = predict.ease(dt);
+          c = predict.ease(moveDt);
         P.x += c.x;
         P.y += c.y;
         plazaCollide(P);
@@ -4538,7 +6118,7 @@ export function openPlaza(options) {
           P.x = srv.x;
           P.y = srv.y;
         } else if (moving ? err > 100 : err > 2) {
-          const k = 1 - Math.exp(-dt / (moving ? 0.8 : 0.15));
+          const k = 1 - Math.exp(-moveDt / (moving ? 0.8 : 0.15));
           P.x += (srv.x - P.x) * k;
           P.y += (srv.y - P.y) * k;
         }
@@ -4548,14 +6128,32 @@ export function openPlaza(options) {
       P.buff = P.boost;
       if (P.dash > 0 && Math.random() < 0.8)
         P.trail.push({ x: ox, y: oy, z: P.z, t: 0 });
-      // Everyone else: smoothed toward the server.
-      const k = 1 - Math.exp(-dt / 0.09);
+      // Everyone else: drawn a moment in the past, between the server's
+      // snapshots around it (plaza-net.ts), or smoothed toward the newest
+      // before the server's clock is known.
+      const k = 1 - Math.exp(-moveDt / 0.09);
+      const seenT = net.clock.now(performance.now()),
+        seenDelay = net.clock.delay();
       for (const b of others.values()) {
         const px = b.x,
           py = b.y;
-        b.x += (b.tx - b.x) * k;
-        b.y += (b.ty - b.y) * k;
-        b.z += (b.tz - b.z) * Math.min(1, k * 1.6);
+        const at =
+          seenT !== null && net.tracks.get(b.id)?.at(seenT - seenDelay);
+        if (at) {
+          b.x = at.x;
+          b.y = at.y;
+          // Their jump's height from the same moment in the past (it chased
+          // the newest snapshot, ten a second, so a jump rose in steps).
+          b.z = at.z;
+        } else {
+          b.x += (b.tx - b.x) * k;
+          b.y += (b.ty - b.y) * k;
+          b.z += (b.tz - b.z) * Math.min(1, k * 1.6);
+        }
+        if (moveDt > 0) {
+          b.vx = (b.x - px) / moveDt;
+          b.vy = (b.y - py) / moveDt;
+        }
         b.air = b.z > 1 ? 1 : 0;
         if (b.dash && Math.random() < 0.8)
           b.trail.push({ x: px, y: py, z: b.z, t: 0 });
@@ -4563,10 +6161,22 @@ export function openPlaza(options) {
       for (const b of BODIES()) {
         if (b.emoteT > 0) b.emoteT -= dt;
         if (b.dance > 0) b.dance -= dt;
+        if (b.pairT > 0) b.pairT -= dt;
         b.trail.forEach((t) => (t.t += dt));
         b.trail = b.trail.filter((t) => t.t < 0.3);
       }
-      if (ball.tx != null) {
+      if (net.ball) {
+        // Your kicks move it at once; the server's ball keeps it honest.
+        const ox2 = ball.x,
+          oy2 = ball.y;
+        // (Stepped with you above.)
+        const nb = net.ball.ball,
+          vis = net.ball.vis;
+        ball.x = nb.x + vis.x;
+        ball.y = nb.y + vis.y;
+        ball.z = nb.z;
+        ball.spin += Math.hypot(ball.x - ox2, ball.y - oy2) / ball.r;
+      } else if (ball.tx != null) {
         const ox2 = ball.x,
           oy2 = ball.y;
         ball.x += (ball.tx - ball.x) * Math.min(1, k * 1.4);
@@ -4577,9 +6187,11 @@ export function openPlaza(options) {
       updateRun();
       updateRunway();
       updateEvent();
+      gifts.update();
       FX.forEach((f) => {
         f.t += dt;
-        if (f.g) {
+        if (f.cf) stepConfetti(f, dt);
+        else if (f.g) {
           f.x += f.vx * dt;
           f.y += f.vy * dt;
           f.vz -= 500 * dt;
@@ -4592,14 +6204,24 @@ export function openPlaza(options) {
       near =
         SPOTS.find((s) => Math.hypot(P.x - s.x, (P.y - s.y) * 1.3) < s.r) ||
         null;
+      reach("spotted");
       const ib = $("pz-interact");
+      // The fight steps at the server's pace (PLAZA_FIGHT.tickMs), and the
+      // server lets a hooked fish go after maxTicks of real time: with the
+      // capped dt, a fight under 20 fps ran slow and a long one timed out.
+      fishing.update(moveDt);
+      if (toDock && (!fishing.active || !target)) {
+        // At the dock's end: face the water, where the line goes.
+        if (fishing.active) P.face = PLAZA_FISHING.bobber.x >= P.x ? 1 : -1;
+        toDock = false;
+      }
       if (near) {
         if (ib.dataset.id !== near.id) {
           ib.dataset.id = near.id;
           ib.innerHTML = `${I(near.icon)}<span>${near.label}</span><kbd>E</kbd>`;
         }
-        ib.hidden = false;
-      } else {
+        if (ib.hidden) ib.hidden = false;
+      } else if (!ib.hidden) {
         ib.hidden = true;
         ib.dataset.id = "";
       }
@@ -4615,9 +6237,24 @@ export function openPlaza(options) {
       const lead = { x: P.vx * 0.25, y: P.vy * 0.2 };
       // Follows you a little past the Plaza's edges, onto the river, the
       // woods and the fields, never past what is painted (plaza-surround.ts).
-      const want = plazaCamClamp(P.x + lead.x, P.y - 40 + lead.y, NW, NH, Z);
-      cam.x += (want.x - cam.x) * Math.min(1, dt * 5);
-      cam.y += (want.y - cam.y) * Math.min(1, dt * 5);
+      // Fishing: the angler and the whole pond, centred, as big as fits
+      // between fishing's buttons (fishingFrame).
+      const frame = fishing.active ? fishingFrame(NW, NH) : null;
+      const fzWant = frame ? frame.z / zBase : 1;
+      // The camera and the zoom ease by the time that really passed (up to
+      // a second, as you move), not the frame's capped 0.05 s: under 20 fps
+      // they fell behind in real time, so after a teleport, a correction
+      // from the server or a hitch, you stayed off the screen for seconds
+      // at a few frames a second (a CI runner drew you nowhere for 2 s).
+      const camK = (rate) => 1 - Math.exp(-moveDt * rate);
+      if (Math.abs(fz - fzWant) > 0.001) {
+        fz += (fzWant - fz) * camK(4);
+        Z = zBase * fz;
+      }
+      const look = frame ?? { x: P.x + lead.x, y: P.y - 40 + lead.y };
+      const want = plazaCamClamp(look.x, look.y, NW, NH, Z);
+      cam.x += (want.x - cam.x) * camK(5);
+      cam.y += (want.y - cam.y) * camK(5);
       {
         const nt = night() > 0.5,
           ck = $("pz-clock");
@@ -4629,6 +6266,13 @@ export function openPlaza(options) {
     }
     ctx.setTransform(PS, 0, 0, PS, 0, 0);
     ctx.imageSmoothingQuality = "high";
+    // A hooked fish's fight: its close-up comes in over the Plaza, then
+    // stands in for it (one scene to paint, not two).
+    const fv = fishing.fightView();
+    if (fv && fv.t >= FIGHT_IN_SECONDS) {
+      fightView.draw(ctx, fv, NW, NH, T, low, fightRoom, 1, PS, night());
+      return;
+    }
     ctx.fillStyle = "#24452a";
     ctx.fillRect(0, 0, NW, NH);
     ctx.save();
@@ -4649,6 +6293,19 @@ export function openPlaza(options) {
     vg.addColorStop(1, "rgba(5,10,25,.35)");
     ctx.fillStyle = vg;
     ctx.fillRect(0, 0, NW, NH);
+    if (fv)
+      fightView.draw(
+        ctx,
+        fv,
+        NW,
+        NH,
+        T,
+        low,
+        fightRoom,
+        fv.t / FIGHT_IN_SECONDS,
+        PS,
+        night(),
+      );
   }
 
   /* ---------- size, enter, leave ---------- */
@@ -4658,7 +6315,9 @@ export function openPlaza(options) {
       nh = Math.max(1, layer.clientHeight),
       // Low graphics draws one pixel per CSS pixel; iPhones and iPads keep
       // within a pixel budget (render-budget.ts).
-      ps = low ? 1 : sceneDensity(nw, nh);
+      ps = low
+        ? 1
+        : sceneDensity(nw, nh, undefined, undefined, undefined, sharp);
     NW = nw;
     NH = nh;
     PS = ps;
@@ -4689,7 +6348,7 @@ export function openPlaza(options) {
   /* ---------- panels over the Plaza ---------- */
   // What covers the Plaza, looked up once per DOM change, not every frame.
   let cover;
-  const COVERS = "dialog, .home-drawer, .header-menu";
+  const COVERS = "dialog, .home-drawer, .header-menu, .ui-panel-host";
   const coverWatch = new MutationObserver((records) => {
     if (!cover) return;
     for (const r of records) {
@@ -4707,13 +6366,13 @@ export function openPlaza(options) {
     subtree: true,
     childList: true,
     attributes: true,
-    attributeFilter: ["open", "hidden"],
+    attributeFilter: ["open", "hidden", "data-ui-leaving"],
   });
   // The album counts too: you stand still, and the Plaza behind it rests.
   const coverNow = () =>
     (cover ??= {
       covered: !!document.querySelector(
-        "dialog[open], .home-drawer:not([hidden]), .header-menu[open], .plaza-layer .pz-album:not([hidden])",
+        "dialog[open], .home-drawer:not([hidden]), .header-menu[open], .plaza-layer .pz-album:not([hidden]), .plaza-layer > .ui-panel-host:not([data-ui-leaving])",
       ),
       hides: !!document.querySelector(
         "dialog[open], .home-drawer:not([hidden]), .plaza-layer .pz-album:not([hidden])",
@@ -4823,14 +6482,25 @@ export function openPlaza(options) {
     },
     say,
     /** Your fighter or skin changed. */
-    look(character, skin, colour = null, aura = null) {
+    look(
+      character,
+      skin,
+      colour = null,
+      aura = null,
+      entrance = null,
+      victory = null,
+    ) {
       P.character = character;
       P.skin = skin ?? null;
       P.colour = colour ?? null;
       // Your Aura shows at once; others' come with their profiles.
       P.aura = aura ?? null;
+      P.entrance = entrance ?? null;
+      P.victory = victory ?? null;
       P.fx = [];
       P.img = imageFor(character, skin ?? null, colour ?? null);
+      // Arriving, or changing fighter or outfit: your entrance plays.
+      greetWearer(P);
     },
     close() {
       setPerfSource("plaza", undefined);
@@ -4846,8 +6516,16 @@ export function openPlaza(options) {
       socket.off("plaza-news", onNews);
       socket.off("plaza-profiles", onProfiles);
       socket.off("plaza-state", onState);
-      socket.off("plaza-treat", onTreat);
-      socket.off("plaza-treats", onTreats);
+      socket.off("plaza-gift", onGift);
+      socket.off("plaza-gifts", onGiftList);
+      socket.off("plaza-gift-gone", onGiftGone);
+      socket.off("plaza-fish", onFish);
+      clearTimeout(catchTimer);
+      fishing.reset();
+      socket.off("plaza-pair-ask", onPairAsk);
+      socket.off("plaza-pair", onPair);
+      socket.off("plaza-pair-no", onPairNo);
+      clearTimeout(askTimer);
       removeEventListener("pointermove", pinchMove, true);
       removeEventListener("pointerup", pinchEnd, true);
       removeEventListener("pointercancel", pinchEnd, true);
@@ -4859,7 +6537,9 @@ export function openPlaza(options) {
       document.removeEventListener("visibilitychange", onHidden);
       hideAlbum();
       album.close();
+      busyWatch.disconnect();
       layer.remove();
+      document.dispatchEvent(new Event(HUB_BUSY_EVENT));
       syncHubGraphics();
     },
     _dbg: {
@@ -4893,6 +6573,15 @@ export function openPlaza(options) {
         y1: cam.y + NH / 2 / Z,
         z: Z,
       }),
+      /** The square's animals on the ground now (tests). */
+      animals: () => ({
+        pet: { x: PET.x, y: PET.y },
+        pigeons: PIGEONS.map((b) => ({ x: b.x, y: b.y, fly: b.fly > 0 })),
+      }),
+      /** Tests: put the corgi somewhere, walking toward a point. */
+      sendPet(x, y, tx, ty) {
+        Object.assign(PET, { x, y, tx, ty, wait: 0 });
+      },
       /** The click marker now (tests). */
       clickMark: () => (clickMark ? { ...clickMark } : null),
       /** Tests: zoom to a factor of the usual (as a pinch or the wheel). */
@@ -4907,15 +6596,68 @@ export function openPlaza(options) {
       others,
       orbs,
       ball,
+      /** Smoothing and ball prediction state (plaza-net.ts; tests). */
+      net,
       get score() {
         return score;
       },
       get progress() {
         return progress;
       },
-      /** Treat particles flying now (tests). */
-      treatFx: () => FX.filter((f) => f.g === "●").length,
+      /** Gift boxes in the air or open, and confetti flying (tests). */
+      gifts: () => gifts.list(),
+      /** Why the Plaza might not be moving on (tests' failure reports):
+       * asleep, covered, how long since a snapshot, and you as drawn. */
+      health: () => ({
+        frozen,
+        running,
+        cover: { ...coverNow() },
+        stateAgeMs: Math.round(performance.now() - stateAt),
+        stateMeAgeMs: stateMeAt
+          ? Math.round(performance.now() - stateMeAt)
+          : -1,
+        me: { x: Math.round(P.x), y: Math.round(P.y) },
+        near: near?.id ?? null,
+        dialog: document.querySelector("dialog[open]")?.className ?? null,
+        // Each: [count, ms since the last] (-1: never).
+        frames: Object.fromEntries(
+          Object.entries(reached).map(([k, [n, at]]) => [
+            k,
+            [n, n ? Math.round(performance.now() - at) : -1],
+          ]),
+        ),
+        srv: srv && { x: srv.x, y: srv.y, acked: !!srv.acked },
+        low,
+        photo: !$("pz-photo").hidden,
+        hidden: document.hidden,
+        visibility: document.visibilityState,
+      }),
+      confetti: () => FX.filter((f) => f.cf).length,
       SPOTS,
+      /** Fishing's line now: null, "cast", "wait" or "bite" (tests). */
+      get fishing() {
+        return fishing.state;
+      },
+      /** Fishing mode: on, its phase and the camera's extra zoom (tests). */
+      /** The pond's ducks (live: a test may turn them round their path)
+       * and the fishing line's run (tests). */
+      ducks: () => DUCKS,
+      lineZone: LINE_ZONE,
+      get fishingMode() {
+        return {
+          active: fishing.active,
+          phase: fishing.phase,
+          fz,
+          fight: fishing.fightView(),
+          // What the camera shows, in Plaza coordinates.
+          view: {
+            x0: cam.x - NW / 2 / Z,
+            y0: cam.y - NH / 2 / Z,
+            x1: cam.x + NW / 2 / Z,
+            y1: cam.y + NH / 2 / Z,
+          },
+        };
+      },
       /** The photo album's store (tests fill it). */
       album,
     },

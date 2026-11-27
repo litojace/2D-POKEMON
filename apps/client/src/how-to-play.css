@@ -1,0 +1,250 @@
+/* How to play (how-to-play.ts), inside the game's dialog. Phone landscape
+   first: the tabs scroll sideways, cards are short, and the foot stays
+   small. The pictures are the .guide-scene courts from illustrated-help. */
+.htp {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+.htp-tabs {
+  /* The topics stay in reach while a long topic scrolls. */
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--ui-bg-0);
+  /* Covers the dialog's top padding too, so nothing peeks above the tabs. */
+  box-shadow: 0 -20px 0 var(--ui-bg-0);
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  /* Room for focus rings at the ends. */
+  padding: 2px;
+  margin: -2px;
+}
+.htp-tabs::-webkit-scrollbar {
+  display: none;
+}
+.htp-tabs button {
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--ui-line-2);
+  border-radius: var(--rad-pill);
+  background: var(--ui-bg-2);
+  color: var(--ui-dim);
+  font: 700 var(--fs-body) / 1 var(--font-body);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.htp-tabs button[aria-selected="true"] {
+  border-color: var(--ui-accent);
+  background: var(--ui-accent);
+  color: var(--ui-accent-ink);
+}
+.htp-body {
+  min-width: 0;
+  outline: none;
+}
+.htp-lead {
+  margin: 2px 0 10px;
+  color: var(--ui-dim);
+  font-size: var(--fs-body);
+}
+.htp-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr));
+  gap: 10px;
+}
+.htp-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  /* Cards in a row share one height; the text column fills it, so every
+     Go button sits on the card's bottom edge, level across the row. */
+  align-items: stretch;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--ui-line);
+  border-radius: var(--rad-md);
+  background: var(--ui-bg-1);
+}
+.htp-card.has-art {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto 1fr;
+  padding: 0;
+  overflow: hidden;
+}
+.htp-card.has-art .htp-card-text {
+  padding: 0 12px 12px;
+}
+.htp-card-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+}
+.htp-card .guide-scene {
+  height: 112px;
+}
+.htp-icon {
+  align-self: start;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--rad-sm);
+  background: color-mix(in srgb, var(--ui-accent) 16%, transparent);
+  color: var(--ui-accent);
+}
+.htp-icon svg {
+  width: 22px;
+  height: 22px;
+}
+.htp-card h3 {
+  margin: 0 0 4px;
+  color: var(--ui-text);
+  font: 700 var(--fs-h4) / 1.15 var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.htp-card p {
+  margin: 0 0 8px;
+  color: var(--ui-dim);
+  font-size: var(--fs-small);
+  line-height: 1.45;
+}
+.htp-go {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  /* Pushed to the bottom of the card (see .htp-card). */
+  margin-top: auto;
+  padding: 0 12px;
+  border: 1px solid color-mix(in srgb, var(--ui-accent) 55%, transparent);
+  border-radius: var(--rad-pill);
+  background: transparent;
+  color: var(--ui-accent);
+  font: 700 var(--fs-small) / 1 var(--font-body);
+  cursor: pointer;
+}
+.htp-go svg {
+  width: 16px;
+  height: 16px;
+}
+.htp-devices {
+  display: inline-flex;
+  gap: 4px;
+  padding: 3px;
+  margin-bottom: 10px;
+  border: 1px solid var(--ui-line-2);
+  border-radius: var(--rad-pill);
+  background: var(--ui-bg-1);
+}
+.htp-devices button {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--rad-pill);
+  background: transparent;
+  color: var(--ui-dim);
+  font: 700 var(--fs-small) / 1 var(--font-body);
+  cursor: pointer;
+}
+.htp-devices button[aria-pressed="true"] {
+  background: var(--ui-bg-3);
+  color: var(--ui-text);
+}
+.htp-keys {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.htp-keys li {
+  display: grid;
+  grid-template-columns: minmax(84px, auto) minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid var(--ui-line);
+  border-radius: var(--rad-sm);
+  background: var(--ui-bg-1);
+}
+.htp-keys kbd {
+  padding: 6px 8px;
+  border: 1px solid var(--ui-line-2);
+  border-radius: var(--rad-xs);
+  background: var(--ui-bg-2);
+  color: var(--ui-text);
+  font: 700 var(--fs-small) / 1 var(--font-body);
+  text-align: center;
+  white-space: nowrap;
+}
+.htp-keys span {
+  color: var(--ui-dim);
+  font-size: var(--fs-small);
+  line-height: 1.4;
+}
+.htp-actions {
+  margin-top: 4px;
+}
+.htp-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.htp-foot-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--ui-line-2);
+  border-radius: var(--rad-pill);
+  background: var(--ui-bg-2);
+  color: var(--ui-text);
+  font: 700 var(--fs-small) / 1 var(--font-body);
+  cursor: pointer;
+}
+.htp-foot-btn svg {
+  width: 18px;
+  height: 18px;
+}
+.htp button:focus-visible {
+  outline: 2px solid var(--ui-accent-hi);
+  outline-offset: 2px;
+}
+/* Short landscape phones: smaller pictures so a row of cards fits. */
+@media (max-height: 430px) {
+  .htp-card-text {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    min-width: 0;
+  }
+  .htp-card .guide-scene {
+    height: 92px;
+  }
+  .htp-card .guide-fighter {
+    width: 72px;
+    height: 72px;
+    top: 14px;
+  }
+  .htp-card .guide-charge {
+    gap: 6px;
+  }
+  .htp-card :is(.guide-ultimate, .guide-charge .guide-move) {
+    width: 48px;
+    height: 48px;
+    padding: 6px;
+  }
+  .htp-lead {
+    margin-bottom: 8px;
+  }
+}

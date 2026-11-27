@@ -30,7 +30,7 @@ body {
 .m-backdrop {
   position: absolute;
   inset: -30px;
-  background: url("../../../apps/client/public/assets/backgrounds/plaza-night-voltkit.webp")
+  background: url("../../../apps/client/public/assets/backgrounds/plaza-lobby-f340a3b8.webp")
     center 40% / cover;
   filter: blur(6px) brightness(0.4) saturate(1.15);
 }

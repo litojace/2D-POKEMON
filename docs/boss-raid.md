@@ -17,15 +17,17 @@ Every raid runs at Peril 3 (since migration 030). A boss's stars (`RAID_BOSSES[b
 |---|---|---|---|
 | Boss health × (on top of the Peril 3 formula) | 1.15 | 1.25 | 1.35 |
 | Boss damage × (replaces Peril 3's 1.5) | 1.75 | 1.95 | 2.15 |
-| Time between attacks × | 0.85 | 0.78 | 0.72 |
-| Most damaging attacks live at once, chapters 1 / 2 / 3 | 1 / 2 / 2 | 2 / 2 / 2 | 2 / 2 / 3 |
-| Telegraphs of 1.4 s or more × (never under 0.9 s) | 0.95 | 0.88 | 0.82 |
+| Time between attacks × | 0.85 | 0.88 | 0.90 |
+| Most damaging attacks live at once, chapters 1 / 2 / 3 | 1 / 2 / 2 | 1 / 2 / 2 | 2 / 2 / 2 |
+| Telegraphs of 1.4 s or more × (never under 0.9 s) | 0.95 | 0.92 | 0.88 |
 | Predictive aim: share of a run led / most it leads | 55% / 110 px | 70% / 140 px | 80% / 160 px |
 | Exposure, strand and grounded windows × | 0.90 | 0.80 | 0.72 |
 | Soft enrage from (seconds of combat) | 270 | 300 | 330 |
 | Solo self-revive | 8 s, 30% health | 8 s, 25% health | none |
 | Revive time / immunity after it | 3.5 s / 1.5 s | 4 s / 1.25 s | 4.5 s / 1 s |
 | Party pressure (3+ raiders) | chapter 2+ | chapter 2+ | every chapter |
+
+The ★★ and ★★★ rows were slowed on 24 Nov 2026 (owner: they cast so fast the phone camera kept zooming in and out with no time to breathe; health and damage stayed). Their own base rhythms are already quicker than Grumblecrag's, so ★★ still attacks about every 4.2–4.4 s and ★★★ about every 4.0–4.1 s solo (Prismell Glare’s wind-up also went from 1 s to 1.8 s, about 1.6 s on ★★★).
 
 Parties also face a quicker rhythm: the time between attacks × (1 − 0.05 per raider after the first), so four raiders get ×0.85. Past the enrage time the boss **grows furious** (announced in the callout line, and *FURIOUS* in the boss bar): every 30 s, up to four times, it attacks 6% faster and hits 8% harder. Telegraphs never get shorter for it.
 
@@ -130,9 +132,9 @@ Each run rolls a visible trait with a benefit and a drawback:
 - Fractured adds falling debris but armor breaks last longer.
 - Ancient has slower charges and wider shockwaves.
 
-Live raids always run at Peril 3, tuned per boss by the star tiers ("Difficulty" above); the rest of this paragraph describes the legacy Peril steps that tests still use. Peril 1 teaches the encounter. Clearing it unlocks Peril 2: extra debris, longer eruption chains, volley-into-eruption combinations and 10% more boss damage. Peril 3 adds eruptions to chapter one, gradually closes a safe circle in the final chapter and deals 20% more damage. The boss health bar is the same at every Peril. A rare non-weekly run rolls Gilded: golden appearance, 12% more health and a bonus title. Guaranteed cosmetics never require a rare encounter.
+Live raids always run at Peril 3, tuned per boss by the star tiers ("Difficulty" above); the rest of this paragraph describes the legacy Peril steps that tests still use. Peril 1 teaches the encounter. Clearing it unlocks Peril 2: extra debris, longer eruption chains, volley-into-eruption combinations and 10% more boss damage. Peril 3 adds eruptions to chapter one, gradually closes a safe circle in the final chapter and deals 20% more damage. The boss health bar is the same at every Peril. A rare run rolls Gilded: golden appearance, 12% more health and a bonus title. Guaranteed cosmetics never require a rare encounter.
 
-Six raid-only rites offer dash wards, shared ultimate energy, extra exposed-core damage, faster revives, low-health damage and ultimate-triggered healing. All champions can contribute; no dedicated healer is required. Offers vary by party seat, remain deterministic for weekly runs, and exclude owned rites. The upgrade panel shows everyone’s current build. These upgrades disappear after the run and do not change PvP loadouts.
+Six raid-only rites offer dash wards, shared ultimate energy, extra exposed-core damage, faster revives, low-health damage and ultimate-triggered healing. All champions can contribute; no dedicated healer is required. Offers vary by party seat and exclude owned rites. The upgrade panel shows everyone’s current build. These upgrades disappear after the run and do not change PvP loadouts.
 
 ## Champion tricks
 
@@ -179,13 +181,92 @@ Solo Peril 3 clears from before migration 009 (when a self-revive was still poss
 
 Skin, aura, entrance, frame and **victory** are separate slots, equipped independently on a boss's Rewards tab in the Raid Hub, for all fighters. A Victory replaces your champion's own celebration when you win a round or a raid (Rockslide Flex: a pile of rocks rises under you and you flex on top while pebbles bounce away). Every reward is cosmetic: no stat bonuses, so experienced players never make the raid easier. The Bestiary lists every reward with its exact progress.
 
+### The reward entrances (remade 26 Nov)
+
+The owner found the bosses' reward effects outdated (26 Nov), and they were: the
+seven entrances were small particle bursts over the body, over in half a second,
+and several still showed the bosses from before their 14 Nov remake. Each now
+draws over the greeting, behind the fighter, in its boss's look
+(`apps/client/src/skins/raid-entrance-fx.ts`; ids unchanged):
+
+![The seven raid entrances, before and after](raid-entrances.jpg)
+
+| Boss | Entrance | What plays |
+| --- | --- | --- |
+| Storm Twins | Lightning-strike | A gold and an ice-blue bolt strike; the two thunder-jellies bob on their crackling ribbon, then pop |
+| Lumiwick | Firefall | A sky lantern drifts down beside the fighter and flares; two little lanterns float back up |
+| Prismell | Sunburst | A sunbeam through a prism over the head fans into six rainbow beams to the floor |
+| Cragmuff | Mountainborn | The floor cracks with amber light and amber crystals thrust up behind the fighter (with the pebbles) |
+| Tidelotl | Riptide | A wave rears up, curls over and crashes into surf; a pearl floats up in a bubble and pops |
+| Inkpurr | Shadowstep | A drop of ink splats into a pool, a little ink cat with a crescent-moon tail peeks out, two lanterns light |
+| Snoozaku | Dreamdrift | Thought bubbles rise into a dream cloud beside the head (moon, stars, Z's), then it pops |
+
+In a match the fighter's name and health bar sit about 100 to 140 units over the
+floor and 65 either side, and hide what settles there on a phone: what stays (a
+cloud, a lantern, a prism) settles below them or beside the fighter. The victories
+follow in their own pass.
+
+### The reward auras (remade 26 Nov)
+
+The seven auras had become the same thin dotted ring under the Legendary
+flourish. Each now shows its boss (`apps/client/src/skins/raid-aura-fx.ts`;
+ids unchanged), its items circling in front of and behind the fighter:
+
+![The seven raid auras, before and after, and close up](raid-auras.jpg)
+
+| Boss | Aura | What circles |
+| --- | --- | --- |
+| Storm Twins | Spark | The two thunder-jellies, opposite each other, a crackle flickering between them behind the fighter |
+| Lumiwick | Ember | Three sky lanterns, bobbing, embers rising from a warm ring |
+| Prismell | Halo | Six prism crystals over rainbow rings; the light runs from crystal to crystal |
+| Cragmuff | Mountain | Amber crystals turning and glinting, over a ring of mossy stones |
+| Tidelotl | Tidal | Its pearl, over a ring of rolling water with bubbles rising |
+| Inkpurr | Nightmote | Lantern Yard lanterns and its crescent moon, over a ring of ink rimmed with violet |
+| Snoozaku | Lullaby | Stars and z's, over the Dreamer's runes lighting up in order, as in its raid |
+
+An aura plays all match long, so these stay light: no large glows (the
+Legendary flourish already pools a soft light), and less than half the fill
+the old ones painted (`tests/unit/raid-aura.test.ts`). In a match an aura is
+sized to the fighter's shadow, as everywhere, so on a phone it stays small; its
+items are drawn 1.3 to 1.5 times larger than before so they still read.
+
+### The reward victories (remade 26 Nov)
+
+Five of the seven victories were weak or broken in a match: on a phone the
+fighter's name and health bar cover the space over its head, and Crescent
+Bow's moon, Twin Spark's pair and Sweet Dreams' baku sat there; Crescent Bow
+drew its crescent as a gold disc with a dark one over it, a black ball on the
+sand court. Each is now drawn in its boss's look
+(`apps/client/src/skins/raid-victory-fx.ts`; ids and names unchanged, as the
+database seeds the names, and their descriptions still fit), and what stays
+settles below the health bar or beside the fighter. A phone's Wardrobe stage
+is narrow, with a column of buttons over its right side, so each finale's main
+piece (the moon, the wave's curl, the baku) stands on the left:
+
+![The raid victories, before and after, with a match's name and health bar](raid-victories.jpg)
+
+| Boss | Victory | Now |
+| --- | --- | --- |
+| Storm Twins | Twin Spark | The thunder-jellies pop in beside the head and dance on a crackling ribbon, meet behind it in a burst of sparks, and bolts crack down beside the fighter |
+| Lumiwick | Feather Fall | Sky lanterns are let go one by one and float up; feathers of light drift down |
+| Inkpurr | Crescent Bow | Ink pools at the feet, a real crescent (one path, no dark disc) rises on the fighter's left, horns toward it, and two Lantern Yard lanterns light up and bob on its right |
+| Tidelotl | Splashdown | A wave rears up behind, curls over to the left and crashes, and its water runs out across the floor with foam on its edges; the pearl glints in it |
+| Snoozaku | Sweet Dreams | The baku in its nightcap, a little smaller, floats up on the fighter's left, not over its head |
+| Cragmuff | Rockslide Flex | The rig's rock pile and flex as before, and amber crystals burst up either side of it (clear of the pile, which the rig draws first) |
+| Prismell | Rainbow Fan | Kept |
+
+Every Legendary and Mythic victory also had twelve broad wedges of light
+turning behind it (`victoryFlourish` in `tier-fx.ts`), a striped fan that
+looked dated. It is now a ring of light that pulses out once and eight slender
+rays, long and short, painting about a fifth of the old rays' fill.
+
 Results show actual boss damage, revive assists, and pillar baits per player, alongside team totals, plus a role for whoever led each: Heavy Hitter, Medic and Bait Master. Everyone who contributed to a completed rescue receives revive credit; solo self-revives appear only in the team total. Damage excludes overkill and phase-gated damage. Pillars credit the marked player whose charge broke them. Contribution counters reset on retry and are not a competitive leaderboard.
 
 After the server confirms reward storage, the result screen fetches the player's saved progress and shows the next milestone. Failed storage never displays invented progress. Run again keeps the party, champions and challenge, skips the already-seen introduction, and opens fresh starting rites after everyone confirms. Changing champion or difficulty returns the party to the lobby.
 
 The Raid Hub boss page shows boss information, clears, highest Peril, best active-combat time, reward goals and cosmetic equipment. It is available from the home screen, raid lobby, result screen and player profile. Only the server's verified equipped cosmetic is sent to opponents. Cosmetic choices affect appearance, not combat stats.
 
-**Raid of the Day** is optional and replaces Raid of the Week. Each day has a featured boss: Sun Prismatail, Mon Gloomshade, Tue Emberwing, Wed Somnara, Thu Storm Twins, Fri Tidewyrm, Sat Grumblecrag. Until a boss is built, a built boss stands in on its day. The day changes at **midnight Pacific time** (daylight saving included); the server decides the day, so everyone agrees. All rooms that day share the same seed, trait and Peril 2 challenge, and solo, duo, trio and four-player clears have separate daily boards. The host ticks *Raid of the Day* in the lobby (or presses *Raid today's boss* in the Hub). If midnight passes while a party waits in the lobby, the run simply becomes a normal run. Raid wins never enter the PvP match ledger or Elo rating system.
+No boss has a day of the week: every boss is open after one Grumblecrag clear (`raidUnlocked()` in `apps/client/src/screens/raid-hall-view.ts`). A run's `day` on the server is the Pacific date it was played, for missions and records; it is stored on the run, and the legacy solo rewards read it (`arena_raid_earned`, migration 030). Raid of the Week's `weekly` and `week` columns and Raid of the Day's `daily` were dropped in migration `20261127200000_drop_raid_mode_columns.sql`. Each run's stored `receipt` still holds them, and the raid function ignores them when an older server sends them. Raid wins never enter the PvP match ledger or Elo rating system.
 
 ## Required deployment setup
 
@@ -195,7 +276,7 @@ The Raid Hub boss page shows boss information, clears, highest Peril, best activ
 
 Core Peril 1 raids work without reward storage, but clears cannot be persisted or higher Perils unlocked until the migration and server credential are configured. The result screen explicitly reports storage failures. A server restart before saving an unavailable reward is not a durable queue; do the setup before inviting players to earn rewards.
 
-Migration 008 also saves real attempts that were lost (20 seconds or more of combat), with the chapter reached, per-player stats and which attacks downed people. Losses never count as clears or reach the weekly board. To see it, run this in Supabase's SQL Editor:
+Migration 008 also saves real attempts that were lost (20 seconds or more of combat), with the chapter reached, per-player stats and which attacks downed people. Losses never count as clears. To see it, run this in Supabase's SQL Editor:
 
 ```sql
 -- How far runs get, by Peril and party size.
@@ -214,6 +295,6 @@ Tables have RLS and no direct player write access. Only the service role can sub
 
 `/raid-preview.html` is a local Vite playtest using the actual simulation, boss renderer, UI, floor and champion rig. It has phase/down test buttons and makes no account changes. Like other preview pages, it is not included in the production build or PWA precache.
 
-Run `npm test`, `npm run typecheck`, `npm run build`, and `node scripts/verify-pwa.mjs`. Tests cover solo/four-player sessions, HP phase gates, friendly fire, pillar collision and exposure, stagger, revives and interruption, packet-spam crawling, raid rites, weekly seeds, Peril unlock enforcement, disconnect behavior, verified reward writes, ownership, idempotency and Elo isolation.
+Run `npm test`, `npm run typecheck`, `npm run build`, and `node scripts/verify-pwa.mjs`. Tests cover solo/four-player sessions, HP phase gates, friendly fire, pillar collision and exposure, stagger, revives and interruption, packet-spam crawling, raid rites, Peril unlock enforcement, disconnect behavior, verified reward writes, ownership, idempotency and Elo isolation.
 
 The first release deliberately has one boss with procedural artwork. Additional boss artwork, enemy families, optional AI partners and further Peril tiers are future expansions. This is not a claim of tested competitive balance or of finished animated cinematic artwork.

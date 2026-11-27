@@ -1,0 +1,91 @@
+/* A new guest's warning (guest-warning.ts) in the shared confirm modal:
+   three rows, each with its sign, instead of the modal's price ledger. */
+.ui-modal:has([data-guest-warning]) {
+  max-width: min(520px, calc(100vw - 32px));
+}
+.ui-modal:has([data-guest-warning]) .ui-ledger {
+  display: none;
+}
+.ui-modal:has([data-guest-warning]) > .ui-actions {
+  /* Both buttons one width, wide enough for "Save account". */
+  grid-auto-columns: minmax(max(var(--act-w), 128px), max-content);
+}
+.gw-rows {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0 2px;
+  padding: 0;
+  list-style: none;
+}
+.gw-row {
+  --tone: var(--ui-ok);
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: var(--rad-md);
+  background: color-mix(in srgb, var(--tone) 8%, var(--fill-card));
+  border: 1px solid color-mix(in srgb, var(--tone) 30%, var(--ui-line));
+}
+.gw-row.is-danger {
+  --tone: var(--ui-danger);
+  border-width: 2px;
+}
+.gw-row.is-accent {
+  --tone: var(--ui-accent);
+}
+.gw-sign {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: var(--tone);
+  background: color-mix(in srgb, var(--tone) 16%, transparent);
+}
+.gw-sign > svg {
+  width: 18px;
+  height: 18px;
+  color: currentColor;
+}
+.gw-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.gw-text > b {
+  color: var(--ui-text);
+}
+.gw-row.is-danger .gw-text > b {
+  color: var(--tone);
+}
+.gw-text > small {
+  color: var(--ui-dim);
+  font-size: var(--fs-small);
+  line-height: 1.35;
+}
+/* A phone held sideways: tighter rows so the buttons stay on screen. */
+@media (max-height: 500px) {
+  .gw-rows {
+    gap: 4px;
+    margin: 6px 0 0;
+  }
+  .gw-row {
+    grid-template-columns: 26px minmax(0, 1fr);
+    gap: 8px;
+    padding: 5px 10px;
+  }
+  .gw-sign {
+    width: 26px;
+    height: 26px;
+  }
+  .gw-sign > svg {
+    width: 15px;
+    height: 15px;
+  }
+  .gw-text > small {
+    font-size: var(--fs-micro);
+    line-height: 1.3;
+  }
+}

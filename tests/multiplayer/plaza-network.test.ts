@@ -8,7 +8,9 @@ import {
   PLAZA,
   PLAZA_SPAWN,
   PLAZA_SPOTS,
-  type PlazaTreat,
+  PLAZA_GIFT,
+  type PlazaGift,
+  type PlazaGiftGone,
   type PlazaNews,
   type PlazaProfile,
   type PlazaProgress,
@@ -39,8 +41,8 @@ const setup = async () => {
   const accounts = fakeAccounts(),
     records: PlazaRecord[] = [],
     bobaRefs: string[] = [],
-    treatRefs: string[] = [];
-  let treats = 3;
+    giftRefs: string[] = [];
+  let gifts = 3;
   accounts.provider.rpc = async (_token, name, args) => {
     if (name === "arena_journey") return { xp: 900 };
     if (name === "arena_my_looks")
@@ -50,18 +52,18 @@ const setup = async () => {
       bobaRefs.push(String(args.p_ref));
       return { ok: true };
     }
-    // Treats: the database counts today's free allowance down.
-    if (name === "arena_plaza_treats") return treats;
-    if (name === "arena_plaza_treat") {
-      treatRefs.push(String(args.p_ref));
-      if (treats < 1)
+    // Gift boxes: the database counts what's left today down.
+    if (name === "arena_plaza_gift") {
+      giftRefs.push(String(args.p_ref));
+      if (gifts < 1)
         return {
           ok: false,
-          error: "No treats left today. More tomorrow!",
+          error:
+            "No gift boxes left today. Plaza quests and rare fish earn more!",
           left: 0,
         };
-      treats--;
-      return { ok: true, treat: "candy", left: treats };
+      gifts--;
+      return { ok: true, left: gifts };
     }
     return {};
   };
@@ -89,8 +91,8 @@ const setup = async () => {
       profiles: new Map<number, PlazaProfile>(),
       news: [] as PlazaNews[],
       progress: [] as PlazaProgress[],
-      treats: [] as PlazaTreat[],
-      treatCounts: [] as number[],
+      gifts: [] as PlazaGift[],
+      giftGone: [] as PlazaGiftGone,
       closed: 0,
     };
     socket.on("plaza-state", (s: PlazaState) => seen.states.push(s));
@@ -100,8 +102,10 @@ const setup = async () => {
     socket.on("plaza-news", (n: PlazaNews) => seen.news.push(n));
     socket.on("plaza-progress", (p: PlazaProgress) => seen.progress.push(p));
     socket.on("plaza-closed", () => seen.closed++);
-    socket.on("plaza-treat", (t: PlazaTreat) => seen.treats.push(t));
-    socket.on("plaza-treats", (t: { n: number }) => seen.treatCounts.push(t.n));
+    socket.on("plaza-gift", (g: PlazaGift) => seen.gifts.push(g));
+    socket.on("plaza-gift-gone", (g: PlazaGiftGone) =>
+      seen.giftGone.push(...g),
+    );
     return { socket, seen, account: user?.account };
   };
   let now = QUIET;
@@ -109,7 +113,7 @@ const setup = async () => {
     for (let i = 0; i < n; i++) server!.plazaStep((now += 50));
     await settle();
   };
-  return { connect, ticks, records, bobaRefs, treatRefs };
+  return { connect, ticks, records, bobaRefs, giftRefs };
 };
 const teleport = (socket: Socket, x: number, y: number) => {
   const b = server!.plaza.bodyOf(socket.id!)!;
@@ -216,52 +220,107 @@ it("takes you out of the Plaza when you open a room", async () => {
   ).toBe(false);
 });
 
-it("throws one of today's free treats for everyone in your Plaza, one at a time", async () => {
-  const { connect, treatRefs } = await setup();
+it("tosses a gift box for everyone in your Plaza, one at a time, and its orbs are for the others", async () => {
+  const { connect, ticks, giftRefs, records } = await setup();
   const ann = await connect(),
     ben = await connect();
-  // Not in the Plaza yet: nothing to throw at.
-  expect(await emit(ann.socket, "plaza-treat")).toEqual({
+  // Not in the Plaza yet: nothing to toss.
+  expect(await emit(ann.socket, "plaza-gift")).toEqual({
     ok: false,
     error: "Not in the Plaza.",
   });
-  const joined = await emit(ann.socket, "plaza-join", { character: "voltkit" });
-  await emit(ben.socket, "plaza-join", { character: "tidefin" });
-  await settle();
-  // Your treat count arrives after joining.
-  expect(ann.seen.treatCounts.at(-1)).toBe(3);
+  await emit(ann.socket, "plaza-join", { character: "voltkit" });
+  const benJoined = await emit(ben.socket, "plaza-join", {
+    character: "tidefin",
+  });
+  await ticks(1);
   teleport(ann.socket, PLAZA_SPAWN.x, PLAZA_SPAWN.y);
-  expect(await emit(ann.socket, "plaza-treat")).toEqual({
-    ok: true,
-    treat: "candy",
-    treats: 2,
-  });
+  teleport(ben.socket, PLAZA_SPAWN.x + 600, PLAZA_SPAWN.y);
+  const r = await emit(ann.socket, "plaza-gift");
+  expect(r.ok).toBe(true);
+  expect(r.gifts).toBe(2);
+  expect(typeof r.golden).toBe("boolean");
   await settle();
-  // Everyone in that Plaza sees it, where the server has the thrower.
-  const thrown = { id: joined.me, treat: "candy", ...PLAZA_SPAWN };
-  expect(ann.seen.treats).toEqual([thrown]);
-  expect(ben.seen.treats).toEqual([thrown]);
+  // Everyone in that Plaza sees it: from where the server has the thrower,
+  // landing ahead, with its orbs.
+  expect(ann.seen.gifts).toHaveLength(1);
+  expect(ben.seen.gifts).toEqual(ann.seen.gifts);
+  const gift = ann.seen.gifts[0];
+  expect({ x0: gift.x0, y0: gift.y0 }).toEqual({
+    x0: PLAZA_SPAWN.x,
+    y0: PLAZA_SPAWN.y,
+  });
+  expect(Math.hypot(gift.x - gift.x0, gift.y - gift.y0)).toBeGreaterThan(
+    PLAZA_GIFT.reach * 0.5,
+  );
+  expect(gift.orbs).toHaveLength(
+    gift.golden ? PLAZA_GIFT.goldenOrbs : PLAZA_GIFT.orbs,
+  );
   // Too soon: refused before the database is asked.
-  expect(await emit(ann.socket, "plaza-treat")).toEqual({
+  expect(await emit(ann.socket, "plaza-gift")).toEqual({
     ok: false,
-    error: "Wait a moment between treats.",
+    error: "Wait a moment between gift boxes.",
   });
-  expect(treatRefs).toHaveLength(1);
+  expect(giftRefs).toHaveLength(1);
+  // Once open, the thrower standing on an orb catches nothing…
+  await ticks(Math.ceil((PLAZA_GIFT.flightMs + PLAZA_GIFT.openMs + 400) / 50));
+  const [orbId, ox, oy] = gift.orbs[0];
+  teleport(ann.socket, ox, oy);
+  await ticks(4);
+  expect(ann.seen.giftGone).toEqual([]);
+  // …and someone else does: everyone sees who, and it counts as an orb.
+  teleport(ann.socket, PLAZA_SPAWN.x, PLAZA_SPAWN.y);
+  teleport(ben.socket, ox, oy);
+  await ticks(4);
+  expect(ann.seen.giftGone).toContainEqual([gift.id, orbId, benJoined.me]);
+  expect(ben.seen.giftGone).toEqual(ann.seen.giftGone);
+  const orbRecords = records.filter((e) => e.kind === "orb");
+  expect(orbRecords.length).toBeGreaterThan(0);
+  for (const e of orbRecords) expect(e.ref).toMatch(/^[0-9]{6,12}-[0-9]{1,9}$/);
+  // What nobody catches fades away.
+  await ticks(Math.ceil(PLAZA_GIFT.lastsMs / 50));
+  const gone = new Set(ann.seen.giftGone.map(([, o]) => o));
+  for (const [o] of gift.orbs) expect(gone.has(o)).toBe(true);
+  // None left today: the database says so, and nobody sees a toss.
   const pause = () =>
-    new Promise((r) => setTimeout(r, PLAZA.treatSeconds * 1000 + 100));
+    new Promise((res) => setTimeout(res, PLAZA_GIFT.throwSeconds * 1000 + 100));
   await pause();
-  expect((await emit(ann.socket, "plaza-treat")).treats).toBe(1);
+  expect((await emit(ann.socket, "plaza-gift")).gifts).toBe(1);
   await pause();
-  expect((await emit(ann.socket, "plaza-treat")).treats).toBe(0);
+  expect((await emit(ann.socket, "plaza-gift")).gifts).toBe(0);
   await pause();
-  // None left today: the database says so, and nobody sees a throw.
-  expect(await emit(ann.socket, "plaza-treat")).toEqual({
+  expect(await emit(ann.socket, "plaza-gift")).toEqual({
     ok: false,
-    error: "No treats left today. More tomorrow!",
-    treats: 0,
+    error: "No gift boxes left today. Plaza quests and rare fish earn more!",
+    gifts: 0,
   });
   await settle();
-  expect(ben.seen.treats).toHaveLength(3);
-  // A fresh id per throw: a retried request can't take two treats.
-  expect(new Set(treatRefs).size).toBe(4);
-}, 15000);
+  expect(ben.seen.gifts).toHaveLength(3);
+  // A fresh id per toss: a retried request can't take two boxes.
+  expect(new Set(giftRefs).size).toBe(4);
+}, 20000);
+
+it("jumps and dashes while the stick is being steered", async () => {
+  // A dragged stick sends up to 20 updates a second. Counted with every
+  // other message, they used up the 10 a second a jump or a dash may send:
+  // one pressed after half a second of steering was dropped, the server
+  // left you on the ground, and your phone pulled you back from the jump.
+  const { connect, ticks } = await setup();
+  const ann = await connect();
+  expect(
+    (await emit(ann.socket, "plaza-join", { character: "voltkit" })).ok,
+  ).toBe(true);
+  await ticks(2);
+  for (let i = 0; i < 15; i++)
+    ann.socket.emit("plaza-input", { dx: 1, dy: i / 100 });
+  ann.socket.emit("plaza-jump", {});
+  await ticks(2);
+  const body = server!.plaza.bodyOf(ann.socket.id!)!;
+  expect(body.air).toBeGreaterThan(0);
+  // And a dash, after more steering in the same second.
+  for (let i = 0; i < 15; i++)
+    ann.socket.emit("plaza-input", { dx: 1, dy: -i / 100 });
+  ann.socket.emit("plaza-dash", { dx: 1, dy: 0 });
+  await ticks(1);
+  expect(server!.plaza.bodyOf(ann.socket.id!)!.dash).toBeGreaterThan(0);
+});

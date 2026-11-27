@@ -150,7 +150,7 @@ describe("calendar rotations", () => {
       itemTiers: [5, 10, 15, 20],
     });
     expect(
-      seasonRules({ tiers: 30, tierXp: 1200, itemTiers: [5, 12, 20, 30] }),
+      seasonRules({ tiers: 30, tierXp: 800, itemTiers: [5, 12, 20, 30] }),
     ).toEqual(SEASON_RULES);
     expect(seasonRules({ tiers: 30, tierXp: 1200 })).toEqual({
       tiers: 20,
@@ -235,6 +235,74 @@ it("shows mission XP, level-ups and the actual coin reward together on the resul
     },
     unlocked: [],
   };
+  // A new player's first win: the First Win XP tops them up to level 2
+  // (migration 20261126120000), its own line beside the match's.
+  const firstWin = resultXp(
+    {
+      ...j,
+      xp: 200,
+      recent: [
+        {
+          ref: "match:w",
+          amount: 25,
+          source: "match",
+          at: "2026-11-26T01:00:00Z",
+        },
+        {
+          ref: "match:w",
+          amount: 75,
+          source: "first-win",
+          at: "2026-11-26T01:00:00Z",
+        },
+        {
+          ref: "match:match:w",
+          amount: 25,
+          source: "spark",
+          at: "2026-11-26T01:00:00Z",
+        },
+        {
+          ref: "first-win:match:w",
+          amount: 75,
+          source: "spark",
+          at: "2026-11-26T01:00:00Z",
+        },
+      ],
+    },
+    "match:w",
+    "saved",
+  );
+  expect(firstWin).toContain("+200 XP");
+  expect(firstWin).toContain("25 from this run");
+  expect(firstWin).toContain("75 First Win bonus");
+  expect(firstWin).toContain("100 Daily Spark bonus");
+  expect(firstWin).toContain("LEVEL UP · 1 → 2");
+  // Won in under 20 seconds: no XP for the match, the First Win alone.
+  const quick = resultXp(
+    {
+      ...j,
+      xp: 200,
+      recent: [
+        {
+          ref: "match:q",
+          amount: 100,
+          source: "first-win",
+          at: "2026-11-26T01:00:00Z",
+        },
+        {
+          ref: "first-win:match:q",
+          amount: 100,
+          source: "spark",
+          at: "2026-11-26T01:00:00Z",
+        },
+      ],
+    },
+    "match:q",
+    "saved",
+  );
+  expect(quick).toContain("+200 XP");
+  expect(quick).toContain("100 First Win bonus");
+  expect(quick).not.toContain("from this run");
+  expect(quick).toContain("LEVEL UP · 1 → 2");
   const html = resultXp(j, "match:test", "saved");
   expect(html).toContain("+125 XP");
   expect(html).toContain("LEVEL UP · 1 → 2");

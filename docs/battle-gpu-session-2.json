@@ -1,0 +1,1306 @@
+{
+  "base": "e4c7bde9bc06b52abfd95e9a0eed4e8d848b048f",
+  "datePT": "2026-11-24",
+  "note": "Chromium 154, SwiftShader, 2-core quota. iOS UA/viewport selects mobile pipeline/caps; not Apple GPU, phone FPS, network latency or thermal measurements.",
+  "method": {
+    "viewport": {
+      "width": 896,
+      "height": 414,
+      "deviceScaleFactor": 2
+    },
+    "quality": "low",
+    "canvasDensity": 1.25,
+    "antialiasSamples": 4,
+    "simulationSeed": "0x51a7",
+    "settleSeconds": 20,
+    "sampleSeconds": 30,
+    "repeats": 2,
+    "driver": "In-page real arena; whole-page CPU includes fixture work. Start after selected squad art loads; retain tick debt; max10 ticks/callback; abs sample progress drift <500ms."
+  },
+  "clockProbe": {
+    "before": {
+      "note": "Synthetic Low VFX traces, not hardware measurements",
+      "traces": [
+        {
+          "name": "60 fps, settled/focused",
+          "realSeconds": 12.02,
+          "animationSeconds": 12.02,
+          "frames": 721,
+          "particleP50": 140,
+          "particleP95": 140,
+          "peakParticles": 175
+        },
+        {
+          "name": "30 fps, boot/resume warm-up",
+          "realSeconds": 12,
+          "animationSeconds": 9.93,
+          "frames": 360,
+          "particleP50": 140,
+          "particleP95": 280,
+          "peakParticles": 315
+        },
+        {
+          "name": "30 fps, blurred",
+          "realSeconds": 12,
+          "animationSeconds": 6,
+          "frames": 360,
+          "particleP50": 280,
+          "particleP95": 280,
+          "peakParticles": 315
+        },
+        {
+          "name": "250 ms frames, boot warm-up",
+          "realSeconds": 12,
+          "animationSeconds": 0.8,
+          "frames": 48,
+          "particleP50": 700,
+          "particleP95": 700,
+          "peakParticles": 700
+        }
+      ]
+    },
+    "after": {
+      "note": "Synthetic Low VFX traces, not hardware measurements",
+      "traces": [
+        {
+          "name": "60 fps, settled/focused",
+          "realSeconds": 12.02,
+          "animationSeconds": 12.02,
+          "frames": 721,
+          "particleP50": 140,
+          "particleP95": 140,
+          "peakParticles": 175
+        },
+        {
+          "name": "30 fps, boot/resume warm-up",
+          "realSeconds": 12,
+          "animationSeconds": 9.93,
+          "frames": 360,
+          "particleP50": 140,
+          "particleP95": 175,
+          "peakParticles": 175
+        },
+        {
+          "name": "30 fps, blurred",
+          "realSeconds": 12,
+          "animationSeconds": 6,
+          "frames": 360,
+          "particleP50": 140,
+          "particleP95": 175,
+          "peakParticles": 175
+        },
+        {
+          "name": "250 ms frames, boot warm-up",
+          "realSeconds": 12,
+          "animationSeconds": 0.8,
+          "frames": 48,
+          "particleP50": 140,
+          "particleP95": 140,
+          "peakParticles": 175
+        }
+      ]
+    }
+  },
+  "scene": {
+    "before": [
+      {
+        "scenario": "pvp4",
+        "gpu": {
+          "changes": [
+            {
+              "atMs": 4382,
+              "quality": "low"
+            }
+          ],
+          "quality": "low",
+          "width": 1120,
+          "height": 518,
+          "pixels": 580160,
+          "pipeline": "MobilePipeline",
+          "inFocus": true,
+          "simulation": {
+            "ticks": 1512,
+            "time": 50.3999999999997,
+            "phase": "playing",
+            "skipped": 0,
+            "debt": 0
+          },
+          "antialias": true,
+          "samples": 4,
+          "heroes": ["pyranda", "sunbara", "mystowl", "coilemur"],
+          "settleMs": 20000,
+          "phases": ["playing"],
+          "progressDriftMs": -47.50000000043656,
+          "density": {
+            "n": 162,
+            "mean": 1.25,
+            "p50": 1.25,
+            "p95": 1.25,
+            "max": 1.25
+          },
+          "glow": {
+            "n": 162,
+            "mean": 0.52,
+            "p50": 0.53,
+            "p95": 0.75,
+            "max": 0.75
+          },
+          "soft": {
+            "n": 162,
+            "mean": 0.08,
+            "p50": 0.05,
+            "p95": 0.23,
+            "max": 0.33
+          },
+          "particles": {
+            "n": 162,
+            "mean": 105.65,
+            "p50": 72,
+            "p95": 284,
+            "max": 545
+          },
+          "animationDelta": {
+            "n": 162,
+            "mean": 155.04,
+            "p50": 163.33,
+            "p95": 181.64,
+            "max": 184.99
+          },
+          "drawCalls": {
+            "n": 162,
+            "mean": 81.23,
+            "p50": 78,
+            "p95": 101,
+            "max": 112
+          },
+          "vertices": {
+            "n": 162,
+            "mean": 47090.94,
+            "p50": 44769,
+            "p95": 71394,
+            "max": 86295
+          },
+          "textureBinds": {
+            "n": 162,
+            "mean": 77.22,
+            "p50": 74,
+            "p95": 96,
+            "max": 106
+          }
+        },
+        "seconds": 30,
+        "note": "SwiftShader software WebGL: compare runs on one machine; not phone FPS",
+        "snapshotHandlingMs": {
+          "n": 904,
+          "mean": 1.59,
+          "p50": 0.7,
+          "p95": 4.6,
+          "max": 42.3
+        },
+        "snapshotBytes": {
+          "n": 90,
+          "mean": 4567,
+          "p50": 4505,
+          "p95": 5921,
+          "max": 6259
+        },
+        "sceneUpdateMs": {
+          "n": 162,
+          "mean": 10.3,
+          "p50": 4.8,
+          "p95": 30.7,
+          "max": 66.1
+        },
+        "inputStepMs": {
+          "n": 903,
+          "mean": 0.1,
+          "p50": 0.1,
+          "p95": 0.2,
+          "max": 26.6
+        },
+        "frameStepMs": {
+          "n": 162,
+          "mean": 21.19,
+          "p50": 16.2,
+          "p95": 50,
+          "max": 76.8
+        },
+        "frameIntervalMs": {
+          "n": 162,
+          "mean": 186.15,
+          "p50": 186.6,
+          "p95": 263.8,
+          "max": 515.5
+        },
+        "longFrames": 162,
+        "nameplateMeasures": {
+          "all": 0,
+          "hidden": 0,
+          "hiddenPlates": 2
+        },
+        "mainThreadMs": {
+          "TaskDuration": 16494,
+          "ScriptDuration": 4567,
+          "LayoutDuration": 216,
+          "RecalcStyleDuration": 6530
+        },
+        "memory": {
+          "heapMB": 48.9,
+          "dom": 1156,
+          "sceneObjects": 506,
+          "textures": 867,
+          "tweens": 52
+        }
+      },
+      {
+        "scenario": "raid4",
+        "gpu": {
+          "changes": [
+            {
+              "atMs": 8809,
+              "quality": "low"
+            }
+          ],
+          "quality": "low",
+          "width": 1120,
+          "height": 518,
+          "pixels": 580160,
+          "pipeline": "MobilePipeline",
+          "inFocus": true,
+          "simulation": {
+            "ticks": 1507,
+            "time": 50.23333333333304,
+            "phase": "playing",
+            "skipped": 0,
+            "debt": 0
+          },
+          "antialias": true,
+          "samples": 4,
+          "boss": "gloomshade",
+          "heroes": ["pyranda", "sunbara", "mystowl", "coilemur"],
+          "settleMs": 20000,
+          "phases": ["playing"],
+          "progressDriftMs": -48.399999999877764,
+          "density": {
+            "n": 113,
+            "mean": 1.25,
+            "p50": 1.25,
+            "p95": 1.25,
+            "max": 1.25
+          },
+          "glow": {
+            "n": 113,
+            "mean": 0.45,
+            "p50": 0.38,
+            "p95": 0.75,
+            "max": 0.75
+          },
+          "soft": {
+            "n": 113,
+            "mean": 0.25,
+            "p50": 0.25,
+            "p95": 0.3,
+            "max": 0.31
+          },
+          "particles": {
+            "n": 113,
+            "mean": 633.73,
+            "p50": 639,
+            "p95": 687,
+            "max": 690
+          },
+          "animationDelta": {
+            "n": 113,
+            "mean": 35.77,
+            "p50": 51.66,
+            "p95": 51.67,
+            "max": 51.67
+          },
+          "drawCalls": {
+            "n": 113,
+            "mean": 81.3,
+            "p50": 81,
+            "p95": 87,
+            "max": 91
+          },
+          "vertices": {
+            "n": 113,
+            "mean": 90259.19,
+            "p50": 89637,
+            "p95": 111345,
+            "max": 124974
+          },
+          "textureBinds": {
+            "n": 113,
+            "mean": 75.13,
+            "p50": 75,
+            "p95": 81,
+            "max": 83
+          }
+        },
+        "seconds": 30,
+        "note": "SwiftShader software WebGL: compare runs on one machine; not phone FPS",
+        "snapshotHandlingMs": {
+          "n": 903,
+          "mean": 1.87,
+          "p50": 0.9,
+          "p95": 4.8,
+          "max": 38.4
+        },
+        "snapshotBytes": {
+          "n": 90,
+          "mean": 5891.74,
+          "p50": 5682,
+          "p95": 7121,
+          "max": 7782
+        },
+        "sceneUpdateMs": {
+          "n": 113,
+          "mean": 13.03,
+          "p50": 8.8,
+          "p95": 37.8,
+          "max": 56.4
+        },
+        "inputStepMs": {
+          "n": 898,
+          "mean": 0.09,
+          "p50": 0.1,
+          "p95": 0.2,
+          "max": 4
+        },
+        "frameStepMs": {
+          "n": 113,
+          "mean": 26.98,
+          "p50": 21.4,
+          "p95": 55,
+          "max": 76.5
+        },
+        "frameIntervalMs": {
+          "n": 113,
+          "mean": 266.76,
+          "p50": 264.3,
+          "p95": 343,
+          "max": 387.2
+        },
+        "longFrames": 113,
+        "nameplateMeasures": {
+          "all": 0,
+          "hidden": 0,
+          "hiddenPlates": 0
+        },
+        "mainThreadMs": {
+          "TaskDuration": 12292,
+          "ScriptDuration": 4381,
+          "LayoutDuration": 237,
+          "RecalcStyleDuration": 3271
+        },
+        "memory": {
+          "heapMB": 50,
+          "dom": 1193,
+          "sceneObjects": 515,
+          "textures": 809,
+          "tweens": 16
+        }
+      },
+      {
+        "scenario": "pvp4",
+        "gpu": {
+          "changes": [
+            {
+              "atMs": 6012,
+              "quality": "low"
+            }
+          ],
+          "quality": "low",
+          "width": 1120,
+          "height": 518,
+          "pixels": 580160,
+          "pipeline": "MobilePipeline",
+          "inFocus": true,
+          "simulation": {
+            "ticks": 1514,
+            "time": 50.46666666666636,
+            "phase": "playing",
+            "skipped": 0,
+            "debt": 0
+          },
+          "antialias": true,
+          "samples": 4,
+          "heroes": ["pyranda", "sunbara", "mystowl", "coilemur"],
+          "settleMs": 20000,
+          "phases": ["playing"],
+          "progressDriftMs": 1.9333333325193962,
+          "density": {
+            "n": 179,
+            "mean": 1.25,
+            "p50": 1.25,
+            "p95": 1.25,
+            "max": 1.25
+          },
+          "glow": {
+            "n": 179,
+            "mean": 0.52,
+            "p50": 0.52,
+            "p95": 0.75,
+            "max": 0.75
+          },
+          "soft": {
+            "n": 179,
+            "mean": 0.06,
+            "p50": 0.04,
+            "p95": 0.17,
+            "max": 0.22
+          },
+          "particles": {
+            "n": 179,
+            "mean": 78.66,
+            "p50": 67,
+            "p95": 180,
+            "max": 230
+          },
+          "animationDelta": {
+            "n": 179,
+            "mean": 157.29,
+            "p50": 161.66,
+            "p95": 181.66,
+            "max": 188.32
+          },
+          "drawCalls": {
+            "n": 179,
+            "mean": 80.46,
+            "p50": 77,
+            "p95": 100,
+            "max": 109
+          },
+          "vertices": {
+            "n": 179,
+            "mean": 45565.53,
+            "p50": 41280,
+            "p95": 71586,
+            "max": 80205
+          },
+          "textureBinds": {
+            "n": 179,
+            "mean": 76.46,
+            "p50": 73,
+            "p95": 95,
+            "max": 103
+          }
+        },
+        "seconds": 30,
+        "note": "SwiftShader software WebGL: compare runs on one machine; not phone FPS",
+        "snapshotHandlingMs": {
+          "n": 904,
+          "mean": 1.17,
+          "p50": 0.6,
+          "p95": 2.4,
+          "max": 35.3
+        },
+        "snapshotBytes": {
+          "n": 90,
+          "mean": 4567,
+          "p50": 4505,
+          "p95": 5921,
+          "max": 6259
+        },
+        "sceneUpdateMs": {
+          "n": 179,
+          "mean": 8.02,
+          "p50": 3.1,
+          "p95": 37.6,
+          "max": 52.1
+        },
+        "inputStepMs": {
+          "n": 904,
+          "mean": 0.08,
+          "p50": 0.1,
+          "p95": 0.2,
+          "max": 4.7
+        },
+        "frameStepMs": {
+          "n": 179,
+          "mean": 13.7,
+          "p50": 8.3,
+          "p95": 45.5,
+          "max": 60.5
+        },
+        "frameIntervalMs": {
+          "n": 179,
+          "mean": 168.27,
+          "p50": 166.4,
+          "p95": 239.8,
+          "max": 423.6
+        },
+        "longFrames": 179,
+        "nameplateMeasures": {
+          "all": 0,
+          "hidden": 0,
+          "hiddenPlates": 2
+        },
+        "mainThreadMs": {
+          "TaskDuration": 12265,
+          "ScriptDuration": 2952,
+          "LayoutDuration": 286,
+          "RecalcStyleDuration": 5198
+        },
+        "memory": {
+          "heapMB": 47.4,
+          "dom": 1156,
+          "sceneObjects": 509,
+          "textures": 867,
+          "tweens": 32
+        }
+      },
+      {
+        "scenario": "raid4",
+        "gpu": {
+          "changes": [
+            {
+              "atMs": 8856,
+              "quality": "low"
+            }
+          ],
+          "quality": "low",
+          "width": 1120,
+          "height": 518,
+          "pixels": 580160,
+          "pipeline": "MobilePipeline",
+          "inFocus": true,
+          "simulation": {
+            "ticks": 1505,
+            "time": 50.16666666666638,
+            "phase": "playing",
+            "skipped": 0,
+            "debt": 0
+          },
+          "antialias": true,
+          "samples": 4,
+          "boss": "gloomshade",
+          "heroes": ["pyranda", "sunbara", "mystowl", "coilemur"],
+          "settleMs": 20000,
+          "phases": ["playing"],
+          "progressDriftMs": 6.5999999991945515,
+          "density": {
+            "n": 112,
+            "mean": 1.25,
+            "p50": 1.25,
+            "p95": 1.25,
+            "max": 1.25
+          },
+          "glow": {
+            "n": 112,
+            "mean": 0.44,
+            "p50": 0.37,
+            "p95": 0.75,
+            "max": 0.75
+          },
+          "soft": {
+            "n": 112,
+            "mean": 0.26,
+            "p50": 0.25,
+            "p95": 0.3,
+            "max": 0.32
+          },
+          "particles": {
+            "n": 112,
+            "mean": 679.08,
+            "p50": 681,
+            "p95": 689,
+            "max": 693
+          },
+          "animationDelta": {
+            "n": 112,
+            "mean": 18.96,
+            "p50": 16.67,
+            "p95": 35,
+            "max": 35
+          },
+          "drawCalls": {
+            "n": 112,
+            "mean": 81,
+            "p50": 81,
+            "p95": 87,
+            "max": 90
+          },
+          "vertices": {
+            "n": 112,
+            "mean": 95289.46,
+            "p50": 95436,
+            "p95": 113559,
+            "max": 131535
+          },
+          "textureBinds": {
+            "n": 112,
+            "mean": 74.79,
+            "p50": 74,
+            "p95": 80,
+            "max": 85
+          }
+        },
+        "seconds": 30,
+        "note": "SwiftShader software WebGL: compare runs on one machine; not phone FPS",
+        "snapshotHandlingMs": {
+          "n": 902,
+          "mean": 1.78,
+          "p50": 1,
+          "p95": 4.1,
+          "max": 35.3
+        },
+        "snapshotBytes": {
+          "n": 90,
+          "mean": 5968.94,
+          "p50": 5797,
+          "p95": 7233,
+          "max": 7821
+        },
+        "sceneUpdateMs": {
+          "n": 112,
+          "mean": 15.24,
+          "p50": 9,
+          "p95": 50.4,
+          "max": 82.6
+        },
+        "inputStepMs": {
+          "n": 901,
+          "mean": 0.08,
+          "p50": 0.1,
+          "p95": 0.2,
+          "max": 1.7
+        },
+        "frameStepMs": {
+          "n": 112,
+          "mean": 32.78,
+          "p50": 25.1,
+          "p95": 65.9,
+          "max": 104.7
+        },
+        "frameIntervalMs": {
+          "n": 112,
+          "mean": 270.17,
+          "p50": 268.1,
+          "p95": 338.9,
+          "max": 362.9
+        },
+        "longFrames": 112,
+        "nameplateMeasures": {
+          "all": 0,
+          "hidden": 0,
+          "hiddenPlates": 0
+        },
+        "mainThreadMs": {
+          "TaskDuration": 13629,
+          "ScriptDuration": 4750,
+          "LayoutDuration": 232,
+          "RecalcStyleDuration": 4350
+        },
+        "memory": {
+          "heapMB": 50.8,
+          "dom": 1195,
+          "sceneObjects": 564,
+          "textures": 820,
+          "tweens": 49
+        }
+      }
+    ],
+    "after": [
+      {
+        "scenario": "pvp4",
+        "gpu": {
+          "changes": [
+            {
+              "atMs": 4398,
+              "quality": "low"
+            }
+          ],
+          "quality": "low",
+          "width": 1120,
+          "height": 518,
+          "pixels": 580160,
+          "pipeline": "MobilePipeline",
+          "inFocus": true,
+          "simulation": {
+            "ticks": 1507,
+            "time": 50.23333333333304,
+            "phase": "playing",
+            "skipped": 0,
+            "debt": 0
+          },
+          "antialias": true,
+          "samples": 4,
+          "heroes": ["pyranda", "sunbara", "mystowl", "coilemur"],
+          "settleMs": 20000,
+          "phases": ["playing"],
+          "progressDriftMs": -37.100000001923036,
+          "density": {
+            "n": 214,
+            "mean": 1.25,
+            "p50": 1.25,
+            "p95": 1.25,
+            "max": 1.25
+          },
+          "glow": {
+            "n": 214,
+            "mean": 0.52,
+            "p50": 0.51,
+            "p95": 0.75,
+            "max": 0.75
+          },
+          "soft": {
+            "n": 214,
+            "mean": 0.06,
+            "p50": 0.04,
+            "p95": 0.16,
+            "max": 0.22
+          },
+          "particles": {
+            "n": 214,
+            "mean": 92.37,
+            "p50": 77,
+            "p95": 194,
+            "max": 270
+          },
+          "animationDelta": {
+            "n": 214,
+            "mean": 138.48,
+            "p50": 140,
+            "p95": 170,
+            "max": 184.99
+          },
+          "drawCalls": {
+            "n": 214,
+            "mean": 80.53,
+            "p50": 77,
+            "p95": 100,
+            "max": 112
+          },
+          "vertices": {
+            "n": 214,
+            "mean": 46465.65,
+            "p50": 42492,
+            "p95": 74823,
+            "max": 89448
+          },
+          "textureBinds": {
+            "n": 214,
+            "mean": 76.38,
+            "p50": 73,
+            "p95": 95,
+            "max": 107
+          }
+        },
+        "seconds": 30,
+        "note": "SwiftShader software WebGL: compare runs on one machine; not phone FPS",
+        "snapshotHandlingMs": {
+          "n": 900,
+          "mean": 1.17,
+          "p50": 0.6,
+          "p95": 2.8,
+          "max": 34
+        },
+        "snapshotBytes": {
+          "n": 90,
+          "mean": 4567,
+          "p50": 4505,
+          "p95": 5921,
+          "max": 6259
+        },
+        "sceneUpdateMs": {
+          "n": 214,
+          "mean": 6.34,
+          "p50": 2.6,
+          "p95": 30.7,
+          "max": 49.6
+        },
+        "inputStepMs": {
+          "n": 901,
+          "mean": 0.09,
+          "p50": 0,
+          "p95": 0.2,
+          "max": 21.4
+        },
+        "frameStepMs": {
+          "n": 214,
+          "mean": 13.3,
+          "p50": 8.1,
+          "p95": 41.5,
+          "max": 57.4
+        },
+        "frameIntervalMs": {
+          "n": 214,
+          "mean": 140.24,
+          "p50": 133,
+          "p95": 195.9,
+          "max": 246.3
+        },
+        "longFrames": 214,
+        "nameplateMeasures": {
+          "all": 0,
+          "hidden": 0,
+          "hiddenPlates": 2
+        },
+        "mainThreadMs": {
+          "TaskDuration": 13160,
+          "ScriptDuration": 3547,
+          "LayoutDuration": 181,
+          "RecalcStyleDuration": 5558
+        },
+        "memory": {
+          "heapMB": 47.8,
+          "dom": 1156,
+          "sceneObjects": 300,
+          "textures": 867,
+          "tweens": 40
+        }
+      },
+      {
+        "scenario": "raid4",
+        "gpu": {
+          "changes": [
+            {
+              "atMs": 7739,
+              "quality": "low"
+            }
+          ],
+          "quality": "low",
+          "width": 1120,
+          "height": 518,
+          "pixels": 580160,
+          "pipeline": "MobilePipeline",
+          "inFocus": true,
+          "simulation": {
+            "ticks": 1507,
+            "time": 50.23333333333304,
+            "phase": "playing",
+            "skipped": 0,
+            "debt": 0
+          },
+          "antialias": true,
+          "samples": 4,
+          "boss": "gloomshade",
+          "heroes": ["pyranda", "sunbara", "mystowl", "coilemur"],
+          "settleMs": 20000,
+          "phases": ["playing"],
+          "progressDriftMs": 14.900000001802255,
+          "density": {
+            "n": 149,
+            "mean": 1.25,
+            "p50": 1.25,
+            "p95": 1.25,
+            "max": 1.25
+          },
+          "glow": {
+            "n": 149,
+            "mean": 0.46,
+            "p50": 0.36,
+            "p95": 0.75,
+            "max": 0.75
+          },
+          "soft": {
+            "n": 149,
+            "mean": 0.05,
+            "p50": 0.04,
+            "p95": 0.11,
+            "max": 0.12
+          },
+          "particles": {
+            "n": 149,
+            "mean": 137.62,
+            "p50": 125,
+            "p95": 225,
+            "max": 265
+          },
+          "animationDelta": {
+            "n": 149,
+            "mean": 165.18,
+            "p50": 168.33,
+            "p95": 189.99,
+            "max": 194.98
+          },
+          "drawCalls": {
+            "n": 149,
+            "mean": 79.11,
+            "p50": 78,
+            "p95": 85,
+            "max": 91
+          },
+          "vertices": {
+            "n": 149,
+            "mean": 54345.4,
+            "p50": 53103,
+            "p95": 78732,
+            "max": 86496
+          },
+          "textureBinds": {
+            "n": 149,
+            "mean": 73.48,
+            "p50": 73,
+            "p95": 80,
+            "max": 85
+          }
+        },
+        "seconds": 30,
+        "note": "SwiftShader software WebGL: compare runs on one machine; not phone FPS",
+        "snapshotHandlingMs": {
+          "n": 901,
+          "mean": 1.88,
+          "p50": 0.9,
+          "p95": 4.1,
+          "max": 39
+        },
+        "snapshotBytes": {
+          "n": 90,
+          "mean": 5984.52,
+          "p50": 5866,
+          "p95": 7250,
+          "max": 7866
+        },
+        "sceneUpdateMs": {
+          "n": 149,
+          "mean": 11.4,
+          "p50": 5.3,
+          "p95": 43.3,
+          "max": 52.1
+        },
+        "inputStepMs": {
+          "n": 895,
+          "mean": 0.08,
+          "p50": 0.1,
+          "p95": 0.2,
+          "max": 4.6
+        },
+        "frameStepMs": {
+          "n": 149,
+          "mean": 20.21,
+          "p50": 14.1,
+          "p95": 53.3,
+          "max": 60.2
+        },
+        "frameIntervalMs": {
+          "n": 149,
+          "mean": 200.99,
+          "p50": 199.7,
+          "p95": 277.7,
+          "max": 322.5
+        },
+        "longFrames": 148,
+        "nameplateMeasures": {
+          "all": 0,
+          "hidden": 0,
+          "hiddenPlates": 0
+        },
+        "mainThreadMs": {
+          "TaskDuration": 13228,
+          "ScriptDuration": 4360,
+          "LayoutDuration": 140,
+          "RecalcStyleDuration": 4500
+        },
+        "memory": {
+          "heapMB": 49.6,
+          "dom": 1193,
+          "sceneObjects": 339,
+          "textures": 815,
+          "tweens": 36
+        }
+      },
+      {
+        "scenario": "pvp4",
+        "gpu": {
+          "changes": [
+            {
+              "atMs": 4748,
+              "quality": "low"
+            }
+          ],
+          "quality": "low",
+          "width": 1120,
+          "height": 518,
+          "pixels": 580160,
+          "pipeline": "MobilePipeline",
+          "inFocus": true,
+          "simulation": {
+            "ticks": 1504,
+            "time": 50.13333333333305,
+            "phase": "playing",
+            "skipped": 0,
+            "debt": 0
+          },
+          "antialias": true,
+          "samples": 4,
+          "heroes": ["pyranda", "sunbara", "mystowl", "coilemur"],
+          "settleMs": 20000,
+          "phases": ["playing"],
+          "progressDriftMs": -34.26666666858728,
+          "density": {
+            "n": 206,
+            "mean": 1.25,
+            "p50": 1.25,
+            "p95": 1.25,
+            "max": 1.25
+          },
+          "glow": {
+            "n": 206,
+            "mean": 0.52,
+            "p50": 0.47,
+            "p95": 0.75,
+            "max": 0.75
+          },
+          "soft": {
+            "n": 206,
+            "mean": 0.06,
+            "p50": 0.04,
+            "p95": 0.16,
+            "max": 0.23
+          },
+          "particles": {
+            "n": 206,
+            "mean": 92.36,
+            "p50": 76,
+            "p95": 190,
+            "max": 268
+          },
+          "animationDelta": {
+            "n": 206,
+            "mean": 141.8,
+            "p50": 141.66,
+            "p95": 173.33,
+            "max": 181.65
+          },
+          "drawCalls": {
+            "n": 206,
+            "mean": 80.61,
+            "p50": 77,
+            "p95": 100,
+            "max": 110
+          },
+          "vertices": {
+            "n": 206,
+            "mean": 46445.27,
+            "p50": 42150,
+            "p95": 75318,
+            "max": 88278
+          },
+          "textureBinds": {
+            "n": 206,
+            "mean": 76.49,
+            "p50": 73,
+            "p95": 94,
+            "max": 105
+          }
+        },
+        "seconds": 30,
+        "note": "SwiftShader software WebGL: compare runs on one machine; not phone FPS",
+        "snapshotHandlingMs": {
+          "n": 900,
+          "mean": 0.9,
+          "p50": 0.6,
+          "p95": 2.3,
+          "max": 35
+        },
+        "snapshotBytes": {
+          "n": 90,
+          "mean": 4567,
+          "p50": 4505,
+          "p95": 5921,
+          "max": 6259
+        },
+        "sceneUpdateMs": {
+          "n": 206,
+          "mean": 7.56,
+          "p50": 3,
+          "p95": 37.6,
+          "max": 51.7
+        },
+        "inputStepMs": {
+          "n": 901,
+          "mean": 0.06,
+          "p50": 0,
+          "p95": 0.2,
+          "max": 1.8
+        },
+        "frameStepMs": {
+          "n": 206,
+          "mean": 13.52,
+          "p50": 8.3,
+          "p95": 47,
+          "max": 61.7
+        },
+        "frameIntervalMs": {
+          "n": 206,
+          "mean": 145.81,
+          "p50": 141.8,
+          "p95": 200,
+          "max": 318.8
+        },
+        "longFrames": 206,
+        "nameplateMeasures": {
+          "all": 0,
+          "hidden": 0,
+          "hiddenPlates": 2
+        },
+        "mainThreadMs": {
+          "TaskDuration": 12846,
+          "ScriptDuration": 3160,
+          "LayoutDuration": 140,
+          "RecalcStyleDuration": 5471
+        },
+        "memory": {
+          "heapMB": 47.6,
+          "dom": 1156,
+          "sceneObjects": 285,
+          "textures": 867,
+          "tweens": 35
+        }
+      },
+      {
+        "scenario": "raid4",
+        "gpu": {
+          "changes": [
+            {
+              "atMs": 7418,
+              "quality": "low"
+            }
+          ],
+          "quality": "low",
+          "width": 1120,
+          "height": 518,
+          "pixels": 580160,
+          "pipeline": "MobilePipeline",
+          "inFocus": true,
+          "simulation": {
+            "ticks": 1507,
+            "time": 50.23333333333304,
+            "phase": "playing",
+            "skipped": 0,
+            "debt": 0
+          },
+          "antialias": true,
+          "samples": 4,
+          "boss": "gloomshade",
+          "heroes": ["pyranda", "sunbara", "mystowl", "coilemur"],
+          "settleMs": 20000,
+          "phases": ["playing"],
+          "progressDriftMs": -6.399999998950079,
+          "density": {
+            "n": 147,
+            "mean": 1.25,
+            "p50": 1.25,
+            "p95": 1.25,
+            "max": 1.25
+          },
+          "glow": {
+            "n": 147,
+            "mean": 0.46,
+            "p50": 0.4,
+            "p95": 0.75,
+            "max": 0.75
+          },
+          "soft": {
+            "n": 147,
+            "mean": 0.05,
+            "p50": 0.04,
+            "p95": 0.11,
+            "max": 0.13
+          },
+          "particles": {
+            "n": 147,
+            "mean": 139.01,
+            "p50": 131,
+            "p95": 225,
+            "max": 288
+          },
+          "animationDelta": {
+            "n": 147,
+            "mean": 183.09,
+            "p50": 184.99,
+            "p95": 193.33,
+            "max": 195
+          },
+          "drawCalls": {
+            "n": 147,
+            "mean": 79.12,
+            "p50": 79,
+            "p95": 84,
+            "max": 90
+          },
+          "vertices": {
+            "n": 147,
+            "mean": 55709.76,
+            "p50": 53658,
+            "p95": 78447,
+            "max": 94164
+          },
+          "textureBinds": {
+            "n": 147,
+            "mean": 73.58,
+            "p50": 73,
+            "p95": 78,
+            "max": 85
+          }
+        },
+        "seconds": 30,
+        "note": "SwiftShader software WebGL: compare runs on one machine; not phone FPS",
+        "snapshotHandlingMs": {
+          "n": 903,
+          "mean": 1.48,
+          "p50": 0.8,
+          "p95": 3.6,
+          "max": 35.8
+        },
+        "snapshotBytes": {
+          "n": 90,
+          "mean": 6028.33,
+          "p50": 5896,
+          "p95": 7395,
+          "max": 7742
+        },
+        "sceneUpdateMs": {
+          "n": 147,
+          "mean": 9.61,
+          "p50": 4.1,
+          "p95": 43.5,
+          "max": 50.2
+        },
+        "inputStepMs": {
+          "n": 902,
+          "mean": 0.07,
+          "p50": 0.1,
+          "p95": 0.2,
+          "max": 1.3
+        },
+        "frameStepMs": {
+          "n": 147,
+          "mean": 17.25,
+          "p50": 11.2,
+          "p95": 50.3,
+          "max": 67.9
+        },
+        "frameIntervalMs": {
+          "n": 147,
+          "mean": 204.79,
+          "p50": 200.4,
+          "p95": 269,
+          "max": 302.1
+        },
+        "longFrames": 147,
+        "nameplateMeasures": {
+          "all": 0,
+          "hidden": 0,
+          "hiddenPlates": 0
+        },
+        "mainThreadMs": {
+          "TaskDuration": 10963,
+          "ScriptDuration": 3405,
+          "LayoutDuration": 203,
+          "RecalcStyleDuration": 3697
+        },
+        "memory": {
+          "heapMB": 47.7,
+          "dom": 1195,
+          "sceneObjects": 312,
+          "textures": 815,
+          "tweens": 28
+        }
+      }
+    ]
+  }
+}

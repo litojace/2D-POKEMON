@@ -61,6 +61,38 @@ export const battleLoadSchema = z
 export type BattleLoad = z.infer<typeof battleLoadSchema>;
 
 /**
+ * A fighter's art found blank in battle and loaded again (rig-health.ts in
+ * the client), sent as "battle-art" and logged by the server as
+ * "arena-art-blank": which fighter, how many of its textures, and the moment
+ * that found it. A player's own fighter vanished on an iPhone (22 Nov 2026)
+ * and could not be reproduced; this says when it happens and to whom.
+ */
+export const battleArtSchema = z
+  .object({
+    character: z.string().regex(/^[a-z0-9-]{1,32}$/),
+    /** The fighter is the player's own. */
+    mine: z.boolean(),
+    textures: z.number().int().min(0).max(512),
+    blank: z.number().int().min(0).max(512),
+    /** What ran the check: the page shown again, a resumed connection, a
+     * new battle renderer, a restored WebGL context. */
+    trigger: z.enum(["visible", "resume", "renderer", "context"]),
+    /** Loaded again (false: repaired twice already, left as it is). */
+    repaired: z.boolean(),
+    hidden: z.boolean().optional(),
+    build: z
+      .string()
+      .regex(/^[a-z0-9-]{1,16}$/)
+      .optional(),
+    os: z
+      .enum(["ios", "android", "mac", "windows", "linux", "other"])
+      .optional(),
+    app: z.boolean().optional(),
+  })
+  .strict();
+export type BattleArt = z.infer<typeof battleArtSchema>;
+
+/**
  * How smoothly a match ran on a player's device, sent once at its end as
  * "battle-perf" and logged by the server as "arena-perf"
  * (apps/client/src/battle-perf.ts). Technical numbers only: no name or
@@ -96,7 +128,57 @@ export const battlePerfSchema = z
     snapLate: z.number().min(0).max(1).optional(),
     corrections: z.number().min(0).max(100_000).optional(),
     correctionMax: z.number().min(0).max(100_000).optional(),
+    /** Prediction to confirmation; distinct from DOM event to local emit. */
     confirmP50: z.number().min(0).max(60_000).optional(),
+    confirmP95: z.number().min(0).max(60_000).optional(),
+    confirmP99: z.number().min(0).max(60_000).optional(),
+    hitTraceVersion: z.literal(1).optional(),
+    slowInputs: z
+      .array(
+        z
+          .object({
+            action: z.enum([
+              "basic",
+              "dash",
+              "jump",
+              "skill0",
+              "skill1",
+              "skill2",
+              "skill3",
+            ]),
+            source: z.enum(["touch-controls", "unknown"]),
+            deliveryMs: z.number().int().min(0).max(60_000),
+            deadlineMs: z.number().int().min(0).max(60_000),
+            totalMs: z.number().int().min(0).max(60_000),
+            frameGapMs: z.number().int().min(0).max(2000).optional(),
+          })
+          .strict(),
+      )
+      .max(8)
+      .optional(),
+    farHits: z
+      .array(
+        z
+          .object({
+            gap: z.number().min(0).max(100_000),
+            eventAgeMs: z.number().min(0).max(60_000),
+            leadMs: z.number().min(0).max(60_000),
+            timed: z.boolean(),
+          })
+          .strict(),
+      )
+      .max(8)
+      .optional(),
+    pressSamples: z.number().int().min(0).max(1_000_000).optional(),
+    pressToSendP50: z.number().min(0).max(60_000).optional(),
+    pressToSendP95: z.number().min(0).max(60_000).optional(),
+    pressToSendP99: z.number().min(0).max(60_000).optional(),
+    eventToHandlerP95: z.number().min(0).max(60_000).optional(),
+    handlerToSendP95: z.number().min(0).max(60_000).optional(),
+    sendGapP50: z.number().min(0).max(60_000).optional(),
+    sendGapP95: z.number().min(0).max(60_000).optional(),
+    sendGapP99: z.number().min(0).max(60_000).optional(),
+    sendGapMax: z.number().min(0).max(60_000).optional(),
     /** Round trip to the server at the end (ms, smoothed; the ping badge). */
     ping: z.number().min(0).max(60_000).optional(),
     /**
@@ -132,7 +214,7 @@ export const battlePerfSchema = z
     /** The longest snapshot gap (ms) and the median correction (px). */
     snapGapMax: z.number().min(0).max(60_000).optional(),
     correctionP50: z.number().min(0).max(100_000).optional(),
-    /** Wi-Fi holds a minute (Fighter.held went above 0) and the most ticks held. */
+    /** Input holds a minute (Fighter.held went above 0) and the most ticks held. */
     holds: z.number().min(0).max(100_000).optional(),
     holdMax: z.number().int().min(0).max(1_000).optional(),
     /** Inputs sent a second of live play (the phone's input clock: 30). */
@@ -140,6 +222,59 @@ export const battlePerfSchema = z
     /** Wi-Fi or mobile data, and its speed class, where the browser says. */
     link: z.enum(["wifi", "cellular", "ethernet", "other"]).optional(),
     linkSpeed: z.enum(["slow-2g", "2g", "3g", "4g"]).optional(),
+    /**
+     * Where the game ran: a browser tab, the home-screen web app, or the
+     * iOS / Android app (`app` only says "home screen").
+     */
+    shell: z.enum(["web", "pwa", "ios-app", "android-app"]).optional(),
+    /** The app's model identifier ("iPhone12,1" is an iPhone 11) and system version. */
+    model: z
+      .string()
+      .regex(/^[\w ,.()+-]{1,40}$/)
+      .optional(),
+    osVersion: z
+      .string()
+      .regex(/^[\w.]{1,20}$/)
+      .optional(),
+    /** Screen size in CSS pixels and pixel ratio ("896x414@2"). */
+    screen: z
+      .string()
+      .regex(/^\d{2,5}x\d{2,5}@\d{1,2}(\.\d{1,2})?$/)
+      .optional(),
+    /** Our own work per frame (ms; Phaser's step through rendering). */
+    workP50: z.number().min(0).max(10_000).optional(),
+    workP95: z.number().min(0).max(10_000).optional(),
+    /** Frames per second and stutter share per 15 s of live play. */
+    sliceFps: z.array(z.number().min(0).max(1000)).max(240).optional(),
+    sliceJank: z.array(z.number().min(0).max(1)).max(240).optional(),
+    /** The scene at the median frame and in the slowest 5% of frames. */
+    glowP50: z.number().min(0).max(1000).optional(),
+    glowSlow: z.number().min(0).max(1000).optional(),
+    softP50: z.number().min(0).max(1000).optional(),
+    softSlow: z.number().min(0).max(1000).optional(),
+    particlesP50: z.number().int().min(0).max(1_000_000).optional(),
+    particlesSlow: z.number().int().min(0).max(1_000_000).optional(),
+    objectsP50: z.number().int().min(0).max(1_000_000).optional(),
+    objectsSlow: z.number().int().min(0).max(1_000_000).optional(),
+    /** Per raid boss phase: seconds, frames per second, stutter share. */
+    phases: z
+      .array(
+        z
+          .object({
+            phase: z.number().int().min(0).max(100),
+            seconds: z.number().min(0).max(36_000),
+            fps: z.number().min(0).max(1000),
+            jank: z.number().min(0).max(1),
+          })
+          .strict(),
+      )
+      .max(12)
+      .optional(),
+    /** Boss attacks most often warned of in the slowest 5% of frames. */
+    attacksSlow: z
+      .array(z.string().regex(/^[a-z0-9-]{1,32}$/))
+      .max(3)
+      .optional(),
   })
   .strict();
 export type BattlePerf = z.infer<typeof battlePerfSchema>;

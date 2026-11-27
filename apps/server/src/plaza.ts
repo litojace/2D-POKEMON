@@ -1,13 +1,24 @@
 import {
+  PLAZA_FIGHT,
+  plazaFightMovesOk,
+  plazaFightReplay,
+  type PlazaFightRarity,
+} from "../../../packages/shared/src/plaza-fight.js";
+import {
   LapTimer,
   ORB_SHOWER,
   PLAZA,
   PLAZA_CAFE,
   PLAZA_CHEER_SECONDS,
   PLAZA_EMOTES,
+  PLAZA_FISHING,
   PLAZA_FLAG,
   PLAZA_GATE,
+  PLAZA_GIFT,
   PLAZA_HURDLES,
+  PLAZA_LAP_RUN,
+  PLAZA_PAIR,
+  PLAZA_PAIR_EMOTES,
   PLAZA_PHOTO,
   PLAZA_PITCH,
   PLAZA_SPAWN,
@@ -21,20 +32,31 @@ import {
   plazaBody,
   plazaCollide,
   plazaDash,
+  plazaFishPick,
+  PLAZA_FISH_BY_ID,
+  plazaIsNight,
   plazaJump,
   plazaSpotAt,
   plazaStep,
   plazaStick,
+  plazaTimeOfDay,
+  plazaTrip,
+  PLAZA_HURDLE,
+  PLAZA_HURDLE_LENIENT,
   onTrack,
   trackPoint,
   trackPolar,
   type PlazaBall,
   type PlazaBody,
   type PlazaEmote,
+  type PlazaFishNote,
   type PlazaNews,
-  type PlazaTreat,
   type PlazaOrb,
+  type PlazaGift,
+  type PlazaGiftGone,
   type PlazaOrbs,
+  type PlazaPairAsk,
+  type PlazaPairStart,
   type PlazaProfile,
   type PlazaSpotId,
   type PlazaState,
@@ -62,12 +84,34 @@ interface Visitor {
   /** The newest message number applied (PlazaState.ack), and when (step ms). */
   ack: number;
   ackAt: number;
+  /** The last PLAZA_INPUT.rewindMs or so: the body at the start of each
+   * step (`seq`: the last timed input played by then), and the timed inputs
+   * played, so one that comes late is played at its moment (rewind). `n`
+   * counts inputs as they are played: the last one played by then. */
+  past: {
+    at: number;
+    body: PlazaBody;
+    dir: { x: number; y: number };
+    n: number;
+  }[];
+  played: PlazaInput[];
+  playedN: number;
+  nextN: number;
   emote: number;
   emoteUntil: number;
   lastEmote: number;
-  /** When this visitor last threw a treat (ms). */
+  /** The emote is a pair emote (PLAZA_FLAG.pair). */
+  pair: boolean;
+  /** A pair request waiting for this visitor's answer. */
+  invite: { from: string; kind: number; until: number } | null;
+  /** When this visitor last asked someone for a pair emote (ms). */
+  lastAsk: number;
+  /** When this visitor last tossed a gift box (ms). */
   lastTreat: number;
   lap: LapTimer;
+  /** The laps run in a row on the lane (ms each, the newest last), at most
+   * PLAZA_LAP_RUN.laps; leaving the lane or a fresh start clears it. */
+  run: number[];
   /** Runway: seconds until the next cheer, cheers so far, last runway news. */
   cheerIn: number;
   cheers: number;
@@ -77,6 +121,9 @@ interface Visitor {
   runwayNewsAt: number;
   /** Orbs caught per shower (only the first few pay). */
   orbs: Map<string, number>;
+  /** A fishing line in the pond, and when the next cast may go (ms). */
+  line: FishingLine | null;
+  nextCast: number;
   profile: PlazaProfile;
   version: number;
 }
@@ -86,14 +133,26 @@ interface Visitor {
  * browser already showed puts the server's copy 120 px behind.
  */
 const PLAZA_DASH_SLACK = 0.1;
-/** Timed inputs: at most `holdMs` behind their arrival and `queue` waiting.
- * The lead rises at once to cover a late arrival and falls back, at most
- * `leadDecay` ms a second, once none in the last `windowMs` was that late. */
+/**
+ * Timed inputs: at most `holdMs` behind their arrival and `queue` waiting.
+ * One that comes later than the lead allows (a slow packet) is played at its
+ * moment all the same, up to `rewindMs` back: the server rewinds your body
+ * to a step before it and plays the steps again. (Played late instead, a
+ * jump a slow packet held back took off nearer the hurdle than on your
+ * screen and tripped the server's copy of you: you halted after a good
+ * jump, pulled back to where the server had you stumbling.)
+ *
+ * The lead changes only while you stand still, to the latest arrival in the
+ * last `windowMs`: changed while you move, it stretches or squeezes the time
+ * between two inputs, so the server walks you further or less far before a
+ * jump than your screen did. Only an arrival later than a rewind reaches
+ * raises it at once.
+ */
 export const PLAZA_INPUT = {
   holdMs: 400,
   queue: 64,
   windowMs: 2000,
-  leadDecay: 50,
+  rewindMs: 400,
 } as const;
 /** How the browser numbers (`s`) and times (`t`, its own ms clock) an input. */
 export interface PlazaTiming {
@@ -101,13 +160,37 @@ export interface PlazaTiming {
   t?: unknown;
 }
 interface PlazaInput {
-  kind: "stick" | "jump" | "dash";
+  /** A trip is the browser's own (plazaTrip), with seconds left in `x`. */
+  kind: "stick" | "jump" | "dash" | "trip";
   x: number;
   y: number;
   seq: number;
+  /** The server's own count, in arrival order (Visitor.past). */
+  n: number;
   /** When it plays, on the step clock (ms). */
   at: number;
 }
+/** A line in the pond: the fish (secret until caught) and when it bites. */
+interface FishingLine {
+  fish: string;
+  biteAt: number;
+  /** When it bit (ms), once it has. */
+  bitAt: number | null;
+  /** Hooked (reeled in time): when, and the fight's seed (plaza-fight.ts). */
+  hookedAt: number | null;
+  seed: number;
+}
+/** A reel in time hooks the fish: the fight to land it starts (the fish
+ * itself stays secret; its rarity sets how it fights). */
+export type PlazaReel =
+  | { ok: true; hooked: true; rarity: PlazaFightRarity; seed: number }
+  | { ok: false; error: string; why?: "early" | "late" };
+/** The fight's end: the fish, or why it got away. */
+export type PlazaLand =
+  | { ok: true; fish: string }
+  | { ok: false; error: string; why?: "snap" | "escape" | "bad" };
+/** How much sooner than its own length a fight may end (network, ms). */
+const FIGHT_SLACK_MS = 600;
 /** Where a pitch bot's teammate waits while the other chases the ball. */
 const BOT_SUPPORT = { back: 120, wide: 110, tie: 24 } as const;
 const clampTo = (v: number, lo: number, hi: number) =>
@@ -176,17 +259,34 @@ interface Copy {
   shower: string | null;
   orbs: Map<number, { id: number; x: number; y: number; at: number }>;
   nextOrbAt: number;
+  /** Gift boxes tossed here, until their orbs are caught or fade. */
+  gifts: Map<number, CopyGift>;
   /** When its last player left: it waits, paused, for PLAZA_RETURN_MS. */
   emptySince: number | null;
+}
+/** A gift box in a copy: the thrower's key (who can't catch its orbs) and
+ * the orbs still lying there. */
+interface CopyGift {
+  gift: Omit<PlazaGift, "orbs">;
+  byKey: string;
+  orbs: Map<number, { x: number; y: number }>;
 }
 /** What happened this step, for server.ts to pay and announce. */
 export type PlazaEvent =
   | { type: "orb"; key: string; ref: string }
   | { type: "goal"; key: string }
-  | { type: "lap"; key: string; ms: number }
+  | {
+      type: "lap";
+      key: string;
+      ms: number;
+      /** The last PLAZA_LAP_RUN.laps laps in a row, all told (ms). */
+      run?: number;
+    }
   | { type: "cheers"; key: string; n: number }
+  | { type: "fish"; key: string; note: PlazaFishNote }
   | { type: "news"; plaza: number; news: PlazaNews }
-  | { type: "orbs"; plaza: number; orbs: PlazaOrbs };
+  | { type: "orbs"; plaza: number; orbs: PlazaOrbs }
+  | { type: "giftGone"; plaza: number; gone: PlazaGiftGone };
 
 /** The pitch bots, blue side then red, named as the townsfolk are: a role,
  * not "Blue Bot" or "Red Bot" ("Red Bot scored a goal" read as a test). */
@@ -201,8 +301,9 @@ export const PITCH_BOTS = [
  * Townsfolk: NPCs who keep a quiet Plaza lively, as in the approved
  * prototype (docs/hub-redesign/prototype/app/plaza.js). They are marked as
  * bots (role names, not player names; no card, no Add friend), wear Shop
- * skins, and step aside as players arrive. They never count for anything:
- * no population, laps, cheers, orbs, goals, treats or news.
+ * skins (Rare and Epic only: Legendary and Mythical skins are what players
+ * earn, owner 22 Nov), and step aside as players arrive. They never count for anything:
+ * no population, laps, cheers, orbs, goals, gift boxes or news.
  */
 export const TOWNSFOLK: readonly {
   name: string;
@@ -218,7 +319,7 @@ export const TOWNSFOLK: readonly {
   {
     name: "Stroller",
     character: "mystowl",
-    skin: { skin: "mystowl-oracle", stage: 2 },
+    skin: { skin: "mystowl-clockwork", stage: 1 },
     ai: "wander",
   },
   {
@@ -231,7 +332,7 @@ export const TOWNSFOLK: readonly {
   {
     name: "Jogger",
     character: "terradon",
-    skin: { skin: "terradon-world-shell", stage: 1 },
+    skin: { skin: "terradon-geode", stage: 1 },
     ai: "track",
     lane: 0.3,
     pace: 0.62,
@@ -239,13 +340,13 @@ export const TOWNSFOLK: readonly {
   {
     name: "Dancer",
     character: "voltkit",
-    skin: { skin: "voltkit-stormcrown", stage: 2 },
+    skin: { skin: "voltkit-neon-arcade", stage: 1 },
     ai: "dance",
   },
   {
     name: "Café Regular",
     character: "lumoth",
-    skin: { skin: "lumoth-starweaver", stage: 1 },
+    skin: { skin: "lumoth-rosy-maple", stage: 1 },
     ai: "cafe",
   },
   {
@@ -257,13 +358,13 @@ export const TOWNSFOLK: readonly {
   {
     name: "Sightseer",
     character: "pyranda",
-    skin: { skin: "pyranda-harvest-moon", stage: 1 },
+    skin: { skin: "pyranda-street-vendor", stage: 1 },
     ai: "wander",
   },
   {
     name: "Runway Model",
     character: "tidefin",
-    skin: { skin: "tidefin-moontide", stage: 2 },
+    skin: { skin: "tidefin-glacier", stage: 1 },
     ai: "runway",
     side: 1,
   },
@@ -300,6 +401,7 @@ export class PlazaWorld {
   private copies = new Map<number, Copy>();
   private nextId = 1;
   private nextOrb = 1;
+  private nextGift = 1;
   private told = new Map<string, Map<number, number>>();
   private clock = 0;
   /** The real time (ms) players have been moved up to: the last step's
@@ -388,17 +490,27 @@ export class PlazaWorld {
       seen: [],
       ack: 0,
       ackAt: 0,
+      past: [],
+      played: [],
+      playedN: 0,
+      nextN: 1,
       emote: 0,
       emoteUntil: 0,
       lastEmote: -Infinity,
+      pair: false,
+      invite: null,
+      lastAsk: -Infinity,
       lastTreat: -Infinity,
       lap: new LapTimer(),
+      run: [],
       cheerIn: PLAZA_CHEER_SECONDS,
       cheers: 0,
       claps: 0,
       onRunway: false,
       runwayNewsAt: -Infinity,
       orbs: new Map(),
+      line: null,
+      nextCast: -Infinity,
       profile: { ...profile, accountId, id: this.nextId++ },
       version: 1,
     };
@@ -460,6 +572,7 @@ export class PlazaWorld {
       shower: null,
       orbs: new Map(),
       nextOrbAt: now,
+      gifts: new Map(),
       emptySince: null,
     };
     this.copies.set(id, c);
@@ -546,6 +659,13 @@ export class PlazaWorld {
   dash(key: string, dx?: unknown, dy?: unknown, timing?: PlazaTiming) {
     return this.receive(key, { kind: "dash", ...plazaStick(dx, dy) }, timing);
   }
+  /** The browser tripped you over a hurdle, `left` seconds of stumbling to
+   * go, at timing `t` (only timed: the moment matters, and near a hurdle). */
+  trip(key: string, left: unknown, timing?: PlazaTiming) {
+    if (typeof left !== "number" || !Number.isFinite(left)) return false;
+    if (typeof timing?.t !== "number") return false;
+    return this.receive(key, { kind: "trip", x: left, y: 0 }, timing);
+  }
   /**
    * A stick, jump or dash from the browser. Untimed (no `t`), it applies at
    * once. Timed, it waits for its moment: the browser's time `t` plus the
@@ -573,17 +693,56 @@ export class PlazaWorld {
       return this.apply(v, m);
     }
     // When it reached us, on the step clock.
-    const arrived = Math.max(this.realNow(), this.movedTo ?? -Infinity);
-    v.seen.push([arrived, arrived - t]);
-    v.lead = v.lead === null ? arrived - t : Math.max(v.lead, arrived - t);
-    const last = v.queue.at(-1)?.at ?? -Infinity;
-    v.queue.push({
-      ...m,
-      seq,
-      // In order, and never held more than PLAZA_INPUT.holdMs.
-      at: Math.max(last, Math.min(t + v.lead, arrived + PLAZA_INPUT.holdMs)),
-    });
+    const arrived = Math.max(this.realNow(), this.movedTo ?? -Infinity),
+      lag = arrived - t;
+    v.seen.push([arrived, lag]);
+    if (v.lead === null) v.lead = lag;
+    // Later than a rewind reaches: the lead rises at once (PLAZA_INPUT).
+    if (lag - v.lead > PLAZA_INPUT.rewindMs)
+      v.lead = lag - PLAZA_INPUT.rewindMs;
+    const last = Math.max(
+        v.queue.at(-1)?.at ?? -Infinity,
+        v.played.at(-1)?.at ?? -Infinity,
+      ),
+      input: PlazaInput = {
+        ...m,
+        seq,
+        n: v.nextN++,
+        // In order, and never held more than PLAZA_INPUT.holdMs.
+        at: Math.max(last, Math.min(t + v.lead, arrived + PLAZA_INPUT.holdMs)),
+      };
+    if (this.movedTo !== null && input.at < this.movedTo)
+      return this.rewind(v, input);
+    v.queue.push(input);
     if (v.queue.length > PLAZA_INPUT.queue) v.queue.shift();
+    return true;
+  }
+  /**
+   * Play `input`, whose moment has passed, at its moment: back to the body
+   * at the step before it, then the steps since again, with it and the
+   * inputs played since. Without a step that far back, it plays now.
+   */
+  private rewind(v: Visitor, input: PlazaInput) {
+    const end = this.movedTo!;
+    let i = v.past.length - 1;
+    while (i >= 0 && v.past[i].at > input.at) i--;
+    if (i < 0) {
+      v.queue.unshift({ ...input, at: end });
+      return true;
+    }
+    const from = v.past[i],
+      bounds = [...v.past.slice(i).map((p) => p.at), end];
+    Object.assign(v.body, from.body);
+    v.dir = { ...from.dir };
+    const again = v.played.filter((p) => p.n > from.n);
+    v.played = v.played.filter((p) => p.n <= from.n);
+    v.playedN = from.n;
+    v.past = v.past.slice(0, i);
+    v.queue = [...again, input, ...v.queue].sort(
+      (a, b) => a.at - b.at || a.n - b.n,
+    );
+    for (let k = 0; k + 1 < bounds.length; k++)
+      this.advance(v, bounds[k], bounds[k + 1]);
     return true;
   }
   private apply(v: Visitor, m: Pick<PlazaInput, "kind" | "x" | "y">) {
@@ -592,14 +751,51 @@ export class PlazaWorld {
       return true;
     }
     if (m.kind === "jump") return plazaJump(v.body);
+    if (m.kind === "trip") return plazaTrip(v.body, m.x);
     return plazaDash(v.body, m, PLAZA_DASH_SLACK);
   }
   /** Move a visitor from `from` to `end` (ms), playing their timed inputs on time. */
-  private stepVisitor(v: Visitor, from: number, end: number, dt: number) {
+  private stepVisitor(v: Visitor, from: number, end: number) {
+    this.advance(v, from, end);
+    // Keep a little more than a rewind reaches.
+    while (v.past.length > 1 && v.past[1].at <= end - PLAZA_INPUT.rewindMs)
+      v.past.shift();
+    const oldest = v.past[0]?.n ?? Infinity;
+    while (v.played.length && v.played[0].n <= oldest) v.played.shift();
+    while (v.seen.length && v.seen[0][0] < end - PLAZA_INPUT.windowMs)
+      v.seen.shift();
+    // Standing still with nothing waiting: the lead may change (PLAZA_INPUT).
+    const b = v.body;
+    if (
+      v.lead !== null &&
+      v.seen.length &&
+      !v.queue.length &&
+      !v.dir.x &&
+      !v.dir.y &&
+      b.speed < 1 &&
+      !b.air &&
+      b.dash <= 0
+    ) {
+      let recent = -Infinity;
+      for (const [, lag] of v.seen) recent = Math.max(recent, lag);
+      v.lead = recent;
+    }
+  }
+  /** Step a visitor from `from` to `end` (ms) with the inputs due by then. */
+  private advance(v: Visitor, from: number, end: number) {
+    v.past.push({
+      at: from,
+      body: { ...v.body },
+      dir: { ...v.dir },
+      n: v.playedN,
+    });
+    // A player whose inputs are timed trips only on a hurdle plainly not
+    // jumped; the browser reports its own trips (PLAZA_HURDLE).
+    const hurdle = v.lead !== null ? PLAZA_HURDLE_LENIENT : PLAZA_HURDLE;
     const move = (ms: number) => {
       // plazaStep takes at most 0.1 s at a time.
       for (let left = ms; left > 1e-6; left -= 100)
-        plazaStep(v.body, v.dir, Math.min(100, left) / 1000);
+        plazaStep(v.body, v.dir, Math.min(100, left) / 1000, hurdle);
     };
     let at = from;
     while (v.queue.length && v.queue[0].at <= end) {
@@ -608,23 +804,14 @@ export class PlazaWorld {
       if (when > at) move(when - at);
       at = when;
       this.apply(v, m);
+      v.played.push(m);
+      v.playedN = m.n;
       if (m.seq > v.ack) {
         v.ack = m.seq;
         v.ackAt = at;
       }
     }
     if (end > at) move(end - at);
-    // When the network calms (the late arrival is no longer recent), the
-    // lead comes back down, gently: a quick drop would squeeze the next
-    // inputs together.
-    while (v.seen.length && v.seen[0][0] < end - PLAZA_INPUT.windowMs)
-      v.seen.shift();
-    if (v.lead !== null && v.seen.length) {
-      let recent = -Infinity;
-      for (const [, lag] of v.seen) recent = Math.max(recent, lag);
-      if (recent < v.lead)
-        v.lead -= Math.min(v.lead - recent, dt * PLAZA_INPUT.leadDecay);
-    }
   }
   /** At most one emote a second. */
   emote(key: string, kind: unknown, now: number) {
@@ -633,6 +820,7 @@ export class PlazaWorld {
     if (!v || index < 0 || now - v.lastEmote < 1000) return false;
     v.lastEmote = now;
     v.emote = index + 1;
+    v.pair = false;
     v.emoteUntil = now + PLAZA.emoteSeconds * 1000;
     // Cheering someone on the runway counts for them.
     if (["❤️", "🔥", "👏"].includes(kind as string))
@@ -648,34 +836,373 @@ export class PlazaWorld {
         }
     return true;
   }
-  /** At most one treat every PLAZA.treatSeconds; true claims the slot. */
-  treatReady(key: string, now: number) {
+  /**
+   * Ask another player (walker id `to`) for a pair emote (`kind`, a
+   * PLAZA_PAIR_EMOTES id). Players only, never yourself, near enough, at
+   * most one request every PLAZA_PAIR.askEvery seconds, and one open request
+   * per player at a time. `blocked` (account ids) says if either blocked the
+   * other: then the request is never delivered, and the asker hears only
+   * that they can't be asked.
+   */
+  pairAsk(
+    key: string,
+    to: unknown,
+    kind: unknown,
+    now: number,
+    blocked: (a: string, b: string) => boolean = () => false,
+  ):
+    { ok: true; to: string; ask: PlazaPairAsk } | { ok: false; error: string } {
     const v = this.visitors.get(key);
-    if (!v || now - v.lastTreat < PLAZA.treatSeconds * 1000) return false;
+    if (!v) return { ok: false, error: "Not in the Plaza." };
+    const index = PLAZA_PAIR_EMOTES.findIndex((p) => p.id === kind);
+    if (index < 0) return { ok: false, error: "Pick a pair emote." };
+    if (to === v.profile.id)
+      return { ok: false, error: "Ask someone else for that one." };
+    const t = [...this.visitors.values()].find(
+      (o) => o.plaza === v.plaza && o.profile.id === to,
+    );
+    if (!t || t === v || blocked(v.accountId, t.accountId))
+      return { ok: false, error: "They can't be asked right now." };
+    if (now - v.lastAsk < PLAZA_PAIR.askEvery * 1000)
+      return { ok: false, error: "Wait a moment before asking again." };
+    if (Math.hypot(t.body.x - v.body.x, t.body.y - v.body.y) > PLAZA_PAIR.reach)
+      return { ok: false, error: "Walk a little closer first." };
+    if (t.invite && t.invite.until > now && t.invite.from !== key)
+      return { ok: false, error: "They're answering someone else." };
+    v.lastAsk = now;
+    t.invite = {
+      from: key,
+      kind: index,
+      until: now + PLAZA_PAIR.askSeconds * 1000,
+    };
+    return {
+      ok: true,
+      to: t.key,
+      ask: {
+        from: v.profile.id,
+        name: v.profile.name,
+        kind: PLAZA_PAIR_EMOTES[index].id,
+        ms: PLAZA_PAIR.askSeconds * 1000,
+      },
+    };
+  }
+  /**
+   * Answer the request from walker `from`. Yes plays the pair emote for both,
+   * facing each other, for PLAZA_PAIR.playSeconds, if the request is still
+   * open, the asker still here and near and neither blocked the other.
+   */
+  pairAnswer(
+    key: string,
+    from: unknown,
+    yes: boolean,
+    now: number,
+    blocked: (a: string, b: string) => boolean = () => false,
+  ):
+    | { ok: true; declined: true; asker: string }
+    | {
+        ok: true;
+        declined?: false;
+        keys: [string, string];
+        start: PlazaPairStart;
+      }
+    | { ok: false; error: string } {
+    const v = this.visitors.get(key);
+    if (!v) return { ok: false, error: "Not in the Plaza." };
+    const inv = v.invite,
+      a = inv && this.visitors.get(inv.from);
+    if (!inv || inv.until <= now || !a || a.profile.id !== from) {
+      if (inv && inv.until <= now) v.invite = null;
+      return { ok: false, error: "That request has ended." };
+    }
+    v.invite = null;
+    if (a.plaza !== v.plaza || blocked(a.accountId, v.accountId))
+      return { ok: false, error: "That request has ended." };
+    if (!yes) return { ok: true, declined: true, asker: a.key };
+    if (
+      Math.hypot(a.body.x - v.body.x, a.body.y - v.body.y) >
+      PLAZA_PAIR.reach + PLAZA_PAIR.slack
+    )
+      return { ok: false, error: "You've moved too far apart." };
+    const pair = PLAZA_PAIR_EMOTES[inv.kind],
+      emote = emoteIndex(pair.emote);
+    for (const [p, o] of [
+      [a, v],
+      [v, a],
+    ]) {
+      p.emote = emote;
+      p.pair = true;
+      p.emoteUntil = now + PLAZA_PAIR.playSeconds * 1000;
+      p.lastEmote = now;
+      p.body.face = o.body.x >= p.body.x ? 1 : -1;
+    }
+    return {
+      ok: true,
+      keys: [a.key, v.key],
+      start: { kind: pair.id, a: a.profile.id, b: v.profile.id },
+    };
+  }
+  /** At most one gift box every PLAZA_GIFT.throwSeconds; true claims the slot. */
+  giftReady(key: string, now: number) {
+    const v = this.visitors.get(key);
+    if (!v || now - v.lastTreat < PLAZA_GIFT.throwSeconds * 1000) return false;
     v.lastTreat = now;
     return true;
   }
-  /** A treat leaves `key`'s hands: where, for everyone in that Plaza copy. */
-  treat(key: string, treat: string): PlazaTreat | undefined {
+  /** Give the slot back (the database said no). */
+  giftRefused(key: string) {
     const v = this.visitors.get(key);
-    if (!v) return undefined;
-    return {
-      id: v.profile.id,
-      treat,
-      x: Math.round(v.body.x),
-      y: Math.round(v.body.y),
+    if (v) v.lastTreat = -Infinity;
+  }
+  /**
+   * A gift box leaves `key`'s hands, tossed PLAZA_GIFT.reach ahead (the way
+   * they last walked, else the way they face), onto open ground. Its orbs
+   * spill round where it lands. For everyone in that Plaza copy.
+   */
+  throwGift(
+    key: string,
+    golden: boolean,
+    now = this.clock || Date.now(),
+  ): { plaza: number; gift: PlazaGift } | undefined {
+    const v = this.visitors.get(key),
+      c = v && this.copies.get(v.plaza);
+    if (!v || !c) return undefined;
+    const b = v.body;
+    let dx = b.lastX,
+      dy = b.lastY;
+    const m = Math.hypot(dx, dy);
+    if (m < 0.1) {
+      dx = b.face > 0 ? 1 : -1;
+      dy = 0;
+    } else {
+      dx /= m;
+      dy /= m;
+    }
+    const land = plazaCollide({
+      x: b.x + dx * PLAZA_GIFT.reach,
+      y: b.y + dy * PLAZA_GIFT.reach * 0.75,
+    });
+    const id = this.nextGift++,
+      n = golden ? PLAZA_GIFT.goldenOrbs : PLAZA_GIFT.orbs,
+      turn = this.random() * Math.PI * 2,
+      orbs = new Map<number, { x: number; y: number }>();
+    for (let i = 1; i <= n; i++) {
+      const a = turn + ((i - 1) / n) * Math.PI * 2,
+        r = PLAZA_GIFT.spill * (0.55 + this.random() * 0.45),
+        spot = plazaCollide({
+          x: land.x + Math.cos(a) * r,
+          y: land.y + Math.sin(a) * r * 0.7,
+        });
+      orbs.set(i, { x: Math.round(spot.x), y: Math.round(spot.y) });
+    }
+    const gift = {
+      id,
+      by: v.profile.id,
+      x0: Math.round(b.x),
+      y0: Math.round(b.y),
+      x: Math.round(land.x),
+      y: Math.round(land.y),
+      at: now,
+      golden,
     };
+    c.gifts.set(id, { gift, byKey: key, orbs });
+    return { plaza: c.id, gift: this.giftView(c.gifts.get(id)!) };
+  }
+  private giftView(g: CopyGift): PlazaGift {
+    return {
+      ...g.gift,
+      orbs: [...g.orbs].map(([id, o]) => [id, o.x, o.y]),
+    };
+  }
+  /** The gift boxes in a player's copy right now (sent when they join). */
+  giftsFor(key: string): PlazaGift[] {
+    const v = this.visitors.get(key),
+      c = v && this.copies.get(v.plaza);
+    return c ? [...c.gifts.values()].map((g) => this.giftView(g)) : [];
+  }
+  /** Gift orbs: once out of the box, caught by anyone but the thrower who
+   * walks over one; gone when they fade. Each catch counts as an orb
+   * (ref "<toss second>-<box id><orb>", under the orb caps). */
+  private stepGifts(
+    c: Copy,
+    players: Visitor[],
+    now: number,
+    events: PlazaEvent[],
+  ) {
+    if (!c.gifts.size) return;
+    const gone: PlazaGiftGone = [];
+    for (const [id, g] of c.gifts) {
+      const age = now - g.gift.at;
+      if (age > PLAZA_GIFT.lastsMs) {
+        for (const orb of g.orbs.keys()) gone.push([id, orb, 0]);
+        c.gifts.delete(id);
+        continue;
+      }
+      // Out of the box and landed: the flight, the opening, their hop out.
+      if (age < PLAZA_GIFT.flightMs + PLAZA_GIFT.openMs + 350) continue;
+      for (const [orb, o] of g.orbs) {
+        const v = players.find(
+          (p) =>
+            p.key !== g.byKey &&
+            Math.hypot(p.body.x - o.x, p.body.y - o.y) < ORB_SHOWER.catchRadius,
+        );
+        if (!v) continue;
+        g.orbs.delete(orb);
+        gone.push([id, orb, v.profile.id]);
+        events.push({
+          type: "orb",
+          key: v.key,
+          ref: `${Math.floor(g.gift.at / 1000)}-${id * 10 + orb}`,
+        });
+      }
+      if (!g.orbs.size) c.gifts.delete(id);
+    }
+    if (gone.length) events.push({ type: "giftGone", plaza: c.id, gone });
   }
   /** The spot `key` stands at, if it is `spot` (a little slack for lag). */
   at(key: string, spot: PlazaSpotId) {
     const v = this.visitors.get(key);
     return !!v && plazaSpotAt(v.body.x, v.body.y, 40)?.id === spot;
   }
+  /**
+   * Cast a line at the pond. The server picks the fish now (by rarity, and
+   * by the time of day on the player's clock: `tzOffsetMin` is the
+   * browser's Date#getTimezoneOffset) and when it bites; the browser hears
+   * of the bite from `step` and of the fish only once it is caught.
+   */
+  cast(key: string, now: number, tzOffsetMin?: unknown) {
+    const v = this.visitors.get(key);
+    if (!v) return { ok: false as const, error: "Not in the Plaza." };
+    if (!this.atPond(v))
+      return { ok: false as const, error: "Walk up to the pond first." };
+    if (v.line)
+      return { ok: false as const, error: "Your line is already out." };
+    if (now < v.nextCast) return { ok: false as const, error: "One moment…" };
+    const tz = typeof tzOffsetMin === "number" ? tzOffsetMin : 0,
+      night = plazaIsNight(plazaTimeOfDay(now, tz)),
+      { biteMinMs, biteMaxMs } = PLAZA_FISHING;
+    v.line = {
+      fish: plazaFishPick(this.random(), night).id,
+      biteAt: now + biteMinMs + this.random() * (biteMaxMs - biteMinMs),
+      bitAt: null,
+      hookedAt: null,
+      seed: 0,
+    };
+    return { ok: true as const };
+  }
+  /** Tap to reel in: hooked only while the bobber is under (with slack). */
+  reel(key: string, now: number): PlazaReel {
+    const v = this.visitors.get(key),
+      line = v?.line;
+    if (!v || !line || line.hookedAt !== null)
+      return { ok: false, error: "No line in the water." };
+    const lost = (r: PlazaReel) => {
+      v.line = null;
+      v.nextCast = now + PLAZA_FISHING.castGapMs;
+      return r;
+    };
+    if (line.bitAt === null)
+      return lost({
+        ok: false,
+        error: "Too soon! The fish swam off.",
+        why: "early",
+      });
+    if (now - line.bitAt > PLAZA_FISHING.windowMs + PLAZA_FISHING.slackMs)
+      return lost({
+        ok: false,
+        error: "Too late! The fish got away.",
+        why: "late",
+      });
+    line.hookedAt = now;
+    line.seed = Math.floor(this.random() * 2 ** 31);
+    return {
+      ok: true,
+      hooked: true,
+      rarity: PLAZA_FISH_BY_ID[line.fish].rarity,
+      seed: line.seed,
+    };
+  }
+  /**
+   * The fight's end: the browser's presses and let-goes (steps, see
+   * plaza-fight.ts). The fight is run again here from the seed; a catch
+   * also needs as long to have passed as the fight took (less a little for
+   * the network), so a made-up quick win doesn't land anything.
+   */
+  land(key: string, now: number, moves: unknown): PlazaLand {
+    const v = this.visitors.get(key),
+      line = v?.line;
+    if (!v || !line || line.hookedAt === null)
+      return { ok: false, error: "Nothing on the line.", why: "bad" };
+    v.line = null;
+    v.nextCast = now + PLAZA_FISHING.castGapMs;
+    if (!plazaFightMovesOk(moves))
+      return { ok: false, error: "The line tangled.", why: "bad" };
+    const f = plazaFightReplay(
+      line.seed,
+      PLAZA_FISH_BY_ID[line.fish].rarity,
+      moves,
+    );
+    if (f.result === "snap")
+      return { ok: false, error: "The line snapped!", why: "snap" };
+    if (f.result !== "caught")
+      return { ok: false, error: "It got away.", why: "escape" };
+    if (now - line.hookedAt < f.tick * PLAZA_FIGHT.tickMs - FIGHT_SLACK_MS)
+      return { ok: false, error: "The line tangled.", why: "bad" };
+    return { ok: true, fish: line.fish };
+  }
+  /** Leaving fishing mode: the line comes in quietly (no catch, no news). */
+  stopFishing(key: string, now: number) {
+    const v = this.visitors.get(key);
+    if (!v?.line) return false;
+    v.line = null;
+    v.nextCast = now + PLAZA_FISHING.castGapMs;
+    return true;
+  }
+  /** Fishing state (tests): the line, if any. */
+  lineOf(key: string) {
+    const line = this.visitors.get(key)?.line;
+    return line ? { ...line } : null;
+  }
+  private atPond(v: Visitor) {
+    return (
+      plazaSpotAt(v.body.x, v.body.y, PLAZA_FISHING.reachSlack)?.id === "fish"
+    );
+  }
+  /** A line's moment: the bite, a fish that waited too long, or walking off. */
+  private stepLine(v: Visitor, now: number, events: PlazaEvent[]) {
+    const line = v.line;
+    if (!line) return;
+    const gone = (why: "late" | "moved") => {
+      v.line = null;
+      v.nextCast = now + PLAZA_FISHING.castGapMs;
+      events.push({ type: "fish", key: v.key, note: { state: "gone", why } });
+    };
+    if (!this.atPond(v)) return gone("moved");
+    if (line.hookedAt !== null) {
+      // A fight nobody finished (a closed tab): the fish slips off.
+      if (
+        now - line.hookedAt >
+        PLAZA_FIGHT.maxTicks * PLAZA_FIGHT.tickMs + FIGHT_SLACK_MS * 4
+      )
+        gone("late");
+      return;
+    }
+    if (line.bitAt === null && now >= line.biteAt) {
+      line.bitAt = now;
+      events.push({ type: "fish", key: v.key, note: { state: "bite" } });
+    } else if (
+      line.bitAt !== null &&
+      now - line.bitAt > PLAZA_FISHING.windowMs + PLAZA_FISHING.slackMs
+    )
+      gone("late");
+  }
   /** Volt Boba (free): the speed boost. */
   boost(key: string) {
     const v = this.visitors.get(key);
     if (!v) return false;
     v.body.boost = PLAZA.boba.seconds;
+    // A rewind would take the drink back: start the history afresh.
+    v.past = [];
+    v.played = [];
     return true;
   }
   boosted(key: string) {
@@ -701,11 +1228,28 @@ export class PlazaWorld {
     this.movedTo = now;
     const events: PlazaEvent[] = [];
     for (const v of this.visitors.values()) {
-      this.stepVisitor(v, from, now, dt);
-      if (v.emote && now >= v.emoteUntil) v.emote = 0;
+      this.stepVisitor(v, from, now);
+      if (v.emote && now >= v.emoteUntil) {
+        v.emote = 0;
+        v.pair = false;
+      }
+      this.stepLine(v, now, events);
       const lap = v.lap.update(v.body.x, v.body.y, now);
+      // A fresh start or leaving the lane ends a run of laps in a row.
+      if (lap.cancelled || (lap.started && lap.lapMs === undefined)) v.run = [];
+      if (lap.lapMs !== undefined && lap.lapMs < 1000) v.run = [];
       if (lap.lapMs !== undefined && lap.lapMs >= 1000) {
-        events.push({ type: "lap", key: v.key, ms: lap.lapMs });
+        v.run = [...v.run, lap.lapMs].slice(-PLAZA_LAP_RUN.laps);
+        const run =
+          v.run.length === PLAZA_LAP_RUN.laps
+            ? v.run.reduce((a, b) => a + b, 0)
+            : undefined;
+        events.push({
+          type: "lap",
+          key: v.key,
+          ms: lap.lapMs,
+          ...(run !== undefined ? { run } : {}),
+        });
         events.push({
           type: "news",
           plaza: v.plaza,
@@ -808,6 +1352,7 @@ export class PlazaWorld {
         });
     }
     this.stepOrbs(c, players, now, events);
+    this.stepGifts(c, players, now, events);
   }
   /** A townsperson's emote, seen by everyone in the copy. */
   private folkEmote(f: Folk, e: (typeof PLAZA_EMOTES)[number], now: number) {
@@ -1101,12 +1646,14 @@ export class PlazaWorld {
       version: number,
       emote: number,
       bot: boolean,
+      extra = 0,
     ) => {
       const flags =
         (body.dash > 0 ? PLAZA_FLAG.dash : 0) |
         (body.stun > 0 ? PLAZA_FLAG.stun : 0) |
         (body.boost > 0 ? PLAZA_FLAG.boost : 0) |
-        (bot ? PLAZA_FLAG.bot : 0);
+        (bot ? PLAZA_FLAG.bot : 0) |
+        extra;
       walkers.push([
         profile.id,
         Math.round(body.x),
@@ -1124,7 +1671,14 @@ export class PlazaWorld {
     };
     for (const v of this.visitors.values())
       if (v.plaza === me.plaza && (v === me || see(v.body)))
-        add(v.body, v.profile, v.version, v.emote, false);
+        add(
+          v.body,
+          v.profile,
+          v.version,
+          v.emote,
+          false,
+          v.pair && v.emote ? PLAZA_FLAG.pair : 0,
+        );
     for (const b of c.bots) if (see(b.body)) add(b.body, b.profile, 1, 0, true);
     for (const f of c.folk)
       if (see(f.body)) add(f.body, f.profile, 1, f.emote, true);
@@ -1146,7 +1700,11 @@ export class PlazaWorld {
                 Math.round(c.ball.x),
                 Math.round(c.ball.y),
                 Math.round(c.ball.z),
-              ] as [number, number, number],
+                Math.round(c.ball.vx),
+                Math.round(c.ball.vy),
+                Math.round(c.ball.vz),
+                Math.round(c.ball.lock * 100) / 100,
+              ] as [number, number, number, number, number, number, number],
             }
           : {}),
         score: [...c.score] as [number, number],
@@ -1164,7 +1722,15 @@ export class PlazaWorld {
               lap: [
                 me.lap.startTime,
                 Math.round(me.lap.progress * 100) / 100,
-              ] as [number, number],
+                // The run that counts for the quest: its oldest lap's start
+                // (the laps before this one, the latest ones kept) and
+                // which lap of it this is.
+                me.lap.startTime -
+                  me.run
+                    .slice(-(PLAZA_LAP_RUN.laps - 1))
+                    .reduce((a, b) => a + b, 0),
+                Math.min(PLAZA_LAP_RUN.laps - 1, me.run.length) + 1,
+              ] as [number, number, number, number],
             }
           : {}),
       },

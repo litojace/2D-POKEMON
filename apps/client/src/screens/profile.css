@@ -19,6 +19,12 @@
 .pf-card {
   position: relative;
   display: grid;
+  /* One column exactly the card's width. Left automatic, the column could
+     grow past the card to its contents' widest size (the avatar sizes
+     itself from its own box, a container query), and Safari settled it
+     differently after the column beside it redrew: the avatar and the
+     words sat off-centre on some tabs (owner, iPhone, 21 Nov). */
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr) auto;
   min-height: 0;
   border-radius: var(--rad-xl);
@@ -35,6 +41,7 @@
 .pf-card-art {
   display: grid;
   place-items: center;
+  min-width: 0;
   min-height: 0;
   padding: var(--sp-4);
 }
@@ -78,6 +85,11 @@
   line-height: 1.05;
   text-transform: uppercase;
   letter-spacing: 0.02em;
+  /* Room above the capitals for stacked marks: "NGUYỄN HỒNG ÁNH" lost
+     its tildes and hooks to this box's clip (26 Nov 2026). The margin takes
+     the room back, so nothing moves. */
+  padding-top: 0.34em;
+  margin-top: -0.34em;
 }
 .pf-card-tags {
   display: flex;
@@ -100,7 +112,7 @@
   gap: var(--sp-3);
   min-width: 0;
   min-height: 0;
-  overflow: auto;
+  overflow: hidden auto;
   overscroll-behavior: contain;
   /* Room for focus rings at the edges of the scrolling column. */
   padding: 2px 4px var(--sp-2) 2px;
@@ -829,33 +841,95 @@
   }
   .pf-mini-row > .ui-note {
     white-space: normal;
+    /* Two even lines, not one word left alone on the second. */
+    text-wrap: balance;
   }
-  /* Overview: who you are and Delete account sit at the bottom of the
-     column, Delete in the corner (owner, 19 Nov). */
-  .pf-main:has(> .pf-account) {
-    display: flex;
-    flex-direction: column;
+  /* The value has the line to itself when the note wraps under it:
+     "Unranked · 1,000" was cut to "Unranked · 1,…" at 60% of a 150 px card. */
+  .pf-mini-row > b {
+    max-width: 100%;
   }
-  .pf-main:has(> .pf-account) > * {
-    flex: none;
+}
+
+/* Overview: who you are and Delete account sit at the bottom of the
+   column, Delete in the corner (owner, 19 Nov); a desktop too,
+   now that it shows tabs. */
+/* .has-account is set by profile-view.ts. A `:has(> .pf-account) > *`
+   rule here made Chrome recheck it on every style change in the page,
+   battles included (about 40% of a duel's style recalculation). */
+.pf-main.has-account {
+  display: flex;
+  flex-direction: column;
+}
+.pf-main.has-account > * {
+  flex: none;
+}
+.pf-account {
+  margin-top: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px var(--sp-2);
+}
+.pf-account .pf-who {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pf-account .pf-delete:has(.pf-delete-form:not([hidden])) {
+  flex-basis: 100%;
+}
+/* Its heading stays for screen readers (the row's label), not on screen:
+   the button says it (a phone hides it the same way, above). */
+.pf-account .pf-section:has(#pf-delete-h) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+/* Six tabs and Share card share the head of a small phone held sideways
+   (iPhone SE, 667 x 375): Share card keeps its icon, the tabs their room. */
+@media (max-height: 500px) and (max-width: 740px) {
+  .profile-panel [data-profile-share] > span {
+    display: none;
   }
-  .pf-account {
-    margin-top: auto;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 6px var(--sp-2);
-  }
-  .pf-account .pf-who {
-    flex: 1 1 0;
+  .profile-panel .ui-panel-head > .ui-btn.is-s[data-profile-share] {
     min-width: 0;
-    margin: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    /* A thumb's width (phone-fit: 41 x 44 at least). */
+    width: 42px;
+    padding-inline: 0;
+    justify-content: center;
   }
-  .pf-account .pf-delete:has(.pf-delete-form:not([hidden])) {
-    flex-basis: 100%;
+  .profile-panel .ui-panel-head [data-ui-profile-tab] {
+    padding-inline: 5px;
+  }
+}
+/* The same phone: the name's rule ("You can change it once every 14 days")
+   takes two short lines beside the name instead of ending in "…". */
+@media (max-height: 500px) and (max-width: 740px) {
+  .pf-name-note {
+    white-space: normal;
+    text-wrap: balance;
+    line-height: 1.2;
+  }
+}
+/* Raid trophies on phones: a boss's name reads in full. Four tiles to a
+   row left it 44 px on a 667 px phone ("Crag…", "Snooz…", "Storm…"): three
+   to a row there. On wider phones the name runs closer to the count (the
+   15 px figure needs less room than the desktop's 20 px one). */
+@media (max-height: 500px) {
+  .pf-trophy-name {
+    right: 24px;
+  }
+}
+@media (max-height: 500px) and (max-width: 740px) {
+  .pf-trophies {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }

@@ -15,7 +15,7 @@ export function createBossCombatDemo(
   const arena = createRaidArena("RAID42", id, { variant });
   arena.add("me", "Tester", "voltkit");
   arena.add("p2", "Kai", "auralynx");
-  arena.configure(1, false);
+  arena.configure(1);
   arena.start();
   arena.phase = "playing";
   arena.raid.gilded = false;

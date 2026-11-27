@@ -2,6 +2,7 @@ import { FighterAppearance, PortraitChoice } from "./fighter-appearance.js";
 import { ServerDiagnostics } from "./diagnostics.js";
 import { PresenceHistory } from "./presence-history.js";
 import { apiClock, apiCors, clientOrigins } from "./api-cors.js";
+import { ClientAddresses, WindowLimits, floodGuard } from "./abuse-limits.js";
 import { ArcadeArena } from "./arcade.js";
 import {
   arcadeWeek,
@@ -20,6 +21,7 @@ import {
   type SpireMember,
 } from "../../../packages/shared/src/spire.js";
 import type { ActivityReceipt } from "../../../packages/shared/src/shop.js";
+import type { RaidDreamView } from "../../../packages/shared/src/raid-somnara.js";
 import {
   DREAM_RUNES,
   RAID_PINGS,
@@ -28,7 +30,6 @@ import {
   raidLookOf,
   type RaidAttack,
   pacificDate,
-  raidWeek,
   RAID,
   RAID_BOSSES,
   RAID_BOSS_ORDER,
@@ -51,8 +52,11 @@ import {
   CHARACTERS,
   blankInput,
   packSnapshot,
+  SnapshotDeltaEncoder,
   MetaTracker,
+  type Phase,
   type WireSnapshot,
+  type WireSnapshotDelta,
   practiceOptionsSchema,
   FIGHTER_IDS,
   type Fighter,
@@ -62,17 +66,33 @@ import {
   pickTakenBy,
   pickClashes,
   veilPlayers,
+  INTRO_ROUNDS,
+  introRounds,
+  FILL_MODES,
+  MODE_SIZE,
+  type CharacterId,
+  type FillMode,
 } from "../../../packages/shared/src/index.js";
 import { Arena } from "./simulation.js";
+import { DRAIN_MESSAGE, busyRoom, trackWrites, waitForDrain } from "./drain.js";
+import { MOVE_MESSAGE, supersededBy } from "./drain.js";
 /** Every champion's basic attack: spammed, so it never forces a snapshot. */
 const BASIC_IDS = new Set(Object.values(CHARACTERS).map((c) => c.basic.id));
 import {
+  battleArtSchema,
   battleLoadSchema,
   battlePerfSchema,
   connectionReportSchema,
 } from "../../../packages/shared/src/connection.js";
 import { PlazaWorld, type PlazaEvent } from "./plaza.js";
-import { PLAZA, type PlazaRecord } from "../../../packages/shared/src/plaza.js";
+import {
+  PLAZA,
+  PLAZA_FISH,
+  PLAZA_FISH_BY_ID,
+  PLAZA_GIFT,
+  PLAZA_FISH_RARITY,
+  type PlazaRecord,
+} from "../../../packages/shared/src/plaza.js";
 import {
   PARTY_AWAY_MS,
   Parties,
@@ -95,13 +115,22 @@ import {
 } from "./chat.js";
 import { PlazaAppearance } from "./plaza-appearance.js";
 import { MatchLedger, matchSummary } from "./match-summary.js";
-import { QuickQueue, type QueueEntry, type QueueLeave } from "./matchmaking.js";
+import {
+  GroupQueue,
+  QuickQueue,
+  type QueueEntry,
+  type QueueLeave,
+} from "./matchmaking.js";
 import {
   BotBrain,
   BOT_DIFFICULTIES,
   BOT_LABELS,
   type BotDifficulty,
 } from "./bot.js";
+/** The result screen's Rematch, optionally with another fighter (bot matches). */
+const rematchSchema = z
+  .object({ character: characterSchema.optional() })
+  .strict();
 const botMatchSchema = identitySchema
   .extend({
     character: characterSchema,
@@ -112,7 +141,15 @@ const botMatchSchema = identitySchema
   })
   .strict();
 const quickSchema = identitySchema
-  .extend({ character: characterSchema })
+  .extend({
+    character: characterSchema,
+    /** 2v2 or Free-for-all: a search bots can fill (default: the 1v1 queue). */
+    mode: z.enum(FILL_MODES).optional(),
+  })
+  .strict();
+/** "Start now": bots take the seats nobody else is searching for. */
+const quickFillSchema = z
+  .object({ difficulty: z.enum(BOT_DIFFICULTIES) })
   .strict();
 const createSchema = identitySchema
   .extend({
@@ -151,6 +188,11 @@ const BOT_NAMES = [
   "Echo",
   "Taro",
 ];
+/**
+ * How long a bot match waits to learn whether its player is new (their
+ * finished matches, for INTRO_ROUNDS) before it starts at full length.
+ */
+const INTRO_CHECK_MS = 1500;
 /** Six-character room codes: no 0/O or 1/I, so a code read aloud works. */
 const ROOM_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const BOT_COLORS = { easy: "#65d38a", normal: "#7ff3ff", hard: "#ff697f" };
@@ -158,6 +200,7 @@ import {
   createAccountProvider,
   authorize,
   installAccountRoutes,
+  reportFinishedMatch,
   AccountError,
   type AccountProvider,
 } from "./accounts.js";
@@ -177,6 +220,7 @@ import { TickClock } from "./tick-clock.js";
 import { z, ZodError } from "zod";
 import type { Request, Response, NextFunction } from "express";
 import {
+  AnnouncementPush,
   FriendPush,
   validDevice,
   webPushSender,
@@ -190,8 +234,50 @@ type Session = {
   socketId: string | null;
   expires: number;
 };
+/** Socket.IO's heartbeat (ms): a silent connection is gone after both. */
+export const HEARTBEAT = { interval: 10_000, timeout: 10_000 };
 /** When a socket counts as congested (see broadcast). */
 export const BACKPRESSURE = { bytes: 16 * 1024, messages: 4 };
+/**
+ * Phases nobody is fighting in, and how many ticks may pass between two
+ * sends of a room in one while nothing in it changes (quietRoom): twice a
+ * second, for an app that redraws when a snapshot arrives. A paused match
+ * shows the seconds left to reconnect, so it is sent five times a second.
+ */
+const IDLE_SNAPSHOTS: Partial<Record<Phase, number>> = {
+  lobby: RULES.tick / 2,
+  briefing: RULES.tick / 2,
+  finished: RULES.tick / 2,
+  paused: RULES.tick / 5,
+};
+/** How often each signed-in connection's account is checked again. */
+const ACCOUNT_CHECK_MS = 30_000;
+/** A connection's place in that period, 0 to 1, from its id (FNV-1a). */
+const spreadOf = (id: string) => {
+  let hash = 2166136261;
+  for (let i = 0; i < id.length; i++)
+    hash = Math.imul(hash ^ id.charCodeAt(i), 16777619);
+  return (hash >>> 0) / 2 ** 32;
+};
+/** How many fault lines a minute reach the log (faultLog). */
+const FAULT_LOG = { perMinute: 20, stack: 1200 };
+/** What a fault's log line says of the error: its stack's first lines. */
+const faultText = (error: unknown) =>
+  (error instanceof Error
+    ? (error.stack ?? error.message)
+    : String(error)
+  ).slice(0, FAULT_LOG.stack);
+/** What players in a room that was closed after a fault are told. */
+const ROOM_FAULT_MESSAGE =
+  "This match hit a server error and was closed. No result was recorded.";
+/** What a command gets back when its handler failed. */
+const HANDLER_FAULT_MESSAGE = "Something went wrong. Please try again.";
+/**
+ * How long a server being replaced waits for a finished match's players to
+ * file it (drain). Their game does so as soon as the results reach it, so
+ * this covers a slow network, not a player who has left.
+ */
+const REPORT_GRACE_MS = 10_000;
 export function createArenaServer(
   options: {
     reconnectMs?: number;
@@ -214,7 +300,8 @@ export function createArenaServer(
     backpressure?: boolean;
     /**
      * Where diagnostic lines go: dropped players ("arena-disconnect",
-     * "arena-client-drop") and battle load times ("arena-load"). Defaults
+     * "arena-client-drop"), battle load times ("arena-load") and raid
+     * results the database didn't keep ("arena-raid-unsaved"). Defaults
      * to console.log on a live server (autoTick), and to nothing in tests.
      */
     connectionLog?: (event: string, details: Record<string, unknown>) => void;
@@ -223,6 +310,25 @@ export function createArenaServer(
      * with the PUSH_VAPID_* keys, or none without them; null turns it off.
      */
     push?: PushSender | null;
+    /**
+     * This service's own public health address, asked now and then to see
+     * whether a deploy has put a newer server in front of this one
+     * (docs/server-updates.md). Defaults to RENDER_EXTERNAL_URL's
+     * /api/health on a live server (autoTick); none in tests.
+     */
+    publicHealthUrl?: string;
+    /** How often to ask it, in ms (15 s). */
+    supersedeEvery?: number;
+    /** How to ask it (fetch); tests pass their own. */
+    fetchHealth?: (url: string) => Promise<unknown>;
+    /**
+     * Send battle snapshots as changes to the clients that ask for them
+     * (snapshot-delta.ts). On unless the SNAPSHOT_DELTA environment switch
+     * says "off"; off, every client is sent whole snapshots.
+     */
+    snapshotDelta?: boolean;
+    /** How long a drain waits for a finished match to be filed (10 s). */
+    reportGraceMs?: number;
   } = {},
 ) {
   const connectionLog =
@@ -231,12 +337,71 @@ export function createArenaServer(
       ? () => {}
       : (event: string, details: Record<string, unknown>) =>
           console.log(event, JSON.stringify(details)));
+  /**
+   * Faults (a room, a handler or a timer that threw) are caught where they
+   * happen, so one of them can't end every match; this is their log. A fault
+   * that repeats (the same handler on every message) is logged
+   * `FAULT_LOG.perMinute` times a minute, and the rest are counted in one
+   * `arena-faults-suppressed` line. The stack's first lines say where; no
+   * account or name is logged.
+   */
+  const faults = { from: 0, logged: 0, dropped: 0 };
+  const faultLog = (event: string, details: Record<string, unknown>) => {
+    const now = Date.now();
+    if (now - faults.from > 60_000) {
+      if (faults.dropped)
+        connectionLog("arena-faults-suppressed", { count: faults.dropped });
+      Object.assign(faults, { from: now, logged: 0, dropped: 0 });
+    }
+    if (++faults.logged > FAULT_LOG.perMinute) return void faults.dropped++;
+    try {
+      connectionLog(event, details);
+    } catch {
+      // A log that can't be written must not become a fault of its own.
+    }
+  };
   const diagnosticsEvery = Number(process.env.ARENA_DIAGNOSTICS ?? 0);
   const diagnostics = new ServerDiagnostics(
     options.diagnostics ?? diagnosticsEvery > 0,
   );
   const app = express();
-  const accounts = options.accounts ?? createAccountProvider();
+  /** Saves still on their way to the database (drain waits for them). */
+  const inflight = new Set<Promise<unknown>>();
+  const accounts = trackWrites(
+    options.accounts ?? createAccountProvider(),
+    inflight,
+  );
+  /**
+   * A deploy is replacing this server (drain, below): matches already running
+   * play on to the end, and no new ones start here.
+   */
+  let draining = false;
+  /** When the drain gives up (epoch ms), for the countdown players see. */
+  let drainDeadline = 0;
+  /**
+   * This process, among the servers a deploy runs side by side: /api/health
+   * says it, so a server can tell that the public address answers from
+   * another (a commit alone can't: a redeploy runs the same one).
+   */
+  const serverId = randomBytes(4).toString("hex");
+  /**
+   * A newer server answers the public address: Render moved new connections
+   * to it, and stops this one about two minutes later (docs/server-updates.md).
+   * Players connected here move over as soon as they're out of a match, and
+   * no new match starts here.
+   */
+  let superseded = false;
+  /**
+   * What players are told while a deploy replaces this server: move to the
+   * new one once out of a match, and, once Render has asked this one to
+   * stop, how long a match in progress still has (ms).
+   */
+  const updateNotice = () => ({
+    reconnect: true,
+    ...(draining
+      ? { draining: true, left: Math.max(0, drainDeadline - Date.now()) }
+      : {}),
+  });
   /** Notifications of friends' messages to players who are away (push.ts). */
   const pushSender =
     options.push === undefined
@@ -248,14 +413,44 @@ export function createArenaServer(
     pushSender && accounts.pushDevices
       ? new FriendPush(accounts.pushDevices, pushSender)
       : null;
+  /** Admins' announcements as notifications, to devices that want game news. */
+  const announcePush =
+    pushSender && accounts.pushDevices
+      ? new AnnouncementPush(accounts.pushDevices, pushSender)
+      : null;
   const fighterAppearance = new FighterAppearance(accounts);
   const portraitChoice = new PortraitChoice(accounts);
+  /**
+   * Each client's own address behind the host's proxies, for the limits on
+   * API requests (accounts.ts) and on refused logins below. The log line
+   * shows the proxy chain's shape (how many entries, public or private),
+   * never an address.
+   */
+  const clientAddresses = new ClientAddresses(undefined, (details) =>
+    connectionLog("arena-proxy-chain", details),
+  );
+  app.locals.clientAddresses = clientAddresses;
+  /**
+   * Logins the accounts service refused, per client address: past 20 in a
+   * minute, further tokens from there are refused without asking it, so a
+   * client inventing tokens can't spend the service's allowance for
+   * everyone. A player's renewed login after an expired one is one refusal.
+   */
+  const refusedLogins = new WindowLimits(20, 60000);
   app.use("/api", apiCors(clientOrigins()));
   app.use("/api", apiClock());
   app.use(express.json({ limit: "4kb" }));
   const http = createServer(app);
   const io = new Server(http, {
     maxHttpBufferSize: 4096,
+    // A connection that goes quiet (an app frozen in the background, then
+    // swiped away; a phone that lost signal) is let go within 20 s rather
+    // than Socket.IO's default 45 s: until then friends saw the player
+    // online and a room showed their seat as live. The client closes the
+    // connection itself when it is hidden (background-exit.ts); this is for
+    // when it can't. A ping is a few bytes, so 10 s costs nothing.
+    pingInterval: HEARTBEAT.interval,
+    pingTimeout: HEARTBEAT.timeout,
     // The static site (CLIENT_ORIGIN) and the iPhone app (api-cors.ts).
     cors: { origin: [...clientOrigins()] },
   });
@@ -284,12 +479,71 @@ export function createArenaServer(
     const previousId = activeAccounts.get(id);
     activeAccounts.set(id, socket.id);
     const previous = previousId && io.sockets.sockets.get(previousId);
+    if (previous && previous !== socket && previous.conn === socket.conn) {
+      retireTwin(previous, socket);
+      return;
+    }
     if (previous && previous !== socket) {
       previous.data.sessionReplaced = true;
       previous.emit("session-replaced");
       // A server disconnect stops Socket.IO's automatic reconnect loop.
       previous.disconnect(true);
     }
+  }
+  /**
+   * The same tab sent its CONNECT twice on one connection: Socket.IO's
+   * client does when `connect()` is called again before the server has
+   * answered (the app does on a sign-in announced twice, as the sign-up
+   * confirmation link does, or the iPhone app coming back while
+   * connecting). The tab now uses the newer socket. The older one was
+   * taken for another device: told "session-replaced", which the one tab
+   * receives, and the shared connection closed, so a new player was told
+   * the game was playing elsewhere (25 Nov 2026). It is dropped quietly
+   * instead: no packet, the connection stays, and nothing sent to it later
+   * reaches the tab twice.
+   */
+  function retireTwin(
+    stale: import("socket.io").Socket,
+    current: import("socket.io").Socket,
+  ) {
+    stale.data.twin = true;
+    // Socket.IO has no public way to forget a socket without telling the
+    // client. Closing it as the server does on a namespace disconnect sends
+    // nothing, but also forgets the connection's socket for the namespace,
+    // which is the current one now: it is put back.
+    //
+    // Fails safe: if an upgrade renames these or they throw, the twin is
+    // left alive (the tab works; something sent to the account may reach it
+    // twice until it reconnects). Never `stale.disconnect()`: its DISCONNECT
+    // packet is for the namespace the tab uses, and the tab would close
+    // with "io server disconnect", which Socket.IO never retries. And never
+    // "session-replaced" on the same connection. A Socket.IO upgrade must
+    // pass tests/multiplayer/same-tab-reconnect.test.ts, which fails when
+    // the twin is not retired.
+    const internal = stale as unknown as {
+      _onclose?: (reason: string) => void;
+    };
+    const client = current.client as unknown as { nsps?: Map<string, unknown> };
+    let retired = false;
+    try {
+      if (
+        typeof internal._onclose === "function" &&
+        client.nsps instanceof Map
+      ) {
+        internal._onclose("server namespace disconnect");
+        retired = true;
+      }
+    } catch {
+      retired = false;
+    } finally {
+      if (client.nsps instanceof Map)
+        client.nsps.set(current.nsp.name, current);
+    }
+    connectionLog("arena-twin-connect", {
+      transport: current.conn.transport.name,
+      msApart: current.handshake.issued - stale.handshake.issued,
+      retired,
+    });
   }
   const grace =
     options.reconnectMs ??
@@ -318,6 +572,35 @@ export function createArenaServer(
       (conn.writeBuffer?.length ?? 0) >= BACKPRESSURE.messages
     );
   };
+  /** What each quiet room was last sent, and at which tick (quietRoom). */
+  const idleSent = new WeakMap<Arena, { key: string; tick: number }>();
+  /**
+   * Snapshots as changes (snapshot-delta.ts; network-performance.md section
+   * 21). Per room: its count of snapshots, the last one sent (inside the
+   * encoder), and `synced`, the connections that were sent exactly that one
+   * and so can be sent the next as a delta. Anyone else is sent it whole.
+   */
+  const snapshotDelta =
+    options.snapshotDelta ?? process.env.SNAPSHOT_DELTA !== "off";
+  const deltaRooms = new WeakMap<
+    Arena,
+    { n: number; encoder: SnapshotDeltaEncoder; synced: Set<string> }
+  >();
+  const deltaRoom = (arena: Arena) => {
+    let room = deltaRooms.get(arena);
+    if (!room)
+      deltaRooms.set(
+        arena,
+        (room = {
+          n: 0,
+          encoder: new SnapshotDeltaEncoder(),
+          synced: new Set(),
+        }),
+      );
+    return room;
+  };
+  /** Rooms where a client asked for a whole snapshot (`state-full`). */
+  const fullWanted = new WeakSet<Arena>();
   /** Rooms where a socket just joined/resumed/started watching. */
   const metaWanted = new WeakSet<Arena>();
   const metaTracker = (arena: Arena) => {
@@ -329,10 +612,22 @@ export function createArenaServer(
   const joinChannel = (socket: import("socket.io").Socket, arena: Arena) => {
     socket.join(arena.code);
     metaWanted.add(arena);
+    // Whatever it held of this room before, it starts from a whole snapshot.
+    deltaRooms.get(arena)?.synced.delete(socket.id);
   };
   /** Which account plays each fighter (kept after a player leaves). */
   const fighterAccounts = new WeakMap<Arena, Map<string, string>>();
   const ledger = new MatchLedger();
+  const reportGraceMs = options.reportGraceMs ?? REPORT_GRACE_MS;
+  /**
+   * A finished match's summary, for its player to file. From then on its
+   * save is a write the drain waits for, not a report it waits for.
+   */
+  const fileMatch = (matchId: string, accountId: string) => {
+    const summary = ledger.forPlayer(matchId, accountId);
+    if (summary) ledger.filed(matchId, accountId);
+    return summary;
+  };
   /** The Plaza (hub redesign phase 3): movement, the pitch, orbs, laps. */
   const plaza = new PlazaWorld();
   const plazaAppearance = new PlazaAppearance(plaza, accounts);
@@ -368,8 +663,139 @@ export function createArenaServer(
   const quickQueue = new QuickQueue<
     QueueEntry & { name: string; matched: (arena: Arena) => void }
   >((a, b) => !chat.blocks(a, b));
+  /**
+   * 2v2 and Free-for-all searches (matchmaking.ts GroupQueue): a full group
+   * plays at once; a player who won't wait longer plays with whoever is
+   * searching and bots in the empty seats.
+   */
+  type FillEntry = QueueEntry & {
+    name: string;
+    character: CharacterId;
+    /** Seat this socket in the room and tell it ("quick-found"). */
+    matched: (arena: Arena, alone: boolean) => void;
+  };
+  const fillQueues: Record<FillMode, GroupQueue<FillEntry>> = {
+    teams: new GroupQueue<FillEntry>(
+      MODE_SIZE.teams,
+      (a, b) => !chat.blocks(a, b),
+    ),
+    ffa: new GroupQueue<FillEntry>(MODE_SIZE.ffa, (a, b) => !chat.blocks(a, b)),
+  };
   /** Rooms Quick Match made: "human" (two searchers) or "bot" (fallback). */
   const quickRooms = new WeakMap<Arena, "human" | "bot">();
+  /** A searched room's bot level, for the seats bots take (seatBots). */
+  const fillLevels = new WeakMap<Arena, BotDifficulty>();
+  /**
+   * Bots in every empty seat of a searched 2v2 or Free-for-all room,
+   * labelled as bots, ready and locked in. Called as the room opens, and
+   * again at Ready in its lobby: a player who left it would otherwise leave
+   * the others a seat nobody can take.
+   */
+  function seatBots(arena: Arena) {
+    const difficulty = fillLevels.get(arena);
+    if (!difficulty || arena.mode === "raid" || arena.mode === "duel") return;
+    const mode = arena.mode;
+    const names = [...BOT_NAMES]
+      .filter((n) => !arena.players.some((p) => p.name === `${n} (Bot)`))
+      .sort(() => randomInt(3) - 1);
+    for (let i = 0; arena.players.length < MODE_SIZE[mode]; i++) {
+      let botId: string;
+      do {
+        botId = `bot-${randomBytes(6).toString("hex")}`;
+      } while (arena.players.some((p) => p.id === botId));
+      const bot = arena.add(
+        botId,
+        `${names[i % Math.max(1, names.length)] ?? "Pip"} (Bot)`,
+      );
+      // One of each fighter a team (pick-rules.ts), and not the fighter a
+      // player on its side has on show.
+      const mates = arena.players.filter(
+        (p) =>
+          p !== bot &&
+          (mode === "ffa" || arena.teamOf(p) === arena.teamOf(bot)),
+      );
+      const free = FIGHTER_IDS.filter(
+        (f) => !mates.some((p) => (p.browse ?? p.character) === f),
+      );
+      bot.character = free[randomInt(free.length)] ?? "voltkit";
+      Object.assign(bot, {
+        title: `AI · ${BOT_LABELS[difficulty]}`,
+        titleColor: BOT_COLORS[difficulty],
+        ready: true,
+        locked: true,
+      });
+      arena.bots.set(
+        botId,
+        new BotBrain(botId, difficulty, randomInt(1, 2 ** 31)),
+      );
+    }
+  }
+  /**
+   * After teams change in a room with bots (a shuffle, a player moving
+   * over): the bots stay ready and locked in, as they sat down, and a bot
+   * that now shares a fighter with someone on its side takes another. A
+   * bot that stopped being ready would never be ready again, and the room
+   * could not start.
+   */
+  function settleBots(arena: Arena) {
+    if (!arena.bots.size || arena.phase !== "lobby") return;
+    for (const bot of arena.players) {
+      if (!arena.bots.has(bot.id)) continue;
+      const mates = arena.players.filter(
+        (p) =>
+          p !== bot &&
+          (arena.mode === "ffa" || arena.teamOf(p) === arena.teamOf(bot)),
+      );
+      const shown = (p: Fighter) => p.browse ?? p.character;
+      if (mates.some((p) => shown(p) === bot.character)) {
+        const free = FIGHTER_IDS.filter(
+          (f) => !mates.some((p) => shown(p) === f),
+        );
+        bot.character = free[randomInt(free.length)] ?? bot.character;
+      }
+      bot.ready = true;
+      bot.locked = true;
+    }
+  }
+  /**
+   * A searched 2v2 or Free-for-all room: its players seated in the order
+   * they searched (so two strangers land on opposite teams), bots in the
+   * seats left, labelled as bots. One player alone with bots starts at
+   * once, with the fighter they searched with; two or more players get the
+   * room first, as in any PvP room (hidden picks, one of each fighter a
+   * team, Ready), with the bots seated and ready.
+   */
+  function openFilledRoom(
+    mode: FillMode,
+    group: FillEntry[],
+    difficulty: BotDifficulty,
+  ) {
+    let code: string;
+    do {
+      code = randomBytes(12).toString("hex");
+    } while (rooms.has(code));
+    const arena = new Arena(code, mode);
+    arena.rotateArenas = true;
+    rooms.set(code, arena);
+    const alone = group.length === 1;
+    const seats = MODE_SIZE[mode] - group.length;
+    quickRooms.set(arena, seats > 0 ? "bot" : "human");
+    for (const entry of group) {
+      logQueue(entry, seats > 0 ? "bot" : "human");
+      entry.matched(arena, alone);
+    }
+    // Whoever couldn't be seated (their connection went as they were
+    // paired) leaves a seat for a bot.
+    fillLevels.set(arena, difficulty);
+    seatBots(arena);
+    if (!arena.players.some((p) => !arena.bots.has(p.id))) {
+      // Nobody could be seated after all.
+      rooms.delete(code);
+      return;
+    }
+    if (alone) arena.start();
+    broadcast(arena);
+  }
   /** Players connected with an account, for "N online" while searching. */
   const onlineCount = () =>
     new Set(
@@ -392,6 +818,8 @@ export function createArenaServer(
       bots: arena.bots.size,
       botLevel: [...arena.bots.values()][0]?.difficulty ?? null,
       quick: quickRooms.get(arena) ?? null,
+      // A new player's short match (1 or 2 round wins), or null.
+      intro: arena.introRounds ?? null,
       fighters: arena.players.map((p) => ({
         character: p.character,
         team: arena.teamOf(p),
@@ -562,7 +990,19 @@ export function createArenaServer(
     try {
       const token = socket.handshake.auth.accessToken;
       if (token) {
-        socket.data.account = await authorize(accounts, token);
+        const from = clientAddresses.ofPublic(
+          socket.handshake.address,
+          socket.handshake.headers["x-forwarded-for"],
+        );
+        if (from && refusedLogins.over(from))
+          throw new AccountError(429, "Too many attempts. Try again shortly.");
+        try {
+          socket.data.account = await authorize(accounts, token);
+        } catch (error) {
+          if (from && error instanceof AccountError && error.status === 401)
+            refusedLogins.take(from);
+          throw error;
+        }
         socket.data.accessToken = token;
       }
       next();
@@ -585,10 +1025,22 @@ export function createArenaServer(
       next(failure);
     }
   });
-  async function refreshSocket(socket: import("socket.io").Socket) {
+  /**
+   * Load a connection's account again and pass on what changed. `periodic`
+   * is the 30-second check (refreshDueAccounts): it says "account-changed"
+   * only if the account did change. Every other caller knows something of
+   * the player's changed (a route saved an avatar, an admin gave coins, a
+   * raid clear was stored), often outside the account record, and always
+   * says so.
+   */
+  async function refreshSocket(
+    socket: import("socket.io").Socket,
+    periodic = false,
+  ) {
     try {
       const account = await authorize(accounts, socket.data.accessToken);
       if (!ownsConnection(socket)) return;
+      const before = socket.data.account as Account | undefined;
       socket.data.account = account;
       socket.data.expiredChecks = 0;
       void loadChatBlocks(socket);
@@ -631,7 +1083,12 @@ export function createArenaServer(
       // A new avatar (or look) reaches the party's members.
       if (parties.of(account.id))
         void loadPartyAppearance(account.id, socket.data.accessToken);
-      socket.emit("account-changed");
+      // The app answers by loading its profile, raids, Spire and Shop
+      // records again. Said after every 30-second check, that was four
+      // requests per player every 30 seconds for nothing, mid-battle too:
+      // the check says it only when the account changed (a name, a title).
+      if (!periodic || JSON.stringify(before) !== JSON.stringify(account))
+        socket.emit("account-changed");
     } catch (error) {
       if (!ownsConnection(socket)) return;
       // An expired token is normal (Supabase tokens last an hour): ask the
@@ -645,6 +1102,22 @@ export function createArenaServer(
         socket.emit("token-expired");
         return;
       }
+      // Only a refused login signs a player out: one that stayed expired
+      // (401) or a suspended account (403). Anything else is this check
+      // failing, not the player: the accounts service or the database did
+      // not answer (503), a reply was malformed, the network dropped. That
+      // used to end the match as a forfeit for everyone connected, on one
+      // slow answer. The seat stays; the next check, 30 s on, asks again.
+      const refused =
+        error instanceof AccountError &&
+        (error.status === 401 || error.status === 403);
+      if (!refused) {
+        connectionLog("arena-account-check-failed", {
+          status: error instanceof AccountError ? error.status : 0,
+          error: error instanceof Error ? error.message.slice(0, 120) : "",
+        });
+        return;
+      }
       socket.emit("access-revoked", {
         error: error instanceof Error ? error.message : "Login required.",
       });
@@ -656,18 +1129,35 @@ export function createArenaServer(
       socket.disconnect(true);
     }
   }
+  /** Something of a player's changed: their connections load it again. */
+  const playerChanged = (id: string) => {
+    for (const socket of io.sockets.sockets.values())
+      if ((socket.data.account as Account | undefined)?.id === id)
+        void refreshSocket(socket);
+  };
+  /**
+   * Who is online, by account, built once per turn of the event loop. The
+   * friends list asks for each friend's presence in one synchronous pass;
+   * built for each friend, it walked and sorted every connection again
+   * each time: friends × connections for one request (performance sweep,
+   * S6). Forgotten as soon as that pass ends, so nothing is ever stale.
+   */
+  let onlineIndex: Map<string, OnlineList["players"][number]> | undefined;
+  const onlineById = () => {
+    if (!onlineIndex) {
+      onlineIndex = new Map(listOnline().players.map((p) => [p.id, p]));
+      queueMicrotask(() => (onlineIndex = undefined));
+    }
+    return onlineIndex;
+  };
   installAccountRoutes(
     app,
     accounts,
-    (id) => {
-      for (const socket of io.sockets.sockets.values())
-        if ((socket.data.account as Account | undefined)?.id === id)
-          void refreshSocket(socket);
-    },
+    playerChanged,
     listOnline,
-    (matchId, accountId) => ledger.forPlayer(matchId, accountId),
+    fileMatch,
     (accountId) => {
-      const me = listOnline().players.find((p) => p.id === accountId);
+      const me = onlineById().get(accountId);
       if (!me)
         return {
           online: false,
@@ -728,6 +1218,10 @@ export function createArenaServer(
         }
       }
     },
+    connectionLog,
+    // An admin's announcement reaches every open game, signed in or not.
+    (event, payload) => io.emit(event, payload),
+    announcePush,
   );
   /** Signed-in players with a live connection, merged per account. */
   function listOnline(): OnlineList {
@@ -795,7 +1289,7 @@ export function createArenaServer(
     return { players, guests, at: new Date().toISOString() };
   }
   app.get("/api/health", (_req, res) =>
-    res.json({ ok: true, rooms: rooms.size }),
+    res.json({ ok: true, rooms: rooms.size, server: serverId }),
   );
   app.use("/api", (_req, res) =>
     res.status(404).json({ error: "Unknown API endpoint." }),
@@ -1098,7 +1592,12 @@ export function createArenaServer(
         });
     }
   }
-  function broadcast(arena: Arena) {
+  /**
+   * Send a room to everyone in it. `periodic` is the tick's own send (step):
+   * in a room nobody is fighting in, it is skipped while nothing has changed
+   * (quietRoom). Every other caller has just changed something and sends.
+   */
+  function broadcast(arena: Arena, periodic = false) {
     const started = diagnostics.now();
     // Wins and real attempts (not instant quits) are saved:
     // losses still count towards titles and tell us which attacks are unfair.
@@ -1137,9 +1636,6 @@ export function createArenaServer(
         peril: r.peril,
         trait: r.trait,
         gilded: r.gilded,
-        weekly: false,
-        week: raidWeek(new Date(`${r.day}T12:00:00Z`)),
-        daily: r.daily,
         day: r.day,
         feat: arena.feat(),
         seed: r.seed,
@@ -1179,7 +1675,7 @@ export function createArenaServer(
                 skin: lookFor(p),
                 raid: {
                   cleared: r.result === "victory",
-                  daily: r.daily,
+                  daily: false,
                   peril: r.peril,
                   flawless: r.downs === 0,
                   feat: arena.feat(),
@@ -1221,7 +1717,19 @@ export function createArenaServer(
             }
           broadcast(arena);
         })
-        .catch(() => {
+        .catch((error: unknown) => {
+          // Players only see "unavailable"; the reason goes to the log, or a
+          // database that starts refusing receipts goes unnoticed. No
+          // accounts or names: the run, the boss and the party size.
+          connectionLog("arena-raid-unsaved", {
+            run: runId,
+            boss: receipt.boss,
+            partySize: receipt.partySize,
+            error: error instanceof Error ? error.message : String(error),
+            ...(error instanceof AccountError && error.detail
+              ? { detail: error.detail.slice(0, 300) }
+              : {}),
+          });
           if (arena.raid.resultId === runId) {
             r.rewardStatus = "unavailable";
             broadcast(arena);
@@ -1267,6 +1775,7 @@ export function createArenaServer(
             vsPeople,
             botLevel,
             quick: quickRooms.get(arena) ?? null,
+            intro: arena.introRounds ?? null,
             mode: arena.mode,
             knockedOut: (p.stats.knocked ?? 0) > 0,
             skillUses: p.stats.skills,
@@ -1311,11 +1820,20 @@ export function createArenaServer(
       metaRev: tracker.rev,
       meta: changed || wanted ? tracker.meta(snapshot.players) : undefined,
     });
+    const resync = fullWanted.delete(arena);
+    if (
+      quietRoom(arena, wire, periodic) &&
+      !snapshot.events.length &&
+      !changed &&
+      !wanted &&
+      !resync
+    )
+      return;
     // Sampled: measuring every payload would cost as much as sending it.
     if (diagnostics.enabled && ticks % 20 === 0)
       diagnostics.snapshot(Buffer.byteLength(JSON.stringify(wire)));
     // Backpressure: a socket still writing an earlier message is congested.
-    // Queuing more 15 Hz snapshots behind it only makes it later, so it is
+    // Queuing more snapshots behind it only makes it later, so it is
     // skipped; its first snapshot once it drains carries every event it
     // missed (from the room's recent-event history) and the appearance.
     const held = new Set<string>();
@@ -1343,16 +1861,28 @@ export function createArenaServer(
     }
     // Serialize shared world data once. Somnara's private sequence is added
     // only to the authenticated seat's socket, never a room/spectator broadcast.
-    const seats =
-      arena instanceof RaidArena && arena.raid.boss === "somnara"
-        ? [...sessions.values()].filter(
-            (s) => s.code === arena.code && s.socketId,
-          )
-        : [];
-    for (const session of seats) held.add(session.socketId!);
+    // Only a seat with something private to see gets a copy of its own: the
+    // rest share the room's. (Every seat used to, every tick of the raid,
+    // dream or no dream: one encoding per raider on top of the room's.)
+    const seats: { socketId: string; dream: RaidDreamView }[] = [];
+    if (arena instanceof RaidArena && arena.raid.boss === "somnara")
+      for (const s of sessions.values()) {
+        const dream =
+          s.code === arena.code && s.socketId
+            ? arena.dreamFor(s.id)
+            : undefined;
+        if (dream) seats.push({ socketId: s.socketId!, dream });
+      }
+    for (const seat of seats) held.add(seat.socketId);
     // A PvP lobby hides each side's picks from the others: every side (and
     // the watchers) gets its own copy, built once per side.
     if (picksHidden(arena)) {
+      // Each side's copy differs: nobody holds the room's snapshot.
+      const delta = deltaRooms.get(arena);
+      if (delta) {
+        delta.synced.clear();
+        delta.encoder.reset();
+      }
       const sideOf = (id: string | undefined) => {
         const p = id ? arena.players.find((p) => p.id === id) : undefined;
         return p ? arena.teamOf(p) : -1;
@@ -1382,22 +1912,106 @@ export function createArenaServer(
       diagnostics.broadcast(started);
       return;
     }
-    if (held.size)
-      io.to(arena.code)
-        .except([...held])
-        .emit("state", wire);
+    // Connections that hold the snapshot before this one are sent what
+    // changed; the rest (and every client that never asked for deltas) the
+    // whole snapshot, after which those that asked hold it too.
+    let whole = true;
+    const skipped = [...held];
+    if (snapshotDelta) {
+      const delta = deltaRoom(arena);
+      const members = io.sockets.adapter.rooms.get(arena.code);
+      // Held back, or sent a copy of their own (a catch-up, a dream): they
+      // no longer hold the room's snapshot. Nor does anyone who left.
+      for (const id of delta.synced)
+        if (held.has(id) || !members?.has(id)) delta.synced.delete(id);
+      const joining: string[] = [];
+      let others = 0;
+      for (const id of members ?? [])
+        if (held.has(id) || delta.synced.has(id)) continue;
+        else if (io.sockets.sockets.get(id)?.data.snapshotDelta)
+          joining.push(id);
+        else others++;
+      if (delta.synced.size || joining.length) {
+        wire.n = ++delta.n;
+        const d = delta.encoder.encode(wire);
+        if (!d) {
+          // Nothing to compare with: whoever was following starts over
+          // from this one, whole.
+          joining.push(...delta.synced);
+          delta.synced.clear();
+        } else if (delta.synced.size) {
+          const message: WireSnapshotDelta = {
+            code: arena.code,
+            n: wire.n,
+            d,
+          };
+          // Encoded here, once, before the encoder's snapshot moves on.
+          // The usual tick: everyone in the room who is not held back.
+          if (!joining.length && !others)
+            io.to(arena.code).except(skipped).emit("state-delta", message);
+          else {
+            const to = [...delta.synced];
+            io.to(to).emit("state-delta", message);
+            skipped.push(...to);
+          }
+        }
+        for (const id of joining) delta.synced.add(id);
+      } else delta.encoder.reset();
+      // A whole snapshot nobody is waiting for is not encoded at all.
+      whole = joining.length + others > 0;
+    }
+    if (!whole) {
+      // Everyone here was sent the delta.
+    } else if (skipped.length)
+      io.to(arena.code).except(skipped).emit("state", wire);
     else io.to(arena.code).emit("state", wire);
-    for (const session of seats) {
-      const id = session.socketId!;
+    for (const { socketId: id, dream } of seats) {
       if (laggingSockets.has(id) && !personal.has(id)) continue;
       io.to(id).emit("state", {
         ...(personal.get(id) ?? wire),
-        raidDream: (arena as RaidArena).dreamFor(session.id),
+        // A copy of its own, not the room's numbered snapshot.
+        n: undefined,
+        raidDream: dream,
       });
       personal.delete(id);
     }
     for (const [id, catchUp] of personal) io.to(id).emit("state", catchUp);
     diagnostics.broadcast(started);
+  }
+  /**
+   * Whether this tick's send of a room can be skipped: nobody is fighting in
+   * it (IDLE_SNAPSHOTS), what would be sent is what was sent last, the slow
+   * beat is not due, and no connection is waiting to catch up.
+   *
+   * A lobby, a briefing, a results screen or a paused match changes only
+   * when someone does something, yet each was sent whole to everyone 30
+   * times a second, and the app redrew its menu each time (performance
+   * sweep, S2). The check compares what would be sent, so a change made
+   * anywhere, with or without a broadcast of its own, still goes out on the
+   * next tick. The fight (countdown, playing, intermission) is untouched.
+   */
+  function quietRoom(arena: Arena, wire: WireSnapshot, periodic: boolean) {
+    const every = IDLE_SNAPSHOTS[arena.phase];
+    if (every === undefined) {
+      idleSent.delete(arena);
+      return false;
+    }
+    // The pause's countdown always differs: the beat carries it.
+    const key = JSON.stringify({ ...wire, pauseRemaining: 0 });
+    const last = idleSent.get(arena);
+    if (
+      periodic &&
+      last?.key === key &&
+      ticks - last.tick < every &&
+      // A connection that was too busy to take the last one has room again.
+      ![...laggingSockets].some(([id, behind]) => {
+        const socket = behind.code === arena.code && io.sockets.sockets.get(id);
+        return socket && !congested(socket);
+      })
+    )
+      return true;
+    idleSent.set(arena, { key, tick: ticks });
+    return false;
   }
   function resume(arena: Arena) {
     if (
@@ -1483,22 +2097,115 @@ export function createArenaServer(
       for (const p of arena.players) p.ready = false;
     } else if (arena.phase === "lobby")
       arena.players = arena.players.filter((p) => p.id !== session.id);
-    if (![...sessions.values()].some((s) => s.code === arena.code)) {
-      rooms.delete(arena.code);
-      chat.drop(`room:${arena.code}`);
-      dropTeamChat(arena.code);
-      // Anyone watching is told the room has closed.
-      for (const [id, w] of watchers)
-        if (w.code === arena.code) {
-          watchers.delete(id);
-          const viewer = io.sockets.sockets.get(id);
-          viewer?.leave(arena.code);
-          viewer?.emit("watch-ended", { reason: "The room closed." });
+    if (![...sessions.values()].some((s) => s.code === arena.code))
+      dropRoom(arena);
+    else broadcast(arena);
+  }
+  /** Forget a room nobody is seated in; anyone watching is told why. */
+  function dropRoom(arena: Arena, reason = "The room closed.") {
+    rooms.delete(arena.code);
+    chat.drop(`room:${arena.code}`);
+    dropTeamChat(arena.code);
+    for (const [id, w] of watchers)
+      if (w.code === arena.code) {
+        watchers.delete(id);
+        const viewer = io.sockets.sockets.get(id);
+        viewer?.leave(arena.code);
+        viewer?.emit("watch-ended", { reason });
+      }
+  }
+  /**
+   * A room whose tick, snapshot or seat handling threw: its state can no
+   * longer be trusted, and it would throw again next tick. Close that room
+   * only (every other match plays on), log it, and send its players back to
+   * the menu with the reason. No result is recorded. `access-revoked` is the
+   * message every app version already answers by leaving the room and
+   * showing the words.
+   */
+  function closeBrokenRoom(arena: Arena, error: unknown, during: string) {
+    const read = <T>(get: () => T) => {
+      try {
+        return get();
+      } catch {
+        return undefined;
+      }
+    };
+    faultLog("arena-room-fault", {
+      during,
+      code: arena.code,
+      mode: read(() => arena.mode),
+      phase: read(() => arena.phase),
+      players: read(() => arena.players.length),
+      raid: read(() => (arena instanceof RaidArena ? arena.raid.boss : null)),
+      tag: read(() => arena.matchTag),
+      error: faultText(error),
+    });
+    // Out of the list first: whatever else fails, it never ticks again.
+    rooms.delete(arena.code);
+    for (const session of [...sessions.values()]) {
+      if (session.code !== arena.code) continue;
+      sessions.delete(session.token);
+      read(() => {
+        if (parties.of(session.accountId)?.room?.code === session.code) {
+          const party = parties.setRoom(session.accountId, undefined);
+          if (party) emitParty(party);
         }
-    } else broadcast(arena);
+      });
+      if (!session.socketId) continue;
+      socketSessions.delete(session.socketId);
+      const socket = io.sockets.sockets.get(session.socketId);
+      socket?.leave(arena.code);
+      socket?.emit("access-revoked", { error: ROOM_FAULT_MESSAGE });
+    }
+    read(() => dropRoom(arena, ROOM_FAULT_MESSAGE));
+  }
+  /**
+   * Socket handlers run inside a guard: one that throws, or whose promise
+   * rejects, is logged and answered with an error. Unguarded, either one
+   * ended the process, and every match with it.
+   */
+  function guardHandlers(socket: import("socket.io").Socket) {
+    type Handler = (...args: unknown[]) => unknown;
+    const listen = socket.on.bind(socket) as (
+      event: string,
+      handler: Handler,
+    ) => typeof socket;
+    const fault = (event: string, args: unknown[], error: unknown) => {
+      faultLog("arena-handler-fault", {
+        on: event,
+        code: getSession(socket.id)?.code ?? null,
+        error: faultText(error),
+      });
+      // Answering twice is harmless: Socket.IO sends the first answer only.
+      const cb = args.at(-1);
+      if (typeof cb !== "function") return;
+      try {
+        cb({ ok: false, error: HANDLER_FAULT_MESSAGE });
+      } catch {
+        // The connection is gone: nobody to answer.
+      }
+    };
+    socket.on = ((event: string, handler: Handler) =>
+      listen(event, (...args: unknown[]) => {
+        try {
+          const result = handler(...args);
+          if (result instanceof Promise)
+            result.catch((error: unknown) => fault(event, args, error));
+        } catch (error) {
+          fault(event, args, error);
+        }
+      })) as typeof socket.on;
   }
   io.on("connection", (socket) => {
+    socket.use(floodGuard(() => socket.disconnect(true)));
+    guardHandlers(socket);
+    // A client that understands snapshots as changes says so when it
+    // connects; one that does not is sent whole snapshots, as ever.
+    socket.data.snapshotDelta =
+      snapshotDelta &&
+      (socket.handshake.auth as { delta?: unknown } | undefined)?.delta === 1;
     claimAccount(socket);
+    if (draining || superseded) socket.emit("server-update", updateNotice());
     void loadChatBlocks(socket);
     // Whether typed lines are on, so the chat box shows the right state.
     socket.emit("chat-config", { freeText: chat.freeText });
@@ -1531,11 +2238,39 @@ export function createArenaServer(
       }
       return ++messages <= limit;
     };
+    /**
+     * The steady streams (a battle's inputs, 30 a second; the Plaza's
+     * stick, up to 20) keep counts of their own. Counted with everything
+     * else, they used up the second's allowance of each command with a
+     * small limit: in a battle a quick chat or a refreshed login token
+     * (10 a second) got through only in the first third of each second,
+     * and in the Plaza a jump or a dash pressed while steering was dropped
+     * about half the time, so the server left you on the ground and pulled
+     * you back (found 25 Nov 2026).
+     */
+    const streams = new Map<string, { from: number; count: number }>();
+    const allowedStream = (name: string, limit: number) => {
+      const now = Date.now();
+      let stream = streams.get(name);
+      if (!stream || now - stream.from > 1000)
+        streams.set(name, (stream = { from: now, count: 0 }));
+      return ++stream.count <= limit;
+    };
     const reply = (cb: unknown, value: Reply) => {
       if (typeof cb === "function") cb(value);
     };
     const fail = (cb: unknown, error: string) =>
       reply(cb, { ok: false, error });
+    /**
+     * Refuses a new match while a deploy replaces this server, and tells the
+     * player again to move to the new one (in case they missed it).
+     */
+    const updating = (cb: unknown) => {
+      if (!draining && !superseded) return false;
+      fail(cb, draining ? DRAIN_MESSAGE : MOVE_MESSAGE);
+      socket.emit("server-update", updateNotice());
+      return true;
+    };
     const attach = (
       arena: Arena,
       name: string,
@@ -1581,7 +2316,10 @@ export function createArenaServer(
     };
     /** Stop searching for a Quick Match, logging why. */
     const leaveQuick = (why: QueueLeave) => {
-      const entry = quickQueue.leave(socket.id);
+      const entry =
+        quickQueue.leave(socket.id) ??
+        fillQueues.teams.leave(socket.id) ??
+        fillQueues.ffa.leave(socket.id);
       if (entry) logQueue(entry, why);
       return !!entry;
     };
@@ -1950,6 +2688,7 @@ export function createArenaServer(
         return fail(cb, "Use a display name of 1–20 characters.");
       if (getSession(socket.id))
         return fail(cb, "Leave your current room first.");
+      if (updating(cb)) return;
       releaseDisconnected();
       if ([...sessions.values()].some((s) => s.accountId === account()!.id))
         return fail(
@@ -1998,6 +2737,7 @@ export function createArenaServer(
         return fail(cb, "Enter your name and a six-character room code.");
       if (getSession(socket.id))
         return fail(cb, "Leave your current room first.");
+      if (updating(cb)) return;
       releaseDisconnected();
       if ([...sessions.values()].some((s) => s.accountId === account()!.id))
         return fail(cb, "This account already has a room.");
@@ -2161,6 +2901,7 @@ export function createArenaServer(
         return fail(cb, "Choose a valid character and display name.");
       if (getSession(socket.id))
         return fail(cb, "Leave your current room first.");
+      if (updating(cb)) return;
       releaseDisconnected();
       if ([...sessions.values()].some((s) => s.accountId === account()!.id))
         return fail(cb, "This account already has a room.");
@@ -2179,8 +2920,38 @@ export function createArenaServer(
       a.resetPractice();
       broadcast(a);
     });
+    /**
+     * The matches this account has finished, for a new player's short first
+     * matches (INTRO_ROUNDS), or undefined: not known in time, or already
+     * past them (remembered for this connection, so only a new player's
+     * bot matches ask the database). Unknown always means a full match.
+     */
+    const matchesFinished = async (): Promise<number | undefined> => {
+      if (socket.data.introOver) return undefined;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      try {
+        const progress = progressSchema.parse(
+          await Promise.race([
+            accounts.rpc(socket.data.accessToken, "arena_my_progress", {}),
+            new Promise<never>((_, reject) => {
+              timer = setTimeout(
+                () => reject(new Error("Progress took too long")),
+                INTRO_CHECK_MS,
+              );
+            }),
+          ]),
+        );
+        if (progress.matches >= INTRO_ROUNDS.length)
+          socket.data.introOver = true;
+        return progress.matches;
+      } catch {
+        return undefined;
+      } finally {
+        clearTimeout(timer);
+      }
+    };
     // Solo vs an AI bot: a private room nobody else can join, straight to the briefing.
-    socket.on("bot-match", (data: unknown, cb: unknown) => {
+    socket.on("bot-match", async (data: unknown, cb: unknown) => {
       stopWatching();
       if (!requirePlayer(cb)) return;
       if (!allowed(15)) return fail(cb, "Too many requests.");
@@ -2189,6 +2960,15 @@ export function createArenaServer(
         return fail(cb, "Choose a fighter, a display name and a difficulty.");
       if (getSession(socket.id))
         return fail(cb, "Leave your current room first.");
+      if (updating(cb)) return;
+      // A new player's first matches are short. The weekly arcade keeps its
+      // own rules. Everything below is checked after the answer, as before.
+      const played = result.data.arcade ? undefined : await matchesFinished();
+      if (!socket.connected || !ownsConnection(socket) || !requirePlayer(cb))
+        return;
+      if (getSession(socket.id))
+        return fail(cb, "Leave your current room first.");
+      if (updating(cb)) return;
       releaseDisconnected();
       if ([...sessions.values()].some((s) => s.accountId === account()!.id))
         return fail(cb, "This account already has a room.");
@@ -2208,6 +2988,7 @@ export function createArenaServer(
         ? new ArcadeArena(code, result.data.arcade, weekly.week)
         : new Arena(code);
       a.rotateArenas = true;
+      if (introRounds(played) !== undefined) a.introPlayed = played;
       rooms.set(code, a);
       if (result.data.quick) {
         leaveQuick("bot");
@@ -2248,6 +3029,7 @@ export function createArenaServer(
         return fail(cb, "Choose a valid character and display name.");
       if (getSession(socket.id))
         return fail(cb, "Leave your current room first.");
+      if (updating(cb)) return;
       releaseDisconnected();
       if ([...sessions.values()].some((s) => s.accountId === account()!.id))
         return fail(cb, "This account already has a room.");
@@ -2260,6 +3042,38 @@ export function createArenaServer(
         return fail(cb, "The arena is busy. Please try again later.");
       const name = result.data.name;
       const character = result.data.character;
+      // 2v2 or Free-for-all: gather with the others searching it; a full
+      // group plays now, and "quick-fill" plays with bots (below).
+      const fill = result.data.mode;
+      if (fill) {
+        const group = fillQueues[fill].join({
+          socketId: socket.id,
+          accountId: account()!.id,
+          since: Date.now(),
+          name,
+          character,
+          matched: (arena, alone) => {
+            // The connection may have gone as the group formed.
+            if (!socket.connected || !ownsConnection(socket) || !account())
+              return;
+            if (getSession(socket.id)) return;
+            attach(
+              arena,
+              name,
+              (r: Reply) =>
+                socket.emit("quick-found", { ...r, started: alone }),
+              false,
+            );
+            const me = arena.players.at(-1)!;
+            if (alone) me.character = character;
+            else me.browse = character;
+          },
+        });
+        reply(cb, { ok: true, queued: true, online: onlineCount() - 1 });
+        // After the reply, so "queued" reaches this socket before its room.
+        if (group) openFilledRoom(fill, group, "normal");
+        return;
+      }
       // Joins this socket to a room Quick Match made, as if it had created
       // or joined it, with its pick shown to itself only (a PvP lobby).
       const enter = (arena: Arena, done: (r: Reply) => void) => {
@@ -2302,11 +3116,38 @@ export function createArenaServer(
       leaveQuick("cancel");
       reply(cb, { ok: true });
     });
+    /**
+     * A 2v2 or Free-for-all search that won't wait longer (the client asks
+     * after QUICK_FILL_MS, or when the player presses Start): play now with
+     * whoever else is searching, and bots in the seats left. Each player is
+     * told by "quick-found", as when a full group forms.
+     */
+    socket.on("quick-fill", (data: unknown, cb: unknown) => {
+      if (!requirePlayer(cb)) return;
+      if (!allowed(15)) return fail(cb, "Too many requests.");
+      const result = quickFillSchema.safeParse(data);
+      if (!result.success) return fail(cb, "Choose a bot difficulty.");
+      if (getSession(socket.id))
+        return fail(cb, "Leave your current room first.");
+      if (updating(cb)) return;
+      const mode = FILL_MODES.find((m) => fillQueues[m].has(socket.id));
+      if (!mode) return fail(cb, "Search for a match first.");
+      if (rooms.size >= 500)
+        return fail(cb, "The arena is busy. Please try again later.");
+      const group = fillQueues[mode].fill(socket.id);
+      reply(cb, { ok: true });
+      openFilledRoom(mode, group, result.data.difficulty);
+    });
+    // Each of these asks the accounts service again, so they get a small
+    // allowance of their own (a few menu taps), not the 90 a second of
+    // commands that cost nothing.
+    const practiceChecks = new WindowLimits(10, 10000);
     const withPracticeRoom = async (
       cb: unknown,
       action: (a: Arena, id: string) => void,
     ) => {
-      if (!allowed()) return fail(cb, "Too many requests.");
+      if (!allowed() || !practiceChecks.take(""))
+        return fail(cb, "Too many requests.");
       try {
         socket.data.account = await authorize(
           accounts,
@@ -2416,7 +3257,8 @@ export function createArenaServer(
           cb,
           "Only the raid host can change the challenge in the lobby.",
         );
-      // Raids have one difficulty now (Peril 3); old clients may still ask.
+      // Raids have one difficulty now (Peril 3); old clients may still ask,
+      // and send `daily: false` (Raid of the Day is retired: true is refused).
       const result = z
         .object({
           peril: z.number().int().min(1).max(3),
@@ -2484,6 +3326,7 @@ export function createArenaServer(
         if (a.phase !== "lobby")
           return fail(cb, "The match has already started.");
         const p = a.players.find((p) => p.id === id)!;
+        if (!p.ready && updating(cb)) return;
         // Ready locks in the fighter on show (a pick that was never locked).
         if (!p.ready && picksHidden(a) && !p.locked) {
           const pick = p.browse ?? p.character;
@@ -2500,6 +3343,12 @@ export function createArenaServer(
         if (!p.ready && picksHidden(a) && p.locked) {
           p.locked = false;
           a.lockOrder.delete(p.id);
+        }
+        // A searched room a player left: bots take the empty seats, and
+        // it is a bot match from then on.
+        if (p.ready && fillLevels.has(a)) {
+          seatBots(a);
+          if (a.bots.size) quickRooms.set(a, "bot");
         }
         const half = a.size / 2;
         if (
@@ -2527,6 +3376,7 @@ export function createArenaServer(
         p.team = team;
         for (const o of a.players) o.ready = false;
         unlockClashes(a);
+        settleBots(a);
         // A new side must not read the old one's plans.
         dropTeamChat(a.code);
         reply(cb, { ok: true });
@@ -2545,6 +3395,7 @@ export function createArenaServer(
         order.forEach(({ p }, i) => (p.team = i % 2 === 0 ? 0 : 1));
         for (const o of a.players) o.ready = false;
         unlockClashes(a);
+        settleBots(a);
         dropTeamChat(a.code);
         reply(cb, { ok: true });
         broadcast(a);
@@ -2611,22 +3462,85 @@ export function createArenaServer(
       const tracker = metaTracker(arena);
       cb({ ok: true, code: arena.code, meta: tracker.meta(arena.players) });
     });
+    // A client whose delta did not follow what it holds asks for the whole
+    // snapshot; it shows nothing new until then (snapshot-delta.ts).
+    socket.on("state-full", (data: unknown) => {
+      if (!allowed(30)) return;
+      const code =
+        typeof (data as { code?: unknown } | null)?.code === "string"
+          ? (data as { code: string }).code
+          : undefined;
+      const arena = code ? rooms.get(code) : undefined;
+      if (!arena || !socket.rooms.has(arena.code)) return;
+      deltaRooms.get(arena)?.synced.delete(socket.id);
+      // A quiet room sends on its next tick rather than its next beat.
+      fullWanted.add(arena);
+    });
     // Round-trip check for the in-battle ping badge: answer at once.
     socket.on("rtt", (_data: unknown, cb: unknown) => {
       if (typeof cb === "function") cb();
     });
-    socket.on("input", (data: unknown) =>
-      withRoom(undefined, (a, id) => {
-        const result = inputSchema.safeParse(data);
-        if (result.success)
-          a.enqueue(
-            a.players.find((p) => p.id === id)!,
-            result.data,
-          );
-      }),
-    );
-    socket.on("rematch", (_data: unknown, cb: unknown) =>
+    // File a finished match in your records, on the server that ran it
+    // (reportFinishedMatch). Over HTTP the request may reach another server
+    // during a deploy, which never saw the match.
+    socket.on("match-report", async (data: unknown, cb: unknown) => {
+      if (!requirePlayer(cb)) return;
+      if (!allowed(10)) return fail(cb, "Too many requests.");
+      try {
+        const report = await reportFinishedMatch(
+          accounts,
+          socket.data.accessToken,
+          account()!.id,
+          data,
+          fileMatch,
+          playerChanged,
+        );
+        reply(cb, { ok: true, report });
+      } catch (error) {
+        fail(
+          cb,
+          error instanceof AccountError
+            ? error.message
+            : error instanceof ZodError
+              ? "Invalid match."
+              : "Couldn't save this match to your records.",
+        );
+      }
+    });
+    socket.on("input", (data: unknown) => {
+      if (!allowedStream("input", 90)) return;
+      withRoom(
+        undefined,
+        (a, id) => {
+          const result = inputSchema.safeParse(data);
+          if (result.success)
+            a.enqueue(
+              a.players.find((p) => p.id === id)!,
+              result.data,
+            );
+        },
+        false,
+      );
+    });
+    socket.on("rematch", (data: unknown, cb: unknown) =>
       withRoom(cb, (a, id) => {
+        if (updating(cb)) return;
+        // A rematch against a bot may bring another fighter (the result
+        // screen's Change fighter). Only there: in PvP a pick is secret
+        // until the match starts (docs/hidden-picks.md), and the weekly
+        // arcade sets its own fighters.
+        const result = rematchSchema.safeParse(data ?? {});
+        if (!result.success) return fail(cb, "Choose a valid fighter.");
+        const fighter = result.data.character;
+        if (fighter) {
+          if (
+            a instanceof RaidArena ||
+            a instanceof ArcadeArena ||
+            !a.bots.size ||
+            a.players.length - a.bots.size !== 1
+          )
+            return fail(cb, "Change fighters in the lobby.");
+        }
         if (a instanceof RaidArena) {
           if (
             a.phase !== "finished" ||
@@ -2653,8 +3567,16 @@ export function createArenaServer(
               : "Both players must be connected for a rematch.",
           );
         const p = a.players.find((p) => p.id === id)!;
+        if (fighter && fighter !== p.character) {
+          p.flair = undefined;
+          p.character = fighter;
+        }
         p.ready = true;
-        if (a.players.every((p) => p.ready)) a.start();
+        if (a.players.every((p) => p.ready)) {
+          // A new player's rematch is their next match: two rounds, then full.
+          a.nextIntro();
+          a.start();
+        }
         reply(cb, { ok: true });
         broadcast(a);
       }),
@@ -2765,8 +3687,11 @@ export function createArenaServer(
         };
       }
       if (channel === "room") {
+        // A seat, or a ringside seat (watching): watchers chat with the room.
         const session = getSession(socket.id);
-        const arena = session && rooms.get(session.code);
+        const arena = rooms.get(
+          session?.code ?? watchers.get(socket.id)?.code ?? "",
+        );
         if (!arena) return null;
         const owners = fighterAccounts.get(arena);
         const members: ChatMember[] = [];
@@ -2777,6 +3702,16 @@ export function createArenaServer(
           if (![...sessions.values()].some((s) => s.id === p.id)) continue;
           const team = arena instanceof RaidArena ? 0 : arena.teamOf(p);
           members.push(chatMember(accountId, p.name, team));
+        }
+        // Watchers sit on no side (chat.ts: they hear the players' emotes,
+        // and the players hear their emotes and phrases, never calls).
+        for (const [id, w] of watchers) {
+          if (w.code !== arena.code) continue;
+          const viewer = io.sockets.sockets.get(id)?.data.account as
+            Account | undefined;
+          if (!viewer || members.some((m) => m.accountId === viewer.id))
+            continue;
+          members.push({ ...chatMember(viewer.id, w.name), watcher: true });
         }
         return {
           channel,
@@ -2983,6 +3918,31 @@ export function createArenaServer(
         fail(cb, "Couldn't turn notifications on. Try again.");
       }
     });
+    // Game news (admins' announcements) on or off for this device
+    // (migration 20261122140000); only the player's own device.
+    socket.on("push-news", async (data: unknown, cb: unknown) => {
+      if (!allowed(10) || !requirePlayer(cb)) return;
+      const d = data as { endpoint?: unknown; on?: unknown } | null;
+      if (
+        typeof d?.endpoint !== "string" ||
+        d.endpoint.length > 1000 ||
+        typeof d.on !== "boolean"
+      )
+        return fail(cb, "Nothing to change.");
+      if (!accounts.pushDevices?.setNews)
+        return fail(cb, "Game news isn't available right now.");
+      try {
+        const done = await accounts.pushDevices.setNews(
+          account()!.id,
+          d.endpoint,
+          d.on,
+        );
+        if (done) reply(cb, { ok: true });
+        else fail(cb, "Turn notifications on for this device first.");
+      } catch {
+        fail(cb, "Couldn't change game news. Try again.");
+      }
+    });
     socket.on("push-unsubscribe", async (data: unknown, cb: unknown) => {
       if (!allowed(5) || !account()) return;
       const endpoint = (data as { endpoint?: unknown } | null)?.endpoint;
@@ -3079,7 +4039,8 @@ export function createArenaServer(
       if (orbs) socket.emit("plaza-orbs", orbs);
       const token = socket.data.accessToken as string | undefined;
       if (token) void plazaAppearance.refresh(socket.id, token, true);
-      if (token) void sendTreats(token);
+      const gifts = plaza.giftsFor(socket.id);
+      if (gifts.length) socket.emit("plaza-gifts", gifts);
       if (!me.guest)
         void portraitChoice.save(me.id, socket.data.accessToken, parsed.data);
     });
@@ -3106,7 +4067,7 @@ export function createArenaServer(
       reply(cb, { ok: true });
     });
     socket.on("plaza-input", (data: unknown) => {
-      if (!allowed(40)) return;
+      if (!allowedStream("plaza-input", 40)) return;
       const d = data as {
         dx?: unknown;
         dy?: unknown;
@@ -3130,6 +4091,13 @@ export function createArenaServer(
       } | null;
       plaza.dash(socket.id, d?.dx, d?.dy, { s: d?.s, t: d?.t });
     });
+    // The browser tripped you over a hurdle (PLAZA_HURDLE): when, and the
+    // stumbling still to go.
+    socket.on("plaza-trip", (data: unknown) => {
+      if (!allowed(10)) return;
+      const d = data as { left?: unknown; s?: unknown; t?: unknown } | null;
+      plaza.trip(socket.id, d?.left, { s: d?.s, t: d?.t });
+    });
     socket.on("plaza-emote", (data: unknown, cb: unknown) => {
       if (!allowed(10)) return;
       const ok = plaza.emote(
@@ -3144,54 +4112,89 @@ export function createArenaServer(
           : { ok: false, error: "Wait a moment between emotes." },
       );
     });
-    // Treats: a free handful a Pacific day (PLAZA.treatsDaily), thrown for everyone.
-    const sendTreats = async (token: string) => {
-      try {
-        const n = await accounts.rpc(token, "arena_plaza_treats", {});
-        if (plaza.plazaOf(socket.id) !== undefined && typeof n === "number")
-          socket.emit("plaza-treats", { n });
-      } catch {
-        // Older databases have no treats; the button stays at 0.
-      }
-    };
-    let treatPending = false;
-    socket.on("plaza-treat", async (_data: unknown, cb: unknown) => {
+    // Pair emotes (a high five…): asked from a player's card, answered by
+    // them. Requests between blocked players are never delivered.
+    const pairBlocked = (a: string, b: string) => chat.blocks(a, b);
+    socket.on("plaza-pair-ask", (data: unknown, cb: unknown) => {
+      if (!allowed(10)) return;
+      const d = data as { to?: unknown; kind?: unknown } | null;
+      const r = plaza.pairAsk(
+        socket.id,
+        d?.to,
+        d?.kind,
+        Date.now(),
+        pairBlocked,
+      );
+      if (!r.ok) return fail(cb, r.error);
+      io.sockets.sockets.get(r.to)?.emit("plaza-pair-ask", r.ask);
+      reply(cb, { ok: true });
+    });
+    socket.on("plaza-pair-answer", (data: unknown, cb: unknown) => {
+      if (!allowed(10)) return;
+      const d = data as { from?: unknown; yes?: unknown } | null;
+      const r = plaza.pairAnswer(
+        socket.id,
+        d?.from,
+        d?.yes === true,
+        Date.now(),
+        pairBlocked,
+      );
+      if (!r.ok) return fail(cb, r.error);
+      if (r.declined)
+        io.sockets.sockets
+          .get(r.asker)
+          ?.emit("plaza-pair-no", { name: plaza.profileOf(socket.id)?.name });
+      else
+        for (const key of r.keys)
+          io.sockets.sockets.get(key)?.emit("plaza-pair", r.start);
+      reply(cb, { ok: true });
+    });
+    // Gift boxes (PLAZA_GIFT): the database counts what is left today and
+    // takes one; the Plaza tosses it, and its orbs are for the others nearby.
+    let giftPending = false;
+    socket.on("plaza-gift", async (_data: unknown, cb: unknown) => {
       if (!allowed(10)) return;
       const copy = plaza.plazaOf(socket.id);
       if (copy === undefined) return fail(cb, "Not in the Plaza.");
       const token = socket.data.accessToken as string | undefined;
-      if (!token || treatPending) return fail(cb, "One moment…");
-      if (!plaza.treatReady(socket.id, Date.now()))
-        return fail(cb, "Wait a moment between treats.");
-      treatPending = true;
+      if (!token || giftPending) return fail(cb, "One moment…");
+      if (!plaza.giftReady(socket.id, Date.now()))
+        return fail(cb, "Wait a moment between gift boxes.");
+      giftPending = true;
       try {
-        // A fresh id per throw: a retry of this request can't take two treats.
-        const r = (await accounts.rpc(token, "arena_plaza_treat", {
+        // A fresh id per toss: a retry of this request can't take two boxes.
+        const r = (await accounts.rpc(token, "arena_plaza_gift", {
           p_ref: randomUUID(),
-        })) as {
-          ok?: boolean;
-          treat?: string;
-          left?: number;
-          error?: string;
-        } | null;
-        if (!r?.ok || !r.treat)
+        })) as { ok?: boolean; left?: number; error?: string } | null;
+        if (!r?.ok) {
+          plaza.giftRefused(socket.id);
           return reply(cb, {
             ok: false,
-            error: r?.error ?? "No treats left today.",
-            treats: r?.left ?? 0,
+            error: r?.error ?? "No gift boxes left today.",
+            gifts: r?.left ?? 0,
           });
-        const thrown = plaza.treat(socket.id, r.treat);
-        if (thrown) toPlaza(copy, "plaza-treat", thrown);
-        reply(cb, { ok: true, treat: r.treat, treats: r.left ?? 0 });
+        }
+        // On the Plaza's own clock (its last step), as its orbs are.
+        const thrown = plaza.throwGift(
+          socket.id,
+          Math.random() < PLAZA_GIFT.goldenChance,
+        );
+        if (thrown) toPlaza(thrown.plaza, "plaza-gift", thrown.gift);
+        reply(cb, {
+          ok: true,
+          golden: !!thrown?.gift.golden,
+          gifts: r.left ?? 0,
+        });
       } catch (error) {
+        plaza.giftRefused(socket.id);
         fail(
           cb,
           error instanceof AccountError
             ? error.message
-            : "Treats can't be thrown right now.",
+            : "Gift boxes can't be tossed right now.",
         );
       } finally {
-        treatPending = false;
+        giftPending = false;
       }
     });
     let bobaPending = false;
@@ -3238,6 +4241,35 @@ export function createArenaServer(
         bobaPending = false;
       }
     });
+    // Fishing at the pond: the server picks the fish and the bite
+    // (PlazaWorld.cast/reel); a catch is recorded like the other quests.
+    socket.on("plaza-fish", (data: unknown, cb: unknown) => {
+      if (!allowed(10)) return;
+      const d = data as { act?: unknown; tz?: unknown } | null;
+      if (plaza.plazaOf(socket.id) === undefined)
+        return fail(cb, "Not in the Plaza.");
+      const now = Date.now();
+      if (d?.act === "cast") return reply(cb, plaza.cast(socket.id, now, d.tz));
+      if (d?.act === "stop")
+        return reply(cb, { ok: plaza.stopFishing(socket.id, now) });
+      if (d?.act === "reel") return reply(cb, plaza.reel(socket.id, now));
+      if (d?.act !== "land") return fail(cb, "Nothing to do here.");
+      // The fight's end: the server runs it again from its seed (plaza-fight.ts).
+      const r = plaza.land(socket.id, now, (d as { moves?: unknown }).moves);
+      if (r.ok)
+        recordPlaza(socket.id, {
+          kind: "fish",
+          ref: r.fish,
+          coins:
+            PLAZA_FISH_RARITY[PLAZA_FISH_BY_ID[r.fish]?.rarity]?.firstCoins ??
+            0,
+          bookSize: PLAZA_FISH.length,
+          gift: PLAZA_GIFT.fishRarities.includes(
+            PLAZA_FISH_BY_ID[r.fish]?.rarity ?? "",
+          ),
+        });
+      reply(cb, r);
+    });
     socket.on("plaza-leave", (_data: unknown, cb: unknown) => {
       plaza.leave(socket.id);
       reply(cb, { ok: true });
@@ -3266,6 +4298,25 @@ export function createArenaServer(
           mode: a.mode,
           phase: a.phase,
           character: a.players.find((p) => p.id === id)?.character,
+        });
+      }),
+    );
+    socket.on("battle-art", (data: unknown) =>
+      withRoom(undefined, (a) => {
+        // A fighter's art found blank and loaded again (rig-health.ts in the
+        // client); a cap keeps a looping client quiet.
+        const sent = (socket.data.artReports ?? 0) as number;
+        if (sent >= 10) return;
+        const result = battleArtSchema.safeParse(data);
+        if (!result.success) return;
+        socket.data.artReports = sent + 1;
+        connectionLog("arena-art-blank", {
+          ...result.data,
+          account: account()?.id,
+          room: a.code,
+          mode: a.mode,
+          phase: a.phase,
+          ...(a instanceof RaidArena ? { boss: a.raid.boss } : {}),
         });
       }),
     );
@@ -3374,9 +4425,10 @@ export function createArenaServer(
   let ticks = 0;
   /**
    * A skill was cast or a fighter dashed this tick: send the snapshot now
-   * rather than at the next 15 Hz slot (up to 33 ms later), so the cast
-   * reaches every player, and its echo the caster, a tick sooner. Basic
-   * attacks, which players spam, keep the steady rate.
+   * rather than at the next slot, so the cast reaches every player, and its
+   * echo the caster, a tick sooner. Basic attacks, which players spam, keep
+   * the steady rate. (With RULES.snapshot at 30, every tick is a slot and
+   * this changes nothing; it matters again if the rate is ever lowered.)
    */
   const castThisTick = (a: Arena, serial: number) =>
     a.serial > serial &&
@@ -3389,22 +4441,39 @@ export function createArenaServer(
   const step = () => {
     const started = diagnostics.now();
     ticks++;
-    for (const s of sessions.values())
-      if (!s.socketId && s.expires <= Date.now()) expire(s);
-    for (let a of [...rooms.values()]) {
-      const before = a.phase;
-      const serial = a.serial;
-      a.drainInputs();
-      a.tick();
-      if (before !== a.phase && a.phase === "finished")
-        // Bots are always up for a rematch.
-        for (const p of a.players) p.ready = a.bots.has(p.id);
-      if (
-        ticks % Math.round(RULES.tick / RULES.snapshot) === 0 ||
-        before !== a.phase ||
-        castThisTick(a, serial)
-      )
-        broadcast(a);
+    // Each seat and each room in a guard of its own: a fault closes that
+    // room (closeBrokenRoom), and the loop goes on to the others. Unguarded,
+    // one throw here ended the process and every match on it.
+    for (const s of [...sessions.values()]) {
+      if (s.socketId || s.expires > Date.now() || !sessions.has(s.token))
+        continue;
+      try {
+        expire(s);
+      } catch (error) {
+        // Not again next tick: the seat goes, and its room with it.
+        sessions.delete(s.token);
+        const arena = rooms.get(s.code);
+        if (arena) closeBrokenRoom(arena, error, "expire");
+        else faultLog("arena-session-fault", { error: faultText(error) });
+      }
+    }
+    for (const a of [...rooms.values()]) {
+      // Closed earlier in this tick, with a room that broke.
+      if (rooms.get(a.code) !== a) continue;
+      try {
+        const before = a.phase;
+        const serial = a.serial;
+        a.drainInputs();
+        a.tick();
+        if (before !== a.phase && a.phase === "finished")
+          // Bots are always up for a rematch.
+          for (const p of a.players) p.ready = a.bots.has(p.id);
+        if (before !== a.phase || castThisTick(a, serial)) broadcast(a);
+        else if (ticks % Math.round(RULES.tick / RULES.snapshot) === 0)
+          broadcast(a, true);
+      } catch (error) {
+        closeBrokenRoom(a, error, "tick");
+      }
     }
     diagnostics.tick(started);
   };
@@ -3441,10 +4510,18 @@ export function createArenaServer(
   const plazaEvent = (e: PlazaEvent) => {
     if (e.type === "orb") recordPlaza(e.key, { kind: "orb", ref: e.ref });
     else if (e.type === "goal") recordPlaza(e.key, { kind: "goal" });
-    else if (e.type === "lap") recordPlaza(e.key, { kind: "lap", ms: e.ms });
+    else if (e.type === "lap")
+      recordPlaza(e.key, {
+        kind: "lap",
+        ms: e.ms,
+        ...(e.run !== undefined ? { run: e.run } : {}),
+      });
     else if (e.type === "cheers")
       recordPlaza(e.key, { kind: "cheers", n: e.n });
+    else if (e.type === "fish")
+      io.sockets.sockets.get(e.key)?.emit("plaza-fish", e.note);
     else if (e.type === "news") toPlaza(e.plaza, "plaza-news", e.news);
+    else if (e.type === "giftGone") toPlaza(e.plaza, "plaza-gift-gone", e.gone);
     else toPlaza(e.plaza, "plaza-orbs", e.orbs);
   };
   /** Move everyone in the Plaza, run the pitch and the orbs, send each player what is near. */
@@ -3469,7 +4546,12 @@ export function createArenaServer(
     options.autoTick === false
       ? undefined
       : setInterval(() => {
-          if (plaza.size) plazaStep();
+          try {
+            if (plaza.size) plazaStep();
+          } catch (error) {
+            // The Plaza is one world: nothing to close, try again next tick.
+            faultLog("arena-plaza-fault", { error: faultText(error) });
+          }
         }, 1000 / PLAZA.tick);
   const diagnosticsTimer =
     diagnosticsEvery > 0 && options.autoTick !== false
@@ -3488,13 +4570,89 @@ export function createArenaServer(
           diagnosticsEvery * 1000,
         )
       : undefined;
+  /** The 30-second check for every signed-in connection, now (tests). */
+  const refreshAccounts = () =>
+    Promise.all(
+      [...io.sockets.sockets.values()]
+        .filter((socket) => socket.data.account)
+        .map((socket) => refreshSocket(socket, true)),
+    );
+  /**
+   * Check the connections whose turn it is. Each signed-in connection is
+   * checked every `ACCOUNT_CHECK_MS`, at a moment of its own in that period
+   * (from its id; the first 15 to 45 s after it connects). One timer used
+   * to check them all in the same instant: several database round trips per
+   * player, the whole server's at once, every 30 seconds. After a deploy
+   * everyone reconnects within seconds of each other, so counting from the
+   * connection's start alone would not spread them.
+   */
+  const refreshDueAccounts = (now = Date.now()) =>
+    Promise.all(
+      [...io.sockets.sockets.values()]
+        .filter((socket) => {
+          if (!socket.data.account) return false;
+          const due = ((socket.data.accountCheckAt as number | undefined) ??=
+            now + ACCOUNT_CHECK_MS * (0.5 + spreadOf(socket.id)));
+          if (due > now) return false;
+          // Its own beat; after a stall, from now rather than in a burst.
+          socket.data.accountCheckAt =
+            due + ACCOUNT_CHECK_MS > now
+              ? due + ACCOUNT_CHECK_MS
+              : now + ACCOUNT_CHECK_MS;
+          return true;
+        })
+        .map((socket) => refreshSocket(socket, true)),
+    );
   const accountTimer =
     options.autoTick === false
       ? undefined
-      : setInterval(() => {
-          for (const socket of io.sockets.sockets.values())
-            if (socket.data.account) void refreshSocket(socket);
-        }, 30000);
+      : setInterval(
+          () =>
+            void refreshDueAccounts().catch((error: unknown) =>
+              faultLog("arena-timer-fault", {
+                timer: "accounts",
+                error: faultText(error),
+              }),
+            ),
+          1000,
+        );
+  /** A newer server answers the public address (superseded, above). */
+  const supersede = (by: string) => {
+    if (superseded) return;
+    superseded = true;
+    connectionLog("arena-superseded", {
+      by,
+      busy: [...rooms.values()].filter(busyRoom).length,
+    });
+    io.emit("server-update", updateNotice());
+  };
+  const publicHealthUrl =
+    options.publicHealthUrl ??
+    (options.autoTick !== false && process.env.RENDER_EXTERNAL_URL
+      ? new URL("/api/health", process.env.RENDER_EXTERNAL_URL).href
+      : undefined);
+  const fetchHealth =
+    options.fetchHealth ??
+    (async (url: string) =>
+      (
+        await fetch(url, {
+          headers: { "cache-control": "no-cache" },
+          signal: AbortSignal.timeout(5000),
+        })
+      ).json());
+  /** Asks the public address which server answers it now. */
+  const checkSuperseded = async () => {
+    if (!publicHealthUrl || superseded) return;
+    try {
+      const by = supersededBy(await fetchHealth(publicHealthUrl), serverId);
+      if (by) supersede(by);
+    } catch {
+      // Unreachable for a moment (or a deploy mid-switch): ask again later.
+    }
+  };
+  const supersedeTimer = publicHealthUrl
+    ? setInterval(() => void checkSuperseded(), options.supersedeEvery ?? 15000)
+    : undefined;
   return {
     app,
     http,
@@ -3506,8 +4664,50 @@ export function createArenaServer(
     broadcast,
     plaza,
     plazaStep,
+    refreshAccounts,
+    refreshDueAccounts,
     diagnostics,
+    /** Whether a deploy is replacing this server (drain). */
+    get draining() {
+      return draining;
+    },
+    /**
+     * A deploy is replacing this server (SIGTERM, index.ts): tell every
+     * player, refuse new matches, and wait until the matches already running
+     * have ended and their rewards are saved, or until `deadline` (epoch ms).
+     */
+    drain: async (deadline: number, every?: number) => {
+      if (!draining) {
+        draining = true;
+        drainDeadline = deadline;
+        io.emit("server-update", updateNotice());
+      }
+      // A live match, or one that just ended and isn't filed yet: its
+      // summary is in this process only, so the new server can't file it.
+      const busy = () =>
+        [...rooms.values()].filter(busyRoom).length +
+        ledger.unfiled(reportGraceMs);
+      connectionLog("arena-drain", {
+        busy: busy(),
+        saving: inflight.size,
+        unfiled: ledger.unfiled(reportGraceMs),
+      });
+      const result = await waitForDrain({ busy, inflight, deadline, every });
+      connectionLog("arena-drain-done", result);
+      return result;
+    },
+    /** This process's id, as /api/health says it. */
+    serverId,
+    /** Whether a newer server answers the public address (superseded). */
+    get superseded() {
+      return superseded;
+    },
+    checkSuperseded,
     close: async () => {
+      // A drain that ran out of time: the players still in a match hear why
+      // they are cut off, not just that the connection went (main.ts).
+      if (draining) io.emit("server-update", { closing: true });
+      if (supersedeTimer) clearInterval(supersedeTimer);
       timer?.stop();
       for (const check of partyAwayTimers) clearTimeout(check);
       if (plazaTimer) clearInterval(plazaTimer);

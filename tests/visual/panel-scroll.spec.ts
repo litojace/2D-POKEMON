@@ -2,12 +2,17 @@ import { expect, test, type Page } from "@playwright/test";
 import {
   hubMenu,
   openHub,
+  openPlaza,
   openPlayPanel,
   pushUntilBattle,
   startPractice,
 } from "./helpers";
 import { ISLAND, setInsets } from "./ui-measure";
 import { fingerWorks, scrollSweep } from "./scroll-sweep";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // Every panel across the game: when its content is longer than the panel,
 // a finger can scroll to the end of it, and nothing is cut off by a box
@@ -97,7 +102,7 @@ async function crowd(page: Page) {
         place: i + 1,
         name: i === 7 ? "tester" : `Friend ${i}`,
         rating: 1500 - i * 10,
-        rankName: "Master",
+        rankName: "Prism II",
         placementLeft: 0,
         wins: 10,
         matches: 20,
@@ -199,19 +204,21 @@ const HUB_SCREENS: Screen[] = [
       await page.click(`[data-ui-spire-tab="${tab}"]`);
     },
   })),
-  // Step 6: Ranks (both boards) and the Friends sheet (each tab), filled
-  // with more than fits: fifty friends, many requests, a long board.
-  ...(["everyone", "friends"] as const).map((scope) => ({
+  // Step 6: Ranks (the road it opens on and both boards) and the Friends
+  // sheet (each tab), filled with more than fits: fifty friends, many
+  // requests, a long board.
+  ...(["road", "everyone", "friends"] as const).map((scope) => ({
     name: `ranks ${scope}`,
     root: HUB,
     open: async (page: Page) => {
       await crowd(page);
       await rail("ranks")(page);
+      await expect(page.locator(".ranks-panel .rk-tier")).toHaveCount(7);
+      if (scope === "road") return;
+      await page.click(`[data-ui-scope="${scope}"]`);
       await expect(page.locator(".ranks-panel .rk-row").first()).toBeVisible();
-      if (scope === "friends") {
-        await page.click('[data-ui-scope="friends"]');
+      if (scope === "friends")
         await expect(page.locator(".rk-list .rk-row")).toHaveCount(31);
-      }
     },
   })),
   ...(["friends", "requests", "recent"] as const).map((tab) => ({
@@ -461,3 +468,37 @@ for (const size of SIZES) {
     }
   });
 }
+
+// The Plaza's Fish book (plaza-fishing.ts): its list of fish scrolls.
+for (const size of SIZES)
+  test(`the Plaza's Fish book scrolls to its end at ${size.name}`, async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({
+      viewport: { width: size.width, height: size.height },
+      isMobile: size.phone,
+      hasTouch: true,
+    });
+    try {
+      const page = await context.newPage();
+      page.setDefaultTimeout(10_000);
+      const errors = await openPlaza(page);
+      if (size.island) await setInsets(page, ISLAND);
+      // B opens the Fish book (the map's button for it went).
+      await page.locator(".plaza-layer").focus();
+      await page.keyboard.press("b");
+      await expect(page.locator("#pz-fishbook")).toBeVisible();
+      await settle(page);
+      const report: Report = {
+        "fish book": await scrollSweep(page, "#pz-fishbook"),
+      };
+      print(size.name, "fish book", report["fish book"]);
+      expect(
+        failing(report),
+        "panels that can't be scrolled to the end",
+      ).toEqual([]);
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });

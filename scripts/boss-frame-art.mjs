@@ -1,6 +1,8 @@
 import { writeFileSync } from "node:fs";
+import { frameFiles } from "./frame-files.mjs";
 // Generates apps/client/src/boss-frames.css: the seven raid boss portrait
-// frames, each drawn as its own SVG so no two share a silhouette or palette.
+// frames, each drawn as its own SVG (apps/client/src/frames/, frame-files.mjs)
+// so no two share a silhouette or palette.
 // Run: node scripts/boss-frame-art.mjs && npx prettier --write apps/client/src/boss-frames.css
 // Frame art: viewBox -70 -70 140 140, the portrait disc is r = 50.
 // Angles: 0° = right, 90° = bottom, 270° = top (SVG y points down).
@@ -26,8 +28,9 @@ const arc = (r, from, to, step = 2) =>
   );
 const svg = (body, vb = "-70 -70 140 140") =>
   `<svg xmlns='http://www.w3.org/2000/svg' viewBox='${vb}'>${body}</svg>`;
-const uri = (s) =>
-  `url("data:image/svg+xml,${s.replace(/#/g, "%23").replace(/"/g, "'").replace(/\s+/g, " ")}")`;
+// The pictures are files (frame-files.mjs): frames/boss-<id>-ring.svg and
+// frames/boss-<id>-ornament.svg.
+const pictures = frameFiles("boss");
 /** Angular distance from `centre`, 0…180. */
 const off = (a, centre) => Math.abs(((((a - centre) % 360) + 540) % 360) - 180);
 
@@ -661,10 +664,8 @@ ${all}[data-tier="mythic"] > .tier-glow {
   from { translate: 0 0; }
   to { translate: 4% -6%; }
 }
-@media (prefers-reduced-motion: reduce) {
-  ${all}::after {
-    animation: none !important;
-  }
+:where(:root[data-motion="reduced"]) ${all}::after {
+  animation: none !important;
 }
 `;
 for (const x of frames) {
@@ -680,17 +681,17 @@ ${sel} {
   --frame-disc: ${x.disc};
 }
 ${sel}::before {
-  background-image: ${uri(x.ring)};
+  background-image: ${pictures.url(`${x.id}-ring`, x.ring)};
 }
 ${sel}::after {
   ${x.place}
-  background-image: ${uri(x.orn)};
+  background-image: ${pictures.url(`${x.id}-ornament`, x.orn)};
   animation: ${x.anim};
 }
 `;
 }
 // The gold accent is a design token (ui/tokens.css): write it as one, as
-// the stylesheet does. Art inside data URIs spells # as %23, so stays as is.
+// the stylesheet does (the pictures, in their own files, keep their colours).
 const tokens = (text) =>
   text
     .replace(
@@ -710,3 +711,4 @@ writeFileSync(
   new URL("../apps/client/src/boss-frames.css", import.meta.url),
   tokens(css),
 );
+pictures.done();

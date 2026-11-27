@@ -33,6 +33,22 @@ for (const size of [
     await expect(page.locator(".reveal-name")).toHaveText("Conqueror frame");
     await page.waitForTimeout(1300);
     await snap(page, info, `reward-reveal-${size.width}`);
+    // A frame's ornaments hang outside its ring (the Conqueror frame's gem
+    // sat in the middle of its name: audit A09). The picture is drawn past
+    // its box, so the check is that the ring keeps to 80% of the art box,
+    // which leaves its ornaments room above the name.
+    const share = await page.evaluate(() => {
+      const art = document
+        .querySelector(".reveal-art")!
+        .getBoundingClientRect();
+      const ring = document
+        .querySelector(".reveal-art .raid-cosmetic-preview")!
+        .getBoundingClientRect();
+      return ring.height / art.height;
+    });
+    expect(share, "frame ring's share of the art box").toBeLessThanOrEqual(
+      0.85,
+    );
     // Whole card on screen.
     const box = (await card.boundingBox())!;
     expect(box.y).toBeGreaterThanOrEqual(0);

@@ -22,6 +22,11 @@ clientsClaim();
  * Their file names carry a content hash, so a cached copy never goes stale;
  * keeping the scripts also lets a page opened before a deploy still load its
  * own version's worlds afterwards. Each cache keeps its newest entries.
+ *
+ * The paintings behind the startup curtain have a cache of their own (the
+ * first rule that matches a request answers it): each start downloads the
+ * next start's painting (loading-art.ts), and a long session's raid art
+ * must not push it out before that start shows it.
  */
 const OPTIONAL = [
   {
@@ -29,6 +34,12 @@ const OPTIONAL = [
     test: /^\/assets\/[^/]+\.js$/,
     type: "javascript",
     max: 40,
+  },
+  {
+    cache: "arena-startup-art-v1",
+    test: /^\/assets\/startup-art-[^/]+\.webp$/,
+    type: "image/",
+    max: 4,
   },
   {
     cache: "arena-art-v1",
@@ -79,7 +90,9 @@ self.addEventListener("activate", (event) => {
         Promise.all(
           names
             .filter(
-              (name) => /^arena-(chunks|art)-/.test(name) && !current.has(name),
+              (name) =>
+                /^arena-(chunks|art|startup-art)-/.test(name) &&
+                !current.has(name),
             )
             .map((name) => caches.delete(name)),
         ),
@@ -124,6 +137,19 @@ self.addEventListener("push", (event) => {
     data = (event.data?.json() as FriendPush) ?? {};
   } catch {
     /* Not ours. */
+  }
+  // An admin's announcement (the server's AnnouncementPush): its words, as
+  // the game's banner shows them; tapping opens the game.
+  if (data.kind === "announcement") {
+    event.waitUntil(
+      self.registration.showNotification(data.title || "Element Arena", {
+        body: data.body || "",
+        tag: data.tag || "announcement",
+        icon: "/icons/arena-192.png",
+        data: {},
+      }),
+    );
+    return;
   }
   if (data.kind !== "friend-message" || !data.friend?.id) return;
   event.waitUntil(

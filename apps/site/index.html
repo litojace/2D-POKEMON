@@ -1,0 +1,2567 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>Element Arena: real-time creature battles in your browser</title>
+    <meta
+      name="description"
+      content="Battle friends in real time with 18 original creatures across nine elements: duels, 2v2 teams, free-for-alls and raid bosses. Free to play in your browser."
+    />
+    <link rel="canonical" href="https://elementarenausa.com/" />
+    <meta name="theme-color" content="#0b1020" />
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Element Arena" />
+    <meta
+      property="og:title"
+      content="Element Arena: real-time creature battles"
+    />
+    <meta
+      property="og:description"
+      content="18 original creatures, nine elements, live duels, team fights and raid bosses. Free to play in your browser."
+    />
+    <meta property="og:url" content="https://elementarenausa.com/" />
+    <meta property="og:image" content="https://elementarenausa.com/og.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="Element Arena: Coilemur and Halcyra clash in a sunset coliseum"
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:title"
+      content="Element Arena: real-time creature battles"
+    />
+    <meta
+      name="twitter:description"
+      content="18 original creatures, nine elements, live duels, team fights and raid bosses. Free to play in your browser."
+    />
+    <meta name="twitter:image" content="https://elementarenausa.com/og.jpg" />
+
+    <link
+      rel="preload"
+      as="image"
+      type="image/avif"
+      imagesrcset="img/hero-dusk-960.avif 960w, img/hero-dusk-1536.avif 1536w, img/hero-dusk-2048.avif 2048w, img/hero-dusk-2560.avif 2560w"
+      imagesizes="100vw"
+      fetchpriority="high"
+    />
+    <link
+      rel="preload"
+      href="fonts/barlow-condensed-latin-800-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link rel="stylesheet" href="site.css" />
+    <script src="site.js" defer></script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "VideoGame",
+        "name": "Element Arena",
+        "url": "https://elementarenausa.com/",
+        "image": "https://elementarenausa.com/og.jpg",
+        "description": "Real-time creature battles in your browser: 18 original creatures across nine elements, duels, team fights, free-for-alls and raid bosses.",
+        "genre": ["Action", "Fighting", "Multiplayer"],
+        "gamePlatform": ["Web browser"],
+        "playMode": ["MultiPlayer", "SinglePlayer"],
+        "applicationCategory": "Game",
+        "operatingSystem": "Any",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+      }
+    </script>
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="bar">
+      <div class="bar-in">
+        <a class="brand" href="#top" aria-label="Element Arena, back to top">
+          <img src="favicon-32.png" width="32" height="32" alt="" />
+          <span>Element Arena</span>
+        </a>
+        <nav class="nav" aria-label="Sections">
+          <a href="#champions">Champions</a>
+          <a href="#modes">Modes</a>
+          <a href="#raids">Raids</a>
+          <a href="#mobile">Mobile</a>
+          <a href="/account/">Account</a>
+        </nav>
+        <a class="btn btn-play btn-sm" href="https://play.elementarenausa.com/"
+          >Play now</a
+        >
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="hero" id="top" aria-labelledby="hero-title">
+        <picture class="hero-art">
+          <source
+            type="image/avif"
+            srcset="
+              img/hero-dusk-960.avif   960w,
+              img/hero-dusk-1536.avif 1536w,
+              img/hero-dusk-2048.avif 2048w,
+              img/hero-dusk-2560.avif 2560w
+            "
+            sizes="100vw"
+          />
+          <img
+            src="img/hero-dusk-960.webp"
+            srcset="
+              img/hero-dusk-960.webp   960w,
+              img/hero-dusk-1536.webp 1536w,
+              img/hero-dusk-2048.webp 2048w,
+              img/hero-dusk-2560.webp 2560w
+            "
+            sizes="100vw"
+            width="1536"
+            height="1024"
+            alt="Coilemur dodges a beam of light from Halcyra in a coliseum at sunset"
+            fetchpriority="high"
+            decoding="async"
+          />
+        </picture>
+        <div class="hero-in">
+          <p class="eyebrow">Real-time creature battles</p>
+          <h1 id="hero-title">Pick an element. <br />Outplay your friends.</h1>
+          <p class="lede">
+            Eighteen original creatures, nine elements, one arena. Dodge, dash
+            and land your skills in live 1v1 duels, 2v2 team fights and
+            four-player raids.
+          </p>
+          <div class="cta">
+            <a class="btn btn-play" href="https://play.elementarenausa.com/"
+              >Play now <span aria-hidden="true">&rsaquo;</span></a
+            >
+            <a class="btn btn-ghost" href="#champions">Meet the champions</a>
+          </div>
+          <p class="fine">
+            Free to play in your browser on phone, tablet or computer. No
+            download.
+          </p>
+        </div>
+      </section>
+
+      <section class="band facts" aria-label="At a glance">
+        <ul class="wrap facts-row">
+          <li><b>18</b><span>original creatures</span></li>
+          <li><b>9</b><span>elements</span></li>
+          <li><b>7</b><span>raid bosses</span></li>
+          <li><b>70</b><span>Spire floors</span></li>
+        </ul>
+        <div class="ticker" aria-label="The champions">
+          <div class="ticker-run">
+            <!-- ticker:start -->
+            <a
+              class="tick"
+              href="#champion-voltkit"
+              data-champion="voltkit"
+              style="--el: var(--el-electric)"
+              ><img
+                src="img/creatures/voltkit.svg"
+                alt=""
+                width="200"
+                height="202"
+                loading="lazy"
+                decoding="async"
+              /><span>Voltkit</span></a
+            >
+            <a
+              class="tick"
+              href="#champion-coilemur"
+              data-champion="coilemur"
+              style="--el: var(--el-electric)"
+              ><img
+                src="img/creatures/coilemur.svg"
+                alt=""
+                width="200"
+                height="202"
+                loading="lazy"
+                decoding="async"
+              /><span>Coilemur</span></a
+            >
+            <a
+              class="tick"
+              href="#champion-cindrake"
+              data-champion="cindrake"
+              style="--el: var(--el-fire)"
+              ><img
+                src="img/creatures/cindrake.svg"
+                alt=""
+                width="200"
+                height="202"
+                loading="lazy"
+                decoding="async"
+              /><span>Cindrake</span></a
+            >
+            <a
+              class="tick"
+              href="#champion-pyranda"
+              data-champion="pyranda"
+              style="--el: var(--el-fire)"
+              ><img
+                src="img/creatures/pyranda.svg"
+                alt=""
+                width="200"
+                height="202"
+                loading="lazy"
+                decoding="async"
+              /><span>Pyranda</span></a
+            >
+            <a
+              class="tick"
+              href="#champion-tidefin"
+              data-champion="tidefin"
+              style="--el: var(--el-water)"
+              ><img
+                src="img/creatures/tidefin.svg"
+                alt=""
+                width="200"
+                height="202"
+                loading="lazy"
+                decoding="async"
+              /><span>Tidefin</span></a
+            >
+            <a
+              class="tick"
+              href="#champion-glacelle"
+              data-champion="glacelle"
+              style="--el: var(--el-water)"
+              ><img
+                src="img/creatures/glacelle.svg"
+                alt=""
+                width="200"
+                height="202"
+                loading="lazy"
+                decoding="async"
+              /><span>Glacelle</span></a
+            >
+            <a
+              class="tick"
+              href="#champion-auralynx"
+              data-champion="auralynx"
+              style="--el: var(--el-aura)"
+              ><img
+                src="img/creatures/auralynx.svg"
+                alt=""
+                width="200"
+                height="202"
+                loading="lazy"
+                decoding="async"
+              /><span>Auralynx</span></a
+            >
+            <a
+              class="tick"
+              href="#champion-halcyra"
+              data-champion="halcyra"
+              style="--el: var(--el-aura)"
+              ><img
+                src="img/creatures/halcyra.svg"
+                alt=""
+                width="200"
+                height="202"
+                loading="lazy"
+                decoding="async"
+              /><span>Halcyra</span></a
+            >
+            <a
+              class="tick"
+              href="#champion-lumoth"
+              data-champion="lumoth"
+              style="--el: var(--el-light)"
+              ><img
+                src="img/creatures/lumoth.svg"
+                alt=""
+                width="200"
+                height="202"
+                loading="lazy"
+                decoding="async"
+              /><span>Lumoth</span></a
+            >
+            <a
+              class="tick"
+              href="#champion-sunbara"
+              data-champion="sunbara"
+              style="--el: var(--el-light)"
+              ><img
+                src="img/creatures/sunbara.svg"
+                alt=""
+                width="200"
+                height="202"
+                loading="lazy"
+                decoding="async"
+              /><span>Sunbara</span></a
+            >
+            <a
+              class="tick"
+              href="#champion-mystowl"
+              data-champion="mystowl"
+              style="--el: var(--el-psychic)"
+              ><img
+                src="img/creatures/mystowl.svg"
+                alt=""
+                width="200"
+                height="202"
+                loading="lazy"
+                decoding="async"
+              /><span>Mystowl</span></a
+            >
+            <a
+              class="tick"
+              href="#champion-astrabun"
+              data-champion="astrabun"
+              style="--el: var(--el-psychic)"
+              ><img
+                src="img/creatures/astrabun.svg"
+                alt=""
+                width="200"
+                height="202"
+                loading="lazy"
+                decoding="async"
+              /><span>Astrabun</span></a
+            >
+            <a
+              class="tick"
+              href="#champion-terradon"
+              data-champion="terradon"
+              style="--el: var(--el-earth)"
+              ><img
+                src="img/creatures/terradon.svg"
+                alt=""
+                width="200"
+                height="202"
+                loading="lazy"
+                decoding="async"
+              /><span>Terradon</span></a
+            >
+            <a
+              class="tick"
+              href="#champion-wombolder"
+              data-champion="wombolder"
+              style="--el: var(--el-earth)"
+              ><img
+                src="img/creatures/wombolder.svg"
+                alt=""
+                width="200"
+                height="202"
+                loading="lazy"
+                decoding="async"
+              /><span>Wombolder</span></a
+            >
+            <a
+              class="tick"
+              href="#champion-duskveil"
+              data-champion="duskveil"
+              style="--el: var(--el-shadow)"
+              ><img
+                src="img/creatures/duskveil.svg"
+                alt=""
+                width="200"
+                height="202"
+                loading="lazy"
+                decoding="async"
+              /><span>Duskveil</span></a
+            >
+            <a
+              class="tick"
+              href="#champion-shadopus"
+              data-champion="shadopus"
+              style="--el: var(--el-shadow)"
+              ><img
+                src="img/creatures/shadopus.svg"
+                alt=""
+                width="200"
+                height="202"
+                loading="lazy"
+                decoding="async"
+              /><span>Shadopus</span></a
+            >
+            <a
+              class="tick"
+              href="#champion-pangrove"
+              data-champion="pangrove"
+              style="--el: var(--el-nature)"
+              ><img
+                src="img/creatures/pangrove.svg"
+                alt=""
+                width="200"
+                height="202"
+                loading="lazy"
+                decoding="async"
+              /><span>Pangrove</span></a
+            >
+            <a
+              class="tick"
+              href="#champion-mossloth"
+              data-champion="mossloth"
+              style="--el: var(--el-nature)"
+              ><img
+                src="img/creatures/mossloth.svg"
+                alt=""
+                width="200"
+                height="202"
+                loading="lazy"
+                decoding="async"
+              /><span>Mossloth</span></a
+            >
+            <a
+              class="tick"
+              href="#champion-voltkit"
+              data-champion="voltkit"
+              style="--el: var(--el-electric)"
+              aria-hidden="true"
+              tabindex="-1"
+              ><img
+                src="img/creatures/voltkit.svg"
+                alt=""
+                width="200"
+                height="202"
+                loading="lazy"
+                decoding="async"
+              /><span>Voltkit</span></a
+            >
+            <a
+              class="tick"
+              href="#champion-coilemur"
+              data-champion="coilemur"
+              style="--el: var(--el-electric)"
+              aria-hidden="true"
+              tabindex="-1"
+              ><img
+                src="img/creatures/coilemur.svg"
+                alt=""
+                width="200"
+                height="202"
+                loading="lazy"
+                decoding="async"
+              /><span>Coilemur</span></a
+            >
+            <a
+              class="tick"
+              href="#champion-cindrake"
+              data-champion="cindrake"
+              style="--el: var(--el-fire)"
+              aria-hidden="true"
+              tabindex="-1"
+              ><img
+                src="img/creatures/cindrake.svg"
+                alt=""
+                width="200"
+                height="202"
+                loading="lazy"
+                decoding="async"
+              /><span>Cindrake</span></a
+            >
+            <a
+              class="tick"
+              href="#champion-pyranda"
+              data-champion="pyranda"
+              style="--el: var(--el-fire)"
+              aria-hidden="true"
+              tabindex="-1"
+              ><img
+                src="img/creatures/pyranda.svg"
+                alt=""
+                width="200"
+                height="202"
+                loading="lazy"
+                decoding="async"
+              /><span>Pyranda</span></a
+            >
+            <a
+              class="tick"
+              href="#champion-tidefin"
+              data-champion="tidefin"
+              style="--el: var(--el-water)"
+              aria-hidden="true"
+              tabindex="-1"
+              ><img
+                src="img/creatures/tidefin.svg"
+                alt=""
+                width="200"
+                height="202"
+                loading="lazy"
+                decoding="async"
+              /><span>Tidefin</span></a
+            >
+            <a
+              class="tick"
+              href="#champion-glacelle"
+              data-champion="glacelle"
+              style="--el: var(--el-water)"
+              aria-hidden="true"
+              tabindex="-1"
+              ><img
+                src="img/creatures/glacelle.svg"
+                alt=""
+                width="200"
+                height="202"
+                loading="lazy"
+                decoding="async"
+              /><span>Glacelle</span></a
+            >
+            <a
+              class="tick"
+              href="#champion-auralynx"
+              data-champion="auralynx"
+              style="--el: var(--el-aura)"
+              aria-hidden="true"
+              tabindex="-1"
+              ><img
+                src="img/creatures/auralynx.svg"
+                alt=""
+                width="200"
+                height="202"
+                loading="lazy"
+                decoding="async"
+              /><span>Auralynx</span></a
+            >
+            <a
+              class="tick"
+              href="#champion-halcyra"
+              data-champion="halcyra"
+              style="--el: var(--el-aura)"
+              aria-hidden="true"
+              tabindex="-1"
+              ><img
+                src="img/creatures/halcyra.svg"
+                alt=""
+                width="200"
+                height="202"
+                loading="lazy"
+                decoding="async"
+              /><span>Halcyra</span></a
+            >
+            <a
+              class="tick"
+              href="#champion-lumoth"
+              data-champion="lumoth"
+              style="--el: var(--el-light)"
+              aria-hidden="true"
+              tabindex="-1"
+              ><img
+                src="img/creatures/lumoth.svg"
+                alt=""
+                width="200"
+                height="202"
+                loading="lazy"
+                decoding="async"
+              /><span>Lumoth</span></a
+            >
+            <a
+              class="tick"
+              href="#champion-sunbara"
+              data-champion="sunbara"
+              style="--el: var(--el-light)"
+              aria-hidden="true"
+              tabindex="-1"
+              ><img
+                src="img/creatures/sunbara.svg"
+                alt=""
+                width="200"
+                height="202"
+                loading="lazy"
+                decoding="async"
+              /><span>Sunbara</span></a
+            >
+            <a
+              class="tick"
+              href="#champion-mystowl"
+              data-champion="mystowl"
+              style="--el: var(--el-psychic)"
+              aria-hidden="true"
+              tabindex="-1"
+              ><img
+                src="img/creatures/mystowl.svg"
+                alt=""
+                width="200"
+                height="202"
+                loading="lazy"
+                decoding="async"
+              /><span>Mystowl</span></a
+            >
+            <a
+              class="tick"
+              href="#champion-astrabun"
+              data-champion="astrabun"
+              style="--el: var(--el-psychic)"
+              aria-hidden="true"
+              tabindex="-1"
+              ><img
+                src="img/creatures/astrabun.svg"
+                alt=""
+                width="200"
+                height="202"
+                loading="lazy"
+                decoding="async"
+              /><span>Astrabun</span></a
+            >
+            <a
+              class="tick"
+              href="#champion-terradon"
+              data-champion="terradon"
+              style="--el: var(--el-earth)"
+              aria-hidden="true"
+              tabindex="-1"
+              ><img
+                src="img/creatures/terradon.svg"
+                alt=""
+                width="200"
+                height="202"
+                loading="lazy"
+                decoding="async"
+              /><span>Terradon</span></a
+            >
+            <a
+              class="tick"
+              href="#champion-wombolder"
+              data-champion="wombolder"
+              style="--el: var(--el-earth)"
+              aria-hidden="true"
+              tabindex="-1"
+              ><img
+                src="img/creatures/wombolder.svg"
+                alt=""
+                width="200"
+                height="202"
+                loading="lazy"
+                decoding="async"
+              /><span>Wombolder</span></a
+            >
+            <a
+              class="tick"
+              href="#champion-duskveil"
+              data-champion="duskveil"
+              style="--el: var(--el-shadow)"
+              aria-hidden="true"
+              tabindex="-1"
+              ><img
+                src="img/creatures/duskveil.svg"
+                alt=""
+                width="200"
+                height="202"
+                loading="lazy"
+                decoding="async"
+              /><span>Duskveil</span></a
+            >
+            <a
+              class="tick"
+              href="#champion-shadopus"
+              data-champion="shadopus"
+              style="--el: var(--el-shadow)"
+              aria-hidden="true"
+              tabindex="-1"
+              ><img
+                src="img/creatures/shadopus.svg"
+                alt=""
+                width="200"
+                height="202"
+                loading="lazy"
+                decoding="async"
+              /><span>Shadopus</span></a
+            >
+            <a
+              class="tick"
+              href="#champion-pangrove"
+              data-champion="pangrove"
+              style="--el: var(--el-nature)"
+              aria-hidden="true"
+              tabindex="-1"
+              ><img
+                src="img/creatures/pangrove.svg"
+                alt=""
+                width="200"
+                height="202"
+                loading="lazy"
+                decoding="async"
+              /><span>Pangrove</span></a
+            >
+            <a
+              class="tick"
+              href="#champion-mossloth"
+              data-champion="mossloth"
+              style="--el: var(--el-nature)"
+              aria-hidden="true"
+              tabindex="-1"
+              ><img
+                src="img/creatures/mossloth.svg"
+                alt=""
+                width="200"
+                height="202"
+                loading="lazy"
+                decoding="async"
+              /><span>Mossloth</span></a
+            >
+            <!-- ticker:end -->
+          </div>
+        </div>
+      </section>
+
+      <section class="band" id="champions" aria-labelledby="champions-title">
+        <div class="wrap">
+          <header class="head">
+            <p class="eyebrow">The roster</p>
+            <h2 id="champions-title">Two champions for every element</h2>
+            <p class="sub">
+              Each creature has a signature basic attack, three skills and an
+              ultimate, plus a dash and a jump. Find the one that fits how you
+              play.
+            </p>
+          </header>
+          <div class="chips" role="group" aria-label="Filter by element" hidden>
+            <!-- chips:start -->
+            <button
+              type="button"
+              class="chip"
+              data-filter="all"
+              aria-pressed="true"
+            >
+              All
+            </button>
+            <button
+              type="button"
+              class="chip"
+              data-filter="Electric"
+              aria-pressed="false"
+              style="--el: var(--el-electric)"
+            >
+              <span class="dot" aria-hidden="true"></span>Electric
+            </button>
+            <button
+              type="button"
+              class="chip"
+              data-filter="Fire"
+              aria-pressed="false"
+              style="--el: var(--el-fire)"
+            >
+              <span class="dot" aria-hidden="true"></span>Fire
+            </button>
+            <button
+              type="button"
+              class="chip"
+              data-filter="Water"
+              aria-pressed="false"
+              style="--el: var(--el-water)"
+            >
+              <span class="dot" aria-hidden="true"></span>Water
+            </button>
+            <button
+              type="button"
+              class="chip"
+              data-filter="Aura"
+              aria-pressed="false"
+              style="--el: var(--el-aura)"
+            >
+              <span class="dot" aria-hidden="true"></span>Aura
+            </button>
+            <button
+              type="button"
+              class="chip"
+              data-filter="Light"
+              aria-pressed="false"
+              style="--el: var(--el-light)"
+            >
+              <span class="dot" aria-hidden="true"></span>Light
+            </button>
+            <button
+              type="button"
+              class="chip"
+              data-filter="Psychic"
+              aria-pressed="false"
+              style="--el: var(--el-psychic)"
+            >
+              <span class="dot" aria-hidden="true"></span>Psychic
+            </button>
+            <button
+              type="button"
+              class="chip"
+              data-filter="Earth"
+              aria-pressed="false"
+              style="--el: var(--el-earth)"
+            >
+              <span class="dot" aria-hidden="true"></span>Earth
+            </button>
+            <button
+              type="button"
+              class="chip"
+              data-filter="Shadow"
+              aria-pressed="false"
+              style="--el: var(--el-shadow)"
+            >
+              <span class="dot" aria-hidden="true"></span>Shadow
+            </button>
+            <button
+              type="button"
+              class="chip"
+              data-filter="Nature"
+              aria-pressed="false"
+              style="--el: var(--el-nature)"
+            >
+              <span class="dot" aria-hidden="true"></span>Nature
+            </button>
+            <!-- chips:end -->
+          </div>
+          <ul class="roster">
+            <!-- roster:start -->
+            <li class="mon" data-el="Electric" style="--el: var(--el-electric)">
+              <a
+                class="mon-btn"
+                href="#champion-voltkit"
+                data-champion="voltkit"
+                aria-haspopup="dialog"
+              >
+                <img
+                  src="img/creatures/voltkit.svg"
+                  alt=""
+                  width="200"
+                  height="202"
+                  loading="lazy"
+                />
+                <h3>Voltkit</h3>
+                <p class="el">Electric</p>
+                <p class="role">Ranged speedster</p>
+              </a>
+            </li>
+            <li class="mon" data-el="Electric" style="--el: var(--el-electric)">
+              <a
+                class="mon-btn"
+                href="#champion-coilemur"
+                data-champion="coilemur"
+                aria-haspopup="dialog"
+              >
+                <img
+                  src="img/creatures/coilemur.svg"
+                  alt=""
+                  width="200"
+                  height="202"
+                  loading="lazy"
+                />
+                <h3>Coilemur</h3>
+                <p class="el">Electric</p>
+                <p class="role">Grappler</p>
+              </a>
+            </li>
+            <li class="mon" data-el="Fire" style="--el: var(--el-fire)">
+              <a
+                class="mon-btn"
+                href="#champion-cindrake"
+                data-champion="cindrake"
+                aria-haspopup="dialog"
+              >
+                <img
+                  src="img/creatures/cindrake.svg"
+                  alt=""
+                  width="200"
+                  height="202"
+                  loading="lazy"
+                />
+                <h3>Cindrake</h3>
+                <p class="el">Fire</p>
+                <p class="role">Burst damage fighter</p>
+              </a>
+            </li>
+            <li class="mon" data-el="Fire" style="--el: var(--el-fire)">
+              <a
+                class="mon-btn"
+                href="#champion-pyranda"
+                data-champion="pyranda"
+                aria-haspopup="dialog"
+              >
+                <img
+                  src="img/creatures/pyranda.svg"
+                  alt=""
+                  width="200"
+                  height="202"
+                  loading="lazy"
+                />
+                <h3>Pyranda</h3>
+                <p class="el">Fire</p>
+                <p class="role">Artillery</p>
+              </a>
+            </li>
+            <li class="mon" data-el="Water" style="--el: var(--el-water)">
+              <a
+                class="mon-btn"
+                href="#champion-tidefin"
+                data-champion="tidefin"
+                aria-haspopup="dialog"
+              >
+                <img
+                  src="img/creatures/tidefin.svg"
+                  alt=""
+                  width="200"
+                  height="202"
+                  loading="lazy"
+                />
+                <h3>Tidefin</h3>
+                <p class="el">Water</p>
+                <p class="role">Agile assassin</p>
+              </a>
+            </li>
+            <li class="mon" data-el="Water" style="--el: var(--el-water)">
+              <a
+                class="mon-btn"
+                href="#champion-glacelle"
+                data-champion="glacelle"
+                aria-haspopup="dialog"
+              >
+                <img
+                  src="img/creatures/glacelle.svg"
+                  alt=""
+                  width="200"
+                  height="202"
+                  loading="lazy"
+                />
+                <h3>Glacelle</h3>
+                <p class="el">Water</p>
+                <p class="role">Frost controller</p>
+              </a>
+            </li>
+            <li class="mon" data-el="Aura" style="--el: var(--el-aura)">
+              <a
+                class="mon-btn"
+                href="#champion-auralynx"
+                data-champion="auralynx"
+                aria-haspopup="dialog"
+              >
+                <img
+                  src="img/creatures/auralynx.svg"
+                  alt=""
+                  width="200"
+                  height="202"
+                  loading="lazy"
+                />
+                <h3>Auralynx</h3>
+                <p class="el">Aura</p>
+                <p class="role">Counter specialist</p>
+              </a>
+            </li>
+            <li class="mon" data-el="Aura" style="--el: var(--el-aura)">
+              <a
+                class="mon-btn"
+                href="#champion-halcyra"
+                data-champion="halcyra"
+                aria-haspopup="dialog"
+              >
+                <img
+                  src="img/creatures/halcyra.svg"
+                  alt=""
+                  width="200"
+                  height="202"
+                  loading="lazy"
+                />
+                <h3>Halcyra</h3>
+                <p class="el">Aura</p>
+                <p class="role">Marksman</p>
+              </a>
+            </li>
+            <li class="mon" data-el="Light" style="--el: var(--el-light)">
+              <a
+                class="mon-btn"
+                href="#champion-lumoth"
+                data-champion="lumoth"
+                aria-haspopup="dialog"
+              >
+                <img
+                  src="img/creatures/lumoth.svg"
+                  alt=""
+                  width="200"
+                  height="202"
+                  loading="lazy"
+                />
+                <h3>Lumoth</h3>
+                <p class="el">Light</p>
+                <p class="role">Versatile fighter</p>
+              </a>
+            </li>
+            <li class="mon" data-el="Light" style="--el: var(--el-light)">
+              <a
+                class="mon-btn"
+                href="#champion-sunbara"
+                data-champion="sunbara"
+                aria-haspopup="dialog"
+              >
+                <img
+                  src="img/creatures/sunbara.svg"
+                  alt=""
+                  width="200"
+                  height="202"
+                  loading="lazy"
+                />
+                <h3>Sunbara</h3>
+                <p class="el">Light</p>
+                <p class="role">Support</p>
+              </a>
+            </li>
+            <li class="mon" data-el="Psychic" style="--el: var(--el-psychic)">
+              <a
+                class="mon-btn"
+                href="#champion-mystowl"
+                data-champion="mystowl"
+                aria-haspopup="dialog"
+              >
+                <img
+                  src="img/creatures/mystowl.svg"
+                  alt=""
+                  width="200"
+                  height="202"
+                  loading="lazy"
+                />
+                <h3>Mystowl</h3>
+                <p class="el">Psychic</p>
+                <p class="role">High-power duelist</p>
+              </a>
+            </li>
+            <li class="mon" data-el="Psychic" style="--el: var(--el-psychic)">
+              <a
+                class="mon-btn"
+                href="#champion-astrabun"
+                data-champion="astrabun"
+                aria-haspopup="dialog"
+              >
+                <img
+                  src="img/creatures/astrabun.svg"
+                  alt=""
+                  width="200"
+                  height="202"
+                  loading="lazy"
+                />
+                <h3>Astrabun</h3>
+                <p class="el">Psychic</p>
+                <p class="role">Blink duelist</p>
+              </a>
+            </li>
+            <li class="mon" data-el="Earth" style="--el: var(--el-earth)">
+              <a
+                class="mon-btn"
+                href="#champion-terradon"
+                data-champion="terradon"
+                aria-haspopup="dialog"
+              >
+                <img
+                  src="img/creatures/terradon.svg"
+                  alt=""
+                  width="200"
+                  height="202"
+                  loading="lazy"
+                />
+                <h3>Terradon</h3>
+                <p class="el">Earth</p>
+                <p class="role">Defensive tank</p>
+              </a>
+            </li>
+            <li class="mon" data-el="Earth" style="--el: var(--el-earth)">
+              <a
+                class="mon-btn"
+                href="#champion-wombolder"
+                data-champion="wombolder"
+                aria-haspopup="dialog"
+              >
+                <img
+                  src="img/creatures/wombolder.svg"
+                  alt=""
+                  width="200"
+                  height="202"
+                  loading="lazy"
+                />
+                <h3>Wombolder</h3>
+                <p class="el">Earth</p>
+                <p class="role">Charger</p>
+              </a>
+            </li>
+            <li class="mon" data-el="Shadow" style="--el: var(--el-shadow)">
+              <a
+                class="mon-btn"
+                href="#champion-duskveil"
+                data-champion="duskveil"
+                aria-haspopup="dialog"
+              >
+                <img
+                  src="img/creatures/duskveil.svg"
+                  alt=""
+                  width="200"
+                  height="202"
+                  loading="lazy"
+                />
+                <h3>Duskveil</h3>
+                <p class="el">Shadow</p>
+                <p class="role">Trickster / area control</p>
+              </a>
+            </li>
+            <li class="mon" data-el="Shadow" style="--el: var(--el-shadow)">
+              <a
+                class="mon-btn"
+                href="#champion-shadopus"
+                data-champion="shadopus"
+                aria-haspopup="dialog"
+              >
+                <img
+                  src="img/creatures/shadopus.svg"
+                  alt=""
+                  width="200"
+                  height="202"
+                  loading="lazy"
+                />
+                <h3>Shadopus</h3>
+                <p class="el">Shadow</p>
+                <p class="role">Stealth assassin</p>
+              </a>
+            </li>
+            <li class="mon" data-el="Nature" style="--el: var(--el-nature)">
+              <a
+                class="mon-btn"
+                href="#champion-pangrove"
+                data-champion="pangrove"
+                aria-haspopup="dialog"
+              >
+                <img
+                  src="img/creatures/pangrove.svg"
+                  alt=""
+                  width="200"
+                  height="202"
+                  loading="lazy"
+                />
+                <h3>Pangrove</h3>
+                <p class="el">Nature</p>
+                <p class="role">Armoured burrower</p>
+              </a>
+            </li>
+            <li class="mon" data-el="Nature" style="--el: var(--el-nature)">
+              <a
+                class="mon-btn"
+                href="#champion-mossloth"
+                data-champion="mossloth"
+                aria-haspopup="dialog"
+              >
+                <img
+                  src="img/creatures/mossloth.svg"
+                  alt=""
+                  width="200"
+                  height="202"
+                  loading="lazy"
+                />
+                <h3>Mossloth</h3>
+                <p class="el">Nature</p>
+                <p class="role">Time gardener</p>
+              </a>
+            </li>
+            <!-- roster:end -->
+          </ul>
+          <p class="hint" hidden>
+            Tap a champion to see their skills, stats and skins.
+          </p>
+        </div>
+      </section>
+
+      <section class="band alt" id="modes" aria-labelledby="modes-title">
+        <div class="wrap">
+          <header class="head">
+            <p class="eyebrow">Ways to play</p>
+            <h2 id="modes-title">Duel, team up or take on a giant</h2>
+          </header>
+          <ul class="modes">
+            <li>
+              <picture class="mode-art">
+                <source
+                  type="image/avif"
+                  srcset="
+                    img/modes/duels-480.avif 480w,
+                    img/modes/duels-800.avif 800w
+                  "
+                  sizes="(min-width: 1000px) 380px, (min-width: 640px) 50vw, 100vw"
+                />
+                <img
+                  src="img/modes/duels-480.webp"
+                  srcset="
+                    img/modes/duels-480.webp 480w,
+                    img/modes/duels-800.webp 800w
+                  "
+                  sizes="(min-width: 1000px) 380px, (min-width: 640px) 50vw, 100vw"
+                  alt="A duel in the game: Halcyra's Skyline Lance beam and a storm of lightning hit Coilemur"
+                  width="800"
+                  height="450"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </picture>
+              <h3>Duels</h3>
+              <p class="count">1 v 1</p>
+              <p>
+                Best of five rounds. In the last minute a ring closes to the
+                centre, so nobody can run forever.
+              </p>
+            </li>
+            <li>
+              <picture class="mode-art">
+                <source
+                  type="image/avif"
+                  srcset="
+                    img/modes/teams-480.avif 480w,
+                    img/modes/teams-800.avif 800w
+                  "
+                  sizes="(min-width: 1000px) 380px, (min-width: 640px) 50vw, 100vw"
+                />
+                <img
+                  src="img/modes/teams-480.webp"
+                  srcset="
+                    img/modes/teams-480.webp 480w,
+                    img/modes/teams-800.webp 800w
+                  "
+                  sizes="(min-width: 1000px) 380px, (min-width: 640px) 50vw, 100vw"
+                  alt="A 2v2 match in the game: four fighters' ultimates go off at once in the ruins"
+                  width="800"
+                  height="450"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </picture>
+              <h3>2v2 Teams</h3>
+              <p class="count">2 v 2</p>
+              <p>
+                Stay close to your partner: each element gives a team-up gift,
+                from faster skills to healing.
+              </p>
+            </li>
+            <li>
+              <picture class="mode-art">
+                <source
+                  type="image/avif"
+                  srcset="
+                    img/modes/ffa-480.avif 480w,
+                    img/modes/ffa-800.avif 800w
+                  "
+                  sizes="(min-width: 1000px) 380px, (min-width: 640px) 50vw, 100vw"
+                />
+                <img
+                  src="img/modes/ffa-480.webp"
+                  srcset="
+                    img/modes/ffa-480.webp 480w,
+                    img/modes/ffa-800.webp 800w
+                  "
+                  sizes="(min-width: 1000px) 380px, (min-width: 640px) 50vw, 100vw"
+                  alt="A free-for-all in the game: four fighters trade skills in the Ember Forge"
+                  width="800"
+                  height="450"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </picture>
+              <h3>Free-for-all</h3>
+              <p class="count">3–4 players</p>
+              <p>
+                Everyone against everyone. The last fighter standing takes the
+                round.
+              </p>
+            </li>
+            <li>
+              <picture class="mode-art">
+                <source
+                  type="image/avif"
+                  srcset="
+                    img/modes/raids-480.avif 480w,
+                    img/modes/raids-800.avif 800w
+                  "
+                  sizes="(min-width: 1000px) 380px, (min-width: 640px) 50vw, 100vw"
+                />
+                <img
+                  src="img/modes/raids-480.webp"
+                  srcset="
+                    img/modes/raids-480.webp 480w,
+                    img/modes/raids-800.webp 800w
+                  "
+                  sizes="(min-width: 1000px) 380px, (min-width: 640px) 50vw, 100vw"
+                  alt="A raid in the game: four players hit Lumiwick with their ultimates as it dives"
+                  width="800"
+                  height="450"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </picture>
+              <h3>Raids</h3>
+              <p class="count">1–4 players</p>
+              <p>
+                Learn a boss's tricks and beat it together, for outfits, auras
+                and victory poses.
+              </p>
+            </li>
+            <li>
+              <picture class="mode-art">
+                <source
+                  type="image/avif"
+                  srcset="
+                    img/modes/spire-480.avif 480w,
+                    img/modes/spire-800.avif 800w
+                  "
+                  sizes="(min-width: 1000px) 380px, (min-width: 640px) 50vw, 100vw"
+                />
+                <img
+                  src="img/modes/spire-480.webp"
+                  srcset="
+                    img/modes/spire-480.webp 480w,
+                    img/modes/spire-800.webp 800w
+                  "
+                  sizes="(min-width: 1000px) 380px, (min-width: 640px) 50vw, 100vw"
+                  alt="A Spire floor in the game: two climbers fire their ultimates at the floor's Echoes"
+                  width="800"
+                  height="450"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </picture>
+              <h3>The Spire</h3>
+              <p class="count">70 floors</p>
+              <p>
+                Seven zones of ten floors, with an elite halfway up and a boss
+                at the top of each.
+              </p>
+            </li>
+            <li>
+              <picture class="mode-art">
+                <source
+                  type="image/avif"
+                  srcset="
+                    img/modes/plaza-480.avif 480w,
+                    img/modes/plaza-800.avif 800w
+                  "
+                  sizes="(min-width: 1000px) 380px, (min-width: 640px) 50vw, 100vw"
+                />
+                <img
+                  src="img/modes/plaza-480.webp"
+                  srcset="
+                    img/modes/plaza-480.webp 480w,
+                    img/modes/plaza-800.webp 800w
+                  "
+                  sizes="(min-width: 1000px) 380px, (min-width: 640px) 50vw, 100vw"
+                  alt="The Plaza in the game: players meeting by the fountain"
+                  width="800"
+                  height="450"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </picture>
+              <h3>The Plaza</h3>
+              <p class="count">Hang out</p>
+              <p>
+                Meet other players between matches, show off your look and send
+                a friend invite.
+              </p>
+            </li>
+          </ul>
+          <p class="note">
+            Create a private room and share its six-character code, or practise
+            against bots. House rules like Turbo, Giants and Orb Rush change
+            things up.
+          </p>
+        </div>
+      </section>
+
+      <section class="band alt" id="raids" aria-labelledby="raids-title">
+        <div class="wrap">
+          <header class="head">
+            <p class="eyebrow">Raid bosses</p>
+            <h2 id="raids-title">Seven bosses, seven puzzles</h2>
+            <p class="sub">
+              Every boss has one trick to learn. Solve it solo or with up to
+              three friends. Start with Cragmuff: one clear opens the other six.
+            </p>
+          </header>
+          <div class="raid-week">
+            <div class="raid-stage">
+              <!-- raids:start -->
+              <article
+                class="raid"
+                id="raid-grumblecrag"
+                role="tabpanel"
+                aria-labelledby="pick-grumblecrag"
+                data-side="right"
+                style="--el: var(--el-earth); --fx: 47%"
+              >
+                <picture class="raid-art">
+                  <source
+                    type="image/avif"
+                    srcset="
+                      img/raids/grumblecrag-768.avif   768w,
+                      img/raids/grumblecrag-1280.avif 1280w
+                    "
+                    sizes="(min-width: 1200px) 1168px, 100vw"
+                  />
+                  <img
+                    src="img/raids/grumblecrag-1280.webp"
+                    srcset="
+                      img/raids/grumblecrag-768.webp   768w,
+                      img/raids/grumblecrag-1280.webp 1280w
+                    "
+                    sizes="(min-width: 1200px) 1168px, 100vw"
+                    alt="Cragmuff, a woolly ram with amber crystal horns, charging through a ruined arena"
+                    width="1280"
+                    height="853"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </picture>
+                <div class="raid-tx">
+                  <p class="raid-when">
+                    <span class="start-tag">Start here</span>Earth · 13 rewards
+                  </p>
+                  <p class="stars" aria-label="Difficulty 1 of 3">
+                    ★<span>★★</span>
+                  </p>
+                  <h3>Cragmuff</h3>
+                  <p class="epithet">The crystal-horned ram</p>
+                  <p class="blurb">
+                    A grumpy, stubborn mountain ram in a coat of mossy stone
+                    wool, with curled horns of glowing amber crystal. Lead its
+                    charges into pillars to knock it dizzy and strike the
+                    crystal core on its chest.
+                  </p>
+                  <div class="beat">
+                    <span>How to beat it</span>
+                    <p class="trick">Bait its charge into a pillar</p>
+                  </div>
+                </div>
+              </article>
+              <article
+                class="raid"
+                id="raid-tidewyrm"
+                role="tabpanel"
+                aria-labelledby="pick-tidewyrm"
+                data-side="left"
+                style="--el: var(--el-water); --fx: 60%"
+                hidden
+              >
+                <picture class="raid-art">
+                  <source
+                    type="image/avif"
+                    srcset="
+                      img/raids/tidewyrm-768.avif   768w,
+                      img/raids/tidewyrm-1280.avif 1280w
+                    "
+                    sizes="(min-width: 1200px) 1168px, 100vw"
+                  />
+                  <img
+                    src="img/raids/tidewyrm-1280.webp"
+                    srcset="
+                      img/raids/tidewyrm-768.webp   768w,
+                      img/raids/tidewyrm-1280.webp 1280w
+                    "
+                    sizes="(min-width: 1200px) 1168px, 100vw"
+                    alt="Tidelotl, a round axolotl with a pearl on its brow, riding a wave over sunken ruins"
+                    width="1280"
+                    height="853"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </picture>
+                <div class="raid-tx">
+                  <p class="raid-when">Water · 11 rewards</p>
+                  <p class="stars" aria-label="Difficulty 2 of 3">
+                    ★★<span>★</span>
+                  </p>
+                  <h3>Tidelotl</h3>
+                  <p class="epithet">The rising tide</p>
+                  <p class="blurb">
+                    A mischievous axolotl who calls itself lord of the tides,
+                    with a pearl on its brow. Lure its dive onto dry land, share
+                    the islands when the tide rises, and pop your friends out of
+                    bubbles.
+                  </p>
+                  <div class="beat">
+                    <span>How to beat it</span>
+                    <p class="trick">Strand it on an island</p>
+                  </div>
+                </div>
+              </article>
+              <article
+                class="raid"
+                id="raid-gloomshade"
+                role="tabpanel"
+                aria-labelledby="pick-gloomshade"
+                data-side="right"
+                style="--el: var(--el-shadow); --fx: 52%"
+                hidden
+              >
+                <picture class="raid-art">
+                  <source
+                    type="image/avif"
+                    srcset="
+                      img/raids/gloomshade-768.avif   768w,
+                      img/raids/gloomshade-1280.avif 1280w
+                    "
+                    sizes="(min-width: 1200px) 1168px, 100vw"
+                  />
+                  <img
+                    src="img/raids/gloomshade-1280.webp"
+                    srcset="
+                      img/raids/gloomshade-768.webp   768w,
+                      img/raids/gloomshade-1280.webp 1280w
+                    "
+                    sizes="(min-width: 1200px) 1168px, 100vw"
+                    alt="Inkpurr, a cat-eared sprite of living ink, prowling a lantern-lit yard"
+                    width="1280"
+                    height="853"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </picture>
+                <div class="raid-tx">
+                  <p class="raid-when">Shadow · 11 rewards</p>
+                  <p class="stars" aria-label="Difficulty 2 of 3">
+                    ★★<span>★</span>
+                  </p>
+                  <h3>Inkpurr</h3>
+                  <p class="epithet">Lights out</p>
+                  <p class="blurb">
+                    A round, cat-eared sprite of living ink with a crescent-moon
+                    tail. Keep the lanterns lit, find the real one among its
+                    copies, and spread out when the curse creeps.
+                  </p>
+                  <div class="beat">
+                    <span>How to beat it</span>
+                    <p class="trick">Find the one that casts a shadow</p>
+                  </div>
+                </div>
+              </article>
+              <article
+                class="raid"
+                id="raid-somnara"
+                role="tabpanel"
+                aria-labelledby="pick-somnara"
+                data-side="left"
+                style="--el: var(--el-psychic); --fx: 62%"
+                hidden
+              >
+                <picture class="raid-art">
+                  <source
+                    type="image/avif"
+                    srcset="
+                      img/raids/somnara-768.avif   768w,
+                      img/raids/somnara-1280.avif 1280w
+                    "
+                    sizes="(min-width: 1200px) 1168px, 100vw"
+                  />
+                  <img
+                    src="img/raids/somnara-1280.webp"
+                    srcset="
+                      img/raids/somnara-768.webp   768w,
+                      img/raids/somnara-1280.webp 1280w
+                    "
+                    sizes="(min-width: 1200px) 1168px, 100vw"
+                    alt="Snoozaku, a sleepy baku in a starry nightcap, on a cloud floor of glowing runes"
+                    width="1280"
+                    height="853"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </picture>
+                <div class="raid-tx">
+                  <p class="raid-when">Psychic · 11 rewards</p>
+                  <p class="stars" aria-label="Difficulty 2 of 3">
+                    ★★<span>★</span>
+                  </p>
+                  <h3>Snoozaku</h3>
+                  <p class="epithet">The dream-eating baku</p>
+                  <p class="blurb">
+                    A chubby, sleepy baku in a starry nightcap that snacks on
+                    dreams. One raider sees its dream; the team must step the
+                    runes in order to wake it.
+                  </p>
+                  <div class="beat">
+                    <span>How to beat it</span>
+                    <p class="trick">Step the runes only the Dreamer sees</p>
+                  </div>
+                </div>
+              </article>
+              <article
+                class="raid"
+                id="raid-prismatail"
+                role="tabpanel"
+                aria-labelledby="pick-prismatail"
+                data-side="right"
+                style="--el: var(--el-light); --fx: 64%"
+                hidden
+              >
+                <picture class="raid-art">
+                  <source
+                    type="image/avif"
+                    srcset="
+                      img/raids/prismatail-768.avif   768w,
+                      img/raids/prismatail-1280.avif 1280w
+                    "
+                    sizes="(min-width: 1200px) 1168px, 100vw"
+                  />
+                  <img
+                    src="img/raids/prismatail-1280.webp"
+                    srcset="
+                      img/raids/prismatail-768.webp   768w,
+                      img/raids/prismatail-1280.webp 1280w
+                    "
+                    sizes="(min-width: 1200px) 1168px, 100vw"
+                    alt="Prismell, a snail with a spiral shell of prism crystal, in a hall of light"
+                    width="1280"
+                    height="853"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </picture>
+                <div class="raid-tx">
+                  <p class="raid-when">Light · 11 rewards</p>
+                  <p class="stars" aria-label="Difficulty 3 of 3">★★★</p>
+                  <h3>Prismell</h3>
+                  <p class="epithet">The prism-shelled snail</p>
+                  <p class="blurb">
+                    A proud, sparkly snail in a spiral shell of prism crystal
+                    that splits the light into rainbows. Its heart glows in the
+                    coil behind a shield: pass the sunbeam raider to raider
+                    until it reaches the heart and shatters the shield.
+                  </p>
+                  <div class="beat">
+                    <span>How to beat it</span>
+                    <p class="trick">Relay the sunbeam to its heart</p>
+                  </div>
+                </div>
+              </article>
+              <article
+                class="raid"
+                id="raid-emberwing"
+                role="tabpanel"
+                aria-labelledby="pick-emberwing"
+                data-side="left"
+                style="--el: var(--el-fire); --fx: 60%"
+                hidden
+              >
+                <picture class="raid-art">
+                  <source
+                    type="image/avif"
+                    srcset="
+                      img/raids/emberwing-768.avif   768w,
+                      img/raids/emberwing-1280.avif 1280w
+                    "
+                    sizes="(min-width: 1200px) 1168px, 100vw"
+                  />
+                  <img
+                    src="img/raids/emberwing-1280.webp"
+                    srcset="
+                      img/raids/emberwing-768.webp   768w,
+                      img/raids/emberwing-1280.webp 1280w
+                    "
+                    sizes="(min-width: 1200px) 1168px, 100vw"
+                    alt="Lumiwick, a smiling sky-lantern spirit floating above three braziers"
+                    width="1280"
+                    height="853"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </picture>
+                <div class="raid-tx">
+                  <p class="raid-when">Fire · 11 rewards</p>
+                  <p class="stars" aria-label="Difficulty 3 of 3">★★★</p>
+                  <h3>Lumiwick</h3>
+                  <p class="epithet">Ground the sky</p>
+                  <p class="blurb">
+                    A smug sky-lantern spirit that refuses to come down. Light
+                    all three braziers together to pull it out of the sky.
+                  </p>
+                  <div class="beat">
+                    <span>How to beat it</span>
+                    <p class="trick">Light three braziers at once</p>
+                  </div>
+                </div>
+              </article>
+              <article
+                class="raid"
+                id="raid-storm-twins"
+                role="tabpanel"
+                aria-labelledby="pick-storm-twins"
+                data-side="right"
+                style="--el: var(--el-electric); --fx: 58%"
+                hidden
+              >
+                <picture class="raid-art">
+                  <source
+                    type="image/avif"
+                    srcset="
+                      img/raids/storm-twins-768.avif   768w,
+                      img/raids/storm-twins-1280.avif 1280w
+                    "
+                    sizes="(min-width: 1200px) 1168px, 100vw"
+                  />
+                  <img
+                    src="img/raids/storm-twins-1280.webp"
+                    srcset="
+                      img/raids/storm-twins-768.webp   768w,
+                      img/raids/storm-twins-1280.webp 1280w
+                    "
+                    sizes="(min-width: 1200px) 1168px, 100vw"
+                    alt="The Storm Twins, two thunder-jellies tied by a crackling ribbon, in a storm"
+                    width="1280"
+                    height="853"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </picture>
+                <div class="raid-tx">
+                  <p class="raid-when">Electric · 11 rewards</p>
+                  <p class="stars" aria-label="Difficulty 3 of 3">★★★</p>
+                  <h3>Storm Twins</h3>
+                  <p class="epithet">Fizz &amp; Crackle</p>
+                  <p class="blurb">
+                    Two floating thunder-jellies tied by a crackling ribbon.
+                    Pair up with opposite charges and bring both down before
+                    either can revive the other.
+                  </p>
+                  <div class="beat">
+                    <span>How to beat it</span>
+                    <p class="trick">Beat both twins together</p>
+                  </div>
+                </div>
+              </article>
+              <!-- raids:end -->
+            </div>
+            <div class="raid-picks" role="tablist" aria-label="Raid bosses">
+              <!-- bosses:start -->
+              <button
+                type="button"
+                class="pick"
+                role="tab"
+                id="pick-grumblecrag"
+                aria-controls="raid-grumblecrag"
+                aria-selected="true"
+                tabindex="0"
+                style="--el: var(--el-earth)"
+              >
+                <img
+                  src="img/bosses/grumblecrag.webp"
+                  alt=""
+                  width="400"
+                  height="600"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <span class="s" aria-hidden="true">★</span
+                ><span class="n">Cragmuff</span>
+              </button>
+              <button
+                type="button"
+                class="pick"
+                role="tab"
+                id="pick-tidewyrm"
+                aria-controls="raid-tidewyrm"
+                aria-selected="false"
+                tabindex="-1"
+                style="--el: var(--el-water)"
+              >
+                <img
+                  src="img/bosses/tidewyrm.webp"
+                  alt=""
+                  width="400"
+                  height="600"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <span class="s" aria-hidden="true">★★</span
+                ><span class="n">Tidelotl</span>
+              </button>
+              <button
+                type="button"
+                class="pick"
+                role="tab"
+                id="pick-gloomshade"
+                aria-controls="raid-gloomshade"
+                aria-selected="false"
+                tabindex="-1"
+                style="--el: var(--el-shadow)"
+              >
+                <img
+                  src="img/bosses/gloomshade.webp"
+                  alt=""
+                  width="400"
+                  height="600"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <span class="s" aria-hidden="true">★★</span
+                ><span class="n">Inkpurr</span>
+              </button>
+              <button
+                type="button"
+                class="pick"
+                role="tab"
+                id="pick-somnara"
+                aria-controls="raid-somnara"
+                aria-selected="false"
+                tabindex="-1"
+                style="--el: var(--el-psychic)"
+              >
+                <img
+                  src="img/bosses/somnara.webp"
+                  alt=""
+                  width="400"
+                  height="600"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <span class="s" aria-hidden="true">★★</span
+                ><span class="n">Snoozaku</span>
+              </button>
+              <button
+                type="button"
+                class="pick"
+                role="tab"
+                id="pick-prismatail"
+                aria-controls="raid-prismatail"
+                aria-selected="false"
+                tabindex="-1"
+                style="--el: var(--el-light)"
+              >
+                <img
+                  src="img/bosses/prismatail.webp"
+                  alt=""
+                  width="400"
+                  height="600"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <span class="s" aria-hidden="true">★★★</span
+                ><span class="n">Prismell</span>
+              </button>
+              <button
+                type="button"
+                class="pick"
+                role="tab"
+                id="pick-emberwing"
+                aria-controls="raid-emberwing"
+                aria-selected="false"
+                tabindex="-1"
+                style="--el: var(--el-fire)"
+              >
+                <img
+                  src="img/bosses/emberwing.webp"
+                  alt=""
+                  width="400"
+                  height="600"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <span class="s" aria-hidden="true">★★★</span
+                ><span class="n">Lumiwick</span>
+              </button>
+              <button
+                type="button"
+                class="pick"
+                role="tab"
+                id="pick-storm-twins"
+                aria-controls="raid-storm-twins"
+                aria-selected="false"
+                tabindex="-1"
+                style="--el: var(--el-electric)"
+              >
+                <img
+                  src="img/bosses/storm-twins.webp"
+                  alt=""
+                  width="400"
+                  height="600"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <span class="s" aria-hidden="true">★★★</span
+                ><span class="n">Storm Twins</span>
+              </button>
+              <!-- bosses:end -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="band" id="style" aria-labelledby="style-title">
+        <div class="wrap">
+          <header class="head">
+            <p class="eyebrow">The Shop</p>
+            <h2 id="style-title">Walk in a legend</h2>
+            <p class="sub">
+              Legendary costumes with their own entrance and victory, Mythicals
+              that awaken as you win, and effects for every fighter. Try
+              anything on before you spend a coin. All cosmetic, never stronger.
+            </p>
+          </header>
+          <div class="shop-show">
+            <div class="spot-wrap">
+              <!-- spotlight:start -->
+              <article
+                class="spot r-legendary"
+                id="spot-cinder-medic"
+                role="tabpanel"
+                aria-labelledby="pick-shop-cinder-medic"
+              >
+                <div class="spot-stage">
+                  <span class="spot-rays" aria-hidden="true"></span>
+                  <picture>
+                    <source
+                      media="(prefers-reduced-motion: reduce)"
+                      srcset="img/shop/cinder-medic-still.webp"
+                    />
+                    <img
+                      src="img/shop/cinder-medic.webp"
+                      alt="Cinder Medic in the game's Shop, trying it on"
+                      width="400"
+                      height="400"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </picture>
+                </div>
+                <div class="spot-tx">
+                  <p class="spot-r">Legendary · Nova Vanguard</p>
+                  <h3>Cinder Medic</h3>
+                  <p class="spot-k">Pyranda skin</p>
+                  <p class="spot-d">
+                    Original hero suit and equipment, a signature effect, and
+                    its own hero landing and victory
+                  </p>
+                  <p class="spot-price">
+                    <svg
+                      class="coin"
+                      viewBox="0 0 24 24"
+                      width="18"
+                      height="18"
+                      aria-hidden="true"
+                    >
+                      <circle cx="12" cy="12" r="10" fill="#ffd65b" />
+                      <circle
+                        cx="12"
+                        cy="12"
+                        r="6.5"
+                        fill="none"
+                        stroke="#b9861a"
+                        stroke-width="2"
+                      />
+                      <path
+                        d="M12 8.5v7"
+                        stroke="#b9861a"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                      /></svg
+                    ><b>5,500</b> coins
+                  </p>
+                  <p class="spot-note">
+                    Comes with its own entrance and victory.
+                  </p>
+                  <a
+                    class="btn btn-play spot-go"
+                    href="https://play.elementarenausa.com/"
+                    >Try it on in the Shop</a
+                  >
+                </div>
+              </article>
+              <article
+                class="spot r-legendary"
+                id="spot-storm-corsair"
+                role="tabpanel"
+                aria-labelledby="pick-shop-storm-corsair"
+                hidden
+              >
+                <div class="spot-stage">
+                  <span class="spot-rays" aria-hidden="true"></span>
+                  <picture>
+                    <source
+                      media="(prefers-reduced-motion: reduce)"
+                      srcset="img/shop/storm-corsair-still.webp"
+                    />
+                    <img
+                      src="img/shop/storm-corsair.webp"
+                      alt="Storm Corsair in the game's Shop, trying it on"
+                      width="400"
+                      height="400"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </picture>
+                </div>
+                <div class="spot-tx">
+                  <p class="spot-r">Legendary · Sky Pirates</p>
+                  <h3>Storm Corsair</h3>
+                  <p class="spot-k">Voltkit skin</p>
+                  <p class="spot-d">
+                    A sky-pirate captain's tricorne and coat, a signature
+                    effect, an anchor-drop landing and a treasure victory
+                  </p>
+                  <p class="spot-price">
+                    <svg
+                      class="coin"
+                      viewBox="0 0 24 24"
+                      width="18"
+                      height="18"
+                      aria-hidden="true"
+                    >
+                      <circle cx="12" cy="12" r="10" fill="#ffd65b" />
+                      <circle
+                        cx="12"
+                        cy="12"
+                        r="6.5"
+                        fill="none"
+                        stroke="#b9861a"
+                        stroke-width="2"
+                      />
+                      <path
+                        d="M12 8.5v7"
+                        stroke="#b9861a"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                      /></svg
+                    ><b>5,500</b> coins
+                  </p>
+                  <p class="spot-note">
+                    Comes with its own entrance and victory.
+                  </p>
+                  <a
+                    class="btn btn-play spot-go"
+                    href="https://play.elementarenausa.com/"
+                    >Try it on in the Shop</a
+                  >
+                </div>
+              </article>
+              <article
+                class="spot r-legendary"
+                id="spot-sun-sovereign"
+                role="tabpanel"
+                aria-labelledby="pick-shop-sun-sovereign"
+                hidden
+              >
+                <div class="spot-stage">
+                  <span class="spot-rays" aria-hidden="true"></span>
+                  <picture>
+                    <source
+                      media="(prefers-reduced-motion: reduce)"
+                      srcset="img/shop/sun-sovereign-still.webp"
+                    />
+                    <img
+                      src="img/shop/sun-sovereign.webp"
+                      alt="Sun Sovereign in the game's Shop, trying it on"
+                      width="400"
+                      height="400"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </picture>
+                </div>
+                <div class="spot-tx">
+                  <p class="spot-r">Legendary · Sun Dynasty</p>
+                  <h3>Sun Sovereign</h3>
+                  <p class="spot-k">Sunbara skin</p>
+                  <p class="spot-d">
+                    A figure of the desert court in gold and lapis with glowing
+                    pieces, a sun-mosaic landing and a winged-sunrise victory
+                  </p>
+                  <p class="spot-price">
+                    <svg
+                      class="coin"
+                      viewBox="0 0 24 24"
+                      width="18"
+                      height="18"
+                      aria-hidden="true"
+                    >
+                      <circle cx="12" cy="12" r="10" fill="#ffd65b" />
+                      <circle
+                        cx="12"
+                        cy="12"
+                        r="6.5"
+                        fill="none"
+                        stroke="#b9861a"
+                        stroke-width="2"
+                      />
+                      <path
+                        d="M12 8.5v7"
+                        stroke="#b9861a"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                      /></svg
+                    ><b>5,500</b> coins
+                  </p>
+                  <p class="spot-note">
+                    Comes with its own entrance and victory.
+                  </p>
+                  <a
+                    class="btn btn-play spot-go"
+                    href="https://play.elementarenausa.com/"
+                    >Try it on in the Shop</a
+                  >
+                </div>
+              </article>
+              <article
+                class="spot r-mythical"
+                id="spot-hellforge"
+                role="tabpanel"
+                aria-labelledby="pick-shop-hellforge"
+                hidden
+              >
+                <div class="spot-stage">
+                  <span class="spot-rays" aria-hidden="true"></span>
+                  <picture>
+                    <source
+                      media="(prefers-reduced-motion: reduce)"
+                      srcset="img/shop/hellforge-still.webp"
+                    />
+                    <img
+                      src="img/shop/hellforge.webp"
+                      alt="Hellforge in the game's Shop, trying it on"
+                      width="400"
+                      height="400"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </picture>
+                </div>
+                <div class="spot-tx">
+                  <p class="spot-r">Mythical · Void Knight</p>
+                  <h3>Hellforge</h3>
+                  <p class="spot-k">Cindrake skin</p>
+                  <p class="spot-d">
+                    Black-iron horns and a crest of black hellfire
+                  </p>
+                  <p class="spot-price">
+                    <svg
+                      class="coin"
+                      viewBox="0 0 24 24"
+                      width="18"
+                      height="18"
+                      aria-hidden="true"
+                    >
+                      <circle cx="12" cy="12" r="10" fill="#ffd65b" />
+                      <circle
+                        cx="12"
+                        cy="12"
+                        r="6.5"
+                        fill="none"
+                        stroke="#b9861a"
+                        stroke-width="2"
+                      />
+                      <path
+                        d="M12 8.5v7"
+                        stroke="#b9861a"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                      /></svg
+                    ><b>8,000</b> coins
+                  </p>
+                  <p class="spot-note">
+                    Unlocks after 30 wins with Cindrake, then awakens as you
+                    keep winning.
+                  </p>
+                  <a
+                    class="btn btn-play spot-go"
+                    href="https://play.elementarenausa.com/"
+                    >Try it on in the Shop</a
+                  >
+                </div>
+              </article>
+              <article
+                class="spot r-mythical"
+                id="spot-abyssal-reaver"
+                role="tabpanel"
+                aria-labelledby="pick-shop-abyssal-reaver"
+                hidden
+              >
+                <div class="spot-stage">
+                  <span class="spot-rays" aria-hidden="true"></span>
+                  <picture>
+                    <source
+                      media="(prefers-reduced-motion: reduce)"
+                      srcset="img/shop/abyssal-reaver-still.webp"
+                    />
+                    <img
+                      src="img/shop/abyssal-reaver.webp"
+                      alt="Abyssal Reaver in the game's Shop, trying it on"
+                      width="400"
+                      height="400"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </picture>
+                </div>
+                <div class="spot-tx">
+                  <p class="spot-r">Mythical · Void Knight</p>
+                  <h3>Abyssal Reaver</h3>
+                  <p class="spot-k">Tidefin skin</p>
+                  <p class="spot-d">
+                    Deep-sea armour with a steel dorsal fin and tide-green runes
+                  </p>
+                  <p class="spot-price">
+                    <svg
+                      class="coin"
+                      viewBox="0 0 24 24"
+                      width="18"
+                      height="18"
+                      aria-hidden="true"
+                    >
+                      <circle cx="12" cy="12" r="10" fill="#ffd65b" />
+                      <circle
+                        cx="12"
+                        cy="12"
+                        r="6.5"
+                        fill="none"
+                        stroke="#b9861a"
+                        stroke-width="2"
+                      />
+                      <path
+                        d="M12 8.5v7"
+                        stroke="#b9861a"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                      /></svg
+                    ><b>8,000</b> coins
+                  </p>
+                  <p class="spot-note">
+                    Unlocks after 30 wins with Tidefin, then awakens as you keep
+                    winning.
+                  </p>
+                  <a
+                    class="btn btn-play spot-go"
+                    href="https://play.elementarenausa.com/"
+                    >Try it on in the Shop</a
+                  >
+                </div>
+              </article>
+              <article
+                class="spot r-mythical"
+                id="spot-sky-curtain"
+                role="tabpanel"
+                aria-labelledby="pick-shop-sky-curtain"
+                hidden
+              >
+                <div class="spot-stage">
+                  <span class="spot-rays" aria-hidden="true"></span>
+                  <picture>
+                    <source
+                      media="(prefers-reduced-motion: reduce)"
+                      srcset="img/shop/sky-curtain-still.webp"
+                    />
+                    <img
+                      src="img/shop/sky-curtain.webp"
+                      alt="Sky-curtain victory in the game's Shop, trying it on"
+                      width="400"
+                      height="400"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </picture>
+                </div>
+                <div class="spot-tx">
+                  <p class="spot-r">Mythical · Borealis</p>
+                  <h3>Sky-curtain victory</h3>
+                  <p class="spot-k">Victory for every fighter</p>
+                  <p class="spot-d">
+                    The whole sky ripples with light behind you
+                  </p>
+                  <p class="spot-price">
+                    <svg
+                      class="coin"
+                      viewBox="0 0 24 24"
+                      width="18"
+                      height="18"
+                      aria-hidden="true"
+                    >
+                      <circle cx="12" cy="12" r="10" fill="#ffd65b" />
+                      <circle
+                        cx="12"
+                        cy="12"
+                        r="6.5"
+                        fill="none"
+                        stroke="#b9861a"
+                        stroke-width="2"
+                      />
+                      <path
+                        d="M12 8.5v7"
+                        stroke="#b9861a"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                      /></svg
+                    ><b>4,500</b> coins
+                  </p>
+                  <p class="spot-note">Every fighter can wear it.</p>
+                  <a
+                    class="btn btn-play spot-go"
+                    href="https://play.elementarenausa.com/"
+                    >Try it on in the Shop</a
+                  >
+                </div>
+              </article>
+              <!-- spotlight:end -->
+            </div>
+            <div class="shop-picks" role="tablist" aria-label="Shop pieces">
+              <!-- picks:start -->
+              <button
+                type="button"
+                class="shop-pick r-legendary"
+                role="tab"
+                id="pick-shop-cinder-medic"
+                aria-controls="spot-cinder-medic"
+                aria-selected="true"
+                tabindex="0"
+              >
+                <img
+                  src="img/shop/cinder-medic-still.webp"
+                  alt=""
+                  width="400"
+                  height="400"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <span>Cinder Medic</span>
+              </button>
+              <button
+                type="button"
+                class="shop-pick r-legendary"
+                role="tab"
+                id="pick-shop-storm-corsair"
+                aria-controls="spot-storm-corsair"
+                aria-selected="false"
+                tabindex="-1"
+              >
+                <img
+                  src="img/shop/storm-corsair-still.webp"
+                  alt=""
+                  width="400"
+                  height="400"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <span>Storm Corsair</span>
+              </button>
+              <button
+                type="button"
+                class="shop-pick r-legendary"
+                role="tab"
+                id="pick-shop-sun-sovereign"
+                aria-controls="spot-sun-sovereign"
+                aria-selected="false"
+                tabindex="-1"
+              >
+                <img
+                  src="img/shop/sun-sovereign-still.webp"
+                  alt=""
+                  width="400"
+                  height="400"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <span>Sun Sovereign</span>
+              </button>
+              <button
+                type="button"
+                class="shop-pick r-mythical"
+                role="tab"
+                id="pick-shop-hellforge"
+                aria-controls="spot-hellforge"
+                aria-selected="false"
+                tabindex="-1"
+              >
+                <img
+                  src="img/shop/hellforge-still.webp"
+                  alt=""
+                  width="400"
+                  height="400"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <span>Hellforge</span>
+              </button>
+              <button
+                type="button"
+                class="shop-pick r-mythical"
+                role="tab"
+                id="pick-shop-abyssal-reaver"
+                aria-controls="spot-abyssal-reaver"
+                aria-selected="false"
+                tabindex="-1"
+              >
+                <img
+                  src="img/shop/abyssal-reaver-still.webp"
+                  alt=""
+                  width="400"
+                  height="400"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <span>Abyssal Reaver</span>
+              </button>
+              <button
+                type="button"
+                class="shop-pick r-mythical"
+                role="tab"
+                id="pick-shop-sky-curtain"
+                aria-controls="spot-sky-curtain"
+                aria-selected="false"
+                tabindex="-1"
+              >
+                <img
+                  src="img/shop/sky-curtain-still.webp"
+                  alt=""
+                  width="400"
+                  height="400"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <span>Sky-curtain victory</span>
+              </button>
+              <!-- picks:end -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="band app" id="mobile" aria-labelledby="mobile-title">
+        <div class="wrap split">
+          <header class="head">
+            <p class="eyebrow">Mobile</p>
+            <h2 id="mobile-title">Coming soon to iPhone and Android</h2>
+            <p class="sub">
+              Element Arena is built for phones held sideways, with touch
+              controls made for thumbs. The apps are on their way. Until then,
+              play in your phone's browser and add it to your home screen.
+            </p>
+            <div class="cta">
+              <a class="btn btn-play" href="https://play.elementarenausa.com/"
+                >Play in your browser</a
+              >
+            </div>
+          </header>
+          <div class="app-side">
+            <figure class="phone">
+              <picture>
+                <img
+                  src="img/shots/2-duel-720.webp"
+                  srcset="
+                    img/shots/2-duel-720.webp   720w,
+                    img/shots/2-duel-1280.webp 1280w
+                  "
+                  sizes="(min-width: 900px) 560px, 92vw"
+                  alt="A duel on a phone held sideways, with the touch controls under the thumbs"
+                  width="1280"
+                  height="589"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </picture>
+            </figure>
+            <ul class="stores" aria-label="App stores">
+              <!-- Swap these for the official badges once the apps are live (Apple and Google only allow their badges on a live listing). -->
+              <li class="store">
+                <span class="store-k">Coming soon</span
+                ><span class="store-n">App Store</span
+                ><span class="store-d">iPhone and iPad</span>
+              </li>
+              <li class="store">
+                <span class="store-k">Coming soon</span
+                ><span class="store-n">Google Play</span
+                ><span class="store-d">Android phones and tablets</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <dialog class="champ" id="champ" aria-labelledby="champ-name">
+      <div class="champ-in">
+        <button type="button" class="champ-x" data-close aria-label="Close">
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+            <path
+              d="M6 6l12 12M18 6L6 18"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+            />
+          </svg>
+        </button>
+        <div class="champ-stage">
+          <div class="champ-ring" aria-hidden="true"></div>
+          <img
+            class="champ-art"
+            id="champ-art"
+            alt=""
+            width="200"
+            height="202"
+          />
+          <div class="champ-nav">
+            <button
+              type="button"
+              class="champ-step"
+              data-step="-1"
+              aria-label="Previous champion"
+            >
+              &lsaquo;
+            </button>
+            <button
+              type="button"
+              class="champ-step"
+              data-step="1"
+              aria-label="Next champion"
+            >
+              &rsaquo;
+            </button>
+          </div>
+        </div>
+        <div class="champ-info">
+          <p class="champ-el" id="champ-el"></p>
+          <h2 id="champ-name"></h2>
+          <p class="champ-role" id="champ-role"></p>
+          <p class="champ-desc" id="champ-desc"></p>
+          <dl class="stats" id="champ-stats"></dl>
+          <p class="champ-passive" id="champ-passive" hidden></p>
+          <h3 class="champ-h">Skills</h3>
+          <div
+            class="moves"
+            role="tablist"
+            aria-label="Skills"
+            id="champ-tabs"
+          ></div>
+          <div class="move" role="tabpanel" id="champ-move" tabindex="0"></div>
+          <h3 class="champ-h" id="champ-skins-h">Featured skins</h3>
+          <ul class="skins" id="champ-skins"></ul>
+          <a
+            class="btn btn-play champ-play"
+            href="https://play.elementarenausa.com/"
+            >Play now</a
+          >
+        </div>
+      </div>
+    </dialog>
+
+    <footer class="foot">
+      <div class="wrap foot-in">
+        <p class="brand foot-brand">
+          <img
+            src="favicon-32.png"
+            width="32"
+            height="32"
+            alt=""
+            loading="lazy"
+          /><span>Element Arena</span>
+        </p>
+        <nav class="foot-nav" aria-label="Footer">
+          <a href="https://play.elementarenausa.com/">Play</a>
+          <a href="/account/">Account</a>
+          <a href="/support/">Support</a>
+          <a href="/privacy/">Privacy</a>
+          <a href="mailto:privacy@elementarenausa.com"
+            >privacy@elementarenausa.com</a
+          >
+        </nav>
+        <p class="copy">
+          © 2026 Element Arena. All creatures, art and names are original to the
+          game.
+        </p>
+      </div>
+    </footer>
+    <script src="to-top.js" defer></script>
+  </body>
+</html>

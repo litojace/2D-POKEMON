@@ -29,7 +29,6 @@ const setup = async () => {
     highestPeril: 3,
     clears: 1,
     cosmetics: [],
-    weekly: [],
   });
   server = createArenaServer({ accounts: accounts.provider, autoTick: false });
   await new Promise<void>((r) => server!.http.listen(0, "127.0.0.1", r));

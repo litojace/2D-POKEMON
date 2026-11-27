@@ -1,0 +1,416 @@
+/* Poster's shared kit: panels, tabs, buttons, tiles, rows, dialogs, toast.
+   Most of the look comes from the tokens (tokens.css); these rules add what
+   a token can't say: the masthead in the element colour, the skewed blocks,
+   the hard offset shadows. */
+
+/* ── panels: an ink board with a masthead in the element colour ── */
+:root[data-ui="poster"] :is(.ui-panel, .ui-modal, .ui-sheet) {
+  background: var(--ink);
+  /* The 1 px frame stays, unseen (its colour token is transparent): what
+     is placed against a panel's edge keeps its place to the pixel. */
+  border-color: transparent;
+  border-radius: 0;
+  box-shadow: 8px 8px 0 rgba(0, 0, 0, 0.45);
+}
+:root[data-ui="poster"] .ui-panel-head {
+  background: var(--el);
+  color: var(--ink);
+  border-bottom: 0;
+}
+:root[data-ui="poster"] .ui-panel-head :is(h1, h2, h3, .ui-title, .ui-h) {
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+/* A player's name as a title (the Profile): one line, cut with "…" if it
+   must be, with room above the capitals for Vietnamese marks. */
+:root[data-ui="poster"] .ui-panel-head .ui-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.35;
+}
+:root[data-ui="poster"] .ui-panel-head :is(.ui-kicker, small, p) {
+  color: var(--on-el-dim);
+}
+/* The masthead's other quiet words, on the element colour too: a raid
+   boss's line beside All bosses and the Fighters' "Sort" label were the
+   old look's pale grey on yellow, about 1.5:1 (audit A22). */
+:root[data-ui="poster"] .ui-panel-head > span.ui-note,
+:root[data-ui="poster"] .ui-panel-head .roster-sort > span {
+  color: var(--on-el-dim);
+}
+/* The Fighters' order: a square ink box like the masthead's switches, not
+   the old look's rounded grey field (audit C36). */
+:root[data-ui="poster"] .roster-sort select {
+  border: 0;
+  border-radius: 0;
+  background-color: var(--ink);
+  color: #fff;
+  font-weight: 700;
+}
+
+/* ── tabs: Anton capitals; the chosen one is a skewed ink block ── */
+:root[data-ui="poster"] .ui-tabs {
+  border-bottom: 2px solid var(--ink-3);
+}
+:root[data-ui="poster"] .ui-tabs > button {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.06em;
+}
+:root[data-ui="poster"] .ui-panel-head .ui-tabs {
+  border-bottom: 0;
+  gap: 2px;
+}
+/* A masthead tab is the block under its row's top 8 px: the chosen one's
+   ink block, which runs into the page below, with its label in the middle.
+   The strip above it (::before) still catches a finger, so the tab keeps a
+   44 px target. (A margin moved the whole 44 px button down instead: the
+   row cut its last 8 px and its label sat 6 px low.) */
+:root[data-ui="poster"] .ui-panel-head .ui-tabs > button {
+  position: relative;
+  align-self: flex-end;
+  height: calc(100% - 8px);
+  min-height: 0;
+  margin: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  border-bottom: 0;
+  color: var(--on-el-dim);
+}
+:root[data-ui="poster"] .ui-panel-head .ui-tabs > button::before {
+  content: "";
+  position: absolute;
+  inset: -8px 0 100%;
+}
+:root[data-ui="poster"] .ui-panel-head .ui-tabs > button[aria-selected="true"] {
+  color: var(--el);
+  background: var(--ink);
+  transform: skewX(-10deg);
+}
+:root[data-ui="poster"]
+  .ui-panel-head
+  .ui-tabs
+  > button[aria-selected="true"]
+  > * {
+  transform: skewX(10deg);
+}
+:root[data-ui="poster"]
+  .ui-panel-head
+  .ui-tabs
+  > button[aria-selected="true"]::after {
+  display: none;
+}
+
+/* ── what sits on the masthead: ink blocks ── */
+:root[data-ui="poster"] .ui-panel-head .ui-icon-btn {
+  background: var(--ink);
+  color: #fff;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+:root[data-ui="poster"] .ui-panel-head .ui-icon-btn svg {
+  color: #fff;
+}
+/* Leaving a room is red wherever it is (owner, 6 Nov; components.css):
+   on the masthead's ink block, a red icon and a red outline drawn inside
+   the block (Poster's red, 5.3:1 on ink). It was white like Close. */
+:root[data-ui="poster"] .ui-panel-head .ui-icon-btn.is-danger {
+  box-shadow: inset 0 0 0 2px var(--hot);
+}
+:root[data-ui="poster"] .ui-panel-head .ui-icon-btn.is-danger svg {
+  color: var(--hot);
+}
+:root[data-ui="poster"] .ui-panel-head .ui-seg {
+  background: var(--ink);
+  border: 0;
+  padding: 3px;
+}
+:root[data-ui="poster"] .ui-panel-head .ui-seg > button {
+  color: #fff;
+}
+:root[data-ui="poster"] .ui-panel-head .ui-chip {
+  background: var(--ink);
+  color: #fff;
+  border: 0;
+}
+:root[data-ui="poster"] .ui-panel-head .ui-chip svg {
+  color: #fff;
+}
+:root[data-ui="poster"] .ui-panel-head .ui-chip[aria-pressed="true"] {
+  background: #fff;
+  color: var(--ink);
+}
+:root[data-ui="poster"] .ui-panel-head .ui-chip[aria-pressed="true"] svg {
+  color: var(--ink);
+}
+
+/* ── buttons ── */
+:root[data-ui="poster"] .ui-btn {
+  border: 0;
+  border-radius: 0;
+  background: var(--ink-3);
+  color: #fff;
+  box-shadow: none;
+  font-family: var(--font-display);
+  font-weight: 400;
+  --btn-tracking: 0.07em;
+  letter-spacing: var(--btn-tracking);
+}
+/* Letter spacing follows every letter, the last one too: the label's ink
+   sat half a space left of the button's middle (1.5 px on a desktop's
+   "PIN" with its star). The label gives that last space back. */
+:root[data-ui="poster"] .ui-btn > span {
+  margin-right: calc(-1 * var(--btn-tracking));
+}
+/* The primary button: a slanted block in the element colour with a hot-red
+   offset shadow. The slant is drawn behind the button (::before); the
+   button's own box stays square, so it measures the same as the buttons
+   beside it and its label isn't slanted. */
+:root[data-ui="poster"] .ui-btn.is-primary {
+  position: relative;
+  isolation: isolate;
+  background: none;
+  color: var(--ink);
+  box-shadow: none;
+}
+:root[data-ui="poster"] .ui-btn.is-primary::before {
+  content: "";
+  position: absolute;
+  /* Inside the button's box, slant and shadow included: nothing of it
+     counts as overflow (a button "wider than its label's room"). */
+  inset: 0 8px 4px 4px;
+  z-index: -1;
+  background: var(--el);
+  box-shadow: 4px 4px 0 var(--hot);
+  transform: skewX(-8deg);
+}
+/* A primary that can't be pressed now ("Playing", a price you can't pay
+   yet) is a grey block with readable words, not the whole button at half
+   strength: at 50% its ink sat on a muddied --el at about 2:1. */
+:root[data-ui="poster"] .ui-btn.is-primary:disabled {
+  opacity: 1;
+  color: var(--ui-dim);
+}
+:root[data-ui="poster"] .ui-btn.is-primary:disabled::before {
+  background: var(--ink-3);
+  box-shadow: none;
+}
+/* A toggle that is on (a Mythical's stage, the stage's Entrance) is an
+   element block with ink words, as a segment that is on. */
+:root[data-ui="poster"] .ui-btn[aria-pressed="true"]:not(.is-primary) {
+  background: var(--el);
+  color: var(--ink);
+}
+:root[data-ui="poster"] .ui-tag.is-sale {
+  background: var(--hot-fill);
+}
+:root[data-ui="poster"] .ui-btn.is-ok {
+  background: #3ee07a;
+  color: var(--ink);
+  box-shadow: 4px 4px 0 #000;
+}
+:root[data-ui="poster"] .ui-btn.is-ghost {
+  background: transparent;
+  color: var(--ui-dim);
+  box-shadow: inset 0 0 0 2px var(--ink-3);
+}
+:root[data-ui="poster"] .ui-btn.is-danger {
+  background: transparent;
+  color: #ff6b80;
+  box-shadow: inset 0 0 0 2px rgba(255, 46, 77, 0.6);
+}
+:root[data-ui="poster"] .ui-icon-btn {
+  border: 0;
+  border-radius: 0;
+  background: var(--ink-2);
+  box-shadow: none;
+}
+:root[data-ui="poster"] .ui-seg {
+  border: 0;
+  border-radius: 0;
+  background: var(--ink-2);
+}
+:root[data-ui="poster"] .ui-seg > button {
+  border-radius: 0;
+  font-weight: 700;
+}
+:root[data-ui="poster"] .ui-seg > button[aria-pressed="true"] {
+  background: var(--el);
+  color: var(--ink);
+}
+:root[data-ui="poster"] .ui-chip {
+  border: 0;
+  border-radius: 0;
+  background: var(--ink-2);
+  color: var(--ui-dim);
+  font-family: var(--font-body);
+  font-weight: 700;
+}
+:root[data-ui="poster"] .ui-chip[aria-pressed="true"] {
+  background: var(--el);
+  color: var(--ink);
+}
+:root[data-ui="poster"] .ui-chip[aria-pressed="true"] svg {
+  color: var(--ink);
+}
+
+/* ── tiles, rows, tags, bars ── */
+:root[data-ui="poster"] .ui-tile {
+  border: 0;
+  border-radius: 0;
+  background: var(--ink-2);
+  box-shadow: none;
+}
+:root[data-ui="poster"]
+  .ui-tile:is([aria-pressed="true"], .is-selected, [aria-current="true"]) {
+  box-shadow:
+    inset 0 0 0 3px var(--el),
+    5px 5px 0 var(--el);
+}
+:root[data-ui="poster"] .ui-tile-art {
+  border-radius: 0;
+}
+:root[data-ui="poster"] :is(.ui-tile-name, .ui-tile-foot b) {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+:root[data-ui="poster"] .ui-row {
+  border: 0;
+  border-left: 4px solid var(--ink-3);
+  border-radius: 0;
+  background: var(--ink-1);
+}
+:root[data-ui="poster"] :is(.ui-tag, .ui-badge) {
+  border-radius: 0;
+  font-family: var(--font-body);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+:root[data-ui="poster"] :is(.ui-bar, progress) {
+  border-radius: 0;
+}
+:root[data-ui="poster"] .ui-panel-foot {
+  background: var(--ink-1);
+  border-top: 0;
+}
+
+/* ── headings and kickers anywhere in a panel ── */
+:root[data-ui="poster"] :is(.ui-panel :is(h2, h3, h4), .ui-h, .ui-title) {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.03em;
+}
+:root[data-ui="poster"] .ui-kicker {
+  font-family: var(--font-body);
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: var(--el);
+}
+
+/* ── toast ── */
+:root[data-ui="poster"] #toast {
+  background: var(--ink);
+  color: #fff;
+  border: 0;
+  border-left: 6px solid var(--el);
+  border-radius: 0;
+  box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.35);
+  font-family: var(--font-body);
+  font-weight: 700;
+}
+
+/* Close always sits over a scrolled tab row. */
+:root[data-ui="poster"] .ui-icon-btn.ui-close {
+  z-index: 3;
+}
+
+/* A switch on the masthead (Shop | Wardrobe, Everyone | Friends): an ink
+   block with slanted ends; the chosen half is a slanted block in the element
+   colour, its label upright in the middle of its box. Both slants are cut
+   with clip-path, inside their boxes, with no transform: a skewed switch
+   with counter-skewed buttons left the chosen label slanted, about 6 px
+   left of its box's middle on phones, and a block skewed inside them was
+   drawn about 1 px off its box (ranks-friends.spec, "Road (on)",
+   "Friends (on)"). 6 px over the 36 px switch, 5 px over its 30-34 px
+   buttons: about 10°. */
+/* The switch's ink is drawn behind it and cut there, not the switch
+   itself: a clip-path on the switch also cut its buttons' 44 px hit areas
+   (ui/phone-fit.css, ::after), leaving taps of 32-36 px (phone-fit.spec). */
+:root[data-ui="poster"] .ui-panel-head .ui-seg {
+  position: relative;
+  isolation: isolate;
+  background: none;
+}
+:root[data-ui="poster"] .ui-panel-head .ui-seg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--ink);
+  clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
+}
+:root[data-ui="poster"] .ui-panel-head .ui-seg > button[aria-pressed="true"] {
+  position: relative;
+  isolation: isolate;
+  background: none;
+}
+:root[data-ui="poster"]
+  .ui-panel-head
+  .ui-seg
+  > button[aria-pressed="true"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--el);
+  clip-path: polygon(5px 0, 100% 0, calc(100% - 5px) 100%, 0 100%);
+}
+
+/* The title keeps its width (up to under half the masthead) and the tabs
+   beside it scroll: Anton sets a name wider than the look underneath does,
+   and a name cut to "NGUYỄN HỒNG …" is worse than a tab to swipe to. */
+:root[data-ui="poster"] .ui-panel-head > .ui-heading {
+  flex: 0 0 auto;
+  max-width: 46%;
+}
+
+/* ── numbers: figures that line up ──
+   Anton has no tabular figures: its 1 is a third narrower than its other
+   digits, with or without tabular-nums, so a column of Anton numbers
+   doesn't line up and a count that changes in place jumps. Numbers in
+   columns or that change (coins, prices, ratings, W–L, places, timers) take
+   Archivo's tabular figures, heavy; Anton stays for words. */
+:root[data-ui="poster"] :is(.ui-num, .ui-price) {
+  font-family: var(--font-body);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+/* A price on a button ("Buy · 1,200") is part of its label, not a column
+   or a counter: it stays in Anton, as narrow as the label, so a dialog's
+   buttons keep one width (fitting-room.spec, the purchase confirmation:
+   Archivo's figures had made "Buy" 1.8 px wider than "Cancel"). */
+:root[data-ui="poster"] .ui-btn .ui-price {
+  font-family: var(--font-display);
+  font-weight: 400;
+}
+/* A skin set's card is narrow: a sale's struck-out price goes on its own
+   small line above the price you pay, which fits whole beside its coin
+   (text-collisions.spec: "79,200" ran out of the card at 667 and 844). */
+:root[data-ui="poster"] .fit-skin-sets .fit-bundle-price .ui-price {
+  flex-wrap: wrap;
+  row-gap: 0;
+}
+:root[data-ui="poster"] .fit-skin-sets .fit-bundle-price .ui-price s {
+  order: -1;
+  flex-basis: 100%;
+  font-size: 0.75em;
+  line-height: 1.1;
+}

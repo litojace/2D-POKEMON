@@ -1,6 +1,16 @@
-import { expect, test } from "@playwright/test";
-import { openHub } from "./helpers";
+import { expect, test, type Page } from "@playwright/test";
+import {
+  openHub,
+  openPlayPanel,
+  pushUntilBattle,
+  snap,
+  startPractice,
+} from "./helpers";
 import { exposeAccount, shopServer } from "./shop-server";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // The fitting room (UI remodel step 2) refreshes in place: a fresh copy of
 // your coins and items must not restart the live fighter, reload pictures,
@@ -99,14 +109,30 @@ for (const size of [
       await page.click('.fit-room [data-ui-item="tidefin-abyss"]');
       await expect(stage).toHaveClass(/is-ready/);
       await expect(stage).toHaveAttribute("data-preview-item", "tidefin-abyss");
-      // Filters: a combination with no match offers a way out.
-      await page.click('[data-ui-rarity="mythical"]');
-      await page.click('[data-ui-own="owned"]');
-      await page.click("[data-fit-reset]");
-      await expect(page.locator('[data-ui-rarity="all"]')).toHaveAttribute(
-        "aria-pressed",
-        "true",
-      );
+      // Filters: a combination with no match offers a way out. A phone
+      // held sideways has one filter row (ownership and the order): its
+      // skins stand sorted by rarity, so the rarity chips are left out.
+      if (size.height > 500) {
+        await page.click('[data-ui-rarity="mythical"]');
+        await page.click('[data-ui-own="owned"]');
+        await page.click("[data-fit-reset]");
+        await expect(page.locator('[data-ui-rarity="all"]')).toHaveAttribute(
+          "aria-pressed",
+          "true",
+        );
+      } else {
+        await expect(page.locator("[data-ui-rarity]")).toHaveCount(0);
+        await page.click('[data-ui-own="owned"]');
+        await expect(
+          page.locator('.fit-grid [data-ui-item="tidefin-bubblegum"]'),
+        ).toBeVisible();
+        await page.click('[data-fit-sort="price"]');
+        await expect(page.locator('[data-fit-sort="price"]')).toHaveAttribute(
+          "aria-pressed",
+          "true",
+        );
+        await page.click('[data-ui-own="all"]');
+      }
       await expect(page.locator('[data-ui-own="all"]')).toHaveAttribute(
         "aria-pressed",
         "true",
@@ -120,7 +146,10 @@ for (const size of [
       ).toBeGreaterThan(0);
       // Closing releases every effect it started.
       await page.locator(".fit-room .ui-close").click();
-      await expect(page.locator(".fit-room")).toHaveCount(0);
+      // (A closed Shop stays in the page, hidden, for its next open: ui/hub-panel.ts park.)
+      await expect(
+        page.locator(".fit-room:not([data-ui-leaving])"),
+      ).toHaveCount(0);
       await expect
         .poll(() =>
           page.evaluate(
@@ -137,7 +166,8 @@ for (const size of [
     }
   });
 }
-test("downloaded updates wait until the Shop closes", async ({ page }) => {
+/** The update worker, faked: onNeedRefresh on demand, counted applies and reloads. */
+async function fakeUpdates(page: Page) {
   await page.route(/\/stubs\.ts(?:\?|$)/, async (route) => {
     const response = await route.fetch();
     await route.fulfill({
@@ -158,22 +188,212 @@ test("downloaded updates wait until the Shop closes", async ({ page }) => {
       ),
     });
   });
+}
+/** Moves the page's clock past the Later snooze and lets the prompt re-check. */
+const pastSnooze = (page: Page) =>
+  page.evaluate(() => {
+    const now = Date.now();
+    Date.now = () => now + 11 * 60 * 1000;
+    window.dispatchEvent(new Event("focus"));
+  });
+const counts = (page: Page) =>
+  page.evaluate(() => [
+    (window as any).__pwaApplies || 0,
+    (window as any).__pwaReloads || 0,
+  ]);
+test("downloaded updates wait until the Shop closes, then ask first", async ({
+  page,
+}, info) => {
+  await fakeUpdates(page);
   const errors = await openHub(page);
   await page.click("#account-coins");
   await expect(page.locator(".fit-room")).toBeVisible();
   await page.evaluate(() => (window as any).__pwaOptions.onNeedRefresh());
-  expect(
-    await page.evaluate(() => [
-      (window as any).__pwaApplies || 0,
-      (window as any).__pwaReloads || 0,
-    ]),
-  ).toEqual([0, 0]);
+  expect(await counts(page)).toEqual([0, 0]);
   await expect(page.locator("#pwa-banner")).toContainText(
     "after closing menus",
   );
+  await expect(page.locator("#pwa-takeover")).toBeHidden();
+  await expect(page.locator("#pwa-update-now")).toBeHidden();
   await page.locator(".fit-room .ui-close").click();
-  await expect
-    .poll(() => page.evaluate(() => (window as any).__pwaReloads || 0))
-    .toBe(1);
+  // Back in the hub: the first ask fills the screen; nothing applies yet.
+  const takeover = page.locator("#pwa-takeover");
+  await expect(takeover).toBeVisible();
+  await expect(takeover).toContainText("New version");
+  await expect(page.locator("#pwa-takeover-now")).toBeFocused();
+  await expect(page.locator("#pwa-banner")).toBeHidden();
+  await snap(page, info, "pwa-update-takeover");
+  await page.waitForTimeout(500);
+  expect(await counts(page)).toEqual([0, 0]);
+  // Later: gone; asked again after the snooze, in the banner this time.
+  await page.locator("#pwa-takeover-later").click();
+  await expect(takeover).toBeHidden();
+  await expect(page.locator("#pwa-banner")).toBeHidden();
+  await pastSnooze(page);
+  await expect(page.locator("#pwa-update-now")).toBeVisible();
+  await expect(takeover).toBeHidden();
+  await expect(page.locator("#pwa-banner")).toContainText("New version ready");
+  await snap(page, info, "pwa-update-prompt");
+  await page.locator("#pwa-update-now").click();
+  await expect.poll(() => counts(page)).toEqual([1, 1]);
   expect(errors).toEqual([]);
 });
+test("Update now on the full-screen ask applies at once, and Escape means Later", async ({
+  page,
+}) => {
+  await fakeUpdates(page);
+  const errors = await openHub(page);
+  await page.evaluate(() => (window as any).__pwaOptions.onNeedRefresh());
+  await expect(page.locator("#pwa-takeover")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#pwa-takeover")).toBeHidden();
+  expect(await counts(page)).toEqual([0, 0]);
+  // A fresh page (the next session) asks full screen again.
+  await page.reload();
+  await page.evaluate(() => (window as any).__pwaOptions.onNeedRefresh());
+  await page.locator("#pwa-takeover-now").click();
+  await expect.poll(() => counts(page)).toEqual([1, 1]);
+  expect(errors).toEqual([]);
+});
+for (const [width, height] of [
+  [667, 375],
+  [844, 390],
+  [932, 430],
+])
+  test(`the update prompts fit a ${width}×${height} landscape phone`, async ({
+    browser,
+  }, info) => {
+    const ctx = await browser.newContext({
+      viewport: { width, height },
+      deviceScaleFactor: 2,
+      isMobile: true,
+      hasTouch: true,
+    });
+    try {
+      const page = await ctx.newPage();
+      await fakeUpdates(page);
+      const errors = await openHub(page);
+      await page.evaluate(() => (window as any).__pwaOptions.onNeedRefresh());
+      const inside = async (selector: string) => {
+        const box = (await page.locator(selector).boundingBox())!;
+        expect(box.x, selector).toBeGreaterThanOrEqual(0);
+        expect(box.y, selector).toBeGreaterThanOrEqual(0);
+        expect(box.x + box.width, selector).toBeLessThanOrEqual(width);
+        expect(box.y + box.height, selector).toBeLessThanOrEqual(height);
+        return box;
+      };
+      // The full-screen ask: everything on screen, touch-sized buttons.
+      await expect(page.locator("#pwa-takeover-now")).toBeVisible();
+      await snap(page, info, `pwa-update-takeover-${width}x${height}`);
+      for (const id of [
+        "#pwa-takeover h2",
+        "#pwa-takeover p",
+        "#pwa-takeover-now",
+        "#pwa-takeover-later",
+      ])
+        await inside(id);
+      for (const id of ["#pwa-takeover-now", "#pwa-takeover-later"])
+        expect(
+          (await page.locator(id).boundingBox())!.height,
+        ).toBeGreaterThanOrEqual(44);
+      // Both answers are the game's buttons, the same shape (Later was once
+      // square beside a round Now). Poster's are square blocks; the old
+      // look's were pills.
+      const radius = (id: string) =>
+        page
+          .locator(id)
+          .evaluate((e) => parseFloat(getComputedStyle(e).borderTopLeftRadius));
+      expect(await radius("#pwa-takeover-later")).toBe(
+        await radius("#pwa-takeover-now"),
+      );
+      const size = (id: string) =>
+        page.locator(id).evaluate((e) => getComputedStyle(e).fontSize);
+      expect(await size("#pwa-takeover-later")).toBe(
+        await size("#pwa-takeover-now"),
+      );
+      await page.locator("#pwa-takeover-later").tap();
+      await expect(page.locator("#pwa-takeover")).toBeHidden();
+      // The banner, after the snooze: beside PLAY, not over it.
+      await pastSnooze(page);
+      const now = page.locator("#pwa-update-now"),
+        later = page.locator("#pwa-update-later");
+      await expect(now).toBeVisible();
+      await snap(page, info, `pwa-update-prompt-${width}x${height}`);
+      const banner = await inside("#pwa-banner");
+      for (const button of [now, later])
+        expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+      const play = (await page.locator("#lobby-play").boundingBox())!;
+      expect(
+        banner.x + banner.width <= play.x || banner.y + banner.height <= play.y,
+        JSON.stringify({ banner, play }),
+      ).toBe(true);
+      await later.tap();
+      await expect(page.locator("#pwa-banner")).toBeHidden();
+      expect(errors).toEqual([]);
+    } finally {
+      await ctx.close();
+    }
+  });
+for (const [width, height] of [
+  [568, 320],
+  [844, 390],
+])
+  test(`in a battle, the update note sits at the bottom, over no control (${width}×${height})`, async ({
+    browser,
+  }, info) => {
+    test.setTimeout(180_000);
+    const ctx = await browser.newContext({
+      viewport: { width, height },
+      deviceScaleFactor: 2,
+      isMobile: true,
+      hasTouch: true,
+    });
+    try {
+      const page = await ctx.newPage();
+      await fakeUpdates(page);
+      const errors = await openHub(page);
+      await page.evaluate(() => (window as any).__room("practice"));
+      await openPlayPanel(page);
+      await startPractice(page);
+      await pushUntilBattle(page);
+      await page.evaluate(() => (window as any).__pwaOptions.onNeedRefresh());
+      const note = page.locator("#pwa-banner");
+      await expect(note).toContainText("Update after practice");
+      await expect(page.locator("#pwa-takeover")).toBeHidden();
+      await snap(page, info, `pwa-battle-note-${width}x${height}`);
+      const rects = await page.evaluate(() => {
+        const box = (e: Element) => {
+          const r = e.getBoundingClientRect();
+          return { x: r.left, y: r.top, r: r.right, b: r.bottom };
+        };
+        return {
+          note: box(document.getElementById("pwa-banner")!),
+          others: [
+            ...document.querySelectorAll(
+              // Every control and readout a battle shows, the chat
+              // button and the battle menu included.
+              ".touch-buttons button, .joystick, #hud, #chat-button, #battle-menu, #mobile-settings, .match-badge, #spectate",
+            ),
+          ]
+            .filter((e) => e.getBoundingClientRect().width > 0)
+            .map((e) => ({ name: e.className, ...box(e) })),
+        };
+      });
+      // In the bottom part of the screen, and on it.
+      expect(rects.note.y).toBeGreaterThan(height * 0.75);
+      expect(rects.note.x).toBeGreaterThanOrEqual(0);
+      expect(rects.note.r).toBeLessThanOrEqual(width);
+      expect(rects.note.b).toBeLessThanOrEqual(height);
+      const over = rects.others.filter(
+        (o) =>
+          rects.note.x < o.r &&
+          o.x < rects.note.r &&
+          rects.note.y < o.b &&
+          o.y < rects.note.b,
+      );
+      expect(over.map((o) => o.name)).toEqual([]);
+      expect(errors).toEqual([]);
+    } finally {
+      await ctx.close();
+    }
+  });

@@ -4,6 +4,7 @@ import {
   cueWarning,
   raidCue,
   raidContributions,
+  raidGoals,
   raidRewardProgress,
 } from "../../apps/client/src/raid-presentation";
 import type { RaidWarning } from "../../packages/shared/src/raid";
@@ -117,11 +118,32 @@ it("uses saved reward counts and handles unavailable progress without inventing 
     bestSeconds: 250,
     titles: [],
     cosmetics: [],
-    weekly: [],
   };
   expect(raidRewardProgress(p)).toContain("4/5 clears");
   expect(raidRewardProgress({ ...p, clears: 5 })).toContain("Cragstone skin");
   expect(raidRewardProgress({ ...p, clears: 5 })).toContain("5/10 clears");
   // Three clears already earned Mountain Conqueror; next is a no-downs clear.
   expect(raidRewardProgress({ ...p, clears: 10 })).toContain("Mountain aura");
+});
+
+it("never prints NaN for a boss record that lacks a count (audit D15)", () => {
+  // An older save: the boss's record has no clears or peril, and no total.
+  const p = {
+    clears: undefined,
+    highestPeril: undefined,
+    bestSeconds: 0,
+    titles: [],
+    cosmetics: [],
+    bosses: { tidewyrm: {} },
+  } as unknown as Parameters<typeof raidGoals>[0];
+  for (const boss of ["grumblecrag", "tidewyrm", "gloomshade"] as const)
+    for (const g of raidGoals(p, boss)) {
+      expect(g.text, `${boss} ${g.id}`).not.toMatch(/NaN|undefined/);
+      expect(Number.isFinite(g.value), `${boss} ${g.id}`).toBe(true);
+    }
+  expect(
+    raidGoals(p, "tidewyrm")
+      .map((g) => g.text)
+      .join(" "),
+  ).toMatch(/0\/\d+ clears/);
 });

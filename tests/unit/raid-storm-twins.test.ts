@@ -34,6 +34,7 @@ import {
 import { SKINS, tonePixels } from "../../apps/client/src/animation/cosmetics";
 import {
   drawCollectionAura,
+  drawCollectionEntrance,
   playCollectionEntrance,
   drawCollectionVictory,
 } from "../../apps/client/src/skins/collection-fx";
@@ -46,7 +47,7 @@ const setup = (
   const a = createRaidArena("TWINS", "storm-twins") as StormTwinsArena;
   for (let i = 0; i < size; i++)
     a.add("p" + i, "Raider " + i, chars[i % chars.length]);
-  a.configure(peril, false);
+  a.configure(peril);
   a.start();
   a.phase = "playing";
   a.raid.phase = phase;
@@ -566,7 +567,11 @@ it("renders all Storm Twins cosmetic effects, with different skin palettes", () 
   drawCollectionAura(g, "spark-aura", 0, 0, 1800, false);
   expect(JSON.stringify(commands)).not.toBe(before);
   expect(playCollectionEntrance(emit, "lightning-strike", 0, 0, 1)).toBe(true);
-  expect(emit).toHaveBeenCalledTimes(21);
+  expect(emit).toHaveBeenCalledTimes(13);
+  // And it draws over the greeting (two bolts strike, then the thunder-jellies bob on their ribbon: raid-entrance-fx.ts).
+  expect(drawCollectionEntrance(g, "lightning-strike", 0, 0, 1, 0.6)).toBe(
+    true,
+  );
   expect(
     drawCollectionVictory(
       g,

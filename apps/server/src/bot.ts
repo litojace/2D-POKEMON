@@ -20,6 +20,7 @@ import {
   farMultiplier,
   platesOf,
   type Ability,
+  type AbilityKind,
   type CharacterId,
   type StatusKind,
   type Fighter,
@@ -30,6 +31,7 @@ import {
 } from "../../../packages/shared/src/index.js";
 import type { Arena } from "./simulation.js";
 import { LOOK_EVERY, lookAhead } from "./bot-lookahead.js";
+import { EXPERT_STYLE } from "./expert-style.js";
 /**
  * Server-side AI opponent. Each tick it reads the arena the way a player
  * would (with a reaction delay and imperfect aim) and returns the same Input
@@ -67,6 +69,44 @@ export const EXPERT_FLAGS: (keyof ExpertFlags)[] = [
   "dodgeMarks",
   "lookAhead",
 ];
+/**
+ * How the expert plays one champion: the hand-set numbers of its rules,
+ * learned per champion by scripts/balance/train-expert.ts (expert-style.ts).
+ * Anything left out plays as the rules always did.
+ */
+export interface Style {
+  /** A shooter's preferred distance × this. */
+  range?: number;
+  /** A brawler's preferred distance, px (70). */
+  reach?: number;
+  /** How much a brawler cares about getting to that distance (2.6). */
+  closeIn?: number;
+  /** How much it cares about keeping the opponent in sight (× 1). */
+  sight?: number;
+  /** How much it circles the opponent (× 1). */
+  circle?: number;
+  /** Chance per tick to dash in when the gap is closable (Profile.engage). */
+  engage?: number;
+  /** Health share below which it plays safe (Profile.retreat). */
+  retreat?: number;
+  /** How carefully a shooter keeps out of corners (Profile.kite). */
+  kite?: number;
+  /** Each skill slot's score × this (the ultimate last). */
+  slots?: number[];
+  /** A skill scoring below this waits for a better moment (0). */
+  floor?: number;
+}
+export const STYLE_KEYS = [
+  "range",
+  "reach",
+  "closeIn",
+  "sight",
+  "circle",
+  "engage",
+  "retreat",
+  "kite",
+  "floor",
+] as const;
 interface Profile {
   /** Seconds between seeing the opponent move and reacting to it. */
   reaction: number;
@@ -151,6 +191,8 @@ interface Profile {
    * new mechanic the rules don't know yet (scripts/balance/new-mechanic.ts).
    */
   unknownKinds?: readonly string[];
+  /** The expert's learned way of playing each champion (expert-style.ts). */
+  style?: Partial<Record<CharacterId, Style>>;
 }
 /**
  * The skill revolution (docs/skill-revolution.md) recalibrated the duel daze
@@ -213,12 +255,34 @@ const NORMAL_DAZE_BEFORE_SMART_BOTS: Partial<Record<CharacterId, number>> = {
 /**
  * Normal's per-champion lapse share in PvP (see `daze`), calibrated in bot
  * round robins so each champion does about as well against Normal bots as
- * against Hard ones (scripts/balance/round-robin.ts).
+ * against Hard ones (scripts/balance/round-robin.ts). Calibrated again for
+ * the second round of smarter bots (2026-11-22): 43.9% - 54.9%.
  */
 const NORMAL_DAZE_BY: Partial<Record<CharacterId, number>> = {
-  voltkit: 0.285,
-  cindrake: 0.49,
-  tidefin: 0.29,
+  voltkit: 0.256,
+  cindrake: 0.391,
+  tidefin: 0.302,
+  auralynx: 0.255,
+  lumoth: 0.278,
+  mystowl: 0.245,
+  terradon: 0.278,
+  duskveil: 0.364,
+  coilemur: 0.334,
+  pyranda: 0.282,
+  glacelle: 0.256,
+  halcyra: 0.29,
+  sunbara: 0.267,
+  astrabun: 0.261,
+  wombolder: 0.293,
+  shadopus: 0.345,
+  pangrove: 0.363,
+  mossloth: 0.22,
+};
+/** Normal's PvP daze before the second round of smarter bots (2026-11-22). */
+const NORMAL_DAZE_BEFORE_V2: Partial<Record<CharacterId, number>> = {
+  voltkit: 0.265,
+  cindrake: 0.45,
+  tidefin: 0.32,
   auralynx: 0.203,
   lumoth: 0.242,
   mystowl: 0.224,
@@ -242,7 +306,19 @@ const NORMAL_DAZE_BY: Partial<Record<CharacterId, number>> = {
  * Easy's slow reactions and loose aim cost a brawler little).
  */
 export const EASY_DAZE_GAP = 0.25;
-export const BOT_PROFILES: Record<BotDifficulty, Profile> = {
+const easyDaze = (normal: Partial<Record<CharacterId, number>>) =>
+  Object.fromEntries(
+    Object.entries(normal)
+      .map(([id, d]) => [id, +Math.max(0, d - EASY_DAZE_GAP).toFixed(3)])
+      .filter(([, d]) => (d as number) > 0),
+  );
+/**
+ * The three levels as they were before the second round of smarter bots
+ * (2026-11-22). Raids and the Spire (raider stand-ins, Spire Echoes) still
+ * play with these, so their difficulty stays where simulation tuned it, and
+ * the balance-only expert is built on this Hard.
+ */
+export const RAID_BOT_PROFILES: Record<BotDifficulty, Profile> = {
   // Easy plays like a beginner: it sees and decides late, aims loosely,
   // rarely dodges, uses few skills and saves nothing. It is weaker than
   // Normal mostly by being slower; it lapses only with the brawlers (see
@@ -265,11 +341,7 @@ export const BOT_PROFILES: Record<BotDifficulty, Profile> = {
     // blasts, and it notices them late (its reaction time).
     expert: { lookAway: false, jumpSeeds: false, dodgeMarks: true },
     markReaction: 0.9,
-    dazeBy: Object.fromEntries(
-      Object.entries(NORMAL_DAZE_BY)
-        .map(([id, d]) => [id, +Math.max(0, d - EASY_DAZE_GAP).toFixed(3)])
-        .filter(([, d]) => (d as number) > 0),
-    ),
+    dazeBy: easyDaze(NORMAL_DAZE_BEFORE_V2),
   },
   // Normal is Hard with slower reactions, more pauses and looser aim, and a
   // per-champion share of lapsed seconds (dazeBy). Every weakness a bot can
@@ -297,7 +369,7 @@ export const BOT_PROFILES: Record<BotDifficulty, Profile> = {
     focus: true,
     expert: { lookAway: false, jumpSeeds: true, dodgeMarks: true },
     markReaction: 0.75,
-    dazeBy: NORMAL_DAZE_BY,
+    dazeBy: NORMAL_DAZE_BEFORE_V2,
     raidDazeBy: { ...NORMAL_DAZE_BEFORE_SMART_BOTS, ...RAID_DAZE_BY },
   },
   hard: {
@@ -323,20 +395,87 @@ export const BOT_PROFILES: Record<BotDifficulty, Profile> = {
   },
 };
 /**
+ * The levels players pick, in PvP (raids and the Spire: RAID_BOT_PROFILES).
+ * The second round of smarter bots (2026-11-22) moved each up a step, when
+ * players who play often were beating Hard in about two duels of three:
+ * each new level beats the one it replaced in about 70% of bot duels (Hard
+ * 76%), and the gaps between the levels stay as wide (docs/smarter-bots.md).
+ */
+export const BOT_PROFILES: Record<BotDifficulty, Profile> = {
+  // Easy is still a beginner, a slightly quicker one: it reacts and decides
+  // sooner, rests less and dodges a little more often.
+  easy: {
+    ...RAID_BOT_PROFILES.easy,
+    reaction: 0.47,
+    aimError: 0.26,
+    lead: 0.05,
+    dodge: 0.18,
+    think: 0.38,
+    skillUse: 0.38,
+    hesitate: 0.22,
+    fooledByClone: 0.78,
+    engage: 0.012,
+    rest: 0.36,
+    kite: 0.3,
+    retreat: 0.22,
+    markReaction: 0.88,
+    dazeBy: easyDaze(NORMAL_DAZE_BY),
+  },
+  // Normal sits about halfway to the old Hard: quicker hands, more of its
+  // skills used, and it looks away from Eyespot Flash.
+  normal: {
+    ...RAID_BOT_PROFILES.normal,
+    reaction: 0.33,
+    aimError: 0.19,
+    lead: 0.4,
+    dodge: 0.47,
+    think: 0.17,
+    skillUse: 0.52,
+    hesitate: 0.13,
+    fooledByClone: 0.42,
+    engage: 0.04,
+    rest: 0.1,
+    kite: 0.72,
+    retreat: 0.31,
+    expert: { lookAway: true, jumpSeeds: true, dodgeMarks: true },
+    markReaction: 0.72,
+    dazeBy: NORMAL_DAZE_BY,
+    raidDazeBy: undefined,
+  },
+  // Hard has the balance expert's hands without its look-ahead: a good
+  // player's reaction and aim (0.2 s, 0.12 rad), quick decisions, no
+  // pauses. It dodges 80% of shots, not the expert's 90%, and reads marks
+  // in Hard's old 0.6 s: at 90% the slower shooters sank (Voltkit 39.5%),
+  // and reading marks at once sank Pyranda, whose kit is all marks (37.5%).
+  // The expert's learned styles stay the expert's: with these hands
+  // Halcyra's took it to 64%.
+  hard: {
+    ...RAID_BOT_PROFILES.hard,
+    reaction: 0.2,
+    aimError: 0.12,
+    dodge: 0.8,
+    think: 0.08,
+    rest: 0,
+  },
+};
+/**
  * The expert bot, for balance measurement only (never offered to players):
  * Hard made sharper where it pays (measured with difficulty-gap.ts, each
  * setting alone against Hard: reaction +18 points, dodge +9, no rests +7,
  * aim +4, quicker decisions +2; leading shots fully and engaging more made
- * it weaker), plus the counterplay in ExpertFlags. Together it beats Hard
- * in about 92% of duels, whichever champion it plays. A 0.1 s reaction is
- * a top player's; going further would measure a machine, not players.
+ * it weaker), plus the counterplay in ExpertFlags. Its reaction and aim
+ * are a good player's, not a machine's: at 0.1 s and 0.08 rad it landed so
+ * many quick shots that kiters ruled the table (Mossloth 67%, Mystowl 63%)
+ * and brawlers sank (Cindrake 31%); at 0.2 s and 0.12 those are 59%, 50%
+ * and 60%, and it still beats Hard in 89% of duels (docs/balance-overhaul.md,
+ * "A good player's hands").
  */
 export const EXPERT_PROFILE: Profile = {
-  ...BOT_PROFILES.hard,
+  ...RAID_BOT_PROFILES.hard,
   // It reads marks in MARK_REACTION, not in Hard's markReaction.
   markReaction: undefined,
-  reaction: 0.1,
-  aimError: 0.08,
+  reaction: 0.2,
+  aimError: 0.12,
   dodge: 0.9,
   think: 0.08,
   rest: 0,
@@ -346,6 +485,7 @@ export const EXPERT_PROFILE: Profile = {
     dodgeMarks: true,
     lookAhead: true,
   },
+  style: EXPERT_STYLE,
 };
 /** Every profile a BotBrain can use, the expert's included (balance scripts). */
 export const BALANCE_PROFILES: Record<BotLevel, Profile> = {
@@ -388,9 +528,65 @@ const OFFENSIVE = new Set([
   "rush",
   "blink",
 ]);
+/**
+ * Every skill kind `chooseSkill` has a `case` for. A kind missing here (and
+ * there) scores 0, so bots would never cast it: tests/unit/bot-skill-kinds
+ * checks every champion's kit, with and without rites, against this list.
+ * The `default` of that switch fails the typecheck if a kind listed here has
+ * no `case`, so add both together.
+ */
+const BOT_SKILL_KIND_LIST = [
+  "projectile",
+  "charged",
+  "barrage",
+  "beam",
+  "rush",
+  "blink",
+  "veil",
+  "screen",
+  "taunt",
+  "rewind",
+  "tether",
+  "gaze",
+  "clamp",
+  "throw",
+  "pound",
+  "cage",
+  "surf",
+  "wave",
+  "storm",
+  "hunt",
+  "leap",
+  "creep",
+  "garden",
+  "lure",
+  "trail",
+  "steer",
+  "grapple",
+  "shrapnel",
+  "tunnel",
+  "cyclone",
+  "seedling",
+  "timewarp",
+  "swap",
+  "melee",
+  "cone",
+  "nova",
+  "zone",
+  "counter",
+  "barrier",
+  "clone",
+  "buff",
+  "rest",
+] as const satisfies readonly AbilityKind[];
+type BotSkillKind = (typeof BOT_SKILL_KIND_LIST)[number];
+export const BOT_SKILL_KINDS: ReadonlySet<AbilityKind> = new Set(
+  BOT_SKILL_KIND_LIST,
+);
 const clamp = (v: number, lo: number, hi: number) =>
   Math.max(lo, Math.min(hi, v));
 type Point = { x: number; y: number };
+const NO_STYLE: Style = {};
 /** Seconds before its next attack that the expert turns back to face a gazer. */
 const LOOK_BACK = 0.15;
 /** Seconds the expert takes to see a new mark on the ground (it isn't instant). */
@@ -536,7 +732,8 @@ export function waypoint(
 }
 type Seen = { t: number; x: number; y: number; vx: number; vy: number };
 export class BotBrain {
-  readonly profile: Profile;
+  /** Its level's PvP profile; in raids and the Spire, RAID_BOT_PROFILES'. */
+  profile: Profile;
   private random: () => number;
   private seen: Seen[] = [];
   private nextThink = 0;
@@ -562,7 +759,7 @@ export class BotBrain {
   readonly difficulty: BotDifficulty;
   constructor(
     readonly id: string,
-    level: BotLevel,
+    readonly level: BotLevel,
     seed = 1,
   ) {
     this.profile = BALANCE_PROFILES[level];
@@ -657,10 +854,21 @@ export class BotBrain {
     this.targetId = pick.id;
     return pick;
   }
+  /** The expert's learned way of playing this champion (none: the rules as written). */
+  private styleOf(me: Fighter): Style {
+    return this.profile.style?.[me.character] ?? NO_STYLE;
+  }
   /** Way of moving the look-ahead chose, kept for a moment. */
   private commit?: { until: number; dx: number; dy: number };
   private nextLook = 0;
   think(arena: Arena, me: Fighter): Input {
+    // Raids and the Spire play the levels they were tuned with.
+    if (
+      arena.mode === "raid" &&
+      this.profile === BALANCE_PROFILES[this.level] &&
+      this.level !== "expert"
+    )
+      this.profile = RAID_BOT_PROFILES[this.level];
     const input = this.rules(arena, me);
     if (!this.profile.expert?.lookAhead) return input;
     return this.lookAheadOn(arena, me, input);
@@ -848,12 +1056,12 @@ export class BotBrain {
       pvp &&
       !melee &&
       (enemyBasic.kind === "melee" || enemyBasic.kind === "cone")
-        ? (this.profile.kite ?? 0)
+        ? (this.styleOf(me).kite ?? this.profile.kite ?? 0)
         : 0;
     // Low and behind on health: play safe until it is healed or ahead.
     const retreating =
       pvp &&
-      hpRatio < (this.profile.retreat ?? 0) &&
+      hpRatio < (this.styleOf(me).retreat ?? this.profile.retreat ?? 0) &&
       hpRatio < enemyRatio - 0.1;
     if (t >= this.nextThink) {
       this.nextThink = t + this.profile.think * (0.8 + this.random() * 0.4);
@@ -1079,7 +1287,8 @@ export class BotBrain {
       // PvP: much keener once the opponent has spent its own dash (it
       // cannot slip away), the way a player baits the escape out first.
       this.random() <
-        this.profile.engage * (pvp && enemy.dashAt > t + 0.4 ? 3 : 1)
+        (this.styleOf(me).engage ?? this.profile.engage) *
+          (pvp && enemy.dashAt > t + 0.4 ? 3 : 1)
     ) {
       // Dash at where the opponent will be when the dash ends.
       const ahead = RULES.dashDuration * this.profile.lead;
@@ -1325,9 +1534,11 @@ export class BotBrain {
     },
   ) {
     const basic = arena.kit(me).basic;
+    const st = this.styleOf(me);
     let preferred = melee
-      ? 70
-      : clamp(basic.range * 0.5, 240, 400) + (hpRatio < 0.35 ? 90 : 0);
+      ? (st.reach ?? 70)
+      : clamp(basic.range * 0.5, 240, 400) * (st.range ?? 1) +
+        (hpRatio < 0.35 ? 90 : 0);
     const { kiting, retreating } = pvp;
     // Low and behind: a shooter backs off further (a brawler can only win
     // up close, so it keeps fighting and goes for healing orbs instead).
@@ -1356,8 +1567,9 @@ export class BotBrain {
       let score = via
         ? // Walking around cover: head for the corner.
           -Math.hypot(via.x - x, via.y - y) / 25
-        : (-Math.abs(d - preferred) / 60) * (melee ? 2.6 : 1);
-      if (arena.lineClear({ x, y }, target)) score += melee ? 1 : 2.2;
+        : (-Math.abs(d - preferred) / 60) * (melee ? (st.closeIn ?? 2.6) : 1);
+      if (arena.lineClear({ x, y }, target))
+        score += (melee ? 1 : 2.2) * (st.sight ?? 1);
       // Circle the opponent instead of running straight at it.
       const tx =
           (target.x - me.x) /
@@ -1368,7 +1580,8 @@ export class BotBrain {
       score +=
         (dx * -ty + dy * tx) *
         this.strafe *
-        (via ? 0.15 : melee && now > 180 ? 0.35 : 0.9);
+        (via ? 0.15 : melee && now > 180 ? 0.35 : 0.9) *
+        (st.circle ?? 1);
       // Backing off: away from the opponent, and never into a corner where
       // a brawler pins it.
       if (away && now < preferred) score += away * 1.2 * (-dx * tx - dy * ty);
@@ -1499,8 +1712,7 @@ export class BotBrain {
           if (a.tether?.yank) {
             // Well inside its reach: the wind-up gives the target time to
             // step out, and a wire that finds nobody is wasted.
-            if (s.sight && reach(a.range * 0.8))
-              score = s.dist > 140 ? 22 : 10;
+            if (s.sight && reach(a.range * 0.8)) score = s.dist > 140 ? 22 : 10;
           }
           // Gill Siphon: lock on while the target is in reach.
           else if (s.sight && reach(a.range * 0.95))
@@ -1575,7 +1787,12 @@ export class BotBrain {
           const plates =
             CHARACTERS[me.character].passive === "plates" ? platesOf(me) : 0;
           if (s.sight && reach(a.range * 0.55))
-            score = a.damage * (a.count ?? 3) * (1 + plates) * 0.35;
+            score =
+              a.damage *
+              (a.perPlate !== undefined
+                ? (a.count ?? 3) + a.perPlate * plates
+                : (a.count ?? 3) * (1 + plates)) *
+              0.35;
           break;
         }
         case "tunnel":
@@ -1675,6 +1892,12 @@ export class BotBrain {
           } else if (s.hpRatio < 0.45 && s.dist > 430 && !s.threatened)
             score = 30;
           break;
+        default: {
+          // Only kinds without a `case` reach here: none of them may be in
+          // BOT_SKILL_KINDS (a typecheck error names the one missing a case).
+          const unhandled: Exclude<AbilityKind, BotSkillKind> = a.kind;
+          void unhandled;
+        }
       }
       if (!score) return;
       if (OFFENSIVE.has(a.kind) && a.bonusVsStatus && s.enemyDisabled)
@@ -1697,6 +1920,9 @@ export class BotBrain {
         if (!opening) return;
         score *= 1.5;
       }
+      const st = this.styleOf(me);
+      if (st.slots) score *= st.slots[i] ?? 1;
+      if (st.floor && score < st.floor) return;
       if (score > bestScore) {
         bestScore = score;
         best = i;

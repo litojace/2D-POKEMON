@@ -24,7 +24,7 @@ npm run build
 npm start
 ```
 
-One Express service serves the frontend and Socket.IO on port 3001. Set `ARENA_DIAGNOSTICS=60` to log tick, event-loop, CPU, memory and bandwidth measurements once a minute; see [networking and battle performance](docs/network-performance.md) for the protocol, the load/latency scripts and measured capacity. Deploy both together; rooms are in memory. Existing room sessions do not survive a server restart. Two players need distinct accounts.
+One Express service serves the frontend and Socket.IO on port 3001. Set `ARENA_DIAGNOSTICS=60` to log tick, event-loop, CPU, memory and bandwidth measurements once a minute; see [networking and battle performance](docs/network-performance.md) for the protocol, the load/latency scripts and measured capacity. Deploy both together; rooms are in memory. A deploy lets matches in progress finish on the old server, up to about five minutes, before it stops (see [server updates](docs/server-updates.md)). Rooms still waiting in a lobby do not survive the restart. Two players need distinct accounts.
 
 ## Play
 
@@ -97,7 +97,7 @@ Mobile uses the left joystick and right skill/action buttons, with a separate bo
 
 **Skill revolution, wave C (November 2026).** Glacelle's Hailstone becomes **Black Ice** ([design](docs/skill-revolution.md)): a patch of ice at the aim where enemies slide with almost no grip, so they can't step out of Frost Bloom's freeze in time. The other five champions in the wave (Halcyra, Sunbara, Coilemur, Shadopus, Auralynx) already use every skill, so their kits stay as they are; Normal bots were retuned so each lands near half its duels.
 
-**Creature remodel (November 2026).** The original eight kits no longer echo the Pokémon they were first built from: each was rebuilt around its creature's real animal (Static Glide, Shell Up, Tide Double, Eyespot Flash, Haunted Lantern; the rest renamed), and basic attacks now play at their stated speed (ticks used to round every interval up, costing up to 10%). The kits were tested against the eight new champions being designed, then health and attack speed were re-tuned for the eight that ship: bot win rates now run 48–54% (before: 45–54%). Details, the origins of each old skill and the new numbers are in [docs/creature-remodel.md](docs/creature-remodel.md).
+**Creature remodel (November 2026).** Each of the original eight kits was rebuilt around its creature's real animal (Static Glide, Shell Up, Tide Double, Eyespot Flash, Haunted Lantern; the rest renamed), and basic attacks now play at their stated speed (ticks used to round every interval up, costing up to 10%). The kits were tested against the eight new champions being designed, then health and attack speed were re-tuned for the eight that ship: bot win rates now run 48–54% (before: 45–54%). Details and the new numbers are in [docs/creature-remodel.md](docs/creature-remodel.md).
 
 **November 2026 pass (health and basic-attack speed).** Bot round robins on the server simulation (every pairing, 40 games each, Hard and Normal bots, sides swapped every game) showed the fighters had drifted apart. Averaged over both bot settings, win rates ran from 24% (Mystowl) to 73% (Terradon). Each fighter's maximum health and basic-attack interval were tuned toward 50% over repeated rounds of matches. Damage, cooldowns, skills and rite texts are unchanged, and changes stay within about a quarter so no fighter changes role.
 
@@ -146,7 +146,7 @@ npx playwright install chromium   # once
 npm run test:visual
 ```
 
-CI runs them on ten runners at once (six shards of the suite and four of the slow panel-scroll sweeps) and merges the shards' results into one HTML report, the `visual-report` artifact. To run one shard locally: `npm run test:visual -- --grep-invert 'scroll to their end' --shard=1/6`.
+CI splits them into thirty shards of about equal running time (`scripts/visual-shards.mjs`, from each test's CI time in `tests/visual/durations.json`), one runner each, and merges the shards' results into one HTML report, the `visual-report` artifact. `node scripts/visual-shards.mjs --plan 30` shows the split. To run one shard locally: `node scripts/visual-shards.mjs 1 30 shard.txt && npm run test:visual -- --test-list shard.txt`.
 
 The asset export regenerates the original SVG prototypes and creates metadata for new folders. Existing manifests and rendered/artist portraits are preserved. `node scripts/generate-icons.mjs` renders the app icon (`scripts/app-icon.svg`, original art) to the iPhone app icon, launch screen and PWA icons.
 

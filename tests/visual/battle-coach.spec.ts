@@ -5,12 +5,14 @@ import {
   pushUntilBattle,
   snap,
   startPractice,
+  skipTour,
 } from "./helpers";
 
 // The first match's coach (battle-coach.ts): a new player's match against a
 // bot shows one line at a time (move, attack, skill, dash, the goal), each
 // gone when the player does it; it ends with the match.
 async function newPlayer(page: Page) {
+  await skipTour(page);
   await page.addInitScript(() => {
     const w = window as any;
     w.__economyPatch = {
@@ -30,16 +32,20 @@ async function newPlayer(page: Page) {
     w.__accountPatch = { title: null, titleColor: null };
   });
 }
-/** A practice room made into a match against a bot (the harness has no bot). */
-async function botMatch(page: Page) {
+/**
+ * A practice room made into a match against a bot (the harness has no bot).
+ * `introRounds`: a new player's short match, as the server marks it.
+ */
+async function botMatch(page: Page, introRounds?: number) {
   await page.evaluate(() => (window as any).__room("practice"));
   await openPlayPanel(page);
   await startPractice(page);
-  await page.evaluate(() => {
+  await page.evaluate((intro) => {
     const w = window as any;
     delete w.__snap.practice;
     w.__snap.vsBot = "easy";
-  });
+    if (intro) w.__snap.introRounds = intro;
+  }, introRounds);
   await pushUntilBattle(page);
 }
 const coach = (page: Page) => page.locator("#battle-coach");
@@ -146,6 +152,49 @@ test("the coach speaks touch on a phone (844x390)", async ({
       await coach(page).evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
     ).toBe(true);
     await snap(page, info, "coach-move-844");
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+
+// A new player's first match is one round (INTRO_ROUNDS): the HUD, the
+// coach's goal and the briefing all say so, on a phone.
+test("a first match says it is one round (844x390)", async ({
+  browser,
+}, info) => {
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    await newPlayer(page);
+    const errors = await openHub(page);
+    await botMatch(page, 1);
+    await expect(page.locator("#round-label")).toHaveText("R1 · BO1");
+    await expect(coach(page)).toBeVisible();
+    await snap(page, info, "intro-battle-844");
+    // The briefing's goal line, in full on one line.
+    await page.evaluate(() => {
+      const w = window as any;
+      Object.assign(w.__snap, { phase: "briefing", instructionsReady: [] });
+      w.__push();
+    });
+    const goal = page.locator(".brief-goal");
+    await expect(goal).toContainText("One round: win it to take the match");
+    expect(
+      await goal.evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
+    ).toBe(true);
+    await snap(page, info, "intro-briefing-844");
+    // The second match is first to two.
+    await page.evaluate(() => {
+      const w = window as any;
+      w.__snap.introRounds = 2;
+      w.__push();
+    });
+    await expect(goal).toContainText("First to win 2 rounds");
     expect(errors).toEqual([]);
   } finally {
     await context.close();

@@ -229,7 +229,10 @@ it("bursts the Nova entrance inward and out, bigger than Comet arrival", () => {
     playCollectionEntrance((p) => nova.push(p), "nova-entrance", 0, 0, 1),
   ).toBe(true);
   playCollectionEntrance((p) => comet.push(p), "comet-arrival", 0, 0, 1);
-  expect(nova.length).toBeGreaterThan(comet.length * 3);
+  // Within the 48 particles a fighter's rig keeps (collection-fx.ts
+  // ENTRANCE_BUDGET; it emitted 100 before, of which the rig showed 48).
+  expect(nova.length).toBeGreaterThan(comet.length * 2);
+  expect(nova.length).toBeLessThanOrEqual(48);
   const shapes = new Set(nova.map((p) => p.shape));
   for (const shape of ["ray", "ring", "star", "beam", "shock"])
     expect(shapes, shape).toContain(shape);
@@ -241,7 +244,8 @@ it("bursts the Nova entrance inward and out, bigger than Comet arrival", () => {
       Math.hypot(p.x, p.y - cy) > 50 &&
       p.vx * (0 - p.x) + p.vy * (cy - p.y) > 0,
   );
-  expect(inward.length).toBe(16);
+  // Thinned evenly to fit the budget, so still a ring rushing in.
+  expect(inward.length).toBeGreaterThanOrEqual(8);
   expect(nova.every((p) => p.glow)).toBe(true);
 });
 
@@ -328,7 +332,7 @@ it("frames the portrait with each new frame's own artwork", () => {
     for (const part of ["::before", "::after"])
       expect(css).toMatch(
         new RegExp(
-          `\\[data-cosmetic="${id}"\\]${part} \\{[^}]*data:image/svg\\+xml`,
+          `\\[data-cosmetic="${id}"\\]${part} \\{[^}]*url\\("\\./frames/journey-[\\w-]+\\.svg"\\)`,
         ),
       );
   }

@@ -9,6 +9,7 @@ import {
   profileEmissionPoint,
   PROFILE_HEAD_WIDTH,
   PROFILE_FACE_PARTS,
+  REAR_ARMS_MIRRORED,
 } from "../creature-profile";
 import { drawElementGlyph } from "../element-effects";
 import type Phaser from "phaser";
@@ -25,6 +26,7 @@ import { loadRigTextures, textureResolution } from "./rig-textures";
 import {
   moodKey,
   parts,
+  partsFor,
   rigAnchorsFor,
   rigKey,
   rigAssets,
@@ -46,6 +48,7 @@ import {
   type FxShape,
 } from "../skins/skin-fx";
 import {
+  drawCollectionEntrance,
   drawCollectionVictory,
   playCollectionEntrance,
 } from "../skins/collection-fx";
@@ -104,6 +107,18 @@ const LANTERN: Spring = { drag: 1 / 240, stiff: 32, damp: 3.2 };
 const FEET = WORLD_ART.fighterFeet;
 /** Rockslide Flex victory: how high the rock pile lifts the fighter (rig units). */
 const ROCK_PILE = 24;
+/**
+ * Near-paw props that stand upright from the paw, above the shoulder:
+ * Astrabun's mallet (and each skin's re-forged mallet or wand). The prop is
+ * painted on the arm, so raising that arm overhead turns it upside down onto
+ * the body. Greetings and victories hold that arm (armR, before the side
+ * mirror) near the angle where the prop stands up (radians; front and back
+ * views, and side views, where it rests over the shoulder), within `swing`;
+ * the free paw does the big moves.
+ */
+export const UPRIGHT_PROP_ARM: Partial<
+  Record<CharacterId, { front: number; side: number; swing: number }>
+> = { astrabun: { front: -0.35, side: 0.35, swing: 0.4 } };
 const MAX_PARTICLES = 48;
 
 type ParticleShape = FxShape;
@@ -170,18 +185,32 @@ export class FighterRig {
   /** Height/width of the ground plane skin rings lie on. The fitting room's
    * floor is flatter than the arena's, so its preview sets its own. */
   groundFlat: number = WORLD_ART.groundY;
+  /** The given layers by key, and the suffix of their look. */
+  private layers = new Map<string, RigAsset>();
+  private layersSuffix = "";
+  /**
+   * `assets` may be a Shop skin's set (its keys end in the skin's suffix):
+   * the rig then starts in it, and the battle needn't load the champion's
+   * own look for a fighter who never shows it. A part's joint is the same
+   * in every look; a costume's wider crop moves only its texture's origin,
+   * which the images take from the texture (sizeByResolution).
+   */
   constructor(
     private scene: Phaser.Scene,
     readonly character: CharacterId,
-    private assets: RigAsset[],
+    assets: RigAsset[],
   ) {
+    const body = rigKey(character, "down", "body");
+    this.layersSuffix = this.suffix =
+      assets
+        .find((a) => a.key.startsWith(body) && !a.key.includes("~lume-"))
+        ?.key.slice(body.length) ?? "";
+    for (const a of assets) this.layers.set(a.key, a);
     this.root = scene.add.container(0, 0).setDepth(2);
     this.effects = battleCurves(scene.add.graphics()).setDepth(3);
     this.under = battleCurves(scene.add.graphics()).setDepth(1.9);
-    for (const part of parts) {
-      const asset = assets.find(
-        (a) => a.key === rigKey(character, "down", part),
-      )!;
+    for (const part of partsFor(character)) {
+      const asset = this.layer("down", part)!;
       const image = sizeByResolution(
         scene.add.image(asset.x, asset.y, asset.key),
       )
@@ -192,6 +221,12 @@ export class FighterRig {
     }
     this.blinkAt = scene.time.now + 3000 + Math.random() * 4000;
     this.tiltAt = scene.time.now + 4000 + Math.random() * 3000;
+  }
+  /** The layer of a part in a facing, from the set the rig was given. */
+  private layer(dir: Facing, part: Part) {
+    return this.layers.get(
+      rigKey(this.character, dir, part, this.layersSuffix),
+    );
   }
   trigger(
     state: AnimationState,
@@ -315,15 +350,14 @@ export class FighterRig {
     const dir = facing(pose.angle);
     if (dir !== this.dir) {
       this.dir = dir;
-      const order =
-        dir === "down" ? parts : profilePartOrder(dir, this.character);
+      const order = (
+        dir === "down" ? parts : profilePartOrder(dir, this.character)
+      ).filter((part) => this.images.has(part));
       order.forEach((part, index) =>
         this.root.moveTo(this.images.get(part)!, index),
       );
       for (const [part, image] of this.images) {
-        const asset = this.assets.find(
-          (a) => a.key === rigKey(this.character, dir, part),
-        )!;
+        const asset = this.layer(dir, part)!;
         const key = rigKey(this.character, dir, part, this.suffix);
         // The worn texture's own pivot: a costume's crop can be wider.
         const [ox, oy] = artOrigins.get(key) ?? [asset.originX, asset.originY];
@@ -384,9 +418,7 @@ export class FighterRig {
       scarf = this.images.get("scarf")!;
     this.root.setPosition(x, y).setAlpha(alpha).setAngle(0);
     for (const [part, image] of this.images) {
-      const asset = this.assets.find(
-        (a) => a.key === rigKey(this.character, dir, part),
-      )!;
+      const asset = this.layer(dir, part)!;
       image
         .setPosition(asset.x, asset.y)
         .setRotation(0)
@@ -766,7 +798,10 @@ export class FighterRig {
       if (t > 0.4 && t < 2.6) {
         const pump = Math.sin((t - 0.4) * 7);
         armL.rotation = 2.45 + pump * 0.18;
-        armR.rotation = -2.45 - pump * 0.18;
+        // An upright prop is pumped beside the head instead (UPRIGHT_PROP_ARM).
+        const held = this.propHold();
+        armR.rotation =
+          held === undefined ? -2.45 - pump * 0.18 : held - pump * 0.25;
         body.rotation = 0;
         head.rotation = -0.06;
         sy *= 1 + Math.max(0, pump) * 0.03;
@@ -776,6 +811,15 @@ export class FighterRig {
         Math.floor((Math.max(0, v - 0.4) * 7) / Math.PI);
       if (lastPileT < 0.35 && t >= 0.35) this.pebbles(x, y, 16);
       else if (t < 2.6 && pumps(t) > pumps(lastPileT)) this.pebbles(x, y, 3);
+    }
+    // An upright prop stays upright: its arm never swings overhead.
+    const prop = this.propHold();
+    if (prop !== undefined && (state === "wave" || state === "victory")) {
+      const swing = UPRIGHT_PROP_ARM[this.character]!.swing;
+      armR.rotation = Math.max(
+        prop - swing,
+        Math.min(prop + swing, armR.rotation),
+      );
     }
     // Side drawings are mirrored; their local limb poses must mirror too.
     // World-space lean, lunge and wind already use the aiming direction.
@@ -796,9 +840,7 @@ export class FighterRig {
         this.images.get(part)!.rotation *= -1;
       }
       for (const part of ["armL", "armR"] as Part[]) {
-        const asset = this.assets.find(
-          (a) => a.key === rigKey(this.character, dir, part),
-        )!;
+        const asset = this.layer(dir, part)!;
         const image = this.images.get(part)!;
         image.x = 2 * asset.x - image.x;
       }
@@ -878,6 +920,13 @@ export class FighterRig {
     flame.rotation = rigidHeadwear
       ? head.rotation
       : flame.rotation + head.rotation;
+    // A skin's headwear over an animated crest rides the head rigidly: no
+    // flicker, sway, spring or attack swell (creature-design ANIMATED_CRESTS).
+    this.images
+      .get("hat")
+      ?.setPosition(ears.x, ears.y)
+      .setRotation(head.rotation)
+      .setScale(0.5);
     if (reduced) {
       // Poses only: no bobbing, lunging or squashing.
       offsetX = 0;
@@ -902,6 +951,17 @@ export class FighterRig {
       );
       if (image.texture.key !== texture) image.setTexture(texture);
     }
+    // Seen from behind, a champion whose near paw holds something has its
+    // arms mirrored (REAR_ARMS_MIRRORED): mirror their poses too, so a swing
+    // or a held prop moves the same way it does from the front.
+    if (dir === "up" && REAR_ARMS_MIRRORED.has(this.character))
+      for (const part of ["armL", "armR"] as const) {
+        const image = this.images.get(part);
+        const asset = this.layer(dir, part);
+        if (!image || !asset) continue;
+        image.x = 2 * asset.x - image.x;
+        image.rotation = -image.rotation;
+      }
     // Carry complete side/rear parts with the torso. Their own shoulder/hip
     // pivots remain independent, including the hidden overlap at each joint.
     if (dir !== "down") {
@@ -1126,6 +1186,13 @@ export class FighterRig {
     );
   }
 
+  /** The arm angle that keeps an upright prop standing (UPRIGHT_PROP_ARM). */
+  private propHold() {
+    const prop = UPRIGHT_PROP_ARM[this.character];
+    if (!prop) return undefined;
+    return this.dir === "left" || this.dir === "right" ? prop.side : prop.front;
+  }
+
   /** Each champion's own greeting at the start of a round. */
   private wave(
     t: number,
@@ -1227,7 +1294,7 @@ export class FighterRig {
         break;
       case "astrabun":
         // Mallet up, ears perked.
-        p.armR.rotation = -0.8;
+        p.armR.rotation = this.propHold()! - 0.3;
         p.ears.rotation = Math.sin(t * 10) * 0.08;
         move(0, -Math.max(0, Math.sin(t * 8)) * 4);
         break;
@@ -1364,8 +1431,11 @@ export class FighterRig {
         p.body.setScale(0.52, 0.49);
         break;
       case "astrabun":
-        // Mallet spun overhead between hops.
-        p.armR.rotation = -2.6 + Math.sin(t * 14) * 0.5;
+        // Free paw waved high between hops, the mallet shaken upright (the
+        // mallet is painted on the near paw: overhead it would hang upside
+        // down onto the belly; see UPRIGHT_PROP_ARM).
+        p.armL.rotation = 2.4 + Math.sin(t * 14) * 0.3;
+        p.armR.rotation = this.propHold()! + Math.sin(t * 14) * 0.25;
         move(0, -Math.max(0, Math.sin(t * 9)) * 9);
         break;
       case "wombolder":
@@ -1486,9 +1556,7 @@ export class FighterRig {
       : undefined;
     const sc = this.baseX;
     const screenPoint = (part: Part, p: { x: number; y: number }) => {
-      const asset = this.assets.find(
-        (a) => a.key === rigKey(this.character, dir, part),
-      )!;
+      const asset = this.layer(dir, part)!;
       const image = this.images.get(part)!;
       const dx = ((p.x - asset.x) * image.scaleX) / 0.5,
         dy = ((p.y - asset.y) * image.scaleY) / 0.5;
@@ -1702,6 +1770,9 @@ export class FighterRig {
         // The rig bursts Mountainborn's pebbles itself; add only its flourish.
         pose.look.entrance === "mountainborn",
       );
+    // An entrance that draws as well (Rainbow's arch), behind the fighter.
+    if (state === "wave" && pose.look?.entrance)
+      drawCollectionEntrance(this.under, pose.look.entrance, x, y, sc, t);
     if (state === "victory" && pose.look?.victory)
       drawCollectionVictory(
         g,

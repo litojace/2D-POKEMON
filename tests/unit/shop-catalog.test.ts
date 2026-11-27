@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { missionsSql, shopItemsSql } from "../../scripts/shop-seed.ts";
 import { CHARACTERS } from "@arena/shared";
 import {
+  ALL_BUNDLES,
   AWAKENING,
   CHAMPION_SKINS,
   LOOK_ITEMS,
@@ -46,7 +47,21 @@ const migration =
   readFileSync("supabase/migrations/20261118140000_hon_viet.sql", "utf8") +
   readFileSync("supabase/migrations/20261118160000_hero_squad.sql", "utf8") +
   readFileSync("supabase/migrations/20261118180000_neon_campus.sql", "utf8") +
-  readFileSync("supabase/migrations/20261118190000_stars_stripes.sql", "utf8");
+  readFileSync("supabase/migrations/20261118190000_stars_stripes.sql", "utf8") +
+  readFileSync(
+    "supabase/migrations/20261125130000_starlight_idol.sql",
+    "utf8",
+  ) +
+  readFileSync(
+    "supabase/migrations/20261125140000_seaside_steamworks_borealis.sql",
+    "utf8",
+  ) +
+  readFileSync("supabase/migrations/20261125150000_birthstone.sql", "utf8") +
+  readFileSync("supabase/migrations/20261125160000_rainy_day.sql", "utf8") +
+  readFileSync("supabase/migrations/20261125170000_grand_prix.sql", "utf8") +
+  readFileSync("supabase/migrations/20261125180000_sun_dynasty.sql", "utf8") +
+  readFileSync("supabase/migrations/20261125200000_look_singles.sql", "utf8") +
+  readFileSync("supabase/migrations/20261126023000_more_singles.sql", "utf8");
 /** Missions are re-seeded (with the solo flag) by 014. */
 const missionMigration = readFileSync(
   "supabase/migrations/014_missions.sql",
@@ -174,7 +189,7 @@ describe("shop catalog", () => {
       expect(missionMigration, m.metric).toContain(`'${m.metric}'`);
   });
 
-  it("has 18 skins for every champion: 3 Common, 5 Rare, 5 Epic, 4 Legendary, 1 Mythical", () => {
+  it("has 23 skins for every champion: 4 Common, 6 Rare, 7 Epic, 5 Legendary, 1 Mythical", () => {
     for (const id of Object.keys(CHARACTERS)) {
       const mine = CHAMPION_SKINS.filter((s) => s.champion === id);
       const count = (r: string) => mine.filter((s) => s.rarity === r).length;
@@ -188,9 +203,9 @@ describe("shop catalog", () => {
           count("mythical"),
         ],
         id,
-      ).toEqual([18, 3, 5, 5, 4, 1]);
+      ).toEqual([23, 4, 6, 7, 5, 1]);
     }
-    expect(CHAMPION_SKINS).toHaveLength(18 * Object.keys(CHARACTERS).length);
+    expect(CHAMPION_SKINS).toHaveLength(23 * Object.keys(CHARACTERS).length);
     // Each champion has one Cyber Mecha Epic.
     for (const id of Object.keys(CHARACTERS))
       expect(
@@ -214,8 +229,31 @@ describe("shop catalog", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it("has six collections of five pieces, one per appearance slot", () => {
-    expect(LOOK_ITEMS).toHaveLength(30);
+  it("has nine collections of five pieces, one per appearance slot, and fourteen singles", () => {
+    expect(LOOK_ITEMS).toHaveLength(45 + 14);
+    expect(SHOP_BUNDLES).toHaveLength(9);
+    // The singles: two of each kind but Colors, never in a set, priced like
+    // a set's piece of their slot and tier (LOOK_SLOTS x 1, 1.6 or 2.5).
+    const singles = LOOK_ITEMS.filter((i) => i.collection === "singles");
+    expect(singles.map((i) => [i.id, i.slot, i.rarity, i.price])).toEqual([
+      ["firefly-aura", "aura", "rare", 900],
+      ["crystal-aura", "aura", "epic", 1440],
+      ["bubble-entrance", "entrance", "rare", 1000],
+      ["portal-entrance", "entrance", "epic", 1600],
+      ["laurel-frame", "frame", "rare", 800],
+      ["crown-frame", "frame", "epic", 1280],
+      ["trophy-victory", "victory", "epic", 1800],
+      ["meteor-victory", "victory", "mythical", 4500],
+      ["music-aura", "aura", "rare", 900],
+      ["rune-aura", "aura", "epic", 1440],
+      ["smoke-entrance", "entrance", "rare", 1000],
+      ["rainbow-entrance", "entrance", "epic", 1600],
+      ["balloon-victory", "victory", "epic", 1800],
+      ["disco-victory", "victory", "epic", 2880],
+    ]);
+    for (const b of ALL_BUNDLES)
+      for (const id of singles.map((i) => i.id))
+        expect(b.items, b.id).not.toContain(id);
     for (const b of SHOP_BUNDLES) {
       const slots = b.items
         .map((id) => LOOK_ITEMS.find((i) => i.id === id)!.slot)
@@ -233,7 +271,7 @@ describe("shop catalog", () => {
 
   it("sells full-roster skin sets: one design, one rarity, every champion, never a Mythical", () => {
     const champions = Object.keys(CHARACTERS).sort();
-    expect(SKIN_BUNDLES).toHaveLength(11);
+    expect(SKIN_BUNDLES).toHaveLength(16);
     for (const b of SKIN_BUNDLES) {
       const skins = b.items.map((id) =>
         CHAMPION_SKINS.find((s) => s.id === id)!,
@@ -250,8 +288,14 @@ describe("shop catalog", () => {
         b.id,
       ).toBe(false);
     }
-    // Nova Vanguard, Sky Pirates, Hồn Việt and Stars & Stripes are the Legendary sets.
-    for (const c of ["nova-vanguard", "sky-pirates", "hon-viet", "stars-stripes"])
+    // Nova Vanguard, Sky Pirates, Hồn Việt, Stars & Stripes and Sun Dynasty are the Legendary sets.
+    for (const c of [
+      "nova-vanguard",
+      "sky-pirates",
+      "hon-viet",
+      "stars-stripes",
+      "sun-dynasty",
+    ])
       expect(
         SKIN_BUNDLES.find((b) => b.collection === c)!.items.every(
           (id) =>

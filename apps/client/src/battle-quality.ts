@@ -23,7 +23,8 @@
  * after five comfortable ones. A level it had to leave is not tried again
  * on this device for a week (`BATTLE_PROBE.ceilingDays`), so a phone does
  * not lag once a session finding out again. The settled level is
- * remembered on this device.
+ * remembered on this device (and forgotten once when a build changes what
+ * the measurements mean: `LEARNED_GENERATION`).
  *
  * Settings → Graphics: High always draws everything; Low always draws the
  * lightest level; Auto (default) adapts. Before it has learned a device it
@@ -53,7 +54,8 @@ export interface BattleQualityKnobs {
   /** Stop purely decorative background animation (the stands' crowd). */
   stillBackground: boolean;
   /** Most canvas pixels per CSS pixel (the screen's own density is lower on
-   * some devices, and iPhones are capped at 1.5 at every level). */
+   * some devices, and iPhones are capped at 1.5 at every level, so only
+   * Low's 1.25 draws them softer). */
   density: number;
   /** Most screens' worth of decorative glow light a frame (fx-engine.ts);
    * warnings (wind-ups, a boss gathering power) are never shrunk. */
@@ -81,7 +83,10 @@ export const BATTLE_QUALITY: Record<BattleQuality, BattleQualityKnobs> = {
     trails: 2.5,
     mythicAmbient: 0,
     stillBackground: true,
-    density: 1.5,
+    // Below the iPhone cap (1.5 at every level: render-budget.ts), so Low
+    // fills fewer pixels on iPhones too: 1.5 left them exactly as at High
+    // (23 Nov 2026). 1.25 fills 31% fewer pixels than 1.5; 1 looked soft.
+    density: 1.25,
     // Measured 10 Nov 2026: one champion's heaviest cast covers at most
     // 0.30 screens; four fighters casting at once 0.66 typically and 1.38 at
     // peak (tests/visual/match-flow-budget.spec.ts). So a duel never shrinks
@@ -115,7 +120,38 @@ export const BATTLE_PROBE = {
 };
 
 const KEY = "ea-battle-quality";
+const CEILING_KEY = "ea-battle-ceiling";
+/**
+ * Which build's measurements the remembered level comes from. Until 25 Nov
+ * 2026 the battle HUD's own writes cost a slow phone most of its frame
+ * (docs/network-performance.md, section 20), so Auto stepped phones down,
+ * and held them there for a week, for stutter their graphics chip did not
+ * cause. Raising this number forgets, once per device, what Auto learned
+ * under an older build: it starts again from `autoStartLevel` and steps
+ * down within seconds if the device really cannot keep up.
+ */
+export const LEARNED_GENERATION = "2";
+const GENERATION_KEY = "ea-battle-learned";
+type Store = Pick<Storage, "getItem" | "setItem" | "removeItem">;
+/** Forget a level learned under an older build. Returns whether it did. */
+export function forgetOlderLearning(
+  store: Store | undefined = typeof localStorage === "undefined"
+    ? undefined
+    : localStorage,
+) {
+  try {
+    if (!store || store.getItem(GENERATION_KEY) === LEARNED_GENERATION)
+      return false;
+    store.removeItem(KEY);
+    store.removeItem(CEILING_KEY);
+    store.setItem(GENERATION_KEY, LEARNED_GENERATION);
+    return true;
+  } catch {
+    return false;
+  }
+}
 function read() {
+  forgetOlderLearning();
   try {
     const v = localStorage.getItem(KEY);
     return v === "medium" || v === "low" ? v : null;
@@ -131,7 +167,6 @@ function write(level: BattleQuality) {
     /* Optional. */
   }
 }
-const CEILING_KEY = "ea-battle-ceiling";
 /** The highest level Auto may use on this device, if it had to leave one. */
 export interface BattleCeiling {
   level: BattleQuality;
@@ -139,6 +174,7 @@ export interface BattleCeiling {
   at: number;
 }
 function readCeiling(): BattleCeiling | null {
+  forgetOlderLearning();
   try {
     const v = JSON.parse(localStorage.getItem(CEILING_KEY) ?? "null") as {
       level?: unknown;

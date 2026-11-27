@@ -23,13 +23,21 @@ for (const size of [{width:844,height:390},{width:932,height:430},{width:956,hei
         return [el.dataset.skill ?? el.dataset.action, {x:r.x+r.width/2,y:r.y+r.height/2,r:r.width/2}];
       })));
       const gap = (a:string,b:string) => Math.hypot(targets[a].x-targets[b].x,targets[a].y-targets[b].y)-targets[a].r-targets[b].r;
-      // One even ring: every neighbour pair, and every button to the basic
-      // attack, has the same gap (within a pixel).
-      const pairs: [string,string][] = [["0","1"],["1","2"],["2","3"],["3","dash"],["dash","jump"],
-        ...["0","1","2","3","dash","jump"].map((id) => [id,"attack"] as [string,string])];
+      // The corner layout (owner, 26 Nov 2026): skills 1–3 on one arc round
+      // the basic attack, one gap from it and from each other; the
+      // ultimate, Dash and Jump each nestled in a gap outside that arc,
+      // that same gap from both sides (within a pixel).
+      const pairs: [string,string][] = [["0","1"],["1","2"],["3","0"],["3","1"],["dash","1"],["dash","2"],["jump","0"],["jump","3"],
+        ...["0","1","2"].map((id) => [id,"attack"] as [string,string])];
       const gaps = pairs.map(([a,b]) => gap(a,b));
       expect(Math.max(...gaps) - Math.min(...gaps)).toBeLessThanOrEqual(1);
       expect(Math.min(...gaps)).toBeGreaterThanOrEqual(8);
+      // The basic attack sits in the corner: nothing passes its right or
+      // bottom edge.
+      for (const t of Object.values(targets)) {
+        expect(t.x+t.r).toBeLessThanOrEqual(targets.attack.x+targets.attack.r+1);
+        expect(t.y+t.r).toBeLessThanOrEqual(targets.attack.y+targets.attack.r+1);
+      }
       expect(targets.attack.r).toBeGreaterThan(targets["0"].r*1.4);
       expect(targets["3"].r).toBeGreaterThan(targets["0"].r);
       // No target row (owner, 16 Nov 2026: it took too much room): phones

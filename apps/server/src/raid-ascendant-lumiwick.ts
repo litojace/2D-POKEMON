@@ -43,6 +43,14 @@ import { raidJitter } from "./raid.js";
 import { EmberwingArena } from "./raid-emberwing.js";
 import { leadPoint } from "./raid-boss-aim.js";
 import {
+  galeBlow,
+  lumiSegment,
+  lumiShapeHits,
+  lumiSheltered,
+} from "../../../packages/shared/src/raid-volley.js";
+// Shared with the phone's prediction (raid-volley.ts); tests import them here.
+export { lumiSegment, lumiShapeHits, lumiSheltered };
+import {
   RULES,
   move,
   normalize,
@@ -73,19 +81,6 @@ const W = RULES.width,
 const dist = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y);
 const inCourt = (x: number, y: number, pad: number = RULES.radius) =>
   x > pad && x < W - pad && y > pad && y < H - pad;
-/** Distance from `p` to the segment a-b. */
-export function lumiSegment(p: Point, a: Point, b: Point) {
-  const dx = b.x - a.x,
-    dy = b.y - a.y,
-    t = Math.max(
-      0,
-      Math.min(
-        1,
-        ((p.x - a.x) * dx + (p.y - a.y) * dy) / (dx * dx + dy * dy || 1),
-      ),
-    );
-  return Math.hypot(p.x - a.x - dx * t, p.y - a.y - dy * t);
-}
 
 /** Warnings with a place on the floor (a raider can stand outside them). */
 /**
@@ -115,51 +110,6 @@ export function lumiUnderControls(
       dy = Math.max(y0 - y, 0, y - y1);
     return (dx === 0 && dy === 0) || Math.hypot(dx, dy) < radius + margin;
   });
-}
-
-/**
- * Is a raider standing at (x, y) sheltered from a Snuffing Gale (inside a
- * brazier's ring)? `pad` past the raider's own radius shrinks the ring
- * (the safe-spot rule's margin); at RULES.radius it is the landing's test.
- */
-export function lumiSheltered(
-  braziers: readonly Point[],
-  x: number,
-  y: number,
-  pad: number = RULES.radius,
-) {
-  const ring = E.brazierRadius - Math.max(0, pad - RULES.radius);
-  return braziers.some((b) => Math.hypot(x - b.x, y - b.y) <= ring);
-}
-
-/**
- * Would a raider standing at (x, y) be inside this warning's hit (`pad`:
- * the raider's radius plus any margin)? The same tests the landing uses:
- * a dive's or gale's lane (a brazier's ring shelters from the gale), a
- * circle, a Backdraft round each bound brazier.
- */
-export function lumiShapeHits(
-  w: RaidWarning,
-  x: number,
-  y: number,
-  braziers: readonly Point[],
-  pad: number = RULES.radius,
-) {
-  if (w.kind === "dive-bomb")
-    return lumiSegment({ x, y }, w, { x: w.tx, y: w.ty }) < w.radius + pad;
-  if (w.kind === "snuff-gale")
-    return (
-      lumiSegment({ x, y }, w, { x: w.tx, y: w.ty }) < w.radius + pad &&
-      !lumiSheltered(braziers, x, y, pad)
-    );
-  if (w.kind === "bound-wicks")
-    return (w.braziers ?? []).some((i) => {
-      const b = braziers[i];
-      return !!b && Math.hypot(x - b.x, y - b.y) < w.radius + pad;
-    });
-  if (w.kind === "ember-rain" || w.kind === "scorched-earth")
-    return Math.hypot(x - w.x, y - w.y) < w.radius + pad;
-  return false;
 }
 
 /** How far a raider walks to stand in a brazier's ring (centre inside, a little in). */
@@ -507,7 +457,15 @@ export function AscendantLumiwickRules<B extends EmberClass>(Base: B) {
         ) +
         1 -
         Math.min(...mine.map((w) => w.at));
-      if (wait <= 0 || this.safeSpotExists([...old, ...mine], 0.1)) return;
+      // When the first of the older attacks lands before anyone could move
+      // (inside a reaction), "a safe spot exists" only means everyone stands
+      // in one right now, and their next step can leave it: an echoed dive
+      // placed so beside another dive, with ember rain about to land, left
+      // no spot a tick later. Then the new attack waits too.
+      const first = Math.min(...old.map((o) => o.at));
+      const noTime = first - this.time - RAID_REACTION - 0.1 <= 0;
+      if (wait <= 0 || (!noTime && this.safeSpotExists([...old, ...mine], 0.1)))
+        return;
       for (const w of fresh) {
         w.at += wait;
         if (w.lockAt !== undefined) w.lockAt += wait;
@@ -872,12 +830,12 @@ export function AscendantLumiwickRules<B extends EmberClass>(Base: B) {
       const r = this.raid;
       if (w.kind === "snuff-gale") {
         const braziers = r.braziers ?? [];
-        const d = normalize(w.tx - w.x, w.ty - w.y);
+        const blow = galeBlow(w);
         this.hitBy = "snuff-gale";
         for (const p of this.heroes()) {
           if (p.hp <= 0 || !lumiShapeHits(w, p.x, p.y, braziers)) continue;
           this.damage(p, A.gale.damage, boss.id);
-          move(p, d.x * A.gale.push, d.y * A.gale.push);
+          move(p, blow.x, blow.y);
         }
         this.hitBy = undefined;
         this.event(

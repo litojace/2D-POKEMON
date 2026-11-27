@@ -14,6 +14,7 @@ import {
   PLAZA_FLAG,
   PLAZA_PITCH,
   PLAZA_STAGE,
+  PLAZA_TRACK,
   PLAZA_SPOTS,
   trackPoint,
 } from "../../packages/shared/src/plaza";
@@ -144,6 +145,11 @@ describe("the Plaza world", () => {
       expect(FIGHTER_IDS).toContain(t.character);
       if (t.skin) {
         expect(CHAMPION_SKIN_BY_ID[t.skin.skin]?.champion).toBe(t.character);
+        // Rare or Epic only: Legendary and Mythical skins are for players
+        // to earn, not for NPCs to show off (owner, 22 Nov).
+        expect(["rare", "epic"], t.name).toContain(
+          CHAMPION_SKIN_BY_ID[t.skin.skin]?.rarity,
+        );
       }
       expect(t.name).not.toMatch(/\d/);
     }
@@ -338,6 +344,59 @@ describe("the Plaza world", () => {
     }
     expect(lap).toBeDefined();
     expect(lap!).toBeGreaterThan(5000);
+  });
+
+  it("times 3 laps in a row for the lap quest, and leaving the lane starts over", () => {
+    const world = new PlazaWorld();
+    world.join("s1", "acc-1", profile("Ann"), QUIET);
+    const b = world.bodyOf("s1")!;
+    let now = QUIET;
+    const laps: { ms: number; run?: number }[] = [];
+    let views: number[][] = [];
+    // `turns` laps round the middle of the lane, from just before the line.
+    const go = (turns: number, step = 0.02) => {
+      for (
+        let a = -Math.PI / 2 - 0.15;
+        a < -Math.PI / 2 + Math.PI * 2 * turns + 0.2;
+        a += step
+      ) {
+        const p = trackPoint(a);
+        b.x = p.x;
+        b.y = p.y;
+        b.z = 30;
+        now += 25;
+        for (const e of world.step(0.025, now))
+          if (e.type === "lap" && e.key === "s1")
+            laps.push({ ms: e.ms, ...(e.run ? { run: e.run } : {}) });
+        b.stun = 0;
+        const lap = world.view("s1")!.state.lap;
+        if (lap) views.push([...lap]);
+      }
+    };
+    go(3);
+    expect(laps).toHaveLength(3);
+    expect(laps[0].run).toBeUndefined();
+    expect(laps[1].run).toBeUndefined();
+    expect(laps[2].run).toBe(laps[0].ms + laps[1].ms + laps[2].ms);
+    // The state counts the laps of the run: 1, 2, then 3 (the third holds).
+    expect([...new Set(views.map((v) => v[3]))]).toEqual([1, 2, 3]);
+    // The run started at the first lap's start.
+    const third = views.find((v) => v[3] === 3)!;
+    expect(third[2]).toBe(third[0] - laps[0].ms - laps[1].ms);
+    // A 4th lap in a row: the latest 3 count.
+    laps.length = 0;
+    views = [];
+    go(1);
+    expect(laps.at(-1)?.run).toBeDefined();
+    // Off the lane (to the field's middle), then 2 laps: no run yet.
+    b.x = PLAZA_TRACK.cx;
+    b.y = PLAZA_TRACK.cy;
+    now += 25;
+    world.step(0.025, now);
+    laps.length = 0;
+    go(2);
+    expect(laps).toHaveLength(2);
+    expect(laps.every((l) => l.run === undefined)).toBe(true);
   });
 
   it("keeps the pitch bots out of one another while they play (owner, 7 Nov 2026)", () => {

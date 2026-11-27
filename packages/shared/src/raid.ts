@@ -99,9 +99,10 @@ export const RAID_TIERS: Record<1 | 2 | 3, RaidTier> = {
   2: {
     health: 1.25,
     damage: 1.95,
-    cadence: 0.78,
-    concurrency: [2, 2, 2],
-    telegraph: 0.88,
+    // Owner, 24 Nov 2026: 0.78 cast too fast (the camera never rested).
+    cadence: 0.88,
+    concurrency: [1, 2, 2],
+    telegraph: 0.92,
     leadFraction: 0.7,
     leadCap: 140,
     windows: 0.8,
@@ -114,9 +115,10 @@ export const RAID_TIERS: Record<1 | 2 | 3, RaidTier> = {
   3: {
     health: 1.35,
     damage: 2.15,
-    cadence: 0.72,
-    concurrency: [2, 2, 3],
-    telegraph: 0.82,
+    // Owner, 24 Nov 2026: 0.72 with three attacks live left no time to breathe.
+    cadence: 0.9,
+    concurrency: [2, 2, 2],
+    telegraph: 0.88,
     leadFraction: 0.8,
     leadCap: 160,
     windows: 0.72,
@@ -289,7 +291,17 @@ export type RaidAttack =
   | "short-circuit";
 export const RAID_ATTACKS: Record<
   RaidAttack,
-  { name: string; tip: string; summary: string }
+  {
+    name: string;
+    tip: string;
+    summary: string;
+    /**
+     * "court": the answer may lie anywhere on the court (islands, pads, a
+     * pillar's shadow, the marked raider), so a phone's follow camera pulls
+     * out to the whole court while it is marked (apps/client/src/raid-camera.ts).
+     */
+    view?: "court";
+  }
 > = {
   "prism-lance": {
     name: "Prism Lance",
@@ -298,6 +310,7 @@ export const RAID_ATTACKS: Record<
   },
   "fan-display": {
     name: "Fan Display",
+    view: "court",
     tip: "The numbered color on the crest is the only cone that fires. Leave that cone.",
     summary:
       "Six numbered cones appear; only the crest\u2019s matching color fires.",
@@ -320,6 +333,7 @@ export const RAID_ATTACKS: Record<
   },
   "light-relay": {
     name: "Light Relay",
+    view: "court",
     tip: "Stand between the skylight and a mirror. Hit mirrors to rotate them 45\u00b0. Chain light into the heart. Hold a connected chain for 1.2 seconds (solo 1 second, 2 in the final phase); in the final phase teams need both paths within 3 seconds. Mirrors that carried the light flash and turn after each exposure.",
     summary:
       "Connect skylight \u2192 raider \u2192 mirrors \u2192 heart. Hit a mirror to turn its arrow.",
@@ -358,6 +372,7 @@ export const RAID_ATTACKS: Record<
   },
   "brazier-lighting": {
     name: "Brazier Lighting",
+    view: "court",
     tip: "Stand inside a brazier ring for 2 seconds. Light all three together to ground Lumiwick. Solo flames last 11 seconds. Fireproof halves the lighting time.",
     summary:
       "Run the triangle and light all three braziers before the first goes out.",
@@ -386,6 +401,7 @@ export const RAID_ATTACKS: Record<
   },
   polarity: {
     name: "Polarity",
+    view: "court",
     tip: inMeters(
       "Stand within 125px of an opposite sign before the 4-second timer ends. Same signs together take double damage. Solo: enter your opposite-sign floor pad. Terradon\u2019s Shell Up blocks the blast.",
     ),
@@ -439,39 +455,50 @@ export const RAID_ATTACKS: Record<
   },
   breaker: {
     name: "Breaker Wall",
+    view: "court",
     tip: "A towering wave sweeps the whole court: it can't be jumped. Stand in a lane of calm water (the bracketed gaps) or on an island as it passes.",
     summary:
       "A wall of water with calm lanes. Stand in a lane or on an island.",
   },
   geyser: {
     name: "Geyser Line",
+    // The row runs 300 px on from the raider, away from the boss the phone
+    // camera leans toward: the later geysers fell off a phone's screen.
+    view: "court",
     tip: "Three geysers in a row, marked at once, erupt one after another (dots count them). Step sideways out of the line, not along it.",
     summary: "A row of geysers erupts in turn. Step sideways off the line.",
   },
   nightfall: {
     name: "Nightfall",
+    view: "court",
     tip: "The dark swallows the yard: only lit lanterns and the glowing pools of moonlight are safe. Walk into one before the dark closes. It can't be jumped, and it adds a curse.",
     summary: "The yard goes dark. Stand in a moonlit pool or lantern light.",
   },
   pounce: {
     name: "Shade Pounce",
+    // The leaps chase a raider a step further each time, past the floor
+    // round them, and come from bodies across the yard.
+    view: "court",
     tip: "Every body leaps onto a raider, one after another (dots count the order): the copies first, the real one last. Step out of the circle under you. A real one that lands in lantern light casts a shadow.",
     summary:
       "Bodies pounce in turn. Step out of each circle; the last is real.",
   },
   share: {
     name: "Shared Meteor",
+    view: "court",
     tip: "Gather on the marked raider so the meteor's damage is split. Alone, step out of the circle once it locks.",
     summary: "A meteor marks you. Alone, leave the circle after it locks.",
   },
   dive: {
     name: "Dive & Surface",
+    view: "court",
     tip: "When the ripple follows you, lead it onto an island, then step off before it locks. It surfaces stranded on dry land.",
     summary:
       "A ripple follows you, then locks. Lead it onto an island and step off.",
   },
   wave: {
     name: "Tidal Wave",
+    view: "court",
     tip: "A low wave (chapter 1) can be jumped. A high wave can't: be standing on an island when it passes.",
     summary:
       "A wave sweeps the arena. Jump a low one; stand on an island for a high one.",
@@ -483,6 +510,7 @@ export const RAID_ATTACKS: Record<
   },
   hightide: {
     name: "High Tide",
+    view: "court",
     tip: "Get onto an island before the water rises. Two fit on an island; a third gets pushed off.",
     summary: "The floor floods for a few seconds. Stand on an island.",
   },
@@ -519,6 +547,7 @@ export const RAID_ATTACKS: Record<
   },
   split: {
     name: "Mirror Split",
+    view: "court",
     tip: "Only the real Inkpurr casts a shadow in lantern light, and its moon tail flickers. Hitting a copy curses you.",
     summary: "It splits into copies. Find the one with a shadow in the light.",
   },
@@ -544,60 +573,71 @@ export const RAID_ATTACKS: Record<
   },
   "falling-stars": {
     name: "Falling Stars",
+    view: "court",
     tip: "Remember the constellation and stand between the marked stars before they land.",
     summary: "A constellation flashes; stars land on each marked point.",
   },
   "whale-song": {
     name: "Thunder Snore",
+    view: "court",
     tip: "Stay inside the moving teal Quiet Zone until the snore ends. Everyone fits, but it is small.",
     summary: "Follow the moving Quiet Zone for four seconds.",
   },
   "dream-sequence": {
     name: "Dream Sequence",
+    view: "court",
     tip: "The Dreamer sees the runes privately. Call them with 1–4 or the rune buttons, then enter the matching pads in order. Leave a pad before entering it again. A backwards arrow means read right to left.",
     summary:
       "Read your private sequence and step on the pads in order. Solo gives you 14 seconds.",
   },
   "twin-dream": {
     name: "Twin Dream",
+    view: "court",
     tip: "Two Dreamers share one dream: each sees only their own runes (the other's show as ?). Take turns calling, then step the pads in order. Alone, the dream fades after a glimpse: remember it.",
     summary: "Two Dreamers each see half the runes. Call in turn.",
   },
   "dream-tide": {
     name: "Dream Tide",
+    view: "court",
     tip: "Sleep floods the deck. Only one rune pad stays awake, and only the marked raider sees which: they call it, everyone runs onto that pad. It can't be jumped.",
     summary: "Listen for the call. Stand on the one pad that stays awake.",
   },
   eclipse: {
     name: "Eclipse",
+    view: "court",
     tip: "A dark moon covers the skylight: sunfall strikes its window, so step out of the circle. The light opens at the window marked in gold: rebuild the relay from there.",
     summary:
       "The skylight moves. Leave the sunfall; relay from the new window.",
   },
   "snuff-gale": {
     name: "Snuffing Gale",
+    view: "court",
     tip: "Lumiwick blows a cold gale down the lane through a brazier: if nobody stands in that brazier's ring, its flame goes out. Anyone standing in a brazier's ring is sheltered; anyone else in the lane is hit and blown along it.",
     summary: "Hold the flame: stand in the brazier's ring, or leave the lane.",
   },
   "bound-wicks": {
     name: "Bound Wicks",
+    view: "court",
     tip: "A burning wick ties braziers together: they only catch while every bound ring has a raider in it. Light them together before the fuse burns out, or the wick snaps: a Backdraft bursts from each bound brazier and every flame goes out.",
     summary:
       "Stand in every bound ring at once. Step out if the fuse runs out.",
   },
   "mirror-charge": {
     name: "Mirror Charge",
+    view: "court",
     tip: "Fizz takes the + charge and Crackle the − charge, and every raider is marked + or −. Only hits from the opposite sign discharge a twin (the same sign is repelled). Discharge both twins before the charge runs out: split up, or a twin left charged overloads.",
     summary:
       "Hit the twin of the opposite sign. Discharge both before time runs out.",
   },
   "short-circuit": {
     name: "Short Circuit",
+    view: "court",
     tip: "The twins overcharge their link: a thick beam that cannot be jumped. Raiders standing on the beam when it fires share its shock between them; nobody on it, and the shock arcs across the whole court. Stand on it together.",
     summary: "Stand on the overcharged beam together to share the shock.",
   },
   "umbral-prism": {
     name: "Umbral Prism",
+    view: "court",
     tip: "A dark prism on a raider blocks the light through them. A teammate or a mirror must shine the beam on them from a step away (alone: stand in the skylight's reach) before its timer runs out, or it shatters and the relay's hold is lost.",
     summary: "Hand the light to the marked raider before the prism shatters.",
   },
@@ -834,6 +874,13 @@ export const GLOOMSHADE = {
     creep: 3,
     cleanseSeconds: 2,
     soloStill: 2.5,
+    /**
+     * Seconds between the curse's hits: its damage (`dps`, `creep`) adds up
+     * and lands every this often, as a burn's does. Every tick was 30 hits a
+     * second per raider (a spark, a tone and a "0" each): 5-10% of a frame's
+     * script with four Haunted, and noise (23 Nov 2026).
+     */
+    tickEvery: 1 / 3,
   },
   /** One more copy with three or more raiders (live raids). */
   split: { delay: 1.2, copies: 3, peril3Copies: 4, partyCopy: 3 },
@@ -2571,8 +2618,6 @@ export interface RaidState {
   wards: { x: number; y: number; until: number }[];
   rites: Record<string, RaidRite[]>;
   offers: Record<string, RaidRite[]>;
-  /** Legacy receipt compatibility; new runs are always ordinary raids. */
-  daily: boolean;
   /** Pacific calendar date (YYYY-MM-DD) the run counts for. */
   day: string;
   seed: number;
@@ -2613,6 +2658,11 @@ export interface RaidState {
   }[];
   /** The Undertow's whirlpool, while it pulls. */
   undertow?: { x: number; y: number; until: number; radius: number };
+  /**
+   * Raiders a Bubble Barrage bubble rooted, and until when (Tidelotl). In
+   * the snapshot so the phone holds them still too (tidelotl-drift.ts).
+   */
+  rooted?: Record<string, number>;
   /** Times Tidewyrm has been stranded this run (its feat). */
   strands?: number;
   /** Gloomshade: the Lantern Yard's lanterns. */
@@ -2770,11 +2820,14 @@ export interface RaidReceipt {
   peril: number;
   trait: RaidTrait;
   gilded: boolean;
-  /** Kept false for databases that only have migration 008. */
-  weekly: boolean;
-  week: string;
-  daily?: boolean;
-  day?: string;
+  /**
+   * The run's Pacific date, stored on the run. The legacy solo rewards read
+   * it (arena_raid_earned, migration 030). Raid of the Week's `weekly` and
+   * `week` and Raid of the Day's `daily` went with their columns (migration
+   * 20261127200000). Each run's stored receipt still has them, and the
+   * database ignores them when an older server sends them.
+   */
+  day: string;
   /** The boss's feat was achieved in this run (e.g. every charge baited). */
   feat?: boolean;
   seed: number;
@@ -2802,12 +2855,6 @@ export interface RaidBossProgress {
   bestSeconds: number | null;
   runs: number;
 }
-export interface RaidBoardRow {
-  partySize: number;
-  seconds: number;
-  names: string[];
-  peril: number;
-}
 export interface RaidProgress {
   /** Before migration 008: one cosmetic for everything. */
   equipped?: "cragbound" | "mountain-aura" | null;
@@ -2822,8 +2869,6 @@ export interface RaidProgress {
   bestSeconds: number | null;
   titles: string[];
   cosmetics: string[];
-  /** Pre-009 weekly board (empty from migration 009). */
-  weekly: RaidBoardRow[];
   /** Per-boss records and earned rewards. */
   bosses?: Partial<Record<RaidBossId, RaidBossProgress>>;
   earned?: string[];
@@ -2832,14 +2877,6 @@ export interface RaidProgress {
   >;
   totalClears?: number;
 }
-export function raidWeek(date = new Date()) {
-  const start = new Date(
-    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
-  );
-  start.setUTCDate(start.getUTCDate() - ((start.getUTCDay() + 6) % 7));
-  return start.toISOString().slice(0, 10);
-}
-
 /** The equipped look from saved progress (also reads the pre-008 format). */
 export function raidLookOf(
   progress: Pick<RaidProgress, "loadout" | "equipped"> | null | undefined,

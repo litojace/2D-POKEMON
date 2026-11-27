@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { RULES } from "../../packages/shared/src/index";
 import { battlePerfSchema } from "../../packages/shared/src/connection";
 import {
   openHub,
@@ -7,6 +8,7 @@ import {
   snap,
   createRoom,
 } from "./helpers";
+import { lookAsked, lookShown, playersLook } from "./players-look";
 
 /**
  * A match in its real order — dressed fighters from the first snapshot, the
@@ -21,6 +23,9 @@ import {
  * - the page and the scene do not keep growing during the fight;
  * - when the match ends, one performance report goes to the server
  *   ("battle-perf", battle-perf.ts), and it is valid.
+ *
+ * In the look players have (players-look.ts): its HUD is the one their
+ * phones lay out and read.
  *
  * Counted, not timed: this machine draws on the CPU. A scenario that
  * swaps fighters in mid-fight would load art mid-fight by design, so the
@@ -124,7 +129,10 @@ for (const quality of ["high", "low"] as const)
         (q) => localStorage.setItem("ea-graphics", q),
         quality,
       );
+      await playersLook(page);
       const errors = await openHub(page);
+      const look = await lookShown(page);
+      expect(look, "the look measured").toBe(lookAsked());
       // A dressed four-player match, in its briefing from the first snapshot.
       // The four kits with the most glow light (effect-budget.spec.ts: each
       // one's heaviest cast 0.36-0.47 screens), so the fight is as crowded
@@ -149,7 +157,7 @@ for (const quality of ["high", "low"] as const)
       await openPlayPanel(page);
       await createRoom(page);
       await pushUntilBattle(page);
-      await page.evaluate(() => {
+      await page.evaluate((snapshotHz) => {
         const w = window as any;
         const game = w.__perfGame;
         // Canvas resizes during the fight (each reallocates its buffer).
@@ -179,8 +187,8 @@ for (const quality of ["high", "low"] as const)
         w.__brief = setInterval(() => {
           w.__snap = w.__pack();
           w.__push();
-        }, 1000 / 15);
-      });
+        }, 1000 / snapshotHz);
+      }, RULES.snapshot);
       await page.waitForTimeout(BRIEFING_MS);
       const counts = () =>
         page.evaluate(() => {
@@ -201,48 +209,63 @@ for (const quality of ["high", "low"] as const)
           };
         });
       // The fight: players spread out (some off screen), everyone casting.
-      await page.evaluate(async () => {
-        const w = window as any;
-        clearInterval(w.__brief);
-        const m = await import("/rooms.ts");
-        const a = w.__arena;
-        a.phase = "playing";
-        a.deadline = a.time + 1e6;
-        a.players.forEach((p: any, i: number) => {
-          p.x = [250, 1350, 250, 1350][i];
-          p.y = [200, 200, 750, 750][i];
-        });
-        let tick = 0;
-        w.__fight = setInterval(() => {
-          tick++;
+      await page.evaluate(
+        async ({ tickHz, snapshotHz }) => {
+          const w = window as any;
+          clearInterval(w.__brief);
+          const m = await import("/rooms.ts");
+          const a = w.__arena;
+          a.phase = "playing";
+          a.deadline = a.time + 1e6;
           a.players.forEach((p: any, i: number) => {
-            p.hp = Math.max(p.hp, 60);
-            p.ult = 100;
-            const target = a.players[(i + 1) % a.players.length];
-            a.submit(p, {
-              ...m.blankInput(),
-              seq: p.ack + 1,
-              dx: Math.cos(tick / 20 + i),
-              dy: Math.sin(tick / 20 + i),
-              aimX: target.x,
-              aimY: target.y,
-              basic: true,
-              // Every 4 s all four ultimates at once (the crowded moment);
-              // otherwise one skill a second each, in turn.
-              skill:
-                tick % 120 === 60
-                  ? m.ULT_SLOT
-                  : (tick + i * 11) % 30 === 0
-                    ? ((tick / 30 + i) | 0) % 4
-                    : -1,
-            });
+            p.x = [250, 1350, 250, 1350][i];
+            p.y = [200, 200, 750, 750][i];
           });
-          a.tick();
-          if (tick % 2) return;
-          w.__snap = w.__pack();
-          w.__push();
-        }, 1000 / 30);
-      });
+          let tick = 0;
+          const step = () => {
+            tick++;
+            a.players.forEach((p: any, i: number) => {
+              p.hp = Math.max(p.hp, 60);
+              p.ult = 100;
+              const target = a.players[(i + 1) % a.players.length];
+              a.submit(p, {
+                ...m.blankInput(),
+                seq: p.ack + 1,
+                dx: Math.cos(tick / 20 + i),
+                dy: Math.sin(tick / 20 + i),
+                aimX: target.x,
+                aimY: target.y,
+                basic: true,
+                // Every 4 s all four ultimates at once (the crowded moment);
+                // otherwise one skill a second each, in turn.
+                skill:
+                  tick % 120 === 60
+                    ? m.ULT_SLOT
+                    : (tick + i * 11) % 30 === 0
+                      ? ((tick / 30 + i) | 0) % 4
+                      : -1,
+              });
+            });
+            a.tick();
+            if (tick % Math.round(tickHz / snapshotHz)) return;
+            w.__snap = w.__pack();
+            w.__push();
+          };
+          const from = performance.now();
+          let stepped = 0;
+          w.__fight = setInterval(() => {
+            const due = Math.floor(
+              ((performance.now() - from) * tickHz) / 1000,
+            );
+            if (due - stepped > 10) stepped = due - 10;
+            while (stepped < due) {
+              stepped++;
+              step();
+            }
+          }, 1000 / tickHz);
+        },
+        { tickHz: RULES.tick, snapshotHz: RULES.snapshot },
+      );
       // A moment for the round to start (the countdown, the camera).
       await page.waitForTimeout(2000);
       const before = await counts();
@@ -260,7 +283,7 @@ for (const quality of ["high", "low"] as const)
       await expect(overlay).toBeVisible();
       await expect(overlay).toContainText(/\d+ fps/);
       await expect(overlay).toContainText(
-        quality === "high" ? /high 2×/ : /low 1\.5×/,
+        quality === "high" ? /high 2×/ : /low 1\.25×/,
       );
       expect(
         await overlay.evaluate((el) => getComputedStyle(el).pointerEvents),
@@ -317,7 +340,7 @@ for (const quality of ["high", "low"] as const)
       );
       console.log(
         "MATCH_FLOW",
-        JSON.stringify({ before, after, settled, layout, glow, report }),
+        JSON.stringify({ look, before, after, settled, layout, glow, report }),
       );
       expect(after.rigTextures, "no fighter art loads mid-fight").toBe(
         before.rigTextures,
@@ -341,7 +364,7 @@ for (const quality of ["high", "low"] as const)
       ).toBeLessThanOrEqual(before.unpooled + 40);
       expect(battlePerfSchema.safeParse(report).success).toBe(true);
       expect(report.quality).toBe(quality);
-      expect(report.density).toBe(quality === "high" ? 2 : 1.5);
+      expect(report.density).toBe(quality === "high" ? 2 : 1.25);
       if (quality === "low") {
         // Low's glow budget (0.75 screens) holds crowded fights' glow light
         // down, shrinking decorative glows smoothly when it must.

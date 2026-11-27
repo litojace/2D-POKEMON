@@ -31,6 +31,27 @@ export function memoryConstrained(
   return ios || (typeof memory === "number" && memory > 0 && memory <= 3);
 }
 /**
+ * A device that should give the hub's memory back when a battle opens:
+ * every memoryConstrained one, and one reporting 4 GB too (a budget Android
+ * phone; Chrome reports the nearest power of two). The Plaza's sprite cache
+ * (~37 MB once visited) outlives the Plaza, and a battle on top of it
+ * (Phaser, textures) is where such a phone runs short. Unlike
+ * memoryConstrained, the hub keeps its canvases between its own scenes, so
+ * going back and forth from the Lobby stays instant (a repaint there took
+ * 2 s on a CPU slowed 4×).
+ */
+export function memoryShortInBattle(
+  ios = isIOSDevice(),
+  memory = typeof navigator === "undefined"
+    ? undefined
+    : (navigator as Navigator & { deviceMemory?: number }).deviceMemory,
+) {
+  return (
+    memoryConstrained(ios, memory) ||
+    (typeof memory === "number" && memory > 0 && memory <= 4)
+  );
+}
+/**
  * An iPad with a large screen (its long side 1180 points or more): iPad
  * Air 4 and later, iPad 10th generation, every iPad Pro 11", 12.9" and 13".
  * They all have 4 GB of memory or more (an iPad Pro M4 8–16 GB), so they
@@ -75,6 +96,11 @@ export const LARGE_IPAD_PIXEL_BUDGET = 6_000_000;
  * frame, so dragging the Plaza stays smooth. There it also stays
  * within SCENE_PIXEL_BUDGET (an iPad-sized window draws a little softer); a
  * large iPad draws up to 2× within LARGE_IPAD_PIXEL_BUDGET. Never below 1.
+ *
+ * `sharp`: up to 2× on iPhones and smaller iPads too, still within the
+ * budget. At 1.5× on a 3× iPhone every fighter and name was stretched 2×
+ * and looked soft (owner, 22 Nov); the Plaza asks for it until Auto finds
+ * the phone too slow, then steps back to 1.5× before it ever goes Low.
  */
 export function sceneDensity(
   width: number,
@@ -82,8 +108,12 @@ export function sceneDensity(
   dpr = typeof devicePixelRatio === "number" ? devicePixelRatio : 1,
   ios = isIOSDevice(),
   large = largeIPad(ios),
+  sharp = false,
 ) {
-  let d = Math.min(ios && !large ? 1.5 : 2, Number.isFinite(dpr) ? dpr : 1);
+  let d = Math.min(
+    ios && !large && !sharp ? 1.5 : 2,
+    Number.isFinite(dpr) ? dpr : 1,
+  );
   if (ios)
     d = Math.min(
       d,

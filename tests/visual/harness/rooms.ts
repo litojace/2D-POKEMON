@@ -22,6 +22,7 @@ export { resultXp } from "../../../apps/client/src/adventure-ui";
 import { createRaidArena } from "../../../apps/server/src/raid-bosses";
 import {
   CHARACTERS,
+  SnapshotDeltaEncoder,
   packSnapshot,
   picksHidden,
   veilPlayers,
@@ -222,7 +223,7 @@ function room(kind: "practice" | "raid" | "pvp" | "spire", o: RoomOptions) {
     const a: any = createRaidArena("RAID42", o.boss ?? "grumblecrag");
     a.add("me", "tester", "voltkit");
     a.add("p2", "Kai", "cindrake");
-    a.configure(1, false);
+    a.configure(1);
     a.start();
     a.phase = "playing";
     for (const i of o.broken ?? [])
@@ -320,12 +321,41 @@ w.__room = (
   w.__snap = packSnapshot(a.snapshot());
 };
 /**
+ * Snapshots as changes, as the server sends them with SNAPSHOT_DELTA on
+ * (packages/shared/src/snapshot-delta.ts): with `window.__delta` set (a
+ * spec, or VISUAL_DELTA=1 for a whole run, helpers.ts), the room's first
+ * snapshot goes out whole and numbered and the rest as `state-delta`, each
+ * through JSON as over a real connection. The client asking for a whole one
+ * (`state-full`, counted in `__deltaAsked` by stubs.ts) gets it on the next push.
+ * `__deltaLose = n` makes the next n deltas vanish; `__deltaLog` keeps what
+ * each numbered snapshot was, for a spec to compare with what the game got.
+ */
+const deltas = { encoder: new SnapshotDeltaEncoder(), n: 0, code: "" };
+w.__deltaSent = 0;
+w.__deltaAsked = 0;
+function send(snap: any) {
+  if (!w.__delta || !snap) return w.__sock.fire("state", snap);
+  const wire = (v: unknown) => JSON.parse(JSON.stringify(v));
+  if (w.__deltaWhole || snap.code !== deltas.code) deltas.encoder.reset();
+  w.__deltaWhole = false;
+  deltas.code = snap.code;
+  const numbered = { ...snap, n: ++deltas.n };
+  const d = deltas.encoder.encode(numbered);
+  w.__deltaLog?.set(numbered.n, JSON.stringify(numbered));
+  if (!d) return w.__sock.fire("state", wire(numbered));
+  if (w.__deltaLose > 0) return void w.__deltaLose--;
+  w.__deltaSent++;
+  w.__sock.fire("state-delta", wire({ code: snap.code, n: numbered.n, d }));
+}
+/**
  * Like the server, a PvP lobby never shows another side's pick
  * (docs/hidden-picks.md): the snapshot is sent veiled for "me".
  */
 w.__push = () => {
   const snap = w.__snap;
-  if (!snap || !picksHidden(snap)) return w.__sock.fire("state", snap);
+  if (!snap || !picksHidden(snap)) return send(snap);
+  // Each side's copy is its own: not the room's numbered snapshot.
+  deltas.encoder.reset();
   const team = (id: string) =>
     snap.players.find((p: any) => p.id === id)?.team ?? -1;
   w.__sock.fire("state", {

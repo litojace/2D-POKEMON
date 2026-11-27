@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mountShopPreview } from "../../apps/client/src/shop-preview";
+import { setReducedMotion } from "../../apps/client/src/reduced-motion";
 import { CHAMPION_SKIN_BY_ID } from "../../packages/shared/src/shop";
 
 const mock = vi.hoisted(() => ({
@@ -230,6 +231,7 @@ beforeEach(() => {
   vi.stubGlobal("cancelAnimationFrame", clearTimeout);
 });
 afterEach(() => {
+  setReducedMotion(false, false);
   vi.useRealTimers();
   vi.unstubAllGlobals();
 });
@@ -283,11 +285,8 @@ describe("Shop live previews", () => {
     expect(mock.destroy).toHaveBeenCalledWith(true);
   });
   it("renders one reduced-motion frame and wakes for an original comparison", () => {
-    vi.stubGlobal("matchMedia", (query: string) => ({
-      matches: query.includes("reduced-motion"),
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-    }));
+    // Settings → Reduce motion, the game's own switch (not the device's).
+    setReducedMotion(true, false);
     const { host, compare, dispose } = preview();
     draw();
     expect(host.classList.contains("is-ready")).toBe(true);

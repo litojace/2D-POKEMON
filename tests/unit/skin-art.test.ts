@@ -326,7 +326,10 @@ describe("champion skin art", () => {
 });
 
 describe("collection pieces", () => {
-  const css = readFileSync("apps/client/src/style.css", "utf8");
+  // The sets added on 25 Nov 2026 keep their portrait CSS with their frames.
+  const css =
+    readFileSync("apps/client/src/style.css", "utf8") +
+    readFileSync("apps/client/src/collection-frames.css", "utf8");
   it("every piece has something to show in play or in portraits", () => {
     for (const item of LOOK_ITEMS) {
       const g = graphics();
@@ -404,15 +407,63 @@ describe("raid cosmetics", () => {
           ),
           r.id,
         ).toBe(true);
-      // Boss frames are drawn as their own SVG ring and ornament.
+      // Boss frames are drawn as their own SVG ring and ornament (picture
+      // files in src/frames/, scripts/frame-files.mjs).
       if (r.slot === "frame") {
         expect(bossFrames, r.id).toMatch(
           new RegExp(
-            `\\[data-cosmetic="${r.id}"\\]::before \\{\\s*background-image: url\\("data:image/svg`,
+            `\\[data-cosmetic="${r.id}"\\]::before \\{\\s*background-image: url\\("\\./frames/boss-${r.id}-ring\\.svg"\\)`,
           ),
         );
         expect(bossFrames, r.id).toContain(`[data-cosmetic="${r.id}"]::after`);
       } else expect(css, r.id).toContain(`[data-cosmetic="${r.id}"]`);
     }
+  });
+});
+
+describe("see-through champions under dark skins", () => {
+  // Glacelle's sea-angel body is a little translucent by design. Under black
+  // steel (Rimebane), an abyssal body (Deep Glow) or mecha plating (Cryo Unit)
+  // the scene behind showed clearly through the head and body, so those skins
+  // draw it solid; its own colours and the glassy Snow Globe stay see-through.
+  const parts = ["head", "body", "armL", "armR"] as const;
+  const seeThrough = (skin: string | null) =>
+    DIRS.flatMap((dir) =>
+      parts
+        .filter((part) =>
+          /fill-opacity="\.\d+"/.test(
+            creatureSvg(
+              "glacelle",
+              dir,
+              part,
+              undefined,
+              "normal",
+              skin ? { skin, stage: 3 } : null,
+            ),
+          ),
+        )
+        .map((part) => `${dir} ${part}`),
+    );
+
+  it("dark and armoured Glacelle skins are drawn solid", () => {
+    for (const skin of [
+      "glacelle-polaris",
+      "glacelle-deep-glow",
+      "glacelle-cryo-unit",
+    ]) {
+      expect(SKIN_ART[skin]?.solid, skin).toBe(true);
+      expect(seeThrough(skin), skin).toEqual([]);
+    }
+  });
+
+  it("every Mythical (black-steel armour) on Glacelle is solid", () => {
+    for (const s of CHAMPION_SKINS.filter((s) => s.champion === "glacelle"))
+      if (SKIN_ART[s.id]?.mythic) expect(SKIN_ART[s.id].solid, s.id).toBe(true);
+  });
+
+  it("Glacelle's own body and the glassy skins stay see-through", () => {
+    expect(seeThrough(null)).not.toEqual([]);
+    expect(seeThrough("glacelle-snow-globe")).not.toEqual([]);
+    expect(seeThrough("glacelle-deep-sea")).not.toEqual([]);
   });
 });

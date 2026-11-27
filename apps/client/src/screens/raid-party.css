@@ -1,0 +1,91 @@
+/* The party's health in a raid or Spire fight (raid-party.ts): each ally's
+   name over a plain bar, top left. Health reads as on the nameplates:
+   green, orange when low, and when down, red, filling with the revive. */
+#raid-party {
+  display: none;
+}
+body.battle-active.battle-raid #raid-party:not([hidden]) {
+  position: fixed;
+  /* Desktop: the corner left of the boss bar is free. */
+  top: max(16px, calc(var(--safe-top, 0px) + 8px));
+  left: max(12px, calc(var(--safe-left, 0px) + 4px));
+  z-index: 55;
+  display: grid;
+  gap: 4px;
+  width: 96px;
+  pointer-events: none;
+}
+/* Phones: the boss bar spans the top (from x 28 at 667 px), so the list
+   sits in the left column under it. */
+body.battle-active.battle-raid.touch-mode #raid-party:not([hidden]) {
+  top: calc(var(--safe-top, 0px) + 54px);
+}
+#raid-party .rp-ally {
+  --hp: #6fdc9a;
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+#raid-party .rp-ally[data-state="low"] {
+  --hp: #ffa64d;
+}
+#raid-party .rp-ally[data-state="down"] {
+  --hp: #ff5d6c;
+}
+#raid-party .rp-ally > b {
+  overflow: hidden;
+  color: #f1f5ff;
+  font: 700 calc(11px * var(--text-scale, 1)) / 1.15 var(--font-body);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-shadow:
+    0 1px 2px #000,
+    0 0 4px #000c;
+}
+#raid-party .rp-ally[data-state="down"] > b {
+  color: #ff9aa4;
+}
+#raid-party .rp-bar {
+  display: block;
+  overflow: hidden;
+  height: 5px;
+  border-radius: 3px;
+  background: #050c1cd9;
+  box-shadow: 0 0 0 1px #ffffff2e;
+}
+/* The fill is a transform (no layout, as the HUD bars). */
+#raid-party .rp-bar > i {
+  display: block;
+  height: 100%;
+  background: var(--hp);
+  transform: scaleX(var(--fill, 1));
+  transform-origin: left;
+}
+
+/* The quick-chat button (chat/chat.css) steps below a list that reaches
+   it on phones (24 px a row from y 54, then 8 px); with one or two allies
+   it keeps its place. Its emote grid and message feed follow it. */
+body.battle-active.battle-raid.touch-mode.raid-party-open
+  .battle-chat[data-raid="true"] {
+  --chat-top: max(
+    calc(var(--safe-top, 0px) + var(--desktop-raid-hud-height, 24px) + 88px),
+    calc(var(--safe-top, 0px) + 58px + var(--raid-party-rows, 0) * 24px)
+  );
+  top: var(--chat-top);
+}
+body.battle-active.battle-raid.touch-mode.raid-party-open
+  .battle-chat[data-raid="true"]
+  + .battle-chat-grid {
+  top: max(
+    calc(var(--safe-top, 0px) + var(--desktop-raid-hud-height, 24px) + 32px),
+    calc(var(--safe-top, 0px) + 58px + var(--raid-party-rows, 0) * 24px)
+  );
+}
+body.battle-active.battle-raid.touch-mode.raid-party-open
+  .battle-chat[data-raid="true"]
+  ~ .battle-chat-feed {
+  top: max(
+    calc(var(--safe-top, 0px) + var(--desktop-raid-hud-height, 24px) + 140px),
+    calc(var(--safe-top, 0px) + 110px + var(--raid-party-rows, 0) * 24px)
+  );
+}

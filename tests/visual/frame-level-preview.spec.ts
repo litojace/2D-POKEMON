@@ -56,15 +56,19 @@ window.fetch=async(input,init)=>{
       });
       await page.click("[data-fit-slot=frame]");
       await page.click(".fit-grid [data-ui-item=conqueror]");
-      const art = page.locator(".fit-frame-stage .portrait-frame");
+      // The open Shop's: a closed one stays in the page, hidden, for its
+      // next open (ui/hub-panel.ts park; it carries data-ui-leaving).
+      const open = ".fit-room:not([data-ui-leaving])";
+      const art = page.locator(`${open} .fit-frame-stage .portrait-frame`);
       await expect(art).toHaveAttribute("data-frame-stars", "1");
       await expect(page.locator("[data-fit-stars]")).toHaveCount(6);
-      await expect(art.locator("svg[data-fighter=tidefin]")).toHaveCount(1);
-      expect(await art.innerHTML()).toContain("tidefin-moontide");
+      // Your avatar in the frame, as everyone sees you; not the fighter.
+      await expect(art.locator("img.portrait-avatar")).toHaveCount(1);
+      await expect(art.locator("svg[data-fighter]")).toHaveCount(0);
       await expect(page.locator(".fit-frame-stage > canvas")).toHaveCount(0);
       await page.evaluate(() => {
         (window as any).__frameReviewSvg = document.querySelector(
-          ".fit-frame-avatar svg",
+          ".fit-frame-avatar img",
         );
         (window as any).__frameReviewStage =
           document.querySelector(".fit-frame-stage");
@@ -112,7 +116,7 @@ window.fetch=async(input,init)=>{
           await page.evaluate(
             () =>
               (window as any).__frameReviewSvg ===
-                document.querySelector(".fit-frame-avatar svg") &&
+                document.querySelector(".fit-frame-avatar img") &&
               (window as any).__frameReviewStage ===
                 document.querySelector(".fit-frame-stage"),
           ),
@@ -203,12 +207,13 @@ window.fetch=async(input,init)=>{
       await expect(page.locator("[data-fit-stars]")).toHaveCount(0);
       await page.click(".fit-grid [data-ui-item=conqueror]");
       await expect(art).toHaveAttribute("data-frame-stars", "1");
-      // Another fighter keeps the previewed level, in that fighter's look.
+      // Another fighter keeps the previewed level, and the same avatar:
+      // your portrait doesn't change with the fighter.
       await page.click('[data-fit-stars="3"]');
       await page.click('[data-fit-fighter="auralynx"]');
       await expect(art).toHaveAttribute("data-frame-stars", "3");
-      await expect(art.locator("svg[data-fighter=auralynx]")).toHaveCount(1);
-      expect(await art.innerHTML()).toContain("auralynx-celestial-sage");
+      await expect(art.locator("img.portrait-avatar")).toHaveCount(1);
+      await expect(art.locator("svg[data-fighter]")).toHaveCount(0);
       await snap(
         page,
         info,
@@ -220,9 +225,9 @@ window.fetch=async(input,init)=>{
         (window as any).__clears = 50;
         void (window as any).__account.showWardrobe();
       });
-      await page.click("[data-fit-slot=frame]");
+      await page.click(`${open} [data-fit-slot=frame]`);
       await expect(art).toHaveAttribute("data-tier", "mythic");
-      const tile = page.locator(".fit-grid [data-ui-item=conqueror]");
+      const tile = page.locator(`${open} .fit-grid [data-ui-item=conqueror]`);
       await expect(tile.locator(".ui-tile-sub")).toContainText("★★★★★");
       await expect(tile.locator(".ui-rarity")).toHaveText("Mythical");
       await expect(tile.locator(".raid-cosmetic-preview")).toHaveAttribute(
@@ -230,7 +235,7 @@ window.fetch=async(input,init)=>{
         "mythic",
       );
       await expect(header).toHaveAttribute("data-tier", "mythic");
-      await page.locator(".fit-room .ui-close").click();
+      await page.locator(`${open} .ui-close`).click();
       await page.evaluate(
         () =>
           void (window as any).__account.showRaids("grumblecrag", "rewards"),

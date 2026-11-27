@@ -9,6 +9,7 @@ import {
   settle,
   createRoom,
 } from "./helpers";
+import { ISLAND, setInsets } from "./ui-measure";
 
 const buffValues: Record<string, string[]> = {
   shelter: ["−25%"],
@@ -93,16 +94,119 @@ for (const size of [
           w.__push();
         }, offers);
         await expect(page.locator("[data-raid-rite]")).toHaveCount(6);
-        await page.locator(".raid-draft").evaluate(async (e) => {
+        await page.locator(".rites-screen").evaluate(async (e) => {
           await Promise.all(
             e.getAnimations().map((a) => a.finished.catch(() => {})),
           );
         });
-        const card = await box(page, ".raid-draft");
-        for (const id of offers) {
-          const selector = `[data-raid-rite="${id}"]`;
-          const button = await box(page, selector),
-            content = await box(page, selector + " .raid-rite-copy");
+        const card = await box(page, ".rites-screen");
+        // The tiles sit between the heading and the links, and nothing in a
+        // tile spills out of it (nor the grid scroll) at the normal text size.
+        const head = await box(page, ".rites-head"),
+          foot = await box(page, ".rites-foot"),
+          grid = await box(page, ".raid-rite-options");
+        expect(grid.y).toBeGreaterThanOrEqual(head.y + head.height - 1);
+        expect(grid.y + grid.height).toBeLessThanOrEqual(foot.y + 1);
+        expect(
+          await page
+            .locator(".raid-rite-options")
+            .evaluate((e) => [
+              e.scrollHeight - e.clientHeight,
+              ...[...e.children].map((b) => b.scrollHeight - b.clientHeight),
+            ]),
+        ).toEqual([0, 0, 0, 0, 0, 0, 0]);
+        // The figures sit beside each rite's picture, never on it (owner).
+        // One pass for all six: a round trip per figure is too slow here.
+        expect(
+          await page.evaluate(() =>
+            [...document.querySelectorAll(".raid-rite-icon--buff")].flatMap(
+              (emblem) => {
+                const art = emblem
+                  .querySelector("svg")!
+                  .getBoundingClientRect();
+                return [...emblem.querySelectorAll(".raid-rite-buff-stat")]
+                  .map((stat) => stat.getBoundingClientRect())
+                  .filter(
+                    (b) =>
+                      b.left < art.right - 1 &&
+                      b.right > art.left + 1 &&
+                      b.top < art.bottom - 1 &&
+                      b.bottom > art.top + 1,
+                  )
+                  .map(() =>
+                    emblem
+                      .closest("[data-raid-rite]")!
+                      .getAttribute("data-raid-rite"),
+                  );
+              },
+            ),
+          ),
+          "figures covering their picture",
+        ).toEqual([]);
+        // Every tile measured in one pass, then checked here: a round trip
+        // per part and figure (about 15 a tile) ran past the time limit at
+        // 1440x900 on software rendering.
+        // Very short screens keep the one-line description in Rite details.
+        const partNames = [
+          ".raid-rite-icon",
+          "b",
+          ...(size.height > 350 ? [".raid-rite-trigger"] : []),
+          ".raid-rite-buff-stat",
+        ];
+        const tiles = await page.evaluate(
+          ([offers, partNames]) => {
+            const rect = (e: Element) => {
+              const r = e.getBoundingClientRect();
+              return { x: r.x, y: r.y, width: r.width, height: r.height };
+            };
+            return offers.map((id) => {
+              const button = document.querySelector(
+                `[data-raid-rite="${id}"]`,
+              )!;
+              const svg = button.querySelector("svg") as SVGGraphicsElement;
+              const ink = svg.getBBox();
+              return {
+                id,
+                button: rect(button),
+                content: rect(button.querySelector(".raid-rite-copy")!),
+                parts: partNames.map((p) => rect(button.querySelector(p)!)),
+                emblem: rect(button.querySelector(".raid-rite-icon--buff")!),
+                stats: [...button.querySelectorAll(".raid-rite-buff-stat")].map(
+                  (stat) => {
+                    const value = stat.querySelector(".raid-rite-buff-value")!,
+                      unit = stat.querySelector(".raid-rite-buff-unit")!;
+                    return {
+                      box: rect(stat),
+                      labels: [value, unit].map((l) => ({
+                        text: l.textContent,
+                        box: rect(l),
+                      })),
+                      valueSize: parseFloat(getComputedStyle(value).fontSize),
+                      unitSize: parseFloat(getComputedStyle(unit).fontSize),
+                      value: value.textContent,
+                    };
+                  },
+                ),
+                picture: svg.getAttribute("data-rite-picture"),
+                // The tile's tint and the name's colour come from the rite.
+                look: [
+                  getComputedStyle(button).backgroundImage.includes("gradient"),
+                  getComputedStyle(button.querySelector("b")!).color,
+                  getComputedStyle(button).getPropertyValue("--rite-color"),
+                ],
+                ink: {
+                  x: ink.x,
+                  y: ink.y,
+                  right: ink.x + ink.width,
+                  bottom: ink.y + ink.height,
+                },
+              };
+            });
+          },
+          [offers, partNames] as const,
+        );
+        for (const t of tiles) {
+          const { id, button, content, emblem } = t;
           expect(inside(button, card)).toBe(true);
           expect(inside(content, button)).toBe(true);
           expect(
@@ -115,63 +219,39 @@ for (const size of [
               content.y + content.height / 2 - button.y - button.height / 2,
             ),
           ).toBeLessThanOrEqual(2);
-          // Very short screens keep the one-line description in Rite details.
-          for (const part of [
-            ".raid-rite-icon",
-            "b",
-            ...(size.height > 350 ? [".raid-rite-trigger"] : []),
-            ".raid-rite-buff-stat",
-          ]) {
-            expect(inside(await box(page, selector + " " + part), button)).toBe(
-              true,
-            );
-          }
-          const emblem = await box(page, selector + " .raid-rite-icon--buff");
-          for (const stat of await page
-            .locator(selector + " .raid-rite-buff-stat")
-            .all()) {
-            const statBox = await stat.boundingBox();
-            expect(statBox && inside(statBox, emblem)).toBe(true);
-            const value = stat.locator(".raid-rite-buff-value"),
-              unit = stat.locator(".raid-rite-buff-unit");
-            for (const label of [value, unit]) {
-              const labelBox = await label.boundingBox();
+          for (const [i, part] of t.parts.entries())
+            expect(inside(part, button), `${id} ${partNames[i]}`).toBe(true);
+          for (const stat of t.stats) {
+            expect(inside(stat.box, emblem)).toBe(true);
+            for (const label of stat.labels)
               expect(
-                labelBox && inside(labelBox, emblem),
-                `${id}: ${await label.textContent()} must stay in its emblem`,
+                inside(label.box, emblem),
+                `${id}: ${label.text} must stay in its emblem`,
               ).toBe(true);
-            }
-            expect(
-              await value.evaluate((e) =>
-                parseFloat(getComputedStyle(e).fontSize),
-              ),
-            ).toBeGreaterThanOrEqual(size.height > 350 ? 22 : 20);
-            expect(
-              await unit.evaluate((e) =>
-                parseFloat(getComputedStyle(e).fontSize),
-              ),
-            ).toBeGreaterThanOrEqual(10);
+            expect(stat.valueSize).toBeGreaterThanOrEqual(
+              size.height > 350 ? 22 : 20,
+            );
+            expect(stat.unitSize).toBeGreaterThanOrEqual(10);
           }
-          expect(
-            await page
-              .locator(selector + " .raid-rite-buff-value")
-              .allTextContents(),
-          ).toEqual(buffValues[id]);
-          const svg = page.locator(selector + " svg");
-          await expect(svg).toHaveAttribute("data-rite-picture", id);
-          const ink = await svg.evaluate((e: SVGGraphicsElement) => {
-            const r = e.getBBox();
-            return {
-              x: r.x,
-              y: r.y,
-              right: r.x + r.width,
-              bottom: r.y + r.height,
-            };
-          });
-          expect(ink.x).toBeGreaterThanOrEqual(1);
-          expect(ink.y).toBeGreaterThanOrEqual(1);
-          expect(ink.right).toBeLessThanOrEqual(159);
-          expect(ink.bottom).toBeLessThanOrEqual(115);
+          expect(t.stats.map((s) => s.value)).toEqual(buffValues[id]);
+          expect(t.picture).toBe(id);
+          // Every rite has its colour (six of the twelve once lost theirs
+          // outside the old card: no tint, white names).
+          const [tinted, nameColor, riteColor] = t.look as [
+            boolean,
+            string,
+            string,
+          ];
+          expect(tinted, `${id} tile tint`).toBe(true);
+          expect(riteColor.trim(), `${id} colour`).toMatch(/^#[0-9a-f]{6}$/i);
+          const hex = riteColor.trim().slice(1);
+          expect(nameColor, `${id} name colour`).toBe(
+            `rgb(${[0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(", ")})`,
+          );
+          expect(t.ink.x).toBeGreaterThanOrEqual(1);
+          expect(t.ink.y).toBeGreaterThanOrEqual(1);
+          expect(t.ink.right).toBeLessThanOrEqual(159);
+          expect(t.ink.bottom).toBeLessThanOrEqual(115);
         }
         await expect(
           page.locator("[data-raid-rite] .raid-rite-effect"),
@@ -194,6 +274,18 @@ for (const size of [
         expect(
           await page.evaluate(() => (window as any).__riteRequests),
         ).toEqual([]);
+        // On Poster the sheet is solid ink: the tiles, title and timer
+        // behind it showed through the old look's 95% navy (audit A04).
+        if (
+          await page.evaluate(
+            () => document.documentElement.dataset.ui === "poster",
+          )
+        )
+          expect(
+            await page
+              .locator(".raid-rite-reference")
+              .evaluate((e) => getComputedStyle(e).backgroundColor),
+          ).toBe("rgb(13, 13, 15)");
         const reference = await box(page, ".raid-rite-reference"),
           close = await box(page, ".raid-rite-more > summary");
         expect(reference.y + reference.height).toBeLessThanOrEqual(close.y);
@@ -344,29 +436,46 @@ for (const size of [
       // moved the cards while it ran).
       const popping = () =>
         page
-          .locator(".raid-draft")
+          .locator(".rites-screen")
           .evaluate(
             (e) =>
               e.getAnimations().filter((a) => a.playState === "running").length,
           );
+      // How opaque each tile shows, its own opacity times its ancestors':
+      // only a tile's content fades, never the tile, or the arena shows
+      // through it (the global button:disabled fade, style.css, did).
+      const tileOpacity = () =>
+        cards.evaluateAll((els) =>
+          els.map((e) => {
+            let o = 1;
+            for (let n: Element | null = e; n; n = n.parentElement)
+              o *= Number(getComputedStyle(n).opacity);
+            return o;
+          }),
+        );
       await show(offer, []);
       await expect(cards).toHaveCount(6);
-      await expect(page.locator(".raid-draft")).toBeVisible();
+      await expect(page.locator(".rites-screen")).toBeVisible();
       // Measure where the panel ends up once it has popped in (this page
       // draws no frames between steps, so its pop wouldn't finish by itself).
       await settle(page);
       const before = await places();
-      // The six cards end above the chapter tip and timer row: a fixed-height
-      // panel used to let them overflow onto it on desktop screens.
-      if (!mobile) {
-        const cardsEnd = await page
-          .locator(".raid-draft > .panel-actions")
-          .evaluate((e) => e.getBoundingClientRect().bottom);
-        const tipStart = await page
-          .locator(".raid-draft > .panel-scroll")
-          .evaluate((e) => e.getBoundingClientRect().top);
-        expect(cardsEnd).toBeLessThanOrEqual(tipStart + 1);
-      }
+      // The six tiles end above the links (Rite details, Team rites) and
+      // start below the heading, the chapter tip included on tall screens.
+      const tilesTop = await page
+        .locator(".raid-rite-options")
+        .evaluate((e) => e.getBoundingClientRect().top);
+      const tilesEnd = await page
+        .locator(".raid-rite-options")
+        .evaluate((e) => e.getBoundingClientRect().bottom);
+      const headEnd = await page
+        .locator(".rites-head")
+        .evaluate((e) => e.getBoundingClientRect().bottom);
+      const linksStart = await page
+        .locator(".rites-foot")
+        .evaluate((e) => e.getBoundingClientRect().top);
+      expect(tilesTop).toBeGreaterThanOrEqual(headEnd - 1);
+      expect(tilesEnd).toBeLessThanOrEqual(linksStart + 1);
       // First pick: Core leaves the offers but keeps its card and place.
       await show(
         offer.filter((id) => id !== "core"),
@@ -387,6 +496,8 @@ for (const size of [
           .locator(".raid-rite-copy")
           .evaluate((e) => Number(getComputedStyle(e).opacity)),
       ).toBeLessThan(0.7);
+      // …the tile itself not: it stays opaque.
+      expect(await tileOpacity()).toEqual(Array(6).fill(1));
       await snap(page, info, `rite-picked-${size.width}x${size.height}`);
       // Second pick: every card stays, two checked, all disabled.
       await show(undefined, ["core", "courage"]);
@@ -398,7 +509,160 @@ for (const size of [
       ).toHaveCount(2);
       expect(await popping()).toBe(0);
       expect(await places()).toEqual(before);
+      // Locked: every tile still opaque, only its content greyed.
+      expect(await tileOpacity()).toEqual(Array(6).fill(1));
       await snap(page, info, `rite-locked-${size.width}x${size.height}`);
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+
+// The rites in the style of the battle countdown (owner, Nov 2026): the
+// whole screen edge to edge past the notch, under the countdown's navy
+// shade, even across the screen (its middle used to show the court bright),
+// with the seconds as one big number and no card. On the owner's iPhone
+// held sideways (956x440 with the Dynamic Island's insets) and a small phone.
+for (const size of [
+  { width: 956, height: 440, island: true },
+  { width: 667, height: 375, island: false },
+])
+  test(`the rites fill the whole screen like the countdown at ${size.width}x${size.height}${size.island ? " with the Dynamic Island" : ""}`, async ({
+    browser,
+  }, info) => {
+    test.setTimeout(120_000);
+    const context = await browser.newContext({
+      viewport: { width: size.width, height: size.height },
+      isMobile: true,
+      hasTouch: true,
+    });
+    try {
+      const page = await context.newPage();
+      const errors = await openHub(page);
+      await page.evaluate(() =>
+        (window as any).__room("raid", { boss: "prismatail" }),
+      );
+      await openPlayPanel(page);
+      await createRoom(page);
+      await pushUntilBattle(page);
+      if (size.island) await setInsets(page, ISLAND);
+      await page.evaluate(() => {
+        const w = window as any;
+        w.__snap.phase = "intermission";
+        w.__snap.remaining = 12;
+        w.__snap.raid.offers.me = [
+          "shelter",
+          "sharing",
+          "core",
+          "rescue",
+          "courage",
+          "mending",
+        ];
+        w.__push();
+      });
+      await expect(page.locator("[data-raid-rite]")).toHaveCount(6);
+      await settle(page);
+      const overlay = page.locator("#arena-overlay");
+      await expect(overlay).toHaveClass(/\bis-rites\b/);
+      const look = await page.evaluate(() => {
+        const ov = document.getElementById("arena-overlay")!;
+        const r = ov.getBoundingClientRect();
+        const screen = getComputedStyle(ov.querySelector(".rites-screen")!);
+        const number = ov.querySelector(".raid-choice-timer .live-number")!;
+        return {
+          rect: [r.left, r.top, r.width, r.height].map(Math.round),
+          shade: getComputedStyle(ov).backgroundColor,
+          card: [screen.backgroundColor, screen.borderTopWidth],
+          number: [
+            number.textContent,
+            parseFloat(getComputedStyle(number).fontSize),
+          ],
+          // The HUD and the battle controls step aside; the quick-chat
+          // button stays (a party talks between chapters), in a column the
+          // screen leaves free.
+          hidden: ["#raid-hud", "#mobile-controls"].map((s) => {
+            const e = document.querySelector(s);
+            return !e || getComputedStyle(e).visibility === "hidden";
+          }),
+          chat: (() => {
+            const e = document.querySelector<HTMLElement>("#battle-chat");
+            if (!e || e.hidden) return "none";
+            if (getComputedStyle(e).visibility === "hidden") return "hidden";
+            const c = e.getBoundingClientRect();
+            const under = [...document.querySelectorAll("[data-raid-rite]")]
+              .map((t) => t.getBoundingClientRect())
+              .some(
+                (t) =>
+                  t.left < c.right &&
+                  t.right > c.left &&
+                  t.top < c.bottom &&
+                  t.bottom > c.top,
+              );
+            return under ? "over a tile" : "clear";
+          })(),
+        };
+      });
+      expect(look.rect).toEqual([0, 0, size.width, size.height]);
+      // The countdown's navy, the same strength everywhere (a plain colour,
+      // not its gradient that is lighter in the middle).
+      expect(look.shade).toBe("rgba(7, 18, 37, 0.65)");
+      expect(look.card).toEqual(["rgba(0, 0, 0, 0)", "0px"]);
+      expect(look.number[0]).toBe("12");
+      expect(look.number[1]).toBeGreaterThanOrEqual(40);
+      expect(look.hidden).toEqual([true, true]);
+      // A party (this room has two raiders) keeps its quick chat.
+      expect(look.chat).toBe("clear");
+      // Every tile is a comfortable touch target, fully on screen and clear
+      // of the notch's insets.
+      const inset = size.island
+        ? ISLAND
+        : { left: 0, right: 0, top: 0, bottom: 0 };
+      for (const tile of await page.locator("[data-raid-rite]").all()) {
+        const b = (await tile.boundingBox())!;
+        expect(b.height).toBeGreaterThanOrEqual(44);
+        expect(b.width).toBeGreaterThanOrEqual(44);
+        expect(b.x).toBeGreaterThanOrEqual(inset.left);
+        expect(b.x + b.width).toBeLessThanOrEqual(size.width - inset.right);
+        expect(b.y + b.height).toBeLessThanOrEqual(size.height - inset.bottom);
+      }
+      // Each tile's picture and figures stay inside it: on a 667 px phone
+      // Helping Paws's two figures ran to its edge and pushed the picture
+      // out past the other (audit B17).
+      const spill = await page.evaluate(() =>
+        [...document.querySelectorAll<HTMLElement>("[data-raid-rite]")].flatMap(
+          (tile) => {
+            const t = tile.getBoundingClientRect();
+            return [
+              ...tile.querySelectorAll(
+                ".raid-rite-icon > svg, .raid-rite-buff-stat",
+              ),
+            ]
+              .map((e) => e.getBoundingClientRect())
+              .filter((b) => b.left < t.left - 0.5 || b.right > t.right + 0.5)
+              .map(() => tile.dataset.raidRite);
+          },
+        ),
+      );
+      expect(spill, "pictures or figures past their tile").toEqual([]);
+      await snap(page, info, `rites-whole-screen-${size.width}x${size.height}`);
+      // Rite details: the six in columns, not long lines across the screen.
+      await page.locator(".raid-rite-more > summary").click();
+      const rows = await page
+        .locator(".raid-rite-reference li")
+        .evaluateAll(
+          (items) =>
+            new Set(items.map((i) => Math.round(i.getBoundingClientRect().y)))
+              .size,
+        );
+      expect(rows).toBeLessThanOrEqual(3);
+      // The fight: the screen goes and the controls come back.
+      await page.evaluate(() => {
+        const w = window as any;
+        w.__snap.phase = "playing";
+        w.__push();
+      });
+      await expect(overlay).not.toHaveClass(/\bis-rites\b/);
+      await expect(page.locator("body")).not.toHaveClass(/\braid-rites-open\b/);
       expect(errors).toEqual([]);
     } finally {
       await context.close();

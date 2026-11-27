@@ -8,6 +8,7 @@ import {
   PLAZA_GATE,
   PLAZA_HURDLES,
   PLAZA_PADS,
+  PLAZA_BALL,
   PLAZA_PITCH,
   PLAZA_POND,
   PLAZA_ROCKS,
@@ -53,10 +54,21 @@ describe("Plaza layout", () => {
   });
 
   it("keeps bodies out of the fountain and the pond and inside the map", () => {
-    const f = plazaCollide({ x: PLAZA_FOUNTAIN.x + 1, y: PLAZA_FOUNTAIN.y });
-    expect(
-      Math.hypot(f.x - PLAZA_FOUNTAIN.x, f.y - PLAZA_FOUNTAIN.y),
-    ).toBeGreaterThan(100);
+    // Nowhere on the basin as drawn: not on its rim or in its water, and
+    // not on the wall's foot either (feet stood on the rim before, 22 Nov).
+    const F = PLAZA_FOUNTAIN,
+      onBasin = (x: number, y: number) =>
+        ((x - F.x) / F.rx) ** 2 + ((y - F.y) / F.ry) ** 2 < 1 ||
+        ((x - F.x) / F.rx) ** 2 + ((y - F.y - F.wall) / F.ry) ** 2 < 1;
+    for (let a = 0; a < Math.PI * 2; a += Math.PI / 24)
+      for (const k of [0, 0.4, 0.8, 0.99])
+        for (const dy of [0, F.wall / 2, F.wall]) {
+          const f = plazaCollide({
+            x: F.x + Math.cos(a) * F.rx * k,
+            y: F.y + dy + Math.sin(a) * F.ry * k,
+          });
+          expect(onBasin(f.x, f.y), `${f.x}, ${f.y}`).toBe(false);
+        }
     const p = plazaCollide({ x: PLAZA_POND.x + 5, y: PLAZA_POND.y + 5 });
     expect(
       ((p.x - PLAZA_POND.x) / PLAZA_POND.rx) ** 2 +
@@ -405,5 +417,52 @@ describe("Orb Shower and Orb Ball", () => {
     expect(ball.x).toBeGreaterThan(PLAZA_PITCH.x1);
     for (let t = 0; t < 2; t += 0.05) plazaBallStep(ball, [], 0.05, last);
     expect(ball).toMatchObject(plazaBallStart());
+  });
+  // Owner, 23 Nov: "kicked it into the net, it didn't count, it slid out".
+  it("counts a slow ball whose middle is over the goal line", () => {
+    const P = PLAZA_PITCH,
+      last = {};
+    const ball = { ...plazaBallStart(), x: P.x1 - 60, y: 900, vx: 57 };
+    let goal: ReturnType<typeof plazaBallStep> = {};
+    for (let t = 0; t < 5 && goal.goal === undefined; t += 0.05)
+      goal = plazaBallStep(ball, [], 0.05, last);
+    // It used to stop 6 px over the line, half in the net, and not count.
+    expect(goal.goal).toBe(0);
+  });
+  it("keeps a ball in the goal's mouth when it drifts at a post: no pull back onto the pitch", () => {
+    const P = PLAZA_PITCH,
+      last = {};
+    // In the mouth, just short of the line, drifting down at the far post.
+    const ball = {
+      ...plazaBallStart(),
+      x: P.x1 - 10,
+      y: P.gy1 - 12,
+      vx: 120,
+      vy: 300,
+    };
+    let goal: ReturnType<typeof plazaBallStep> = {},
+      minX = ball.x;
+    for (let t = 0; t < 3 && goal.goal === undefined; t += 0.05) {
+      goal = plazaBallStep(ball, [], 0.05, last);
+      minX = Math.min(minX, ball.x);
+      expect(ball.y).toBeLessThan(P.gy1);
+    }
+    expect(goal.goal).toBe(0);
+    // It used to be put back 12 px out, at the end line's inner edge.
+    expect(minX).toBeGreaterThanOrEqual(P.x1 - 10);
+  });
+  it("turns a ball back at the end line beside the goal, and doesn't pull it into the mouth", () => {
+    const P = PLAZA_PITCH,
+      last = {};
+    // Pushed past the line in a corner (a body behind it): back to the line.
+    const ball = { ...plazaBallStart(), x: P.x1 - 5, y: P.gy0 - 80 };
+    plazaBallStep(ball, [], 0.05, last);
+    expect(ball.x).toBe(P.x1 - PLAZA_BALL.radius);
+    expect(ball.y).toBeCloseTo(P.gy0 - 80, 3);
+    // Rolling at the end line beside the goal: bounces back.
+    const b2 = { ...plazaBallStart(), x: P.x1 - 40, y: P.y0 + 60, vx: 500 };
+    for (let t = 0; t < 1; t += 0.05) plazaBallStep(b2, [], 0.05, last);
+    expect(b2.x).toBeLessThan(P.x1 - PLAZA_BALL.radius);
+    expect(b2.lock).toBe(0);
   });
 });

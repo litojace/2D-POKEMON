@@ -9,6 +9,10 @@ import {
   hubMenu,
   createRoom,
 } from "./helpers";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 const pal = "22222222-2222-4222-8222-222222222222";
 test("raid room invites open Friends instead of displaying a room code", async ({
   browser,
@@ -247,6 +251,24 @@ for (const size of [
       await expect(page.locator(".roster-foot-text")).toContainText(
         "Locked in",
       );
+      // The card you locked says Locked inside its edge (with the looks
+      // count beside it the tag ran past the card: "LOCKE", 25 Nov 2026).
+      // (Phones show no foot on the cards.)
+      if (size.height > 500) {
+        const lockedTag = page.locator(".roster-card .roster-locked");
+        await expect(lockedTag).toBeVisible();
+        expect(
+          await lockedTag.evaluate((tag) => {
+            const card = tag.closest(".roster-card")!.getBoundingClientRect();
+            const t = tag.getBoundingClientRect();
+            const foot = tag.parentElement!;
+            return {
+              inside: t.left >= card.left && t.right <= card.right - 4,
+              spill: foot.scrollWidth - foot.clientWidth,
+            };
+          }),
+        ).toEqual({ inside: true, spill: 0 });
+      }
       // No drawer on phones: Ready is in sight, bottom right, beside Lock in.
       await expect(page.locator("#ready")).toBeInViewport();
       const ready = await box(page, "#ready");
@@ -376,9 +398,17 @@ for (const size of [
           Math.abs(arrow.y + arrow.height / 2 - (button.y + button.height / 2)),
         ).toBeLessThan(1.5);
       }
+      // The watching bar is a solid dark bar its white words read on (the
+      // old look's navy, Poster's ink), not see-through over the fight.
       expect(
-        await spectator.evaluate((el) => getComputedStyle(el).backgroundColor),
-      ).toBe("rgb(12, 18, 34)");
+        await spectator.evaluate((el) => {
+          const cx = document.createElement("canvas").getContext("2d")!;
+          cx.fillStyle = getComputedStyle(el).backgroundColor;
+          cx.fillRect(0, 0, 1, 1);
+          const [r, g, b, a] = cx.getImageData(0, 0, 1, 1).data;
+          return { opaque: a === 255, dark: Math.max(r, g, b) <= 40 };
+        }),
+      ).toEqual({ opaque: true, dark: true });
       const watchingBox = await box(page, "#spectate");
       expect(watchingBox.y).toBeGreaterThan(size.height * 0.65);
       expect(watchingBox.x + watchingBox.width).toBeLessThanOrEqual(

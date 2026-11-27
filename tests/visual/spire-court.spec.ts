@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Browser, type Page } from "@playwright/test";
 import {
   createRoom,
   openHub,
@@ -51,6 +51,22 @@ const KINDS: Record<number, "wave" | "elite" | "boss"> = {
   10: "boss",
 };
 
+/**
+ * A context whose raids show the whole court ("Whole court in raids"): these
+ * checks read the court's art and every fighter on it. The floor tests below
+ * keep the phone's follow camera.
+ */
+async function courtContext(
+  browser: Browser,
+  options: Parameters<Browser["newContext"]>[0],
+) {
+  const context = await browser.newContext(options);
+  await context.addInitScript(() =>
+    localStorage.setItem("arena-controls", JSON.stringify({ raidCourt: true })),
+  );
+  return context;
+}
+
 /** Expose the battle's game (after the arena prewarm line in main.ts). */
 async function hookGame(page: Page) {
   await page.route(/\/apps\/client\/src\/main\.ts(?:\?|$)/, async (route) => {
@@ -61,7 +77,13 @@ async function hookGame(page: Page) {
     expect(body).toContain(marker);
     await route.fulfill({
       response,
-      body: body.replace(marker, "window.__spireGame=gameInstance;" + marker),
+      // (and the raid courts' painter, to compare a summit grade with the
+      // plain court: the arenas are painted in code, nothing is fetched)
+      body: body.replace(
+        marker,
+        "window.__spireGame=gameInstance;window.__paintCourt=kit.paintIllustratedRaidFloor;" +
+          marker,
+      ),
     });
   });
 }
@@ -110,7 +132,7 @@ async function court(page: Page) {
       number: named("spire-number").length,
       sky: named("spire-sky-").length,
       pillars: named("pillar-block").length,
-      surround: scene.raidSurround.filter((o: any) => o.visible).length,
+      surround: scene.raidWorld.filter((b: any) => b.visible).length,
       view: {
         x: cam.worldView.x,
         y: cam.worldView.y,
@@ -142,9 +164,16 @@ for (const size of SIZES)
         await climb(page, floor);
         await page.waitForTimeout(600);
         const c = await court(page);
-        // The whole court is in view and fills the frame (the raid camera).
-        expect(c.view.w).toBeGreaterThanOrEqual(1599);
-        expect(c.view.h).toBeGreaterThanOrEqual(899);
+        // Desktop and tablets: the whole court is in view (the raid camera).
+        // Phones follow the raider: the court covers the screen, never past
+        // its edges (at most its full width: RAID_FOLLOW_ZOOM is 1).
+        if (size.phone && size.height <= 600) {
+          expect(c.view.w).toBeLessThanOrEqual(1600.5);
+          expect(c.view.h).toBeLessThanOrEqual(900.5);
+        } else {
+          expect(c.view.w).toBeGreaterThanOrEqual(1599);
+          expect(c.view.h).toBeGreaterThanOrEqual(899);
+        }
         expect(
           Math.max(
             (1600 * c.view.zoom) / c.view.width,
@@ -206,7 +235,7 @@ test("the stairs light when a floor is cleared, and the next floor is ready", as
   browser,
 }, info) => {
   test.setTimeout(150_000);
-  const context = await browser.newContext({
+  const context = await courtContext(browser, {
     viewport: { width: DESKTOP.width, height: DESKTOP.height },
   });
   try {
@@ -270,7 +299,7 @@ test("floor 9 to floor 10 in the same room: the summit court, nothing loaded mid
   browser,
 }, info) => {
   test.setTimeout(180_000);
-  const context = await browser.newContext({
+  const context = await courtContext(browser, {
     viewport: { width: 844, height: 390 },
     isMobile: true,
     hasTouch: true,
@@ -281,7 +310,7 @@ test("floor 9 to floor 10 in the same room: the summit court, nothing loaded mid
     const art: { url: string; floor: number }[] = [];
     let floorNow = 9;
     page.on("request", (r) => {
-      if (r.url().includes("/raid-arenas/"))
+      if (/raid-arenas|world-art/.test(r.url()) && r.resourceType() === "image")
         art.push({ url: r.url(), floor: floorNow });
     });
     const errors = await openHub(page);
@@ -324,9 +353,8 @@ test("floor 9 to floor 10 in the same room: the summit court, nothing loaded mid
     expect(top.blocks).toEqual([]);
     expect(top.pillars).toBeGreaterThanOrEqual(4);
     expect(top.sky).toBe(4);
-    // Cragmuff's court picture was fetched before floor 10, never during it.
-    expect(art.length).toBeGreaterThan(0);
-    expect(art.every((a) => a.floor === 9)).toBe(true);
+    // Painted in code: nothing fetched before or during floor 10.
+    expect(art).toEqual([]);
     await page.waitForTimeout(500);
     await snap(page, info, "spire-court-floor-10-after-climb-844x390");
     // A new climb: back on the Spire's court.
@@ -347,16 +375,13 @@ test("floor 9 to floor 10 in the same room: the summit court, nothing loaded mid
 
 test("the summit grade darkens Cragmuff's court", async ({ browser }) => {
   test.setTimeout(150_000);
-  const context = await browser.newContext({
+  const context = await courtContext(browser, {
     viewport: { width: DESKTOP.width, height: DESKTOP.height },
   });
   try {
     const page = await context.newPage();
     await hookGame(page);
-    let picture: string | undefined;
-    page.on("request", (r) => {
-      if (r.url().includes("/raid-arenas/")) picture = r.url();
-    });
+    const picture = "raid-coliseum";
     await openHub(page);
     await climb(page, 10);
     await expect
@@ -364,17 +389,14 @@ test("the summit grade darkens Cragmuff's court", async ({ browser }) => {
       .toBe("spire-summit");
     // The baked court (test-side read-back only): dimmer and cooler than
     // the raid's own Coliseum picture.
-    expect(picture).toContain("grumblecrag");
     const light = await page.evaluate(async (url) => {
       const scene = (window as any).__spireGame.scene.getScene("arena");
       const graded = scene.floor.texture.getSourceImage() as HTMLCanvasElement;
-      // (The picture the game fetched.)
-      const plain = await new Promise<HTMLImageElement>((done, fail) => {
-        const img = new Image();
-        img.onload = () => done(img);
-        img.onerror = () => fail(new Error(`could not load ${url}`));
-        img.src = url;
-      });
+      // (The same court painted plainly, without the summit grade.)
+      const plain = document.createElement("canvas");
+      plain.width = 1600;
+      plain.height = 900;
+      (window as any).__paintCourt(plain.getContext("2d"), url);
       const measure = (src: CanvasImageSource) => {
         const c = document.createElement("canvas");
         c.width = 160;
@@ -391,7 +413,7 @@ test("the summit grade darkens Cragmuff's court", async ({ browser }) => {
         return { lum: lum / (d.length / 4), warm: warm / (d.length / 4) };
       };
       return { graded: measure(graded), plain: measure(plain) };
-    }, picture!);
+    }, picture);
     expect(light.graded.lum).toBeLessThan(light.plain.lum * 0.8);
     expect(light.graded.warm).toBeLessThan(light.plain.warm * 0.7);
   } finally {
@@ -430,7 +452,7 @@ test("high floors keep amber crystals and a readable floor number", async ({
   browser,
 }, info) => {
   test.setTimeout(150_000);
-  const context = await browser.newContext({
+  const context = await courtContext(browser, {
     viewport: { width: 844, height: 390 },
     isMobile: true,
     hasTouch: true,
@@ -440,6 +462,17 @@ test("high floors keep amber crystals and a readable floor number", async ({
     await hookGame(page);
     const errors = await openHub(page);
     await climb(page, 9);
+    // The court is drawn once the battle's scene is up: the battle kit
+    // loads with Phaser after the first screen (#443), so on a busy
+    // machine its floor's atlas and pieces come after climb's fixed wait.
+    // Wait for what is read below, as the other zones' atlas checks do.
+    await page.waitForFunction(() => {
+      const scene = (window as any).__spireGame?.scene.getScene("arena");
+      return (
+        !!scene?.textures.exists("spire-court-1-9") &&
+        scene.children.list.some((o: any) => o.name === "spire-number")
+      );
+    });
     // The height's dusk is on the floor only: the cover, the stairs and
     // the number are not tinted at run time (their stone is shaded when
     // painted, their crystals keep their own light).
@@ -537,7 +570,7 @@ for (const size of ZONE2_SIZES)
       browser,
     }, info) => {
       test.setTimeout(150_000);
-      const context = await browser.newContext({
+      const context = await courtContext(browser, {
         viewport: { width: size.width, height: size.height },
         isMobile: size.phone,
         hasTouch: size.phone,
@@ -600,7 +633,7 @@ for (const size of [
       browser,
     }, info) => {
       test.setTimeout(150_000);
-      const context = await browser.newContext({
+      const context = await courtContext(browser, {
         viewport: { width: size.width, height: size.height },
         isMobile: true,
         hasTouch: true,
@@ -674,7 +707,7 @@ test("floor 20: the lagoon's summit grade, painted on floor 19, nothing fetched 
   browser,
 }, info) => {
   test.setTimeout(180_000);
-  const context = await browser.newContext({
+  const context = await courtContext(browser, {
     viewport: { width: 844, height: 390 },
     isMobile: true,
     hasTouch: true,
@@ -685,7 +718,7 @@ test("floor 20: the lagoon's summit grade, painted on floor 19, nothing fetched 
     const art: { url: string; floor: number }[] = [];
     let floorNow = 19;
     page.on("request", (r) => {
-      if (r.url().includes("/raid-arenas/"))
+      if (/raid-arenas|world-art/.test(r.url()) && r.resourceType() === "image")
         art.push({ url: r.url(), floor: floorNow });
     });
     const errors = await openHub(page);
@@ -718,7 +751,7 @@ test("floor 20: the lagoon's summit grade, painted on floor 19, nothing fetched 
           artwork: s.floor.texture.getSourceImage().dataset?.raidArtwork as
             string | undefined,
           summit: s.textures.exists("arena-floor-spire-summit-lagoon"),
-          summitArt: s.textures.exists("arena-floor-spire-summit-lagoon:art"),
+          summitArt: s.textures.exists("arena-floor-spire-summit-lagoon"),
         };
       });
     expect((await scene()).floor).toBe("arena-floor-spire-z2");
@@ -739,8 +772,8 @@ test("floor 20: the lagoon's summit grade, painted on floor 19, nothing fetched 
     await expect
       .poll(async () => (await scene()).artwork)
       .toBe("spire-summit-lagoon");
-    // The lagoon's picture was fetched on floor 19 (or before), never on 20.
-    expect(art.some((a) => a.url.includes("tidewyrm"))).toBe(true);
+    // Painted in code: nothing fetched at all.
+    expect(art).toEqual([]);
     expect(art.every((a) => a.floor === 19)).toBe(true);
     const c = await court(page);
     expect(c.sky).toBe(4);
@@ -750,18 +783,15 @@ test("floor 20: the lagoon's summit grade, painted on floor 19, nothing fetched 
     // Graded (test-side read-back only): darker and cooler than the
     // lagoon picture the game fetched.
     // (The picture itself, not the module that names it.)
-    const url = art.findLast(
-      (a) => a.url.includes("tidewyrm") && !a.url.includes("?import"),
-    )!.url;
+    const url = "lagoon";
     const light = await page.evaluate(async (url) => {
       const scene = (window as any).__spireGame.scene.getScene("arena");
       const graded = scene.floor.texture.getSourceImage() as HTMLCanvasElement;
-      const plain = await new Promise<HTMLImageElement>((done, fail) => {
-        const img = new Image();
-        img.onload = () => done(img);
-        img.onerror = () => fail(new Error(`could not load ${url}`));
-        img.src = url;
-      });
+      // (The same court painted plainly, without the summit grade.)
+      const plain = document.createElement("canvas");
+      plain.width = 1600;
+      plain.height = 900;
+      (window as any).__paintCourt(plain.getContext("2d"), url);
       const measure = (src: CanvasImageSource) => {
         const c = document.createElement("canvas");
         c.width = 160;
@@ -836,7 +866,7 @@ for (const size of ZONE3_SIZES)
       browser,
     }, info) => {
       test.setTimeout(150_000);
-      const context = await browser.newContext({
+      const context = await courtContext(browser, {
         viewport: { width: size.width, height: size.height },
         isMobile: size.phone,
         hasTouch: size.phone,
@@ -1036,7 +1066,7 @@ for (const size of [
       browser,
     }, info) => {
       test.setTimeout(150_000);
-      const context = await browser.newContext({
+      const context = await courtContext(browser, {
         viewport: { width: size.width, height: size.height },
         isMobile: true,
         hasTouch: true,
@@ -1188,7 +1218,7 @@ test("floor 30: Inkpurr's Lantern Yard with its summit grade, painted on floor 2
   browser,
 }, info) => {
   test.setTimeout(180_000);
-  const context = await browser.newContext({
+  const context = await courtContext(browser, {
     viewport: { width: 844, height: 390 },
     isMobile: true,
     hasTouch: true,
@@ -1199,7 +1229,7 @@ test("floor 30: Inkpurr's Lantern Yard with its summit grade, painted on floor 2
     const art: { url: string; floor: number }[] = [];
     let floorNow = 29;
     page.on("request", (r) => {
-      if (r.url().includes("/raid-arenas/"))
+      if (/raid-arenas|world-art/.test(r.url()) && r.resourceType() === "image")
         art.push({ url: r.url(), floor: floorNow });
     });
     const errors = await openHub(page);
@@ -1240,7 +1270,7 @@ test("floor 30: Inkpurr's Lantern Yard with its summit grade, painted on floor 2
     // grade) is painted.
     await expect
       .poll(async () => (await scene()).floors)
-      .toContain("arena-floor-spire-summit-yard:art");
+      .toContain("arena-floor-spire-summit-yard");
     const ready = (await scene()).floors;
     await shot(page, "z3-floor-29-stairs-open-844x390");
     // Up to floor 30: the Ascendant Inkpurr's briefing, in its yard.
@@ -1256,8 +1286,8 @@ test("floor 30: Inkpurr's Lantern Yard with its summit grade, painted on floor 2
     expect(thirty.floor).toMatch(/^arena-floor-spire-summit-yard(:art)?$/);
     // The court it shows was ready before the stairs were climbed.
     expect(ready).toContain(thirty.floor);
-    // The yard's picture was fetched on floor 29 (or before), never on 30.
-    expect(art.some((a) => a.url.includes("gloomshade"))).toBe(true);
+    // Painted in code: nothing fetched at all.
+    expect(art).toEqual([]);
     expect(art.every((a) => a.floor === 29)).toBe(true);
     const c = await court(page);
     expect(c.sky).toBe(4);
@@ -1269,18 +1299,15 @@ test("floor 30: Inkpurr's Lantern Yard with its summit grade, painted on floor 2
     // fetched: darker and more violet overall, the middle (where the
     // lanterns' light falls and the dark ink warnings land) kept bright
     // enough for those warnings to read.
-    const url = art.findLast(
-      (a) => a.url.includes("gloomshade") && !a.url.includes("?import"),
-    )!.url;
+    const url = "lantern-yard";
     const light = await page.evaluate(async (url) => {
       const scene = (window as any).__spireGame.scene.getScene("arena");
       const graded = scene.floor.texture.getSourceImage() as HTMLCanvasElement;
-      const plain = await new Promise<HTMLImageElement>((done, fail) => {
-        const img = new Image();
-        img.onload = () => done(img);
-        img.onerror = () => fail(new Error(`could not load ${url}`));
-        img.src = url;
-      });
+      // (The same court painted plainly, without the summit grade.)
+      const plain = document.createElement("canvas");
+      plain.width = 1600;
+      plain.height = 900;
+      (window as any).__paintCourt(plain.getContext("2d"), url);
       const measure = (src: CanvasImageSource) => {
         const c = document.createElement("canvas");
         c.width = 160;
@@ -1333,7 +1360,7 @@ test("Inkpurr's own raid keeps the Lantern Yard ungraded", async ({
   browser,
 }) => {
   test.setTimeout(150_000);
-  const context = await browser.newContext({
+  const context = await courtContext(browser, {
     viewport: { width: 844, height: 390 },
     isMobile: true,
     hasTouch: true,
@@ -1428,7 +1455,7 @@ for (const size of ZONE4_SIZES)
       browser,
     }, info) => {
       test.setTimeout(150_000);
-      const context = await browser.newContext({
+      const context = await courtContext(browser, {
         viewport: { width: size.width, height: size.height },
         isMobile: size.phone,
         hasTouch: size.phone,
@@ -1491,7 +1518,7 @@ for (const size of [
       browser,
     }, info) => {
       test.setTimeout(150_000);
-      const context = await browser.newContext({
+      const context = await courtContext(browser, {
         viewport: { width: size.width, height: size.height },
         isMobile: true,
         hasTouch: true,
@@ -1684,12 +1711,14 @@ function deckReadability(page: Page, src: "floor" | string) {
       const image: CanvasImageSource =
         src === "floor"
           ? (scene.floor.texture.getSourceImage() as HTMLCanvasElement)
-          : await new Promise<HTMLImageElement>((done, fail) => {
-              const img = new Image();
-              img.onload = () => done(img);
-              img.onerror = () => fail(new Error(`could not load ${src}`));
-              img.src = src;
-            });
+          : (() => {
+              // The plain court, painted as the raid paints it.
+              const plain = document.createElement("canvas");
+              plain.width = 1600;
+              plain.height = 900;
+              (window as any).__paintCourt(plain.getContext("2d"), src);
+              return plain;
+            })();
       const c = document.createElement("canvas");
       c.width = 800;
       c.height = 450;
@@ -1741,7 +1770,7 @@ test("floor 40: Snoozaku's Cloud Deck with its summit grade, painted on floor 39
   browser,
 }, info) => {
   test.setTimeout(180_000);
-  const context = await browser.newContext({
+  const context = await courtContext(browser, {
     viewport: { width: 844, height: 390 },
     isMobile: true,
     hasTouch: true,
@@ -1752,7 +1781,7 @@ test("floor 40: Snoozaku's Cloud Deck with its summit grade, painted on floor 39
     const art: { url: string; floor: number }[] = [];
     let floorNow = 39;
     page.on("request", (r) => {
-      if (r.url().includes("/raid-arenas/"))
+      if (/raid-arenas|world-art/.test(r.url()) && r.resourceType() === "image")
         art.push({ url: r.url(), floor: floorNow });
     });
     const errors = await openHub(page);
@@ -1789,7 +1818,7 @@ test("floor 40: Snoozaku's Cloud Deck with its summit grade, painted on floor 39
           floor: s.floor.texture.key as string,
           artwork: s.floor.texture.getSourceImage().dataset?.raidArtwork as
             string | undefined,
-          summitArt: s.textures.exists("arena-floor-spire-summit-deck:art"),
+          summitArt: s.textures.exists("arena-floor-spire-summit-deck"),
         };
       });
     await expect
@@ -1812,9 +1841,9 @@ test("floor 40: Snoozaku's Cloud Deck with its summit grade, painted on floor 39
     await expect
       .poll(async () => (await scene()).artwork)
       .toBe("spire-summit-deck");
-    expect((await scene()).floor).toBe("arena-floor-spire-summit-deck:art");
-    // The deck's picture was fetched on floor 39 (or before), never on 40.
-    expect(art.some((a) => a.url.includes("somnara"))).toBe(true);
+    expect((await scene()).floor).toBe("arena-floor-spire-summit-deck");
+    // Painted in code: nothing fetched at all.
+    expect(art).toEqual([]);
     expect(art.every((a) => a.floor === 39)).toBe(true);
     const c = await court(page);
     expect(c.sky).toBe(4);
@@ -1825,18 +1854,15 @@ test("floor 40: Snoozaku's Cloud Deck with its summit grade, painted on floor 39
     // Graded (test-side read-back only), against the deck picture the
     // game fetched: darker and bluer overall, the middle (the pads, the
     // constellation, every warning) kept nearly as bright.
-    const url = art.findLast(
-      (a) => a.url.includes("somnara") && !a.url.includes("?import"),
-    )!.url;
+    const url = "cloud-deck";
     const light = await page.evaluate(async (url) => {
       const scene = (window as any).__spireGame.scene.getScene("arena");
       const graded = scene.floor.texture.getSourceImage() as HTMLCanvasElement;
-      const plain = await new Promise<HTMLImageElement>((done, fail) => {
-        const img = new Image();
-        img.onload = () => done(img);
-        img.onerror = () => fail(new Error(`could not load ${url}`));
-        img.src = url;
-      });
+      // (The same court painted plainly, without the summit grade.)
+      const plain = document.createElement("canvas");
+      plain.width = 1600;
+      plain.height = 900;
+      (window as any).__paintCourt(plain.getContext("2d"), url);
       const measure = (src: CanvasImageSource) => {
         const c = document.createElement("canvas");
         c.width = 160;
@@ -1886,7 +1912,7 @@ test("Snoozaku's own raid keeps the Cloud Deck ungraded", async ({
   browser,
 }) => {
   test.setTimeout(150_000);
-  const context = await browser.newContext({
+  const context = await courtContext(browser, {
     viewport: { width: 844, height: 390 },
     isMobile: true,
     hasTouch: true,
@@ -1953,7 +1979,7 @@ test("zone 4: Snoozaku's Cloud Deck kept to floor 40, painted on floor 39, nothi
   browser,
 }, info) => {
   test.setTimeout(240_000);
-  const context = await browser.newContext({
+  const context = await courtContext(browser, {
     viewport: { width: 844, height: 390 },
     isMobile: true,
     hasTouch: true,
@@ -1964,7 +1990,7 @@ test("zone 4: Snoozaku's Cloud Deck kept to floor 40, painted on floor 39, nothi
     const art: { url: string; floor: number }[] = [];
     let floorNow = 31;
     page.on("request", (r) => {
-      if (r.url().includes("/raid-arenas/"))
+      if (/raid-arenas|world-art/.test(r.url()) && r.resourceType() === "image")
         art.push({ url: r.url(), floor: floorNow });
     });
     const errors = await openHub(page);
@@ -2038,7 +2064,7 @@ test("zone 4: Snoozaku's Cloud Deck kept to floor 40, painted on floor 39, nothi
     // had not drawn a frame on the cleared floor yet, 19 Nov).
     await expect
       .poll(async () => (await scene()).floors, { timeout: 30_000 })
-      .toContain("arena-floor-spire-summit-deck:art");
+      .toContain("arena-floor-spire-summit-deck");
     const ready = (await scene()).floors;
     floorNow = 40;
     await page.evaluate(() => (window as any).__spireStep(3));
@@ -2050,7 +2076,7 @@ test("zone 4: Snoozaku's Cloud Deck kept to floor 40, painted on floor 39, nothi
       .not.toBe("arena-floor-spire-z4");
     const forty = await scene();
     // Floor 40 shows the deck's summit grade (spireSummitFloorId(4)).
-    expect(forty.floor).toBe("arena-floor-spire-summit-deck:art");
+    expect(forty.floor).toBe("arena-floor-spire-summit-deck");
     // The court it shows was ready before the stairs were climbed.
     expect(ready).toContain(forty.floor);
     expect(art.every((a) => a.floor !== 40)).toBe(true);
@@ -2115,7 +2141,7 @@ for (const size of ZONE5_SIZES)
       browser,
     }, info) => {
       test.setTimeout(150_000);
-      const context = await browser.newContext({
+      const context = await courtContext(browser, {
         viewport: { width: size.width, height: size.height },
         isMobile: size.phone,
         hasTouch: size.phone,
@@ -2183,7 +2209,7 @@ for (const size of [
       browser,
     }, info) => {
       test.setTimeout(150_000);
-      const context = await browser.newContext({
+      const context = await courtContext(browser, {
         viewport: { width: size.width, height: size.height },
         isMobile: true,
         hasTouch: true,
@@ -2543,7 +2569,7 @@ test("floor 50: Prismell's Sun Atrium with its summit grade, painted on floor 49
   browser,
 }, info) => {
   test.setTimeout(180_000);
-  const context = await browser.newContext({
+  const context = await courtContext(browser, {
     viewport: { width: 844, height: 390 },
     isMobile: true,
     hasTouch: true,
@@ -2554,7 +2580,7 @@ test("floor 50: Prismell's Sun Atrium with its summit grade, painted on floor 49
     const art: { url: string; floor: number }[] = [];
     let floorNow = 49;
     page.on("request", (r) => {
-      if (r.url().includes("/raid-arenas/"))
+      if (/raid-arenas|world-art/.test(r.url()) && r.resourceType() === "image")
         art.push({ url: r.url(), floor: floorNow });
     });
     const errors = await openHub(page);
@@ -2590,7 +2616,7 @@ test("floor 50: Prismell's Sun Atrium with its summit grade, painted on floor 49
           floor: s.floor.texture.key as string,
           artwork: s.floor.texture.getSourceImage().dataset?.raidArtwork as
             string | undefined,
-          summitArt: s.textures.exists("arena-floor-spire-summit-atrium:art"),
+          summitArt: s.textures.exists("arena-floor-spire-summit-atrium"),
         };
       });
     await expect
@@ -2613,9 +2639,9 @@ test("floor 50: Prismell's Sun Atrium with its summit grade, painted on floor 49
     await expect
       .poll(async () => (await scene()).artwork)
       .toBe("spire-summit-atrium");
-    expect((await scene()).floor).toBe("arena-floor-spire-summit-atrium:art");
-    // The atrium's picture was fetched on floor 49 (or before), never on 50.
-    expect(art.some((a) => a.url.includes("prismatail"))).toBe(true);
+    expect((await scene()).floor).toBe("arena-floor-spire-summit-atrium");
+    // Painted in code: nothing fetched at all.
+    expect(art).toEqual([]);
     expect(art.every((a) => a.floor === 49)).toBe(true);
     const c = await court(page);
     expect(c.sky).toBe(4);
@@ -2635,7 +2661,7 @@ test("floor 50: Prismell's Sun Atrium with its summit grade, painted on floor 49
     await page.waitForFunction(() =>
       (window as any).__spireGame.scene
         .getScene("arena")
-        .textures.exists("arena-floor-sun-atrium:art"),
+        .textures.exists("arena-floor-sun-atrium"),
     );
     // Graded: darker and warmer overall, the middle (the mirrors, the
     // relay, every warning) kept most of its light.
@@ -2660,15 +2686,15 @@ test("floor 50: Prismell's Sun Atrium with its summit grade, painted on floor 49
         return { all: box(0, 0, 160, 90), middle: box(40, 22, 80, 46) };
       };
       return {
-        graded: measure("arena-floor-spire-summit-atrium:art"),
-        plain: measure("arena-floor-sun-atrium:art"),
+        graded: measure("arena-floor-spire-summit-atrium"),
+        plain: measure("arena-floor-sun-atrium"),
       };
     });
     const graded = atriumScores(
-        await atriumReadability(page, "arena-floor-spire-summit-atrium:art"),
+        await atriumReadability(page, "arena-floor-spire-summit-atrium"),
       ),
       plain = atriumScores(
-        await atriumReadability(page, "arena-floor-sun-atrium:art"),
+        await atriumReadability(page, "arena-floor-sun-atrium"),
       );
     console.log(JSON.stringify({ light, graded, plain }));
     expect(light.graded.all.lum).toBeLessThan(light.plain.all.lum * 0.9);
@@ -2699,7 +2725,7 @@ test("Prismell's own raid keeps the Sun Atrium ungraded", async ({
   browser,
 }) => {
   test.setTimeout(150_000);
-  const context = await browser.newContext({
+  const context = await courtContext(browser, {
     viewport: { width: 844, height: 390 },
     isMobile: true,
     hasTouch: true,
@@ -2746,7 +2772,7 @@ test("zone 5: Prismell's Sun Atrium kept to floor 50, painted on floor 49, nothi
 }, info) => {
   test.skip(!ZONE5_REAL, "zone 5's rooms are not built yet");
   test.setTimeout(240_000);
-  const context = await browser.newContext({
+  const context = await courtContext(browser, {
     viewport: { width: 844, height: 390 },
     isMobile: true,
     hasTouch: true,
@@ -2757,7 +2783,7 @@ test("zone 5: Prismell's Sun Atrium kept to floor 50, painted on floor 49, nothi
     const art: { url: string; floor: number }[] = [];
     let floorNow = 41;
     page.on("request", (r) => {
-      if (r.url().includes("/raid-arenas/"))
+      if (/raid-arenas|world-art/.test(r.url()) && r.resourceType() === "image")
         art.push({ url: r.url(), floor: floorNow });
     });
     const errors = await openHub(page);
@@ -2802,7 +2828,7 @@ test("zone 5: Prismell's Sun Atrium kept to floor 50, painted on floor 49, nothi
     // had not drawn a frame on the cleared floor yet, 19 Nov).
     await expect
       .poll(async () => (await scene()).floors, { timeout: 30_000 })
-      .toContain("arena-floor-spire-summit-atrium:art");
+      .toContain("arena-floor-spire-summit-atrium");
     const ready = (await scene()).floors;
     floorNow = 50;
     await page.evaluate(() => (window as any).__spireStep(3));
@@ -2813,7 +2839,7 @@ test("zone 5: Prismell's Sun Atrium kept to floor 50, painted on floor 49, nothi
       .poll(async () => (await scene()).floor)
       .not.toBe("arena-floor-spire-z5");
     const fifty = await scene();
-    expect(fifty.floor).toBe("arena-floor-spire-summit-atrium:art");
+    expect(fifty.floor).toBe("arena-floor-spire-summit-atrium");
     expect(ready).toContain(fifty.floor);
     expect(art.every((a) => a.floor !== 50)).toBe(true);
     await frames(page);
@@ -2880,7 +2906,7 @@ for (const size of ZONE6_SIZES)
       browser,
     }, info) => {
       test.setTimeout(150_000);
-      const context = await browser.newContext({
+      const context = await courtContext(browser, {
         viewport: { width: size.width, height: size.height },
         isMobile: size.phone,
         hasTouch: size.phone,
@@ -2948,7 +2974,7 @@ for (const size of [
       browser,
     }, info) => {
       test.setTimeout(180_000);
-      const context = await browser.newContext({
+      const context = await courtContext(browser, {
         viewport: { width: size.width, height: size.height },
         isMobile: true,
         hasTouch: true,
@@ -3249,7 +3275,7 @@ test("floor 60: Lumiwick's Sky Terrace with its summit grade, painted on floor 5
   browser,
 }, info) => {
   test.setTimeout(180_000);
-  const context = await browser.newContext({
+  const context = await courtContext(browser, {
     viewport: { width: 844, height: 390 },
     isMobile: true,
     hasTouch: true,
@@ -3260,7 +3286,7 @@ test("floor 60: Lumiwick's Sky Terrace with its summit grade, painted on floor 5
     const art: { url: string; floor: number }[] = [];
     let floorNow = 59;
     page.on("request", (r) => {
-      if (r.url().includes("/raid-arenas/"))
+      if (/raid-arenas|world-art/.test(r.url()) && r.resourceType() === "image")
         art.push({ url: r.url(), floor: floorNow });
     });
     const errors = await openHub(page);
@@ -3296,7 +3322,7 @@ test("floor 60: Lumiwick's Sky Terrace with its summit grade, painted on floor 5
           floor: s.floor.texture.key as string,
           artwork: s.floor.texture.getSourceImage().dataset?.raidArtwork as
             string | undefined,
-          summitArt: s.textures.exists("arena-floor-spire-summit-terrace:art"),
+          summitArt: s.textures.exists("arena-floor-spire-summit-terrace"),
         };
       });
     await expect
@@ -3319,9 +3345,9 @@ test("floor 60: Lumiwick's Sky Terrace with its summit grade, painted on floor 5
     await expect
       .poll(async () => (await scene()).artwork)
       .toBe("spire-summit-terrace");
-    expect((await scene()).floor).toBe("arena-floor-spire-summit-terrace:art");
+    expect((await scene()).floor).toBe("arena-floor-spire-summit-terrace");
     // The terrace's picture was fetched on floor 59 (or before), never on 60.
-    expect(art.some((a) => a.url.includes("emberwing"))).toBe(true);
+    expect(art).toEqual([]);
     expect(art.every((a) => a.floor === 59)).toBe(true);
     const c = await court(page);
     expect(c.sky).toBe(4);
@@ -3341,7 +3367,7 @@ test("floor 60: Lumiwick's Sky Terrace with its summit grade, painted on floor 5
     await page.waitForFunction(() =>
       (window as any).__spireGame.scene
         .getScene("arena")
-        .textures.exists("arena-floor-sky-terrace:art"),
+        .textures.exists("arena-floor-sky-terrace"),
     );
     // Graded: darker and redder overall (green drops most), the middle
     // (the braziers, the dive lanes, every warning) kept most of its light.
@@ -3366,15 +3392,15 @@ test("floor 60: Lumiwick's Sky Terrace with its summit grade, painted on floor 5
         return { all: box(0, 0, 160, 90), middle: box(40, 22, 80, 46) };
       };
       return {
-        graded: measure("arena-floor-spire-summit-terrace:art"),
-        plain: measure("arena-floor-sky-terrace:art"),
+        graded: measure("arena-floor-spire-summit-terrace"),
+        plain: measure("arena-floor-sky-terrace"),
       };
     });
     const graded = terraceScores(
-        await terraceReadability(page, "arena-floor-spire-summit-terrace:art"),
+        await terraceReadability(page, "arena-floor-spire-summit-terrace"),
       ),
       plain = terraceScores(
-        await terraceReadability(page, "arena-floor-sky-terrace:art"),
+        await terraceReadability(page, "arena-floor-sky-terrace"),
       );
     console.log(JSON.stringify({ light, graded, plain }));
     expect(light.graded.all.lum).toBeLessThan(light.plain.all.lum * 0.9);
@@ -3407,7 +3433,7 @@ test("Lumiwick's own raid keeps the Sky Terrace ungraded", async ({
   browser,
 }) => {
   test.setTimeout(150_000);
-  const context = await browser.newContext({
+  const context = await courtContext(browser, {
     viewport: { width: 844, height: 390 },
     isMobile: true,
     hasTouch: true,
@@ -3454,7 +3480,7 @@ test("zone 6: Lumiwick's Sky Terrace kept to floor 60, painted on floor 59, noth
 }, info) => {
   test.skip(!ZONE6_REAL, "zone 6's rooms are not built yet");
   test.setTimeout(240_000);
-  const context = await browser.newContext({
+  const context = await courtContext(browser, {
     viewport: { width: 844, height: 390 },
     isMobile: true,
     hasTouch: true,
@@ -3465,7 +3491,7 @@ test("zone 6: Lumiwick's Sky Terrace kept to floor 60, painted on floor 59, noth
     const art: { url: string; floor: number }[] = [];
     let floorNow = 51;
     page.on("request", (r) => {
-      if (r.url().includes("/raid-arenas/"))
+      if (/raid-arenas|world-art/.test(r.url()) && r.resourceType() === "image")
         art.push({ url: r.url(), floor: floorNow });
     });
     const errors = await openHub(page);
@@ -3510,7 +3536,7 @@ test("zone 6: Lumiwick's Sky Terrace kept to floor 60, painted on floor 59, noth
     // had not drawn a frame on the cleared floor yet, 19 Nov).
     await expect
       .poll(async () => (await scene()).floors, { timeout: 30_000 })
-      .toContain("arena-floor-spire-summit-terrace:art");
+      .toContain("arena-floor-spire-summit-terrace");
     const ready = (await scene()).floors;
     floorNow = 60;
     await page.evaluate(() => (window as any).__spireStep(3));
@@ -3521,7 +3547,7 @@ test("zone 6: Lumiwick's Sky Terrace kept to floor 60, painted on floor 59, noth
       .poll(async () => (await scene()).floor)
       .not.toBe("arena-floor-spire-z6");
     const sixty = await scene();
-    expect(sixty.floor).toBe("arena-floor-spire-summit-terrace:art");
+    expect(sixty.floor).toBe("arena-floor-spire-summit-terrace");
     expect(ready).toContain(sixty.floor);
     expect(art.every((a) => a.floor !== 60)).toBe(true);
     await frames(page);
@@ -3570,7 +3596,7 @@ for (const size of ZONE7_SIZES)
       browser,
     }, info) => {
       test.setTimeout(150_000);
-      const context = await browser.newContext({
+      const context = await courtContext(browser, {
         viewport: { width: size.width, height: size.height },
         isMobile: size.phone,
         hasTouch: size.phone,
@@ -3638,7 +3664,7 @@ for (const size of [
       browser,
     }, info) => {
       test.setTimeout(180_000);
-      const context = await browser.newContext({
+      const context = await courtContext(browser, {
         viewport: { width: size.width, height: size.height },
         isMobile: true,
         hasTouch: true,
@@ -3947,7 +3973,7 @@ test("floor 70: the Storm Twins' Conductor Ring with its summit grade, painted o
   browser,
 }, info) => {
   test.setTimeout(180_000);
-  const context = await browser.newContext({
+  const context = await courtContext(browser, {
     viewport: { width: 844, height: 390 },
     isMobile: true,
     hasTouch: true,
@@ -3958,7 +3984,7 @@ test("floor 70: the Storm Twins' Conductor Ring with its summit grade, painted o
     const art: { url: string; floor: number }[] = [];
     let floorNow = 69;
     page.on("request", (r) => {
-      if (r.url().includes("/raid-arenas/"))
+      if (/raid-arenas|world-art/.test(r.url()) && r.resourceType() === "image")
         art.push({ url: r.url(), floor: floorNow });
     });
     const errors = await openHub(page);
@@ -3994,7 +4020,7 @@ test("floor 70: the Storm Twins' Conductor Ring with its summit grade, painted o
           floor: s.floor.texture.key as string,
           artwork: s.floor.texture.getSourceImage().dataset?.raidArtwork as
             string | undefined,
-          summitArt: s.textures.exists("arena-floor-spire-summit-ring:art"),
+          summitArt: s.textures.exists("arena-floor-spire-summit-ring"),
         };
       });
     await expect
@@ -4017,9 +4043,9 @@ test("floor 70: the Storm Twins' Conductor Ring with its summit grade, painted o
     await expect
       .poll(async () => (await scene()).artwork)
       .toBe("spire-summit-ring");
-    expect((await scene()).floor).toBe("arena-floor-spire-summit-ring:art");
+    expect((await scene()).floor).toBe("arena-floor-spire-summit-ring");
     // The ring's picture was fetched on floor 69 (or before), never on 70.
-    expect(art.some((a) => a.url.includes("storm-twins"))).toBe(true);
+    expect(art).toEqual([]);
     expect(art.every((a) => a.floor === 69)).toBe(true);
     const c = await court(page);
     expect(c.sky).toBe(4);
@@ -4039,7 +4065,7 @@ test("floor 70: the Storm Twins' Conductor Ring with its summit grade, painted o
     await page.waitForFunction(() =>
       (window as any).__spireGame.scene
         .getScene("arena")
-        .textures.exists("arena-floor-conductor-ring:art"),
+        .textures.exists("arena-floor-conductor-ring"),
     );
     // Graded: darker and cooler overall, the middle (the posts, the beam,
     // every warning) kept most of its light.
@@ -4064,15 +4090,15 @@ test("floor 70: the Storm Twins' Conductor Ring with its summit grade, painted o
         return { all: box(0, 0, 160, 90), middle: box(40, 22, 80, 46) };
       };
       return {
-        graded: measure("arena-floor-spire-summit-ring:art"),
-        plain: measure("arena-floor-conductor-ring:art"),
+        graded: measure("arena-floor-spire-summit-ring"),
+        plain: measure("arena-floor-conductor-ring"),
       };
     });
     const graded = ringScores(
-        await ringReadability(page, "arena-floor-spire-summit-ring:art"),
+        await ringReadability(page, "arena-floor-spire-summit-ring"),
       ),
       plain = ringScores(
-        await ringReadability(page, "arena-floor-conductor-ring:art"),
+        await ringReadability(page, "arena-floor-conductor-ring"),
       );
     const round = (o: Record<string, number>) =>
       Object.fromEntries(Object.entries(o).map(([k, v]) => [k, +v.toFixed(2)]));
@@ -4125,7 +4151,7 @@ test("the Storm Twins' own raid keeps the Conductor Ring ungraded", async ({
   browser,
 }) => {
   test.setTimeout(150_000);
-  const context = await browser.newContext({
+  const context = await courtContext(browser, {
     viewport: { width: 844, height: 390 },
     isMobile: true,
     hasTouch: true,
@@ -4174,7 +4200,7 @@ for (const size of [
     browser,
   }, info) => {
     test.setTimeout(240_000);
-    const context = await browser.newContext({
+    const context = await courtContext(browser, {
       viewport: { width: size.width, height: size.height },
       isMobile: true,
       hasTouch: true,
@@ -4185,7 +4211,10 @@ for (const size of [
       const art: { url: string; floor: number }[] = [];
       let floorNow = 61;
       page.on("request", (r) => {
-        if (r.url().includes("/raid-arenas/"))
+        if (
+          /raid-arenas|world-art/.test(r.url()) &&
+          r.resourceType() === "image"
+        )
           art.push({ url: r.url(), floor: floorNow });
       });
       const errors = await openHub(page);
@@ -4230,7 +4259,7 @@ for (const size of [
       // had not drawn a frame on the cleared floor yet, 19 Nov).
       await expect
         .poll(async () => (await scene()).floors, { timeout: 30_000 })
-        .toContain("arena-floor-spire-summit-ring:art");
+        .toContain("arena-floor-spire-summit-ring");
       const ready = (await scene()).floors;
       await shot7(page, `z7-real-floor-69-cleared-${size.name}`);
       floorNow = 70;
@@ -4244,7 +4273,7 @@ for (const size of [
         .poll(async () => (await scene()).floor)
         .not.toBe("arena-floor-spire-z7");
       const seventy = await scene();
-      expect(seventy.floor).toBe("arena-floor-spire-summit-ring:art");
+      expect(seventy.floor).toBe("arena-floor-spire-summit-ring");
       expect(ready).toContain(seventy.floor);
       expect(art.every((a) => a.floor !== 70)).toBe(true);
       await frames(page);

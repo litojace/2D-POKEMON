@@ -17,7 +17,23 @@
     <link rel="icon" type="image/png" href="/icons/arena-192.png" />
     <title>Element Arena · Online duels</title>
     <!-- Keep a usable loading/retry screen even when a release's JS or CSS
-         cannot load. This small shell deliberately has no external assets. -->
+         cannot load. This small shell needs no other file (its two fonts are
+         optional). -->
+    <!-- The boot screen's title and line (optional: system fonts if not). -->
+    <link
+      rel="preload"
+      href="/assets/fonts/barlow-condensed-latin-600-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/assets/fonts/dm-sans-latin-500-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
     <style id="arena-boot-style">
       html {
         background: #0b1020;
@@ -29,31 +45,286 @@
       #rotate-gate {
         display: none;
       }
+      /* While the game's code downloads, this shell is laid out exactly as
+         the startup curtain that follows it (server-connection.css: the same
+         padding, name block, line and bar, in the game's Poster look), so
+         nothing moves when the curtain takes over. Its fonts are the two
+         files the game's look uses, at a fixed address; if they can't load,
+         system fonts show and the retry page still works. No runner here:
+         the fighter is drawn by the game's code, and steps onto the bar
+         when the curtain arrives. */
+      @font-face {
+        font-family: "Anton";
+        font-style: normal;
+        font-weight: 400;
+        font-display: block;
+        src: url("/assets/fonts/anton-latin-400-normal.woff2") format("woff2");
+      }
+      @font-face {
+        font-family: "Archivo";
+        font-style: normal;
+        font-weight: 100 900;
+        font-display: block;
+        src: url("/assets/fonts/archivo-latin-wght-normal.woff2")
+          format("woff2");
+      }
+      #app-boot,
+      #app-boot * {
+        box-sizing: border-box;
+      }
       #app-boot {
+        /* The curtain's own numbers (server-connection.css). */
+        --startup-runner: clamp(72px, 32vh, 140px);
+        --startup-lane: calc(var(--startup-runner) * 0.84);
         position: fixed;
         inset: 0;
         z-index: 2147483001;
         display: grid;
-        place-content: center;
-        gap: 14px;
-        padding: 24px;
-        background: #0b1020;
-        color: #edf3ff;
+        place-items: center;
+        padding: max(20px, env(safe-area-inset-top))
+          max(24px, env(safe-area-inset-right))
+          max(20px, env(safe-area-inset-bottom))
+          max(24px, env(safe-area-inset-left));
+        overflow: auto;
+        background:
+          radial-gradient(circle, rgba(0, 0, 0, 0.16) 1.4px, transparent 1.8px)
+            0 0 / 9px 9px,
+          #ffd65b;
+        color: #0d0d0f;
         text-align: center;
         font:
           16px/1.5 system-ui,
           sans-serif;
       }
+      #app-boot .boot-card {
+        width: min(1080px, 100%);
+        height: 100%;
+        max-height: 900px;
+        min-height: 0;
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr) auto;
+        justify-items: center;
+        gap: clamp(8px, 2vh, 18px);
+      }
+      #app-boot .boot-brand {
+        display: grid;
+        justify-items: center;
+        padding: clamp(6px, 1.6vh, 12px) clamp(12px, 2.6vh, 20px)
+          clamp(4px, 1.2vh, 9px);
+        background: #0d0d0f;
+        box-shadow: 5px 5px 0 #ff2e4d;
+      }
       #app-boot h1 {
         margin: 0;
-        color: #ffe08a;
+        color: #fff;
+        font:
+          400 clamp(27px, 7.2vh, 60px) / 0.95 "Anton",
+          Impact,
+          "Arial Narrow",
+          sans-serif;
+        text-transform: uppercase;
+      }
+      #app-boot h1 span {
+        display: block;
+        letter-spacing: 0.03em;
+      }
+      #app-boot h1 span:last-child {
+        color: #ffd65b;
+      }
+      #app-boot .boot-loading {
+        grid-row: 3;
+        width: min(520px, 100%);
+        display: grid;
+        justify-items: center;
+        gap: 10px;
+      }
+      /* "Opening the arena…", above the room the curtain's runner takes. */
+      #app-boot p {
+        margin: 0 0 var(--startup-lane);
+        color: #0d0d0f;
+        font:
+          400 clamp(14px, 2.1vh, 18px) / 1.3 "Anton",
+          Impact,
+          "Arial Narrow",
+          sans-serif;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      #app-boot .boot-progress {
+        display: block;
+        width: 100%;
+        height: 14px;
+        border: 2px solid #0d0d0f;
+        background: #0d0d0f;
+        box-shadow: 4px 4px 0 rgba(13, 13, 15, 0.35);
+      }
+      /* The space the curtain's status line takes (empty here), so the bar
+         doesn't move either. */
+      #app-boot .boot-status {
+        display: block;
+        min-height: 2.8em;
+        font:
+          600 clamp(11px, 1.6vh, 13px) / 1.4 "Archivo",
+          system-ui,
+          sans-serif;
+      }
+      /* Over a painting (server-connection.css .has-art): the star and the
+         name top right in their ink block; along the bottom a bar across
+         the whole width and one line under it, placed from the screen's
+         edges exactly as the curtain places them. */
+      #app-boot .boot-crest {
+        display: none;
+      }
+      .boot-art #app-boot {
+        --art-top: max(14px, env(safe-area-inset-top));
+        --art-bottom: max(12px, env(safe-area-inset-bottom));
+        --art-left: max(28px, env(safe-area-inset-left));
+        --art-right: max(28px, env(safe-area-inset-right));
+        background: #1e1e22;
+        color: #fff;
+      }
+      .boot-art #app-boot .boot-card {
+        display: contents;
+      }
+      .boot-art #app-boot .boot-brand {
+        position: absolute;
+        top: var(--art-top);
+        right: var(--art-right);
+        display: flex;
+        align-items: center;
+        gap: clamp(8px, 1.6vh, 14px);
+      }
+      .boot-art #app-boot .boot-crest {
+        display: block;
+        flex: none;
+        width: clamp(34px, 10vh, 76px);
+        height: clamp(34px, 10vh, 76px);
+      }
+      .boot-art #app-boot h1 {
+        font-size: clamp(24px, 7vh, 54px);
+        text-align: left;
+      }
+      .boot-art #app-boot .boot-status {
+        display: none;
+      }
+      .boot-art #app-boot .boot-loading {
+        position: absolute;
+        left: calc(var(--art-left) + 13px);
+        right: calc(var(--art-right) + 13px);
+        bottom: var(--art-bottom);
+        width: auto;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 6px;
+      }
+      .boot-art #app-boot .boot-progress {
+        border-color: #fff;
+        box-shadow: 4px 4px 0 #0d0d0f;
+      }
+      /* The one line, under the bar. */
+      .boot-art #app-boot p {
+        order: 1;
+        margin: 0;
+        height: 1.4em;
+        color: #fff;
+        font:
+          700 clamp(13px, 3.4vh, 17px) / 1.4 "Archivo",
+          system-ui,
+          sans-serif;
+        letter-spacing: normal;
+        text-align: left;
+        text-transform: none;
+        white-space: nowrap;
+      }
+      @media (max-height: 320px) {
+        .boot-art #app-boot {
+          --art-top: max(10px, env(safe-area-inset-top));
+          --art-bottom: max(10px, env(safe-area-inset-bottom));
+        }
+      }
+      @media (max-height: 500px) {
+        #app-boot {
+          padding: max(14px, env(safe-area-inset-top))
+            max(28px, env(safe-area-inset-right))
+            max(14px, env(safe-area-inset-bottom))
+            max(28px, env(safe-area-inset-left));
+        }
+        #app-boot .boot-card {
+          gap: 8px;
+        }
+        #app-boot .boot-loading {
+          width: min(430px, 100%);
+          gap: 7px;
+        }
+      }
+      @media (max-height: 320px) {
+        #app-boot {
+          padding-top: max(10px, env(safe-area-inset-top));
+          padding-bottom: max(10px, env(safe-area-inset-bottom));
+        }
+        #app-boot h1 {
+          font-size: 23px;
+        }
+        #app-boot .boot-loading {
+          gap: 6px;
+        }
+        #app-boot p {
+          font-size: 13px;
+        }
+        #app-boot .boot-status {
+          font-size: 11px;
+        }
+      }
+      /* A failed load: a centred message and a reload button, on the gold
+         cover whichever layout the start had. */
+      #app-boot.is-failed {
+        background: #ffd65b;
+        color: #0d0d0f;
+      }
+      #app-boot.is-failed .boot-card {
+        display: grid;
+        width: min(1080px, 100%);
+        height: auto;
+        grid-template-rows: none;
+        gap: 14px;
+      }
+      #app-boot.is-failed :is(.boot-brand, .boot-loading) {
+        position: static;
+        display: grid;
+      }
+      #app-boot.is-failed .boot-brand {
+        padding: 0;
+        background: none;
+        box-shadow: none;
+      }
+      #app-boot.is-failed .boot-loading {
+        grid-row: auto;
+        gap: 14px;
+      }
+      #app-boot.is-failed :is(.boot-crest, .boot-progress, .boot-status) {
+        display: none;
+      }
+      #app-boot.is-failed h1 {
+        color: #0d0d0f;
         font:
           700 28px/1.2 system-ui,
           sans-serif;
+        text-align: center;
+        text-transform: none;
       }
-      #app-boot p {
+      #app-boot.is-failed p {
+        order: 0;
         margin: 0;
-        color: #b0c2dd;
+        height: auto;
+        color: #0d0d0f;
+        font:
+          16px/1.5 system-ui,
+          sans-serif;
+        letter-spacing: 0;
+        text-align: center;
+        text-transform: none;
+        white-space: normal;
       }
       #app-boot button {
         justify-self: center;
@@ -61,17 +332,31 @@
         margin: 4px 0 0;
         padding: 10px 24px;
         border: 0;
-        border-radius: 12px;
-        background: #ffdc76;
-        color: #211b0e;
+        background: #0d0d0f;
+        color: #fff;
         font:
           700 16px system-ui,
           sans-serif;
+        box-shadow: 4px 4px 0 #ff2e4d;
       }
       #app-boot [hidden] {
         display: none;
       }
     </style>
+    <script>
+      // No tip will show (loading-tips.ts): the boot screen keeps no space
+      // for one.
+      try {
+        if (localStorage.getItem("ea-loading-tips") === "off")
+          document.documentElement.classList.add("boot-no-tips");
+        // A painting was chosen for this start (loading-art.ts): the
+        // curtain takes its painting layout, and so does this screen.
+        if (localStorage.getItem("ea-next-art"))
+          document.documentElement.classList.add("boot-art");
+      } catch {
+        /* No storage: tips show. */
+      }
+    </script>
     <script>
       // iPadOS calls itself a Mac with a touch screen. Mark iPads so the
       // landscape cover shows when one is held upright, even with a Magic
@@ -120,7 +405,10 @@
           if (ready) return;
           const shell = document.getElementById("app-boot");
           if (!shell) return;
-          shell.querySelector("h1").textContent = "The arena couldn't load";
+          const title = shell.querySelector("h1");
+          title.removeAttribute("aria-label");
+          title.textContent = "The arena couldn't load";
+          shell.classList.add("is-failed");
           shell.querySelector("p").textContent =
             "Reload to reconnect. Your account and progress are kept.";
           shell.querySelector("button").hidden = false;
@@ -193,9 +481,32 @@
   </head>
   <body>
     <section id="app-boot" role="status" aria-live="polite">
-      <h1>Entering the arena…</h1>
-      <p>Loading your game.</p>
-      <button type="button" hidden>Reload game</button>
+      <div class="boot-card">
+        <header class="boot-brand">
+          <svg class="boot-crest" viewBox="0 0 64 64" aria-hidden="true">
+            <defs>
+              <linearGradient id="boot-crest-gold" x2="0" y2="1">
+                <stop stop-color="#fff1a3" />
+                <stop offset="1" stop-color="#d9a340" />
+              </linearGradient>
+            </defs>
+            <path
+              fill="url(#boot-crest-gold)"
+              fill-rule="evenodd"
+              d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"
+            />
+          </svg>
+          <h1 aria-label="Element Arena">
+            <span>Element</span><span>Arena</span>
+          </h1>
+        </header>
+        <div class="boot-loading">
+          <p>Opening the arena…</p>
+          <span class="boot-progress" aria-hidden="true"></span>
+          <span class="boot-status" aria-hidden="true"></span>
+          <button type="button" hidden>Reload game</button>
+        </div>
+      </div>
     </section>
     <div id="app"></div>
     <!-- Element Arena plays in landscape only. On touch devices held upright

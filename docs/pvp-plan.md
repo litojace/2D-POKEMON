@@ -520,3 +520,55 @@ Before merging, check:
 - The 5-coin reward: a design change to §10, which said bots pay only
   through missions.
 - One real two-phone Quick Match on the deployed server.
+
+## 8. Bots fill in: 2v2 and Free-for-all on your own (26 Nov 2026)
+
+Item 5's "later": the two modes were hidden from anyone without a full
+party, and production had no saved 2v2 or Free-for-all match at all. Now a
+player alone can play both.
+
+- **The menu** lists _2v2 Teams_ and _Free-for-all_ for a lone player, with
+  "Bots fill in" on the card. A party of four (three for Free-for-all)
+  still gets its own private room; a party of two or three doesn't see the
+  rooms it can't fill, as before.
+- **PLAY searches** ("quick-join" with `mode`), in a queue of its own per
+  mode (`GroupQueue` in `apps/server/src/matchmaking.ts`). Four searching
+  players play at once. The sheet says from the start that bots take the
+  empty seats, counts down `QUICK_FILL_MS` (15 s), and has **Start with
+  bots** for a player who would rather not wait; either sends "quick-fill".
+- **The room** (`openFilledRoom` in `server.ts`): everyone searching that
+  mode, in the order they searched (two strangers land on opposite teams),
+  and bots in the seats left, each named "(Bot)" with its level as its
+  title, never the fighter of a player on its side.
+  - One player alone with bots starts at once, with the fighter they
+    searched with (as a bot match does).
+  - Two or more players get the room first, as in any PvP room: hidden
+    picks, one of each fighter a team, Ready. The bots are seated and
+    ready. If a player leaves it, a bot takes the seat at the next Ready;
+    after a shuffle or a move to the other team the bots stay ready, and
+    a bot that now shares a fighter with its side takes another.
+- **What it pays**: a match with a bot in it is a bot match. No rating
+  change, the bot's XP (25), and for a win the Quick Match bot's 5 coins
+  inside the 10-a-day PvP cap (migration `20261119170000`). Four players
+  from the queue with no bot play an ordinary rated room.
+- **The bots** are the game's own (`bot.ts`): they already choose among
+  several opponents, and the 2v2 and Free-for-all balance was tuned on
+  their matches. Their level is the player's sparring level
+  (`bot-ladder.ts`), as for Quick Match's bot.
+- A new player's short first matches (`INTRO_ROUNDS`) stay bot duels only:
+  these are full-length.
+
+Left out: a party of two or three playing 2v2 with bots in the other seats
+(a party makes its own room today, and its lobby would need a "fill with
+bots" of its own).
+
+Measure: `arena-match` lines with `"mode": "teams"` or `"ffa"`, their
+`humans` and `bots`, and `arena-queue` outcomes (`bot`, `human`, `cancel`).
+
+Tests: `tests/unit/matchmaking.test.ts` (the group queue),
+`tests/unit/lobby-mode.test.ts`, `tests/integration/fill-match.test.ts`
+(real sockets: alone in each mode, two players sharing a room, a player
+leaving it, four players without bots, the queues never mixing, cancel and
+disconnect, the database receipt, and the bots playing a whole match to its
+end), `tests/visual/fill-match.spec.ts` (the menu and the search sheet at
+667×375, 844×390, 852×393 with the Dynamic Island, and 1440×900).

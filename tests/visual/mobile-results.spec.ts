@@ -1,5 +1,17 @@
 import { expect, test } from "@playwright/test";
-import { box, inside, openHub, pushUntilBattle, snap, openPlayPanel, startPractice } from "./helpers";
+import {
+  box,
+  inside,
+  openHub,
+  pushUntilBattle,
+  snap,
+  openPlayPanel,
+  startPractice,
+} from "./helpers";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // A short visible viewport includes Safari's expanded address/tab bars.
 for (const size of [
@@ -37,8 +49,7 @@ for (const size of [
       await expect(page.locator(".action-overlay h2")).toContainText("Victory");
       // The real XP/level-up card makes the results taller than a short phone.
       await page.evaluate(async () => {
-        const { resultXp } =
-          await import("/rooms.ts");
+        const { resultXp } = await import("/rooms.ts");
         document.querySelector(".panel-scroll")!.insertAdjacentHTML(
           "beforeend",
           resultXp(
@@ -101,12 +112,18 @@ for (const size of [
         inside(await box(page, "#return"), await box(page, ".action-overlay")),
       ).toBe(true);
       await snap(page, info, `mobile-victory-${size.width}x${size.height}`);
-      // Back to menu leaves the room: red, like every leave button.
+      // Back to menu leaves the room: red, like every leave button (by its
+      // hue: the old look's pink and Poster's red both are).
       expect(
-        await page
-          .locator("#return")
-          .evaluate((el) => getComputedStyle(el).color),
-      ).toBe("rgb(255, 154, 165)");
+        await page.locator("#return").evaluate((el) => {
+          const cx = document.createElement("canvas").getContext("2d")!;
+          cx.fillStyle = getComputedStyle(el).color;
+          cx.fillRect(0, 0, 1, 1);
+          const [r, g, b] = cx.getImageData(0, 0, 1, 1).data;
+          return r >= 180 && r - g >= 80 && r - b >= 60;
+        }),
+        "Back to menu is red",
+      ).toBe(true);
       await page.locator("#return").tap();
       await expect(page.locator("#lobby-play")).toBeVisible();
       expect(errors).toEqual([]);

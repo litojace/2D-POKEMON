@@ -142,7 +142,7 @@ function play(
       hit(target, target.raidBoss ? amount * POWER : amount, owner, ability);
   }
   team.forEach((c, i) => a.add("b" + i, "Bot " + i, c));
-  a.configure(3, false);
+  a.configure(3);
   a.start();
   for (const p of a.heroes()) a.standIn(p.id);
   // Rites as a real party would have them: everyone takes their first offers.

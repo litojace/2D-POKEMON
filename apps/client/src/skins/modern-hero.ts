@@ -1,5 +1,5 @@
 import type { CharacterId } from "@arena/shared";
-import { DESIGNS, backPanel, torso, type Design, type Kit } from "./modern-designs";
+import { DESIGNS, backUnder, headStrap, putUnder, torso, type Design, type Kit } from "./modern-designs";
 
 /**
  * Hero Squad for the rest of the roster. The squad shares one language: a
@@ -24,7 +24,9 @@ function suit(k: Kit, color: string, trim: string, emblem: (x: number, y: number
 /** A short cape: its edges show past the arms in front, the whole of it behind. */
 function cape(k: Kit, color: string, edge?: string) {
   if (k.back) {
-    k.put("scarf", k.path(`M${k.C - k.W + 2} ${k.T}Q${k.C} ${k.T - 4} ${k.C + k.W - 2} ${k.T}L${k.C + k.W + 8} ${k.B + 10}Q${k.C} ${k.B + 16} ${k.C - k.W - 8} ${k.B + 10}Z`, color) +
+    // Under the champion's own back: Mossloth's moss and Astrabun's tail
+    // stay on top of the cloth (putUnder).
+    putUnder(k, k.path(`M${k.C - k.W + 2} ${k.T}Q${k.C} ${k.T - 4} ${k.C + k.W - 2} ${k.T}L${k.C + k.W + 8} ${k.B + 10}Q${k.C} ${k.B + 16} ${k.C - k.W - 8} ${k.B + 10}Z`, color) +
       (edge ? [0, 1, 2, 3, 4, 5].map((i) => {
         const u = i / 5;
         return k.lume("chase", k.circle(k.C - k.W - 6 + u * (2 * k.W + 12), k.B + 10 + Math.sin(u * Math.PI) * 5, 1.1, edge, "none", 0), i, edge);
@@ -60,7 +62,7 @@ export const HERO: Partial<Record<CharacterId, Design>> = {
   cindrake(k) {
     const flame = "#ff8a3a";
     const flameD = (x: number, y: number) => k.path(`M${x} ${y - 6}C${x + 5} ${y - 1} ${x + 4} ${y + 6} ${x} ${y + 6}C${x - 4} ${y + 6} ${x - 5} ${y - 1} ${x} ${y - 6}Z`, flame, k.ink, 0.5);
-    if (k.back) backPanel(k, "#2a1c1c", k.lume("pulse", flameD(k.C, k.T + 14), 0, flame));
+    if (k.back) backUnder(k, "#2a1c1c", k.lume("pulse", flameD(k.C, k.T + 14), 0, flame));
     else {
       suit(k, "#3a1f1f", flame, flameD);
       // The vented collar: plates with magma between them.
@@ -73,7 +75,7 @@ export const HERO: Partial<Record<CharacterId, Design>> = {
   auralynx(k) {
     const crystal = "#bfe8ff";
     const gem = (x: number, y: number) => k.path(`M${x} ${y - 6}L${x + 5} ${y - 1}L${x + 3} ${y + 6}L${x - 3} ${y + 6}L${x - 5} ${y - 1}Z`, crystal, k.ink, 0.5);
-    if (k.back) backPanel(k, "#2f3f8c", k.lume("pulse", gem(k.C, k.T + 14), 0, crystal));
+    if (k.back) backUnder(k, "#2f3f8c", k.lume("pulse", gem(k.C, k.T + 14), 0, crystal));
     else {
       suit(k, "#2f3f8c", crystal, gem);
       const pad = (s: number) => k.path(`M${k.C + s * (k.W - 6)} ${k.T + 4}L${k.C + s * (k.W + 2)} ${k.T - 10}L${k.C + s * (k.W + 12)} ${k.T - 2}L${k.C + s * (k.W + 8)} ${k.T + 8}Z`, crystal) +
@@ -91,7 +93,7 @@ export const HERO: Partial<Record<CharacterId, Design>> = {
     const core = (x: number, y: number) => k.circle(x, y, 4.6, "#fff6c9", k.ink, 0.6) + k.circle(x, y, 2.2, gold, "none", 0);
     const sash = () => k.line(`M${k.L} ${k.T + 2}L${k.R} ${k.B - 6}`, "#c8a83a", 3.4) +
       [0, 1, 2, 3].map((i) => k.lume("twinkle", k.path(starPts(k.L + 6 + i * (k.R - k.L - 12) / 3, k.T + 5 + i * (k.B - k.T - 12) / 3, 1.6, 4), "#ffffff", "none"), i, "#ffffff")).join("");
-    if (k.back) backPanel(k, "#efe6c9", k.lume("pulse", core(k.C, k.T + 14), 0, gold));
+    if (k.back) backUnder(k, "#efe6c9", k.lume("pulse", core(k.C, k.T + 14), 0, gold));
     else suit(k, "#efe6c9", gold, core, sash());
     const x = k.hx + k.side * 2,
       y = k.ht + 6;
@@ -116,7 +118,7 @@ export const HERO: Partial<Record<CharacterId, Design>> = {
     const magnet = (x: number, y: number) => k.path(`M${x - 5} ${y + 5}V${y - 1}A5 5 0 0 1 ${x + 5} ${y - 1}V${y + 5}H${x + 2}V${y - 1}A2 2 0 0 0 ${x - 2} ${y - 1}V${y + 5}Z`, "#e8322a", k.ink, 0.5) +
       k.rect(x - 5, y + 3, 3, 2.4, 0, "#e8e8f0", "none") + k.rect(x + 2, y + 3, 3, 2.4, 0, "#e8e8f0", "none");
     const coils = [0, 1, 2].map((i) => k.lume("chase", k.line(`M${k.L} ${k.T + 18 + i * 5}H${k.R}`, arc, 1), i, arc)).join("");
-    if (k.back) backPanel(k, "#3a3f52", coils);
+    if (k.back) backUnder(k, "#3a3f52", coils);
     else suit(k, "#3a3f52", arc, magnet, coils);
     if (!k.back) {
       const xs = k.side ? [k.hx - k.side * 18] : [k.hx - 52, k.hx + 52];
@@ -130,7 +132,7 @@ export const HERO: Partial<Record<CharacterId, Design>> = {
     const ember = "#ff9a3a";
     const nut = (x: number, y: number) => k.path(`M${x} ${y - 6}Q${x + 7} ${y - 2} ${x + 5} ${y + 4}Q${x} ${y + 7} ${x - 5} ${y + 4}Q${x - 7} ${y - 2} ${x} ${y - 6}Z`, "#8a4a24", k.ink, 0.5) +
       k.path(`M${x - 4} ${y + 2}Q${x} ${y + 5} ${x + 4} ${y + 2}`, "none", ember, 1);
-    if (k.back) backPanel(k, "#7a2a1c", k.lume("pulse", nut(k.C, k.T + 14), 0, ember));
+    if (k.back) backUnder(k, "#7a2a1c", k.lume("pulse", nut(k.C, k.T + 14), 0, ember));
     else suit(k, "#7a2a1c", ember, nut);
     // The launcher across the back, its mouth glowing above a shoulder.
     const s = k.side ? -k.side : 1;
@@ -138,11 +140,15 @@ export const HERO: Partial<Record<CharacterId, Design>> = {
       k.lume("pulse", k.circle(x1, y1, 3.6, ember, k.ink, 0.6), 2, ember);
     if (k.back) k.put("scarf", tube(k.C + 14, k.B, k.C - 22, k.T - 18));
     else k.put("body", tube(k.C - s * 12, k.B - 4, k.C + s * (k.side ? 26 : 52), k.T - 26), true);
-    // Goggles up on the brow.
-    if (!k.back) {
-      const y = k.ht + 14;
+    // Goggles up on the brow, their strap running round the head: across
+    // the brow from the front, from the lens back over the skull in
+    // profile, and across the back of the head from behind.
+    const y = k.ht + 14;
+    const strap = headStrap(k, y, "#5a3a22", 3, `M${k.hx - 46} ${y + 4}Q${k.hx} ${y - 8} ${k.hx + 46} ${y + 4}`);
+    if (k.back) k.put("flame", strap);
+    else {
       const xs = k.side ? [k.hx + k.side * 16] : [k.hx - 16, k.hx + 16];
-      k.put("flame", k.line(`M${k.hx - 46} ${y + 4}Q${k.hx} ${y - 8} ${k.hx + 46} ${y + 4}`, "#5a3a22", 3) +
+      k.put("flame", strap +
         xs.map((x, i) => k.circle(x, y, 9, "#b8823a") + k.lume("pulse", k.circle(x, y, 6, "#ffd27a", k.ink, 0.6), i + 3, ember)).join(""));
     }
   },
@@ -173,18 +179,19 @@ export const HERO: Partial<Record<CharacterId, Design>> = {
   halcyra(k) {
     const amber = "#ffb347";
     const wing = (x: number, y: number) => k.path(`M${x - 6} ${y + 4}Q${x - 1} ${y - 7} ${x + 6} ${y - 4}Q${x + 1} ${y - 1} ${x + 4} ${y + 1}Q${x} ${y + 1} ${x - 6} ${y + 4}Z`, amber, k.ink, 0.5);
-    if (k.back) backPanel(k, "#1f4f6e", k.lume("pulse", wing(k.C, k.T + 14), 0, amber) +
+    if (k.back) backUnder(k, "#1f4f6e", k.lume("pulse", wing(k.C, k.T + 14), 0, amber) +
       k.path(`M${k.C - 6} ${k.T}Q${k.C - 18} ${k.T + 20} ${k.C - 30} ${k.T + 26}L${k.C - 26} ${k.T + 30}Q${k.C - 12} ${k.T + 24} ${k.C + 2} ${k.T + 4}Z`, "#e8322a"));
     else {
       suit(k, "#1f4f6e", amber, wing);
       const s = k.side ? -k.side : -1;
       k.put("body", k.path(`M${k.C + s * 4} ${k.T}Q${k.C + s * 22} ${k.T + 2} ${k.C + s * 38} ${k.T + 14}L${k.C + s * 36} ${k.T + 19}Q${k.C + s * 20} ${k.T + 8} ${k.C + s * 2} ${k.T + 6}Z`, "#e8322a", k.ink, 0.8), true);
     }
-    if (!k.back) {
+    const ey = k.ht + 40;
+    if (k.back) k.put("flame", headStrap(k, ey - 14, "#2a2a36", 2, ""));
+    else {
       // The lens sits over the near eye.
-      const ex = k.side ? k.hx + k.side * 22 : k.hx + 22,
-        ey = k.ht + 40;
-      k.put("flame", k.line(`M${k.hx - 48} ${ey - 8}Q${k.hx} ${ey - 18} ${ex} ${ey - 10}`, "#2a2a36", 2) +
+      const ex = k.side ? k.hx + k.side * 22 : k.hx + 22;
+      k.put("flame", (k.side ? headStrap(k, ey - 10, "#2a2a36", 2, "") : k.line(`M${k.hx - 48} ${ey - 8}Q${k.hx} ${ey - 18} ${ex} ${ey - 10}`, "#2a2a36", 2)) +
         `<circle cx="${ex}" cy="${ey}" r="13" fill="#ffb3471a" stroke="#2a2a36" stroke-width="2.4"/>` +
         k.lume("pulse", k.line(`M${ex - 8} ${ey}H${ex - 3}M${ex + 3} ${ey}H${ex + 8}M${ex} ${ey - 8}V${ey - 3}M${ex} ${ey + 3}V${ey + 8}`, amber, 1.2), 1, amber));
     }
@@ -208,7 +215,7 @@ export const HERO: Partial<Record<CharacterId, Design>> = {
     const yellow = "#ffd84a";
     const boulder = (x: number, y: number) => k.path(`M${x - 6} ${y + 4}Q${x - 7} ${y - 4} ${x - 1} ${y - 6}Q${x + 7} ${y - 6} ${x + 6} ${y + 3}Q${x} ${y + 7} ${x - 6} ${y + 4}Z`, "#8a8a96", k.ink, 0.5);
     const hazard = [0, 1, 2, 3, 4, 5].map((i) => k.lume("chase", k.path(`M${k.L + i * (k.R - k.L) / 6} ${k.B - 6}l4 -5h3l-4 5Z`, yellow, "none"), i, yellow)).join("");
-    if (k.back) backPanel(k, "#4a4a5a", hazard);
+    if (k.back) backUnder(k, "#4a4a5a", hazard);
     else suit(k, "#4a4a5a", yellow, boulder, hazard);
     // The helmet and its lamp, up on the head, clear of the eyes.
     const x = k.hx + k.side * 2,
@@ -224,7 +231,7 @@ export const HERO: Partial<Record<CharacterId, Design>> = {
     const magenta = "#ff4fd8";
     const drop = (x: number, y: number) => k.path(`M${x} ${y - 7}C${x + 5} ${y - 1} ${x + 5} ${y + 5} ${x} ${y + 5}C${x - 5} ${y + 5} ${x - 5} ${y - 1} ${x} ${y - 7}Z`, magenta, k.ink, 0.5);
     const pellets = [0, 1, 2].map((i) => k.circle(k.L + 6 + i * 5, k.B - 8.5, 1.8, "#3a2c6e", "#c9a3e7", 0.5)).join("");
-    if (k.back) backPanel(k, "#1b1438", k.lume("pulse", drop(k.C, k.T + 14), 0, magenta));
+    if (k.back) backUnder(k, "#1b1438", k.lume("pulse", drop(k.C, k.T + 14), 0, magenta));
     else suit(k, "#1b1438", magenta, drop, pellets);
     const x = k.hx + k.side * 2,
       y = k.ht + 26;
@@ -240,7 +247,7 @@ export const HERO: Partial<Record<CharacterId, Design>> = {
     const leafD = (x: number, y: number) => k.path(`M${x - 5} ${y + 5}Q${x - 6} ${y - 4} ${x + 5} ${y - 6}Q${x + 4} ${y + 5} ${x - 5} ${y + 5}Z`, "#3f8a4f", k.ink, 0.5) +
       k.line(`M${x - 4} ${y + 4}L${x + 4} ${y - 5}`, vein, 0.8);
     const plates = [0, 1].map((r) => [-1, 0, 1].map((q) => k.path(`M${cx(k) + q * 11 - 5} ${k.T + 22 + r * 7}q5 -6 10 0`, "none", "#2f6a3a", 1.4)).join("")).join("");
-    if (k.back) backPanel(k, "#2f6a3a", k.lume("pulse", leafD(k.C, k.T + 14), 0, vein));
+    if (k.back) backUnder(k, "#2f6a3a", k.lume("pulse", leafD(k.C, k.T + 14), 0, vein));
     else suit(k, "#4f8a3f", vein, leafD, plates);
     const x = k.hx + k.side * 2,
       y = k.ht + 6;

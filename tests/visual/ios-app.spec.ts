@@ -35,10 +35,12 @@ test("iOS Home Screen resumes the hub and releases the old battle canvas on retu
     const errors = await openPlaza(page);
     const canvas = page.locator(".plaza-layer #pz-cv");
     await expect(canvas).toBeVisible();
-    // iPhones draw the Plaza at up to 1.5x, as in battle (here 844 × 1.5).
+    // iPhones draw the Plaza at up to 2x, within the pixel budget, so its
+    // fighters and names are sharp (here 844 × 2); Auto steps back to 1.5x
+    // on a phone too slow for it (plaza-scene.ts, SOFT_KEY).
     await expect
       .poll(() => canvas.evaluate((c: HTMLCanvasElement) => c.width))
-      .toBe(1266);
+      .toBe(1688);
     // An iPad-sized window keeps the canvas the size of its host and within
     // the pixel budget. 1194 × 834 is an iPad Pro 11"'s screen (the window
     // sets the emulated screen too): a large iPad, which draws at 2× within
@@ -49,7 +51,7 @@ test("iOS Home Screen resumes the hub and releases the old battle canvas on retu
     await page.setViewportSize({ width: 1194, height: 834 });
     await expect
       .poll(() => canvas.evaluate((c: HTMLCanvasElement) => c.width))
-      .not.toBe(1266);
+      .not.toBe(1688);
     await expect
       .poll(() =>
         canvas.evaluate((c) => {
@@ -67,7 +69,7 @@ test("iOS Home Screen resumes the hub and releases the old battle canvas on retu
     await page.setViewportSize(iphone.viewport);
     await expect
       .poll(() => canvas.evaluate((c: HTMLCanvasElement) => c.width))
-      .toBe(1266);
+      .toBe(1688);
     await page.evaluate(() => {
       (window as any).__keepApp = true;
       dispatchEvent(new PageTransitionEvent("pagehide", { persisted: true }));

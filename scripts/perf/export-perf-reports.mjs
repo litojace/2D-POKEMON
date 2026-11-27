@@ -41,6 +41,21 @@ export const KEEP = {
     "corrections",
     "correctionMax",
     "confirmP50",
+    "confirmP95",
+    "confirmP99",
+    "pressSamples",
+    "slowInputs",
+    "farHits",
+    "hitTraceVersion",
+    "pressToSendP50",
+    "pressToSendP95",
+    "pressToSendP99",
+    "eventToHandlerP95",
+    "handlerToSendP95",
+    "sendGapP50",
+    "sendGapP95",
+    "sendGapP99",
+    "sendGapMax",
     "fps",
     "frameP95",
     "jank",
@@ -88,6 +103,24 @@ export const KEEP = {
     "inputHz",
     "link",
     "linkSpeed",
+    "shell",
+    "model",
+    "osVersion",
+    "screen",
+    "workP50",
+    "workP95",
+    "sliceFps",
+    "sliceJank",
+    "glowP50",
+    "glowSlow",
+    "softP50",
+    "softSlow",
+    "particlesP50",
+    "particlesSlow",
+    "objectsP50",
+    "objectsSlow",
+    "phases",
+    "attacksSlow",
   ],
   "arena-disconnect": [
     "reason",
@@ -114,7 +147,42 @@ export function toReport(entry) {
   const report = { id: String(entry.id), at: String(entry.timestamp), kind };
   for (const field of KEEP[kind])
     if (data[field] !== undefined && data[field] !== null)
-      report[field] = data[field];
+      if (field === "slowInputs" || field === "farHits") {
+        const allowed =
+          field === "slowInputs"
+            ? [
+                "action",
+                "source",
+                "deliveryMs",
+                "deadlineMs",
+                "totalMs",
+                "frameGapMs",
+              ]
+            : ["gap", "eventAgeMs", "leadMs", "timed"];
+        if (!Array.isArray(data[field])) continue;
+        report[field] = data[field]
+          .slice(0, 8)
+          .filter((row) => row && typeof row === "object")
+          .map((row) =>
+            Object.fromEntries(
+              allowed
+                .filter((key) =>
+                  key === "action"
+                    ? typeof row[key] === "string" &&
+                      /^(basic|dash|jump|skill[0-3])$/.test(row[key])
+                    : key === "source"
+                      ? ["touch-controls", "unknown"].includes(row[key])
+                      : key === "timed"
+                        ? typeof row[key] === "boolean"
+                        : typeof row[key] === "number" &&
+                          Number.isFinite(row[key]) &&
+                          row[key] >= 0 &&
+                          row[key] <= 100_000,
+                )
+                .map((key) => [key, row[key]]),
+            ),
+          );
+      } else report[field] = data[field];
   return report;
 }
 

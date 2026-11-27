@@ -15,7 +15,7 @@ import {
 const tide = (characters: CharacterId[] = ["voltkit"], peril = 1) => {
   const a = createRaidArena("TIDE", "tidewyrm") as TidewyrmArena;
   characters.forEach((c, i) => a.add("p" + i, "Player " + i, c));
-  a.configure(peril, false);
+  a.configure(peril);
   a.start();
   a.phase = "playing";
   a.deadline = 480;
@@ -255,10 +255,9 @@ describe("waves, bubbles and the tide", () => {
     ];
     run(a, 0.05);
     expect(hurt(a, "p0")).toBeGreaterThan(0);
-    const rooted = (a as unknown as { rootedUntil: Map<string, number> })
-      .rootedUntil;
-    expect(rooted.get("p0")).toBeGreaterThan(a.time);
-    expect(rooted.has("p1")).toBe(false);
+    // In the raid state (the snapshot), so the phone holds them still too.
+    expect(a.raid.rooted?.p0).toBeGreaterThan(a.time);
+    expect(a.raid.rooted?.p1).toBeUndefined();
   });
   it("floods the floor at High Tide: islands are safe, two to an island", () => {
     const a = tide(["voltkit", "cindrake", "tidefin"], 1);
@@ -408,7 +407,7 @@ describe("a whole run", () => {
       ["voltkit", "tidefin", "terradon"] as CharacterId[]
     ).entries())
       a.add("b" + i, "Bot " + i, c);
-    a.configure(3, false);
+    a.configure(3);
     a.start();
     for (const p of a.heroes()) a.standIn(p.id);
     a.phase = "playing";

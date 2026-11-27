@@ -2,6 +2,10 @@ import { expect, test, type Page } from "@playwright/test";
 import { box, inside, openLobby, snap } from "./helpers";
 import { ISLAND, closeSpot, layoutProblems, setInsets } from "./ui-measure";
 import { clippedFrames } from "./ui-checks";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // UI remodel step 4 (docs/ui-remodel/PLAN.md): the Journey panel (Season ·
 // Levels · Weekly arcade) at the four review sizes, measured with the shared

@@ -1,0 +1,456 @@
+/* What a finished match gave you (result-rewards.ts): the hero over the
+   sheet's head and the reward tiles. Transform and opacity only: this runs
+   over a battle that has just ended, on the same phone. */
+#arena-overlay#arena-overlay .rw {
+  --rw-step: 160ms;
+  width: min(680px, 100%);
+  margin: 10px auto 4px;
+  display: grid;
+  gap: 8px;
+  text-align: left;
+}
+/* Rows that always fill the width, whatever the count: three tiles a row,
+   and a last row of two (five tiles) or rows of two (four) at half width
+   each. Six columns: a tile takes two, or three. */
+#arena-overlay#arena-overlay .rw-tiles {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+#arena-overlay#arena-overlay .rw-tile {
+  grid-column: span 2;
+}
+#arena-overlay#arena-overlay
+  .rw-tiles:is([data-count="2"], [data-count="4"])
+  .rw-tile,
+#arena-overlay#arena-overlay
+  .rw-tiles[data-count="5"]
+  .rw-tile:nth-child(n + 4) {
+  grid-column: span 3;
+}
+#arena-overlay#arena-overlay .rw-tiles[data-count="1"] .rw-tile {
+  grid-column: span 6;
+}
+#arena-overlay#arena-overlay .rw-tile {
+  position: relative;
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  grid-template-areas:
+    "icon head"
+    "icon value"
+    "bar bar"
+    "note note";
+  column-gap: 10px;
+  row-gap: 3px;
+  align-content: start;
+  min-width: 0;
+  padding: 9px 12px 10px;
+  border: 1px solid var(--ui-line);
+  border-radius: var(--rad-md);
+  background: var(--fill-card);
+  overflow: hidden;
+  animation: rw-in 0.34s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+  animation-delay: calc(var(--i, 0) * var(--rw-step) + 0.25s);
+}
+#arena-overlay#arena-overlay .rw-icon {
+  grid-area: icon;
+  align-self: center;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  color: var(--ui-accent-hi);
+}
+#arena-overlay#arena-overlay .rw-icon svg {
+  width: 22px;
+  height: 22px;
+}
+#arena-overlay#arena-overlay .rw-head {
+  grid-area: head;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+#arena-overlay#arena-overlay .rw-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 700 calc(11px * var(--text-scale, 1))/1.2 var(--font-display);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ui-dim);
+}
+#arena-overlay#arena-overlay .rw-gain {
+  flex: none;
+  font: 800 calc(15px * var(--text-scale, 1))/1 var(--font-display);
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  color: var(--ui-accent-hi);
+  animation: rw-pop 0.4s cubic-bezier(0.2, 0.9, 0.3, 1.4) both;
+  animation-delay: calc(var(--i, 0) * var(--rw-step) + 0.55s);
+}
+#arena-overlay#arena-overlay .rw-tile.is-up .rw-gain {
+  color: #6fe3a1;
+}
+#arena-overlay#arena-overlay .rw-tile.is-down .rw-gain {
+  color: #ff8a95;
+}
+#arena-overlay#arena-overlay .rw-value {
+  grid-area: value;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 800 calc(17px * var(--text-scale, 1))/1.15 var(--font-display);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  color: var(--ui-text);
+}
+#arena-overlay#arena-overlay .rw-value i {
+  font-style: normal;
+}
+#arena-overlay#arena-overlay .rw-value small {
+  margin-left: 4px;
+  font: 500 calc(12px * var(--text-scale, 1))/1 var(--font-body);
+  letter-spacing: 0;
+  color: var(--ui-dim);
+}
+/* The bar: its fill is scaled, never resized (no layout while it runs). */
+#arena-overlay#arena-overlay .rw-bar {
+  grid-area: bar;
+  display: block;
+  height: 6px;
+  margin-top: 3px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+#arena-overlay#arena-overlay .rw-bar i {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--ui-accent), var(--ui-accent-hi));
+  transform-origin: 0 50%;
+  transform: scaleX(var(--to));
+  animation: rw-fill 0.8s cubic-bezier(0.3, 0.7, 0.2, 1) both;
+  animation-delay: calc(var(--i, 0) * var(--rw-step) + 0.5s);
+}
+#arena-overlay#arena-overlay .rw-bar.is-wrap i {
+  animation-name: rw-fill-wrap;
+  animation-duration: 1.1s;
+}
+#arena-overlay#arena-overlay .rw-tile.is-up .rw-bar i {
+  background: linear-gradient(90deg, #3ddc84, #8ff0b9);
+}
+#arena-overlay#arena-overlay .rw-tile.is-down .rw-bar i {
+  background: linear-gradient(90deg, #ff6a78, #ffa3ab);
+}
+/* Read in full: it wraps to a second line where a tile is narrow. */
+#arena-overlay#arena-overlay .rw-note {
+  grid-area: note;
+  min-width: 0;
+  font-size: calc(11px * var(--text-scale, 1));
+  line-height: 1.3;
+  color: var(--ui-dim);
+}
+/* "LEVEL UP": over the tile's top right once the bar has run. */
+#arena-overlay#arena-overlay .rw-burst {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--ui-accent-hi), var(--ui-accent));
+  color: #1a1404;
+  font: 800 calc(12px * var(--text-scale, 1))/1 var(--font-display);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  box-shadow: 0 0 14px color-mix(in srgb, var(--ui-accent) 60%, transparent);
+  animation: rw-burst 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.5) both;
+  animation-delay: calc(var(--i, 0) * var(--rw-step) + 1.5s);
+}
+/* The burst takes the gain's corner: the gain shows until it lands. */
+#arena-overlay#arena-overlay .rw-tile.has-burst .rw-gain {
+  animation:
+    rw-pop 0.4s cubic-bezier(0.2, 0.9, 0.3, 1.4) both,
+    rw-out 0.2s ease both;
+  animation-delay:
+    calc(var(--i, 0) * var(--rw-step) + 0.55s),
+    calc(var(--i, 0) * var(--rw-step) + 1.4s);
+}
+#arena-overlay#arena-overlay .rw-tile.has-burst {
+  border-color: color-mix(in srgb, var(--ui-accent) 55%, transparent);
+}
+
+/* What the level gave: one line under the tiles. */
+#arena-overlay#arena-overlay .rw-levelup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px 10px;
+  margin: 0;
+  padding: 7px 12px;
+  border: 1px solid color-mix(in srgb, var(--ui-accent) 55%, transparent);
+  border-radius: var(--rad-md);
+  background: #ffd65b14;
+  font-size: calc(13px * var(--text-scale, 1));
+  line-height: 1.25;
+  color: var(--ui-text);
+  animation: rw-in 0.34s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+  animation-delay: 1.9s;
+}
+#arena-overlay#arena-overlay .rw-levelup b {
+  font: 800 calc(15px * var(--text-scale, 1))/1 var(--font-display);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ui-accent-hi);
+}
+#arena-overlay#arena-overlay .rw-levelup span + span::before {
+  content: "·";
+  margin-right: 10px;
+  color: var(--ui-dim);
+}
+/* The daily gift, in a line: a reason to come back tomorrow. */
+#arena-overlay#arena-overlay .rw-gift {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 0;
+  font-size: calc(12px * var(--text-scale, 1));
+  line-height: 1.3;
+  color: var(--ui-dim);
+}
+#arena-overlay#arena-overlay .rw-gift svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  color: var(--ui-accent-hi);
+}
+#arena-overlay#arena-overlay .rw-pending {
+  margin: 0;
+  text-align: center;
+  font-size: calc(12px * var(--text-scale, 1));
+  color: var(--ui-dim);
+}
+
+/* Confetti over the sheet's head on a win, and your fighter beside the
+   score. The confetti lays nothing out: the sheet's text keeps its place. */
+#arena-overlay#arena-overlay .rw-confetti {
+  position: absolute;
+  inset: 0 0 auto 0;
+  z-index: 2;
+  height: 0;
+  pointer-events: none;
+}
+#arena-overlay#arena-overlay .rw-confetti i {
+  position: absolute;
+  top: -12px;
+  left: var(--x);
+  width: 7px;
+  height: 11px;
+  border-radius: 1.5px;
+  background: hsl(var(--h) 85% 62%);
+  opacity: 0;
+  animation: rw-confetti 1.9s cubic-bezier(0.2, 0.6, 0.4, 1) both;
+  animation-delay: var(--d);
+}
+/* The score's left side: your fighter, then the name (which still
+   shortens with "…" when it is long). The hop isn't clipped. */
+#arena-overlay#arena-overlay .result-score .rw-side {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  overflow: visible;
+}
+#arena-overlay#arena-overlay .result-score .rw-fighter {
+  flex: none;
+  display: inline-grid;
+  overflow: visible;
+  transform-origin: 50% 100%;
+}
+#arena-overlay#arena-overlay .result-score .rw-fighter.is-hopping {
+  animation: rw-hop 0.9s cubic-bezier(0.3, 0.7, 0.3, 1) 0.15s both;
+}
+#arena-overlay#arena-overlay .result-score .rw-fighter .ui-avatar {
+  --size: 44px;
+}
+
+@keyframes rw-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes rw-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes rw-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes rw-burst {
+  from {
+    opacity: 0;
+    transform: scale(0.3) rotate(-8deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes rw-fill {
+  from {
+    transform: scaleX(var(--from));
+  }
+  to {
+    transform: scaleX(var(--to));
+  }
+}
+/* A level (or tier) reached: to the end, then on from the start. */
+@keyframes rw-fill-wrap {
+  0% {
+    transform: scaleX(var(--from));
+  }
+  55% {
+    transform: scaleX(1);
+  }
+  56% {
+    transform: scaleX(0);
+  }
+  100% {
+    transform: scaleX(var(--to));
+  }
+}
+@keyframes rw-confetti {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) rotate(0);
+  }
+  10% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--dx), 46vh, 0) rotate(var(--r));
+  }
+}
+@keyframes rw-hop {
+  0%,
+  100% {
+    transform: none;
+  }
+  25% {
+    transform: translateY(-12px) scale(1.06, 0.96);
+  }
+  50% {
+    transform: none;
+  }
+  70% {
+    transform: translateY(-7px);
+  }
+}
+
+/* Reduced motion and Low graphics: the end state, at once. */
+#arena-overlay#arena-overlay
+  .rw.is-still
+  :is(.rw-tile, .rw-gain, .rw-bar i, .rw-burst, .rw-levelup) {
+  animation: none;
+}
+#arena-overlay#arena-overlay .rw.is-still .rw-tile.has-burst .rw-gain {
+  display: none;
+}
+:where(:root[data-motion="reduced"])
+  #arena-overlay#arena-overlay
+  :is(
+    .rw-tile,
+    .rw-gain,
+    .rw-bar i,
+    .rw-burst,
+    .rw-levelup,
+    .rw-confetti i,
+    .rw-fighter
+  ) {
+  animation: none;
+}
+:where(:root[data-motion="reduced"])
+  #arena-overlay#arena-overlay
+  .rw-tile.has-burst
+  .rw-gain,
+:where(:root[data-motion="reduced"]) #arena-overlay#arena-overlay .rw-confetti {
+  display: none;
+}
+
+/* Phones: three tiles a row, tighter. */
+@media (max-height: 500px) {
+  #arena-overlay#arena-overlay .rw {
+    margin: 6px auto 2px;
+    gap: 6px;
+  }
+  #arena-overlay#arena-overlay .rw-tiles {
+    gap: 6px;
+  }
+  #arena-overlay#arena-overlay .rw-tile {
+    padding: 6px 10px 7px;
+    row-gap: 2px;
+    column-gap: 8px;
+    grid-template-columns: 22px minmax(0, 1fr);
+  }
+  #arena-overlay#arena-overlay .rw-icon {
+    width: 22px;
+    height: 22px;
+  }
+  #arena-overlay#arena-overlay .rw-icon svg {
+    width: 18px;
+    height: 18px;
+  }
+  #arena-overlay#arena-overlay .rw-value {
+    font-size: calc(15px * var(--text-scale, 1));
+  }
+  #arena-overlay#arena-overlay .rw-bar {
+    height: 5px;
+    margin-top: 2px;
+  }
+  #arena-overlay#arena-overlay .rw-levelup {
+    padding: 5px 10px;
+    font-size: calc(12px * var(--text-scale, 1));
+  }
+  #arena-overlay#arena-overlay .result-score .rw-fighter .ui-avatar {
+    --size: 34px;
+  }
+}
+
+/* Rematch (Play again) is the sheet's main button: the widest. */
+#arena-overlay#arena-overlay .result-actions .result-again {
+  min-width: 172px;
+}
+@media (max-height: 500px), (max-width: 760px) {
+  #arena-overlay#arena-overlay .result-actions .result-again {
+    min-width: 124px;
+  }
+}

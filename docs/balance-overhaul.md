@@ -433,6 +433,274 @@ often as before (seeds 1-72, main / now): 9 1.40 (1.35) 13 / 17, 16 1.66
 (1.56) 30 / 31, 63 6.8 (6.6) 33 / 29, 65 0.64 (0.60) 38 / 39, 66 4.35 (4.1)
 42 / 39, 69 2.35 (2.2) 13 / 14.
 
+## Five weak skills reworked
+
+A skill audit switched each of the 72 skills off in turn (its kind set to
+one the bots never choose) and measured how much its champion's win rate
+fell, on Hard and on the expert without look-ahead (two seeds, 12 games a
+pair, 408 duels a row; a drop has an error of about 3.5 points). Five did
+almost nothing, re-measured on `main` with the expert's good player's hands
+(drop on expert / Hard):
+
+| Skill                             | Drop before | Why                            |
+| --------------------------------- | ----------: | ------------------------------ |
+| Riptide Wave (Tidefin's ultimate) |   2.2 / 2.4 | one jump clears it             |
+| Scale Shrapnel (Pangrove)         |   1.0 / 0.5 | 3 weak blades with no plates   |
+| Frost Breath (Glacelle)           |  -2.7 / 5.7 | a small slow; walk out of it   |
+| Crest Flare (Cindrake)            |   4.7 / 6.6 | step back out of the cone      |
+| Shell Up (Terradon)               |  5.9 / 11.1 | 2.5 s standing still to be hit |
+
+(A typical skill is worth 15 - 30 points; the strongest, Shell Bash,
+Facet Guard and Kindle, over 40. The audit's own expert columns were first
+measured with the look-ahead on, a near-perfect dodger the look-ahead
+section above says not to tune with, and with the fast hands; the numbers
+here are not.)
+
+- **Riptide Wave:** two walls of water 0.9 s apart (`wave.second`), 18 each
+  (24 before), the slam 9. A jump lasts 0.65 s and comes back after 2 s, so
+  one jump can't clear both: jump one and step out of the other's lane.
+  Tidefin health 136 (146) pays for it.
+- **Scale Shrapnel:** 6 blades plus 2 a plate (`perPlate`; 3 plus 3 a plate
+  before, the same 12 at full plates), 6 damage each.
+- **Frost Breath:** 4 every 0.2 s and a slow, and four breaths in a row
+  freeze for half a second (`cone.freeze`, once a breath): stand in it and
+  you are frozen. Range 230 (210).
+- **Crest Flare:** the flame reaches from 230 px out to 300 px over the
+  breath (`cone.grow`; drawn growing), so a step back no longer saves you;
+  5 a tick (6). Cindrake was already the experts' strongest champion.
+- **Shell Up:** 1.5 s (2.5), regrows 21 HP (30), and the shell bursts open
+  at the end, shoving away everyone within 140 px by 300 px (`burst`): no
+  more free hits on a shell. Rite Thick Moss: 27 HP instead of 21.
+
+Round robins, `main` / now (24 games a pair, seeds 310000, the expert
+without look-ahead):
+
+| Champion |                        Hard |                      Expert |                      Normal |
+| -------- | --------------------------: | --------------------------: | --------------------------: |
+| Tidefin  |               54.4% / 58.3% |               45.3% / 52.0% |               51.0% / 56.6% |
+| Cindrake |               56.1% / 53.9% |               59.6% / 59.1% |               49.5% / 44.9% |
+| Terradon |               53.2% / 53.2% |               58.8% / 58.8% |               53.2% / 51.5% |
+| Glacelle |               49.3% / 52.2% |               52.2% / 57.1% |               49.3% / 51.7% |
+| Pangrove |               51.5% / 53.7% |               54.2% / 54.9% |               53.7% / 55.9% |
+| Range    | 43.6 - 56.1% / 43.1 - 58.3% | 33.6 - 59.6% / 32.4 - 59.1% | 44.6 - 55.9% / 42.4 - 56.6% |
+
+Voltkit is still the expert's weakest (32.4%), as on `main`.
+
+Normal handicaps: Tidefin 0.32 (0.29), Cindrake 0.45 (0.49), so each does
+about as well against Normal bots as on `main` (two seeds, 12 games a pair:
+Tidefin 50.7%, Cindrake 50.2%). On unused line-ups: 2v2 44.3% - 56.5%
+(Glacelle the highest), 4-player 21.1% - 28.7%, 3-player 27.7% - 42.6% (with
+Live Wire: 44.8% - 55.2%, 21.6% - 28.1%, 28.8% - 42.6%).
+
+**Spire.** The five are Echoes on 38 floors. Played by the play-tests' solo
+Normal Halcyra (seeds 1-72), most floors cleared about as often as on `main`
+(within 5 of 72; on average 0.9 harder), measured after the healing orbs
+moved onto open ground. Six moved more, and their armour was set so each
+clears about as often as before (main / now, armour): 6 31 / 33 1.2 (1.05),
+14 42 / 42 1.6 (1.68), 29 33 / 34 1.69 (1.65), 37 40 / 39 1.84 (1.74),
+57 38 / 37 2.85 (2.95), 62 38 / 40 3.5 (2.85).
+Raids are played with the same kits, so a Tidefin, Glacelle, Pangrove,
+Cindrake or Terradon raider plays these skills there too.
+
+## Voltkit: faster shots for good dodgers
+
+With a good player's hands the expert left only Voltkit outside the
+owner's band for skilled players (expert 35% - 65%): about 31%, while it
+was 47% - 51% on Hard. Its damage is all shots and marks (Spark Dart,
+Static Lance, Ball Lightning, Thunderstorm), and an expert sidesteps them.
+Levers tried on Voltkit's pairings alone (expert without look-ahead, 24
+games a pair, seed 5000; Hard / expert, from 47.3% / 31.1%):
+
+| Change                            |  Hard | Expert |
+| --------------------------------- | ----: | -----: |
+| Health 170 (157)                  | 63.7% |  45.3% |
+| Ball Lightning zaps for 5 (3)     | 65.0% |  47.1% |
+| Speed 290 (270)                   | 60.0% |  39.2% |
+| Spark Dart 1000 px/s (860)        | 57.4% |  42.2% |
+| Thunderstorm 120 px (95)          | 54.7% |  36.0% |
+| Static Lance 1300 px/s (1050)     | 47.8% |  35.5% |
+| Static Lance 1500, Spark Dart 930 | 55.1% |  41.7% |
+
+Health and the zaps raise Hard as much as the expert (Hard would leave its
+band first). A faster shot is what a good dodger feels: the expert sees it
+late, while Hard dodges less to begin with, so it gains less. **Static Lance now flies at 1500
+px/s (1050) and Spark Dart at 930 (860).** On three seeds (5000 and 310000
+at 24 games a pair, 9000 at 48) Voltkit goes from 31.6% to 40.9% for
+experts and from 49.1% to 54.3% on Hard.
+
+Whole round robins, seed 310000, 24 games a pair (before / after):
+
+| Level  | Voltkit       | Range                       | sd        |
+| ------ | ------------- | --------------------------- | --------- |
+| Hard   | 49.0% / 55.6% | 43.1 - 58.6% / 42.2 - 59.1% | 3.8 / 4.2 |
+| Expert | 32.8% / 38.7% | 32.8 - 59.1% / 38.7 - 59.3% | 6.8 / 6.0 |
+| Normal | 48.3% / 47.1% | 43.4 - 55.9% / 43.1 - 56.6% | 3.3 / 3.4 |
+
+(Hard's top is Tidefin, from the reworked Riptide Wave above; no other
+champion moves by more than 2.2 points.) Normal, Voltkit's pairings at 48
+games a pair on seed 9000: 44.4% to 48.3%, so its handicap stays 0.285. 2v2 and
+free-for-all on unused line-ups (`FRESH_BASE=7000`, 400 matches a level,
+Voltkit's line-ups): 2v2 54.0% to 52.7%, 4-player 29.4% to 26.8%, 3-player
+38.2% to 39.1%, within the noise, so the mode factors stay.
+
+**Spire.** Voltkit is an Echo on floors 1 and 61 - 69. Played by the
+play-tests' solo Normal Halcyra (seeds 1 - 72), floor 1 is still always
+cleared and 61 - 69 within 5 of 72, all but floor 64 (38 to 28). On 192 seeds
+the floors that moved most are within 5 points: 64 97 / 88, 63 64 / 74,
+65 100 / 92, 67 47 / 46 (the orb move's retune allowed about 7), and
+floor 64's armour did not move its rate in order on 72 seeds (4.8 28,
+4.4 21, 4.1 28, 3.5 22): it was noise, so no floor's armour changes.
+
+## Second skill audit: three more reworked
+
+The audit again, on `main` after the five reworks and Voltkit's faster
+shots (#307), 12 games a pair on two seeds (24 a pair, the same as a round
+robin), the expert without look-ahead. The roster is closer than before:
+expert 40.7% - 59.8% (33.6% - 59.6% before), Hard 40.0% - 57.4%. Of the
+five, Riptide Wave now matters (11.8 / 12.7 points, expert / Hard), Shell
+Up more (9.1 / 12.0) and Frost Breath some (6.9 / 5.1); Crest Flare (3.4 /
+4.4) and Scale Shrapnel (2.7 / 1.5) still did little, and Crystal Cage
+(6.6 / 4.9) was weak for an ultimate. Ball Lightning (4.4 / 7.6) and
+Thunderstorm (6.1 / 8.6) are left to the expert-bot work on Voltkit.
+
+- **Scale Shrapnel** spends two plates (`platesSpent`), not all of them:
+  shedding every plate threw away the plates' 40% block, as much as the
+  blades were worth. Cooldown 11 (9): with one plate kept, the first try
+  (one plate spent) took Pangrove to 71% for experts.
+- **Crest Flare** is a short, fierce breath: 0.5 s (1.2), 3 every 0.1 s
+  (5 every 0.2 s), still reaching 230 to 300 px; Cindrake stands exposed
+  for less of it. 6 a tick took Cindrake to 82% for experts, 4 to 67%; trimming Heat
+  Cracks to 5 or 4 a tick instead left experts at 67%. Rite Long Breath: 0.7 s.
+- **Crystal Cage** closes in from 180 to 60 px over its 2.5 s
+  (`cage.shrinkTo`; every fighter's hold on it shrinks with it, so
+  `holdInCage` squeezes those inside toward Auralynx, on the client too),
+  and deals 20 (10). Rite Long Cage: 4 s and 28 damage (it set 18, which
+  would now have lowered it).
+
+Round robins, `main` / now (24 games a pair, seeds 310000):
+
+| Champion |                        Hard |                      Expert |                      Normal |
+| -------- | --------------------------: | --------------------------: | --------------------------: |
+| Pangrove |               52.9% / 54.2% |               52.9% / 60.0% |               56.6% / 54.2% |
+| Cindrake |               53.7% / 53.4% |               59.1% / 60.5% |               54.4% / 49.0% |
+| Auralynx |               49.3% / 51.2% |               52.5% / 51.0% |               48.8% / 50.7% |
+| Range    | 42.2 - 59.1% / 42.9 - 58.3% | 38.7 - 59.3% / 41.4 - 60.5% | 43.1 - 56.6% / 43.1 - 54.4% |
+
+Spire: the three are Echoes on 36 floors; all cleared within 5 of 72 as
+often as on `main` but floor 3 (33 / 24), now armour 1.05 (0.99): 34.
+
+## Voltkit: Ball Lightning and Thunderstorm earn their slots
+
+A skill audit (each skill's kind set to "none", two seeds, 12 games a
+pair) found two of Voltkit's skills worth little: switching off Ball
+Lightning cost it 4.4 points for experts and 7.6 on Hard, Thunderstorm 6.1
+and 8.6 (a typical skill is worth 15 - 30). The orb was easy to walk away
+from, and a good dodger stepped out of every bolt. Both now do something
+an opponent must answer, and Voltkit as a whole stays where it was:
+
+- **Ball Lightning:** every zap and the burst slow for 0.3 s, so with its
+  30% bonus against hindered enemies each zap after the first hurts more,
+  and a slowed enemy is easier to hit with Static Lance. The burst deals 8
+  (12).
+- **Thunderstorm:** four bolts (three), 0.65 s apart (0.8), 14 damage
+  (16), 120 px (95), and 0.8 s of paralysis (0.5): a bolt that lands holds
+  its target for the next. Each mark still shows 0.55 s before it strikes,
+  so every bolt can be stepped out of.
+- **Health 135** (157) pays for both.
+
+Levers tried on Voltkit's pairings (expert without look-ahead, seed 5000,
+24 games a pair; Hard / expert, from 55.1% / 41.7%): the slow alone 70.6%
+/ 56.9%, five bolts alone 60.8% / 43.9%. Spark Dart at 5 damage made
+Voltkit win more (62.5% / 46.8%), not less, a bot effect rather than
+strength, so it was not used. Paralysis that chains and a wider bolt
+mattered most for the ultimate; health took the extra strength back.
+
+| Seed (games a pair) | Before Hard / expert | After Hard / expert |
+| ------------------- | -------------------: | ------------------: |
+| 5000 (24)           |        55.1% / 41.7% |       54.7% / 40.9% |
+| 9000 (48)           |        52.1% / 42.4% |       55.5% / 42.0% |
+| 310000 (24, all)    |        55.6% / 38.7% |       55.1% / 42.4% |
+
+Switched off after the change (seed 9000): Ball Lightning is worth 18.1
+points on Hard and 17.9 for experts, Thunderstorm 18.0 and 18.6. Whole
+round robins on seed 310000: Hard 42.2% - 60.3% (Tidefin, +1.2), expert
+39.7% - 58.6% (sd 6.0 to 5.7); no other champion moves by more than 1.7
+points.
+
+- **Normal** fell 2 - 3 points (47.1% to 43.6% on seed 310000), so its
+  handicap is 0.265 (0.285): 50.1% on seed 9000 and 45.1% on 310000 at 48
+  games a pair (`main` 48.3% and 47.1%).
+- **2v2** rose (52.7% to 57.5% on `FRESH_BASE=7000`), so its factor is 1.03
+  (1.07): 51.3% and 54.8% on 7000 and 8000 (`main` 52.7% and 54.4%).
+  4-player 26.8% to 28.5%, 3-player 39.1% to 39.8%: factors kept.
+- **Spire** (floors 1 and 61 - 69, the play-tests' Halcyra): the Echoes
+  have less health but skills that bite, and on 72 seeds 61 - 69 moved
+  from 40 38 17 28 35 42 15 20 15 to 41 47 26 31 40 37 17 24 10. On 192
+  seeds the floors that moved most are within 5 points (62 112 / 121, 63
+  74 / 81, 65 92 / 98, 66 107 / 105, 69 36 / 32): no armour changes.
+  (Spire Echoes don't use the Normal handicap: the 72-seed rates were the
+  same before and after it changed.)
+- `tests/visual/effect-budget.spec.ts` passes (Voltkit's ultimate: glow
+  0.06 of the screen, 33 particles).
+
+**Also fixed with it.** Ascendant Lumiwick's overlap rule now also waits when the oldest live
+attack lands before anyone could move (inside a reaction): then "a safe
+spot exists" only meant every raider stood in one at that moment. With
+the new kits, an echoed dive was placed 0.5 s after another dive while
+ember rain was 0.27 s from landing, and one raider's next step into a lane
+left no spot (`tests/unit/raid-ascendant-lumiwick.test.ts`, 4 raiders).
+Waiting only gives raiders more warning.
+
+## Duskveil's lantern, and why the lopsided pairs stay (2026-11-23)
+
+The champion counter table was measured again on main after the second
+round of smarter bots: 48 games a pair at each of Normal, Hard and the
+expert without look-ahead (7,344 duels a level). Duskveil was the weakest
+champion at all three: 42.5% (Normal), 43.5% (Hard), 40.4% (expert).
+
+**Haunted Lantern's wisps deal 6, not 4.** The lantern fired about three
+wisps for 12 damage a 15-second cooldown. Four options were probed on
+Duskveil's pairings (408 duels per level):
+
+| Option                  | Hard  | Expert |
+| ----------------------- | ----- | ------ |
+| As it was               | 42.9% | 40.7%  |
+| Shade Crawl roots 0.8 s | 53.4% | 48.5%  |
+| Health 158 (was 148)    | 50.5% | 48.0%  |
+| Lantern wisps 6         | 50.0% | 48.3%  |
+| Basic attack 10 (was 9) | 54.9% | 53.4%  |
+
+The lantern was the right size and gives a weak skill a reason to be cast.
+Round robins (24 games a pair, seed 5000) after the change: Hard 44.9% -
+57.8% (Duskveil 46.6%), Normal 45.3% - 54.2% (Duskveil 50.2%). Expert
+(Duskveil's pairings, look-ahead off): 49.5%. Fresh line-ups
+(`FRESH_BASE=7000`): 2v2 43.8% - 56.3%, four-player free-for-all 19.6% -
+29.6%, three-player 29.3% - 42.0%, all inside their earlier ranges.
+Duskveil's Spire Echoes made zone 3 a little harder (clears in 144, main
+against the lantern: floor 23 83/72, 25 67/62, 26 49/40, 27 59/54, 28
+41/34), so those floors' armour went up: 1.98, 0.56, 1.15, 1.5 and 1.8
+(were 1.91, 0.54, 1.07, 1.42 and 1.67; now 82, 71, 49, 60 and 43). The
+zone 3 play-test now compares floors 21 and 29 over 36 seeds instead of
+12: with the lantern its 12 seeds tied the two floors (7 each), while 36
+seeds give 21 and 18 (72 give 47 and 33).
+
+**The lopsided pairs are mostly close fights played the same way every
+time.** Fourteen pairs went 90% or more one way at Hard. A diagnosis of the
+ten worst (24 duels each, damage per second and by ability) found that in
+most of them the loser deals as much damage per second as the winner, or
+more: Coilemur 22.6 against Terradon's 18.1, Astrabun 20.6 against
+Auralynx's 19.8, Shadopus 19.7 against Cindrake's 18.5, Tidefin 7.6 against
+Sunbara's 5.9. The winner has a little more health, healing or damage
+reduction, and Hard and expert bots play so evenly that a small edge wins
+nearly every time. Normal bots, which lapse, play the same pairs much
+closer (Auralynx-Astrabun 69%, Sunbara-Tidefin 60%, Mossloth-Auralynx 48%),
+and so do people. Changing numbers to fix them would hand the same edge to
+the other side, so they were left. The real counters are a kiter against a
+slow brawler (Mossloth deals twice the damage of Terradon and Auralynx),
+which is how those kits are meant to meet, and Terradon against Coilemur,
+lopsided at every level because Magnet Lash drags Terradon where it wants
+to be.
+
 ## Also fixed
 
 The raids' overlap rule (`spaceOverlap` in `apps/server/src/raid.ts`) now
@@ -753,3 +1021,164 @@ So this table is not for tuning champions. Use the look-ahead to check
 that a new champion's mechanics are used and answered (`new-mechanic.ts`).
 Measure balance on Hard and on the expert without it
 (`EXPERT_OFF=lookAhead`), as before.
+
+### Self-training: a learned way of playing each champion
+
+The expert plays every champion by the same rules. The trainer
+(`scripts/balance/train-expert.ts`) learns, per champion, a few numbers
+that change how those rules play it (`Style` in `apps/server/src/bot.ts`,
+written to `apps/server/src/expert-style.ts`, expert only): preferred
+distance (`range` for shooters, `reach` and `closeIn` for brawlers), how
+far it looks for openings (`sight`), circling (`circle`), when it dashes
+in, backs off or kites (`engage`, `retreat`, `kite`), a weight on each
+skill (`slots`) and the lowest score a skill must reach to be cast
+(`floor`). A champion missing from the file plays by the rules as written.
+
+**How it learns (evolution with honest checks).** For each champion in
+turn, six variations of its current style (two or three numbers moved at
+random, within limits; only numbers that mean something for it) play the
+17 others, 8 games each, on the same seeds as the current style. The best
+variation is played again on a second set of games and kept only if it
+wins there too and by 3 points on average over both. Four passes over the
+roster took about 1.5 hours on four processes (rules only, look-ahead off:
+six times faster). Progress is saved after every step, so the same command
+carries on after a restart.
+
+**The training's own numbers flatter it.** The best of six variations is
+partly the luckiest, so the training kept styles for 14 champions, but
+against untrained opponents on fresh games most of them won nothing:
+
+| Champion  | Fresh set A | Fresh set B | Confirming set | Kept |
+| --------- | ----------: | ----------: | -------------: | ---- |
+| Mossloth  |        +7.9 |       +11.8 |           +4.5 | yes  |
+| Mystowl   |        +6.5 |        +0.9 |          +11.0 | yes  |
+| Shadopus  |        +6.2 |        +6.5 |            0.0 | no   |
+| Lumoth    |        +5.3 |        +5.6 |           +1.8 | no   |
+| Wombolder |        +2.1 |        +1.5 |                | no   |
+| Pyranda   |        +1.2 |        +1.5 |                | no   |
+| Auralynx  |        +4.7 |         0.0 |                | no   |
+| Pangrove  |        +2.4 |        −0.3 |                | no   |
+| Tidefin   |        −0.9 |        +4.7 |                | no   |
+| Halcyra   |        +0.6 |        −2.6 |                | no   |
+| Duskveil  |        −1.8 |        +0.6 |                | no   |
+| Sunbara   |        −0.6 |         0.0 |                | no   |
+| Glacelle  |        −2.4 |        −1.8 |                | no   |
+| Coilemur  |        −6.2 |        −1.2 |                | no   |
+
+(Points of win rate over the same champion with no style; sets A and B
+are 340 games a side, the confirming set 510.) Shadopus and Lumoth looked
+good on A and B, the very sets they were chosen on, and not on the third;
+the round robin below agrees. So the trainer now ends with this check
+itself: each learned style must win on two fresh sets (both positive, 2
+points on average), then on a third with more games that was not used to
+choose (2 points again). Styles that fail are dropped from the file.
+Running the trainer again on a finished state changes nothing.
+
+**Round robin** (expert without look-ahead, 24 games a pair, the same
+seeds as the table above):
+
+| Champion | Untrained | Trained |
+| -------- | --------: | ------: |
+| Mossloth |     79.7% |   84.6% |
+| Mystowl  |     60.5% |   67.6% |
+| Shadopus |     53.7% |   53.2% |
+| Lumoth   |     46.6% |   45.1% |
+
+The others move only through their games against those two (all other
+games are identical): by up to 4 points (Voltkit 40.9% to 37.0%, Duskveil
+47.8% to 44.6%). Spread 12.8 to 14.2. The untrained
+column is exactly the "Expert, rules only" column above. The trained
+expert plays Mossloth and Mystowl better, so they are stronger than the
+untrained expert showed: worth knowing when tuning them.
+
+(Those styles and both tables are for the expert with a 0.1 s reaction,
+before the sixth pass and Live Wire. The expert now has a good player's
+hands, and was trained again: see the next section.)
+
+**After adding or changing a champion:** delete
+`balance-out/train-expert.json` (or pass a new `--state`), run
+`npx tsx scripts/balance/train-expert.ts` (add `--only <ids>` to train
+just the new champion against the current styles), run Prettier on
+`expert-style.ts`, then measure as usual. Hard, Normal and Easy never read
+a style (their round robins are byte-identical to `main`), and
+`tests/unit/bot-style.test.ts` checks that a style is the expert's alone
+and that no style plays exactly as the rules.
+
+What it cannot learn: anything the rules have no number for. A new kind of
+skill is still the look-ahead's job (or a new rule); the trainer only tunes
+how the existing rules play each champion.
+
+### A good player's hands
+
+The expert reacted in 0.1 s and aimed within 0.08 rad: a top player at
+best, and more than anyone manages on a phone. Those hands mostly measured
+how well a bot lands quick shots. It now reacts in 0.2 s and aims within
+0.12 (`EXPERT_PROFILE` in `apps/server/src/bot.ts`); its dodging,
+counterplay and look-ahead are unchanged.
+
+Expert without look-ahead, the current roster (after the sixth pass and
+Live Wire), 24 games a pair, the same seeds in all three columns:
+
+| Champion  | 0.1 s, 0.08 | 0.2 s, 0.12 | and the learned style |
+| --------- | ----------: | ----------: | --------------------: |
+| Mossloth  |       67.4% |       59.3% |                 59.8% |
+| Mystowl   |       62.7% |       49.8% |                 48.5% |
+| Halcyra   |       60.5% |       50.2% |                 53.4% |
+| Wombolder |       58.8% |       55.1% |                 55.4% |
+| Auralynx  |       57.6% |       53.7% |                 54.9% |
+| Terradon  |       57.6% |       53.2% |                 54.4% |
+| Sunbara   |       52.5% |       42.9% |                 43.1% |
+| Shadopus  |       50.5% |       58.1% |                 55.1% |
+| Glacelle  |       50.0% |       52.5% |                 52.2% |
+| Lumoth    |       49.3% |       43.9% |                 45.3% |
+| Pyranda   |       49.0% |       41.2% |                 41.4% |
+| Duskveil  |       45.6% |       42.4% |                 41.9% |
+| Coilemur  |       44.1% |       51.7% |                 51.5% |
+| Astrabun  |       42.4% |       56.4% |                 54.7% |
+| Pangrove  |       42.4% |       56.4% |                 55.6% |
+| Tidefin   |       39.2% |       41.9% |                 42.4% |
+| Voltkit   |       39.0% |       31.6% |                 31.6% |
+| Cindrake  |       31.4% |       59.8% |                 58.6% |
+
+Spread (sd) 9.2, 7.5 and 7.3 points. Champions that win by landing many
+quick shots from range fall (Mystowl −13, Halcyra −10, Mossloth −8) and
+those that have to walk in rise (Cindrake +28, Astrabun and Pangrove +14).
+Against the owner's band for skilled players (expert within about 35% -
+65%), the fast hands put Mossloth and Cindrake outside; a good player's
+hands put only Voltkit outside (31.6%), the next one to look at. Every
+expert table earlier in this file, the sixth pass's included, used the
+fast hands.
+
+**Still well above Hard.** The full expert (look-ahead on) against Hard,
+every pair, 4 games a pair (`difficulty-gap.ts 4 expert hard`): it wins
+89.1% of 612 duels and Hard takes 19.3% of rounds (with the fast hands
+96.2% and 10.9%).
+
+Since the second round of smarter bots (docs/smarter-bots.md, 2026-11-22)
+Hard has the expert's reaction, aim and decisions, but dodges 80% (the
+expert 90%), reads marks in 0.6 s and has no look-ahead or styles. The
+expert still beats it clearly: 79.7% of the same 612 duels, Hard taking
+27.9% of rounds. The expert itself is unchanged (it is built on the old
+Hard, `RAID_BOT_PROFILES.hard`).
+
+**Trained again for these hands** (`train-expert.ts --rounds 4 --mutants 6
+--games 8`, from scratch, a few hours on four processes, on the roster
+before the sixth pass). After the final check only one style was kept:
+Halcyra casts Focus Shot less (weight 0.42) and Pinning Quill more (1.29),
+kites less and skips weaker casts (`floor` 0.59). It won +9.1, +7.9 and
++10.2 points on the three check sets, and again +9.4, +7.6 and +7.3 on the
+current roster. The 17 others won nothing that held up on fresh games, so
+they play by the rules. In the round robin only games with Halcyra change
+(171 of 3,672): it gains 3.2 points, most of it from Shadopus, which beat
+it 22 of 24 times and now 10.
+
+**Mossloth and Mystowl.** The sixth pass already took Mossloth to 42.0% on
+Hard, the bottom of the owner's band (42% - 58%), and with a good player's
+hands it is 59.3% for experts, inside 35% - 65%. A further nerf was tried
+before that pass (Seed Spit 750 px/s instead of 780: Hard −2.6, expert
+−3.5) and is not shipped, since it would take Hard below the band. Mystowl
+is 49.8% for experts and 44.1% on Hard, inside both bands: nothing to
+change for now. Hard on the current roster (24 games a pair, the seeds
+above): 43.1% (Mossloth) - 56.6% (Auralynx), Mystowl 44.1%. Hard, Normal
+and Easy never read the expert's hands or styles, so this branch leaves
+their numbers as they are.

@@ -69,7 +69,7 @@
 .room-seats-body {
   flex: 1 1 auto;
   min-height: 0;
-  overflow: auto;
+  overflow: hidden auto;
   overscroll-behavior: contain;
   display: grid;
   align-content: start;

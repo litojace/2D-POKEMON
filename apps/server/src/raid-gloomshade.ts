@@ -240,6 +240,7 @@ export class GloomshadeArena extends RaidArena {
     const c = this.raid.curses?.[p.id];
     if (!c || (!c.stacks && c.hauntedUntil <= this.time)) return;
     delete this.raid.curses![p.id];
+    this.curseOwed.delete(p.id);
     this.event("heal", p, 0xffe7a8, 0, p.id);
   }
   /** How many copies a split makes (the real one included). */
@@ -784,22 +785,18 @@ export class GloomshadeArena extends RaidArena {
             continue;
           }
         } else this.lightFor.delete(p.id);
-        if (c.hauntedUntil > this.time) {
-          this.hitBy = "curse";
-          this.damage(p, G.curse.dps * dt, boss.id);
-          this.hitBy = undefined;
-        } else if (c.hauntedUntil && c.hauntedUntil <= this.time)
+        if (c.hauntedUntil > this.time)
+          this.curseHurt(p, G.curse.dps * dt, boss.id);
+        else if (c.hauntedUntil && c.hauntedUntil <= this.time) {
           delete curses[p.id];
-        else if (
+          this.curseOwed.delete(p.id);
+        } else if (
           this.smart() &&
           r.partySize >= G.split.partyCopy &&
           c.stacks > 0
-        ) {
+        )
           // Live raids, a party: the curse creeps before it haunts.
-          this.hitBy = "curse";
-          this.damage(p, G.curse.creep * c.stacks * dt, boss.id);
-          this.hitBy = undefined;
-        }
+          this.curseHurt(p, G.curse.creep * c.stacks * dt, boss.id);
         // Alone, the curse grows while you stand still.
         if (r.partySize === 1 && still && curses[p.id]) {
           const t = (this.stillFor.get(p.id) ?? 0) + dt;
@@ -827,6 +824,27 @@ export class GloomshadeArena extends RaidArena {
           this.addCurse(q);
         } else this.nearFor.set(q.id, t);
       }
+  }
+
+  /** Curse damage not yet dealt, by raider, and when it started adding up. */
+  private curseOwed = new Map<string, { amount: number; since: number }>();
+  /**
+   * The curse's damage for this tick: it adds up and lands every
+   * `curse.tickEvery` seconds as one hit (one event, one spark, one number),
+   * the same damage a second as before. What is still owed when the curse
+   * lifts (at most one interval's worth) is dropped.
+   */
+  private curseHurt(p: Fighter, amount: number, owner: string) {
+    const owed = this.curseOwed.get(p.id) ?? { amount: 0, since: this.time };
+    owed.amount += amount;
+    if (this.time - owed.since < G.curse.tickEvery - 1e-9) {
+      this.curseOwed.set(p.id, owed);
+      return;
+    }
+    this.curseOwed.delete(p.id);
+    this.hitBy = "curse";
+    this.damage(p, owed.amount, owner);
+    this.hitBy = undefined;
   }
 
   // ------------------------------------------------------------ Damage etc.

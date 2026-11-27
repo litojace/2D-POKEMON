@@ -1,0 +1,164 @@
+/* Features that open by level (feature-unlocks.ts): the padlock pill a
+   locked button wears ("Lv 3"), and the "Unlocked" sheet's rows. */
+.feature-lock {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  height: 18px;
+  padding: 0 6px 0 5px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--ui-accent) 45%, transparent);
+  background: rgba(11, 16, 32, 0.82);
+  color: var(--ui-accent-hi);
+  font: 800 calc(10px * var(--text-scale, 1))/1 var(--font-body);
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.feature-lock[hidden] {
+  display: none;
+}
+.feature-lock svg {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  color: inherit;
+}
+.feature-lock b {
+  font: inherit;
+}
+
+/* The Lobby's rail: the pill stands where the icon was, over the name. */
+.lobby-rail button.is-locked .lobby-rail-icon > svg {
+  display: none;
+}
+/* The icon's box keeps the icon's height, so every name stays on one line. */
+.lobby-rail button.is-locked .lobby-rail-icon {
+  display: grid;
+  place-items: center;
+  height: var(--rail-icon, 22px);
+  line-height: 1;
+}
+.lobby-rail button.is-locked > span {
+  color: #8f9bb5;
+}
+.lobby-rail .feature-lock svg {
+  width: 10px;
+  height: 10px;
+  color: inherit;
+}
+/* The shortest windows' two-column rail has no names and 34 px a button:
+   the padlock and the level's number alone. */
+@media (max-height: 340px) {
+  .lobby-rail .feature-lock {
+    height: 16px;
+    padding: 0 4px;
+    gap: 2px;
+    font-size: 9px;
+  }
+}
+
+/* A locked card keeps its place and height; its text says when it opens. */
+.lobby-card.is-locked b {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #c9d6ee;
+}
+.lobby-card.is-locked b svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  color: var(--ui-accent-hi);
+}
+
+/* The mode menu: the pill under the mode's name, in its hint's place, so
+   a locked row is no taller than the others on the narrowest phone. */
+.lobby-mode-menu button.is-locked > svg {
+  opacity: 0.6;
+}
+.lobby-mode-menu button.is-locked b {
+  color: #c9d6ee;
+}
+.lobby-mode-menu button.is-locked small {
+  display: none;
+}
+.lobby-mode-menu .feature-lock {
+  justify-self: start;
+  height: 16px;
+}
+.lobby-mode-menu .feature-lock b {
+  font: inherit;
+  letter-spacing: 0;
+  text-transform: none;
+  color: inherit;
+}
+.lobby-mode-menu .feature-lock svg {
+  width: 10px;
+  height: 10px;
+  color: inherit;
+}
+
+/* The Lobby / Plaza switch: its tabs have a fixed width (down to 40 px on
+   a phone), so the pill rides the locked tab's top right corner, like a
+   badge, and the switch keeps its size and place. */
+.hub-scenes button.is-locked {
+  position: relative;
+  color: #8f9bb5;
+}
+.hub-scenes .feature-lock {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  height: 15px;
+  padding: 0 5px 0 4px;
+  gap: 2px;
+  font-size: calc(9px * var(--text-scale, 1));
+  letter-spacing: 0;
+  text-transform: none;
+  background: rgb(11, 16, 32);
+  pointer-events: none;
+}
+.hub-scenes .feature-lock svg {
+  width: 8px;
+  height: 8px;
+}
+
+/* The "Unlocked" dialog (a ui-modal): the feature's icon in a ring, its
+   one line under the title, and what opens next. */
+.unlock-art {
+  width: 84px;
+  height: 84px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 2px solid var(--ui-accent);
+  background: rgba(11, 16, 32, 0.7);
+  color: var(--ui-accent-hi);
+  box-shadow: 0 0 24px color-mix(in srgb, var(--ui-accent) 40%, transparent);
+}
+.unlock-art svg {
+  width: 44px;
+  height: 44px;
+}
+.unlock-sub {
+  color: var(--ui-dim);
+  line-height: 1.35;
+}
+.unlock-next {
+  font-size: var(--fs-small);
+  font-weight: 700;
+}
+@media (max-height: 500px) {
+  .unlock-art {
+    width: 64px;
+    height: 64px;
+  }
+  .unlock-art svg {
+    width: 34px;
+    height: 34px;
+  }
+}

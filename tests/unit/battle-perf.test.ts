@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { BattlePerfMeter, perfMode } from "../../apps/client/src/battle-perf";
+import {
+  BattlePerfMeter,
+  appShell,
+  deviceModel,
+  perfMode,
+} from "../../apps/client/src/battle-perf";
 import { battlePerfSchema } from "../../packages/shared/src/connection";
 
 function feed(
@@ -104,6 +109,114 @@ describe("battle performance meter", () => {
   });
 });
 
+describe("the report's detail", () => {
+  it("shows how the match changed over time, 15 s at a time", () => {
+    const m = new BattlePerfMeter();
+    feed(m, 30, () => 1000 / 60);
+    // Then the phone slows down (heat): 30 s at 30 fps, a third janky.
+    feed(m, 30, (i) => (i % 3 === 0 ? 50 : 25));
+    const d = m.detail();
+    expect(d.sliceFps).toHaveLength(4);
+    expect(d.sliceFps[0]).toBeCloseTo(60, 0);
+    expect(d.sliceFps[3]).toBeLessThan(40);
+    expect(d.sliceJank[0]).toBe(0);
+    expect(d.sliceJank[3]).toBeGreaterThan(0.4);
+  });
+
+  it("tells our own work from the frame's length", () => {
+    const m = new BattlePerfMeter();
+    let t = 0;
+    // 40 ms frames with only 6 ms of our work: the graphics chip's pace.
+    for (let i = 0; i < 400; i++) m.frame((t += 40), true, { work: 6 });
+    const d = m.detail();
+    expect(d.workP50).toBe(6);
+    expect(d.workP95).toBe(6);
+    expect(m.summary().frameP95).toBe(40);
+  });
+
+  it("says what the scene held in its slowest frames", () => {
+    const m = new BattlePerfMeter();
+    let t = 0;
+    for (let i = 0; i < 1000; i++) {
+      const heavy = i % 20 === 0;
+      m.frame((t += heavy ? 60 : 1000 / 60), true, {
+        glow: heavy ? 1.2 : 0.1,
+        soft: heavy ? 0.5 : 0.05,
+        particles: heavy ? 300 : 20,
+        objects: heavy ? 400 : 150,
+        phase: i < 500 ? 1 : 2,
+        attacks: heavy ? "nightfall,pounce" : "",
+      });
+    }
+    const d = m.detail();
+    expect(d.glowP50).toBe(0.1);
+    expect(d.glowSlow).toBe(1.2);
+    expect(d.particlesP50).toBe(20);
+    expect(d.particlesSlow).toBe(300);
+    expect(d.objectsSlow).toBe(400);
+    expect(d.attacksSlow).toEqual(
+      expect.arrayContaining(["nightfall", "pounce"]),
+    );
+    expect(d.phases?.map((p) => p.phase)).toEqual([1, 2]);
+    expect(d.phases?.[0].fps).toBeLessThan(60);
+  });
+
+  it("leaves out what it never saw (a duel has no phases or attacks)", () => {
+    const m = new BattlePerfMeter();
+    feed(m, 12, () => 20);
+    const d = m.detail();
+    expect(d.phases).toBeUndefined();
+    expect(d.attacksSlow).toBeUndefined();
+    expect(d.workP95).toBeUndefined();
+    m.reset();
+    expect(m.detail().sliceFps).toEqual([]);
+  });
+
+  it("says where the game ran and which phone, coarsely", () => {
+    expect(appShell("ios", false)).toBe("ios-app");
+    expect(appShell("android", false)).toBe("android-app");
+    expect(appShell(undefined, true)).toBe("pwa");
+    expect(appShell(undefined, false)).toBe("web");
+    expect(
+      deviceModel(
+        { model: "iPhone12,1", osVersion: "18.2" },
+        { width: 414, height: 896, dpr: 2 },
+      ),
+    ).toEqual({ model: "iPhone12,1", osVersion: "18.2", screen: "896x414@2" });
+    // Nothing odd gets through.
+    expect(deviceModel({ model: "<script>" }, undefined)).toEqual({});
+  });
+
+  it("is accepted by the server with every new field", () => {
+    const m = new BattlePerfMeter();
+    let t = 0;
+    for (let i = 0; i < 1200; i++)
+      m.frame((t += i % 10 ? 17 : 45), true, {
+        work: 5,
+        glow: 0.3,
+        soft: 0.1,
+        particles: 40,
+        objects: 180,
+        phase: 1 + (i > 600 ? 1 : 0),
+        attacks: "nightfall",
+      });
+    const report = {
+      ...m.summary(),
+      ...m.detail(),
+      quality: "low",
+      setting: "low",
+      density: 1.5,
+      shell: appShell("ios", false),
+      ...deviceModel(
+        { model: "iPhone12,1", osVersion: "18.2" },
+        { width: 414, height: 896, dpr: 2 },
+      ),
+    };
+    const parsed = battlePerfSchema.safeParse(report);
+    expect(parsed.error?.issues ?? []).toEqual([]);
+  });
+});
+
 describe("perf mode", () => {
   it("turns on with ?perf=1 only", () => {
     expect(perfMode("?perf=1")).toBe(true);
@@ -150,6 +263,7 @@ describe("network meter", () => {
     expect(m.summary().snapLate).toBe(0);
     m.reset();
     expect(m.summary()).toEqual({
+      hitTraceVersion: 1,
       rttP50: 0,
       rttP95: 0,
       snapGapP95: 0,

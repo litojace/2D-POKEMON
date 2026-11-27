@@ -26,6 +26,21 @@ window.fetch = async (input, init) => {
   });
 }
 
+/** Connect the hub (the harness's socket waits to be told) until the curtain lifts. */
+async function enterHub(page: Page) {
+  await expect
+    .poll(
+      async () => {
+        await page.evaluate(() => (window as any).__sock?.fire("connect"));
+        return page.locator("#server-startup").count();
+      },
+      { timeout: 20_000, intervals: [300, 500] },
+    )
+    .toBe(0);
+  await expect(page.locator("body")).not.toHaveClass(/gate-active/);
+  await expect(page.locator("#lobby-play")).toBeVisible();
+}
+
 for (const size of [
   { width: 1440, height: 900 },
   { width: 844, height: 390 },
@@ -48,55 +63,49 @@ for (const size of [
       const panel = page.locator("#server-startup");
       await expect(panel).toBeVisible();
       await expect(panel).toContainText("Opening the arena");
-      await expect
-        .poll(() =>
-          page
-            .locator(".server-startup-art img")
-            .evaluate((el) => (el as HTMLImageElement).naturalWidth),
-        )
-        .toBeGreaterThan(0);
+      // The runner (startup-runner.ts): the fighter's own side view, drawn.
+      const runner = panel.locator(".server-startup-runner");
+      await expect(runner.locator("svg .fighter-character")).toHaveCount(1);
       await page.evaluate(() => document.fonts.ready);
       const logo = await box(page, ".server-startup-brand");
-      const art = await box(page, ".server-startup-art");
       const loading = await box(page, ".server-startup-loading");
-      for (const rect of [logo, art, loading]) {
+      for (const rect of [logo, loading]) {
         expect(inside(rect, { x: 0, y: 0, ...size })).toBe(true);
         expect(Math.abs(rect.x + rect.width / 2 - size.width / 2)).toBeLessThan(
           1,
         );
       }
-      expect(art.y).toBeGreaterThanOrEqual(logo.y + logo.height);
-      expect(art.y + art.height).toBeLessThanOrEqual(loading.y);
-      // Check the real rendered centers at the peak of the floating motion.
-      // The old separate CSS ring stayed behind while the crystal moved.
-      const orbitOffsets = await panel.evaluate((el) => {
-        for (const animation of el.getAnimations({ subtree: true })) {
-          if (
-            animation instanceof CSSAnimation &&
-            animation.animationName === "server-sigil-float"
-          ) {
-            animation.pause();
-            animation.currentTime = 3500;
-          }
-        }
-        const crest = el
-          .querySelector(".server-startup-art img")!
-          .getBoundingClientRect();
-        return [
-          ...el.querySelectorAll<SVGEllipseElement>(".server-startup-orbit"),
-        ].map((orbit) => {
-          const center = new DOMPoint(
-            orbit.cx.baseVal.value,
-            orbit.cy.baseVal.value,
-          ).matrixTransform(orbit.getScreenCTM()!);
-          return Math.hypot(
-            center.x - crest.x - crest.width / 2,
-            center.y - crest.y - crest.height / 2,
-          );
-        });
+      expect(logo.y + logo.height).toBeLessThanOrEqual(loading.y);
+      // It stands on the bar, at the end of the fill, clear of the name and
+      // of the line above it, and it runs while the bar moves (a waking
+      // server's estimate creeps along).
+      await expect(runner).toHaveClass(/is-running/);
+      const place = await panel.evaluate((el) => {
+        const r = (s: string) => {
+          const b = el.querySelector(s)!.getBoundingClientRect();
+          return { x: b.x, y: b.y, width: b.width, height: b.height };
+        };
+        return {
+          runner: r(".server-startup-runner"),
+          bar: r(".server-startup-progress"),
+          fill: r(".server-startup-progress > i"),
+          line: r(".server-startup-loading h2"),
+        };
       });
-      expect(orbitOffsets).toHaveLength(3);
-      for (const offset of orbitOffsets) expect(offset).toBeLessThan(0.75);
+      expect(inside(place.runner, { x: 0, y: 0, ...size })).toBe(true);
+      expect(place.runner.width).toBeCloseTo(place.runner.height, 0);
+      expect(place.runner.y).toBeGreaterThanOrEqual(logo.y + logo.height);
+      expect(place.runner.y).toBeGreaterThanOrEqual(
+        place.line.y + place.line.height - 1,
+      );
+      // Feet on the bar (the drawing keeps a little room under them).
+      const feet = place.runner.y + place.runner.height * 0.915;
+      expect(Math.abs(feet - place.bar.y)).toBeLessThanOrEqual(3);
+      // Its middle a little behind the end of the fill (both glide there).
+      const fillEnd = place.fill.x + place.fill.width;
+      const middle = place.runner.x + place.runner.width / 2;
+      expect(middle).toBeLessThanOrEqual(fillEnd + 2);
+      expect(fillEnd - middle).toBeLessThanOrEqual(place.runner.width * 0.3);
       const progress = panel.getByRole("progressbar");
       await expect(progress).toBeVisible();
       await expect(progress).not.toHaveAttribute("aria-valuenow");
@@ -138,7 +147,11 @@ for (const size of [
       await progress.evaluate((el) => {
         new MutationObserver((_mutations, observer) => {
           if (el.getAttribute("aria-valuenow") === "100") {
-            (window as any).__startupCompleted = true;
+            // The bar completes only over a finished hub: profile and coins.
+            (window as any).__startupCompleted =
+              !document.body.classList.contains("gate-active") &&
+              !!document.querySelector("#account-profile") &&
+              !!document.querySelector("#account-coins > *");
             observer.disconnect();
           }
         }).observe(el, {
@@ -147,21 +160,17 @@ for (const size of [
         });
       });
       await page.evaluate(() => (window as any).__releaseStartup());
-      await expect
-        .poll(() => page.evaluate(() => (window as any).__startupCompleted))
-        .toBe(true);
-      await expect(panel).toHaveCount(0);
+      // The server answering no longer lifts the curtain: it stays over the
+      // profile load and the connection, so the hub never fills in on screen.
       await expect
         .poll(() =>
           page.evaluate(() => (window as any).__startupProfileRequests),
         )
         .toBe(1);
-      await expect
-        .poll(async () => {
-          await page.evaluate(() => (window as any).__sock.fire("connect"));
-          return page.locator("#lobby-play").isVisible();
-        })
-        .toBe(true);
+      await enterHub(page);
+      expect(
+        await page.evaluate(() => (window as any).__startupCompleted),
+      ).toBe(true);
       await expect(page.locator("#toast")).not.toContainText(
         /couldn't load|taking longer|Connection lost/,
       );
@@ -198,13 +207,14 @@ test("offline startup resumes without a login error when the network returns", a
   await page.evaluate(() => {
     (window as any).__online = true;
   });
-  await expect(page.locator("#server-startup")).toHaveCount(0);
-  await expect(page.locator("#gate-auth")).not.toContainText(
+  // A profile error would leave the front door up instead of the hub.
+  await enterHub(page);
+  await expect(page.locator("#toast")).not.toContainText(
     "couldn't load your profile",
   );
 });
 
-test("the startup illustration respects reduced motion", async ({ page }) => {
+test("the startup runner respects reduced motion", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await coldServer(page);
   await page.goto("/");
@@ -255,10 +265,10 @@ test("a startup timeout exposes a working retry without reloading the page", asy
     .poll(() => page.evaluate(() => (window as any).__startupHealthRequests))
     .toBeGreaterThan(before);
   await page.evaluate(() => (window as any).__releaseStartup());
-  await expect(page.locator("#server-startup")).toHaveCount(0);
   await expect
     .poll(() => page.evaluate(() => (window as any).__startupProfileRequests))
     .toBe(1);
+  await enterHub(page);
 });
 
 test("a token refresh during cold start connects once with the fresh token", async ({
@@ -334,19 +344,21 @@ test("the short phone retry layout fits without covering the logo or progress", 
     ])
       expect(inside(rect, { x: 0, y: 0, ...size })).toBe(true);
     expect(logo.y + logo.height).toBeLessThan(footer.y);
+    // The heading owns up to it; "Opening the arena…" would not be true.
+    await expect(page.locator("#server-startup h2")).toHaveText(
+      "Connection paused",
+    );
     await snap(page, info, "server-starforged-retry-844x280");
   } finally {
     await context.close();
   }
 });
 
-test("unavailable artwork still allows connection and entry", async ({
-  page,
-}) => {
-  await page.route(/startup-(sigil|starfield)\.webp(?:\?|$)/, (route) =>
-    route.request().resourceType() === "image"
-      ? route.abort()
-      : route.continue(),
+test("unavailable fonts still allow connection and entry", async ({ page }) => {
+  // The startup screens draw the name in two font files at a fixed address
+  // (index.html, server-connection.css); without them, system fonts.
+  await page.route(/\/assets\/fonts\/(anton|archivo)-/, (route) =>
+    route.abort(),
   );
   await coldServer(page);
   await page.goto("/");
@@ -359,19 +371,22 @@ test("unavailable artwork still allows connection and entry", async ({
   await expect(
     page.getByRole("progressbar", { name: "Game server connection" }),
   ).toBeVisible();
-  await expect(page.locator(".server-startup-art img")).toBeHidden();
   await page.evaluate(() => (window as any).__releaseStartup());
-  await expect(page.locator("#server-startup")).toHaveCount(0);
   await expect
     .poll(() => page.evaluate(() => (window as any).__startupProfileRequests))
     .toBe(1);
+  await enterHub(page);
 });
 
-test("the startup sigil still fits after turning the phone upright and back", async ({
+test("the startup runner still fits after turning the phone upright and back", async ({
   browser,
 }) => {
   const land = { width: 956, height: 440 };
-  const context = await browser.newContext({ viewport: land, isMobile: true, hasTouch: true });
+  const context = await browser.newContext({
+    viewport: land,
+    isMobile: true,
+    hasTouch: true,
+  });
   try {
     const page = await context.newPage();
     await coldServer(page);
@@ -382,11 +397,15 @@ test("the startup sigil still fits after turning the phone upright and back", as
     await page.setViewportSize(land);
     await page.waitForTimeout(300);
     const logo = await box(page, ".server-startup-brand");
-    const art = await box(page, ".server-startup-art");
+    const runner = await box(page, ".server-startup-runner");
     const loading = await box(page, ".server-startup-loading");
-    expect(art.y).toBeGreaterThanOrEqual(logo.y + logo.height);
-    expect(art.y + art.height).toBeLessThanOrEqual(loading.y);
-    expect(art.width).toBeCloseTo(art.height, 0);
+    const bar = await box(page, ".server-startup-progress");
+    expect(logo.y + logo.height).toBeLessThanOrEqual(loading.y);
+    expect(runner.y).toBeGreaterThanOrEqual(logo.y + logo.height);
+    expect(runner.width).toBeCloseTo(runner.height, 0);
+    expect(
+      Math.abs(runner.y + runner.height * 0.915 - bar.y),
+    ).toBeLessThanOrEqual(3);
   } finally {
     await context.close();
   }

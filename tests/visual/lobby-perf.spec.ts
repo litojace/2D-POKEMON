@@ -76,7 +76,8 @@ test("five taps on Graphics show the frame-rate table over every screen", async 
   await expect(line).toBeVisible();
   await expect(text).toContainText(/^page (\d+|\?) Hz\ndpr/);
   await page.locator(".fit-room .ui-close").first().click();
-  await expect(page.locator(".fit-room")).toHaveCount(0);
+  // (A closed Shop stays in the page, hidden, for its next open: ui/hub-panel.ts park.)
+  await expect(page.locator(".fit-room:not([data-ui-leaving])")).toHaveCount(0);
 
   // On the Plaza too, with its own frames, canvas and Auto's measuring.
   await page.click('#hub-scenes [data-hub-scene="plaza"]');

@@ -103,49 +103,6 @@
   padding: 18px;
   margin-bottom: 22px;
 }
-.practice-heading {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-bottom: 14px;
-}
-#practice-stats {
-  font-size: calc(11px * var(--text-scale, 1));
-  color: var(--muted);
-}
-.practice-actions {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  flex-wrap: wrap;
-}
-.practice-actions label {
-  font-size: calc(12px * var(--text-scale, 1));
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #d7e2f8;
-}
-.practice-actions input[type="checkbox"] {
-  accent-color: var(--lime);
-  width: 16px;
-  height: 16px;
-  padding: 0;
-  flex: none;
-}
-.practice-actions select {
-  font: inherit;
-  background: #13223e;
-  color: var(--text);
-  border: 1px solid #ffffff30;
-  padding: 8px;
-  border-radius: 5px;
-}
-.practice-controls p {
-  font-size: calc(11px * var(--text-scale, 1));
-  margin-bottom: 0;
-}
 * {
   box-sizing: border-box;
 }
@@ -280,7 +237,7 @@ main {
 }
 h1 {
   font:
-    800 clamp(52px, 5.5vw, 84px)/0.94 "Barlow Condensed",
+    800 clamp(52px, 5.5vw, 84px)/0.94 var(--font-display),
     Impact,
     sans-serif;
   letter-spacing: -1px;
@@ -353,9 +310,7 @@ h2 {
   }
 }
 kbd {
-  font:
-    600 calc(10px * var(--text-scale, 1)) "DM Sans",
-    sans-serif;
+  font: 600 calc(10px * var(--text-scale, 1)) var(--font-body);
   background: #ffffff0a;
   border: 1px solid #ffffff20;
   border-bottom-width: 3px;
@@ -382,7 +337,7 @@ kbd {
 }
 .room-panel h2 {
   font:
-    700 calc(28px * var(--text-scale, 1))/1.15 "Barlow Condensed",
+    700 calc(28px * var(--text-scale, 1))/1.15 var(--font-display),
     Impact,
     sans-serif;
   margin-top: 16px;
@@ -590,44 +545,6 @@ input::placeholder {
   gap: 30px;
   margin: 0 0 22px;
 }
-.health-card > div:first-child {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: calc(14px * var(--text-scale, 1));
-  margin-bottom: 8px;
-}
-.health-card > div > span {
-  font-size: calc(10px * var(--text-scale, 1));
-  color: var(--muted);
-}
-.health-card strong {
-  margin-left: auto;
-  color: var(--element);
-  font-size: calc(14px * var(--text-scale, 1));
-}
-.health-track {
-  height: 9px;
-  border-radius: 4px;
-  background: #ffffff15;
-  overflow: hidden;
-}
-.health-track span {
-  display: block;
-  height: 100%;
-  background: var(--element);
-  transition: width 0.15s;
-}
-.health-card > small {
-  display: inline-block;
-  margin-top: 6px;
-  font-size: calc(9px * var(--text-scale, 1));
-  color: var(--muted);
-}
-.health-card > small:last-child {
-  float: right;
-  color: var(--element);
-}
 .timer-wrap {
   text-align: center;
 }
@@ -640,7 +557,7 @@ input::placeholder {
 .timer-wrap strong {
   display: block;
   font:
-    700 calc(38px * var(--text-scale, 1)) "Barlow Condensed",
+    700 calc(38px * var(--text-scale, 1)) var(--font-display),
     monospace;
   color: #eef4e9;
 }
@@ -817,9 +734,7 @@ body.is-blinded #game::after {
   justify-content: center;
 }
 .overlay-card h2 {
-  font:
-    700 calc(44px * var(--text-scale, 1)) "Barlow Condensed",
-    sans-serif;
+  font: 700 calc(44px * var(--text-scale, 1)) var(--font-display);
   margin: 12px 0;
 }
 .overlay-card > div {
@@ -1074,6 +989,11 @@ dialog::backdrop {
   background: #071225bb;
   backdrop-filter: blur(5px);
 }
+/* Over a battle the dim alone: a blur there is redone for the whole screen
+   each frame the fight behind it draws (battle settings, mid-match). */
+body.battle-active dialog::backdrop {
+  backdrop-filter: none;
+}
 dialog h2 {
   font-size: calc(28px * var(--text-scale, 1));
   margin: 18px 0;
@@ -1169,14 +1089,6 @@ dialog input[type="range"] {
     gap: 10px;
     grid-template-columns: 1fr 85px 1fr;
   }
-  .health-card > div:first-child {
-    flex-wrap: wrap;
-    font-size: calc(11px * var(--text-scale, 1));
-    gap: 4px;
-  }
-  .health-card > div:first-child > span {
-    display: none;
-  }
   .timer-wrap strong {
     font-size: calc(30px * var(--text-scale, 1));
   }
@@ -1206,10 +1118,8 @@ dialog input[type="range"] {
     display: none;
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  * {
-    transition: none !important;
-  }
+:where(:root[data-motion="reduced"]) * {
+  transition: none !important;
 }
 /* Selection portraits share the battle artwork, with a playful idle rig. */
 @keyframes fighter-look {
@@ -1336,6 +1246,12 @@ dialog input[type="range"] {
   border-radius: 50%;
   pointer-events: none;
   opacity: var(--hud-opacity, 0.85);
+  transition: opacity 0.18s;
+}
+/* Faint while no thumb is on it; the stick floats to any touch on the left
+   half anyway (touch-controls.ts, owner 26 Nov 2026). */
+.joystick-area:not(.is-held) .joystick {
+  opacity: calc(var(--hud-opacity, 0.85) * 0.33);
 }
 .joystick-knob {
   position: absolute;
@@ -1376,7 +1292,8 @@ dialog input[type="range"] {
   opacity: var(--hud-opacity, 0.85);
   transition:
     filter 0.12s,
-    transform 0.1s;
+    transform 0.1s,
+    opacity 0.15s;
 }
 .touch-buttons .touch-skill {
   border-color: #71d6ea;
@@ -1434,6 +1351,67 @@ dialog input[type="range"] {
 .touch-buttons .touch-target.is-locked .touch-target-icon {
   filter: drop-shadow(0 0 4px #ff5d6c);
 }
+/* Drag-to-aim (touch-aim.ts): the circle round a held skill, its knob under
+   the finger, and the cancel spot that takes the target button's place
+   while the finger drags. Red: lifting now cancels. */
+.touch-aim-wheel {
+  position: absolute;
+  z-index: 3;
+  border: 2px solid #ffffff66;
+  border-radius: 50%;
+  background: #0a142866;
+  pointer-events: none;
+  visibility: hidden;
+}
+.touch-aim-wheel.is-on {
+  visibility: visible;
+}
+.touch-aim-wheel.is-cancel {
+  border-color: #ff5d6c;
+  background: #3a0d1666;
+}
+.touch-aim-wheel > span {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 26px;
+  height: 26px;
+  margin: -13px 0 0 -13px;
+  border-radius: 50%;
+  background: #fff3a6;
+  box-shadow: 0 0 10px #ffd76a;
+}
+.touch-aim-wheel.is-cancel > span {
+  background: #ff5d6c;
+  box-shadow: 0 0 10px #ff5d6c;
+}
+.touch-cancel {
+  position: absolute;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  border: 2px solid #ff8b95;
+  border-radius: 50%;
+  background: #2a0b12cc;
+  color: #ffd0d5;
+  pointer-events: none;
+  visibility: hidden;
+}
+.touch-cancel.is-on {
+  visibility: visible;
+}
+.touch-cancel.is-hot {
+  background: #ff5d6c;
+  color: #fff;
+  transform: scale(1.12);
+}
+.touch-cancel svg {
+  width: 44%;
+  height: 44%;
+}
+.touch-buttons .touch-target.is-under-cancel {
+  visibility: hidden;
+}
 .touch-buttons .skill-icon {
   width: 68%;
   height: 68%;
@@ -1475,6 +1453,24 @@ dialog input[type="range"] {
   transform: scale(0.94);
   filter: brightness(1.3);
   box-shadow: 0 0 12px #91e5fc55;
+}
+/* An enemy stands behind it (touch-controls.ts setCovered): the fight
+   shows through; it still takes a finger. */
+.touch-buttons button.is-behind {
+  opacity: calc(var(--hud-opacity, 0.85) * 0.47);
+}
+/* Back from its cooldown: one flash. */
+:where(:root:not([data-motion="reduced"])) .touch-buttons button.skill-ready {
+  animation: skill-ready 0.5s ease-out;
+}
+@keyframes skill-ready {
+  0% {
+    filter: brightness(1.8);
+    box-shadow: 0 0 0 0 #fff3a6ee;
+  }
+  100% {
+    box-shadow: 0 0 0 14px #fff3a600;
+  }
 }
 .rotate-hint,
 .mobile-howto {
@@ -1580,11 +1576,11 @@ body.battle-active.touch-mode {
   z-index: 30;
   padding: calc(var(--safe-top) + 10px) calc(var(--safe-right) + 12px)
     calc(var(--safe-bottom) + 10px) calc(var(--safe-left) + 12px);
-  overflow: auto;
+  overflow: hidden auto;
 }
 .battle-active.touch-mode .overlay-card {
   max-height: calc(100dvh - 30px);
-  overflow: auto;
+  overflow: hidden auto;
   width: min(540px, 95vw);
   padding: 20px;
   background: #14294af5;
@@ -1603,7 +1599,7 @@ body.battle-active.touch-mode {
   transform: translateX(-50%);
   max-width: 45vw;
   max-height: 100px;
-  overflow: auto;
+  overflow: hidden auto;
   opacity: 0.85;
   font-size: calc(10px * var(--text-scale, 1));
   padding: 8px;
@@ -1680,10 +1676,8 @@ body.battle-active.touch-mode {
     font-size: calc(11px * var(--text-scale, 1));
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .touch-buttons button {
-    transition: none;
-  }
+:where(:root[data-motion="reduced"]) .touch-buttons button {
+  transition: none;
 }
 #pwa-banner {
   position: fixed;
@@ -1702,21 +1696,156 @@ body.battle-active.touch-mode {
 #pwa-banner[hidden] {
   display: none;
 }
+#pwa-banner .pwa-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+}
 #pwa-banner button {
-  margin-left: 12px;
+  min-height: 44px;
+  padding: 10px 16px;
   font-size: calc(11px * var(--text-scale, 1));
 }
+/* Landscape phones: one compact row, so the prompt leaves the hub's corners
+   (Quick Match, PLAY) clear. */
+@media (max-height: 500px) {
+  #pwa-banner:has(.pwa-actions:not([hidden])) {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    /* Beside PLAY (about 192px wide with its margin), clear of the rail. */
+    --pwa-width: min(
+      380px,
+      100vw - 300px - var(--safe-left) - var(--safe-right)
+    );
+    width: var(--pwa-width);
+    left: auto;
+    right: max(
+      calc(50% - var(--pwa-width) / 2),
+      calc(var(--safe-right) + 204px)
+    );
+    transform: none;
+    bottom: calc(var(--safe-bottom) + 8px);
+    padding: 8px 10px;
+  }
+  #pwa-banner .pwa-actions {
+    flex: none;
+    margin-top: 0;
+    gap: 8px;
+  }
+  #pwa-banner button {
+    padding: 8px 12px;
+  }
+}
+/* The first update ask fills the screen like the round countdown: edge to
+   edge past the notch, a shade that keeps the hub dimly in view, one big
+   line in the middle (owner, 20 Nov 2026: option B, then the banner). */
+#pwa-takeover {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-banner);
+  display: grid;
+  place-items: center;
+  padding: max(12px, var(--safe-top, 0px)) max(12px, var(--safe-right, 0px))
+    max(12px, var(--safe-bottom, 0px)) max(12px, var(--safe-left, 0px));
+  background: radial-gradient(
+    ellipse 60% 70% at 50% 50%,
+    #071225b3,
+    #071225e6 100%
+  );
+  text-align: center;
+  overflow: hidden;
+  animation: pwa-takeover-in var(--dur-3) ease-out;
+}
+#pwa-takeover[hidden] {
+  display: none;
+}
+@keyframes pwa-takeover-in {
+  from {
+    opacity: 0;
+  }
+}
+#pwa-takeover .eyebrow {
+  justify-content: center;
+  margin: 0;
+  color: #f7d780;
+  font-size: calc(13px * var(--text-scale, 1));
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  text-shadow: 0 2px 10px #000c;
+}
+#pwa-takeover h2 {
+  margin: 0;
+  color: #fff;
+  font: 800 clamp(56px, 24vh, 150px) / 0.95 var(--font-display);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  text-shadow:
+    0 0 32px color-mix(in srgb, #f7d780 55%, transparent),
+    0 6px 24px #000d;
+}
+#pwa-takeover p {
+  margin: 6px 0 0;
+  color: #eaf1ff;
+  font-size: calc(16px * var(--text-scale, 1));
+  font-weight: 700;
+  text-shadow: 0 2px 10px #000e;
+}
+.pwa-takeover-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: clamp(10px, 4vh, 24px);
+}
+#pwa-takeover .pwa-takeover-actions button {
+  min-height: 48px;
+  padding: 12px 26px;
+  font-size: calc(16px * var(--text-scale, 1));
+}
+/* The game's pill (.secondary), but solid, so the hub's labels never show
+   through it. */
+#pwa-takeover .pwa-takeover-later,
+#pwa-takeover .pwa-takeover-later:hover:not(:disabled) {
+  background: #1d3050;
+}
+:where(:root[data-motion="reduced"]) #pwa-takeover {
+  animation: none;
+}
+/* In a battle: a short pill at the bottom middle, between the joystick and
+   the skill buttons, clear of the score at the top (owner, 21 Nov 2026: at
+   the top it covered the names and the score). */
 .battle-active #pwa-banner {
-  top: calc(var(--safe-top) + 4px);
-  bottom: auto;
-  font-size: calc(10px * var(--text-scale, 1));
-  padding: 4px;
+  top: auto;
+  bottom: calc(var(--safe-bottom) + 6px);
+  /* Centred in the gap the touch controls leave (touch-controls.ts sets
+     both gutters), so it never sits over a button. */
+  left: calc(var(--safe-left) + var(--movement-gutter, 0px) + 8px);
+  right: calc(var(--safe-right) + var(--combat-gutter, 0px) + 8px);
+  transform: none;
+  width: fit-content;
+  max-width: none;
+  margin-inline: auto;
+  font-size: calc(11px * var(--text-scale, 1));
+  padding: 5px 12px;
+  border-radius: 999px;
   pointer-events: none;
-  opacity: 0.6;
-  width: auto;
-  max-width: 60vw;
+  opacity: 0.8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .battle-active #pwa-banner button {
+  display: none;
+}
+/* Over a whole-screen sheet (the Reveal, the break, the rites, the results;
+   overlay.ts marks body[data-battle-overlay]) the note waits: the sheet's buttons are
+   along the bottom, and the note covered Change fighter and Share result on
+   a phone's results (25 Nov 2026). It says "after this match", and back in
+   the Lobby the update asks in full anyway. */
+body.battle-active[data-battle-overlay] #pwa-banner {
   display: none;
 }
 @property --cooldown {
@@ -1724,9 +1853,11 @@ body.battle-active.touch-mode {
   inherits: false;
   initial-value: 0%;
 }
+/* No transition on --cooldown: snapshots come 30 times a second now, and a
+   transition ran on the page's own thread all through every cooldown, a
+   restyle and a repaint of the button each frame (section 20). */
 .touch-buttons button {
   transition:
-    --cooldown 0.07s linear,
     filter 0.12s,
     transform 0.1s;
 }
@@ -1734,31 +1865,6 @@ body.battle-active.touch-mode {
   grid-template-columns: minmax(0, 1fr) 76px minmax(0, 1fr);
   gap: 10px;
   margin: 0;
-}
-.battle-active.touch-mode .health-card > div:first-child {
-  flex-wrap: nowrap;
-  font-size: calc(11px * var(--text-scale, 1));
-  gap: 4px;
-  margin-bottom: 5px;
-}
-.battle-active.touch-mode .health-card b {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 70%;
-}
-.battle-active.touch-mode .health-card > div:first-child > span {
-  display: none;
-}
-.battle-active.touch-mode .health-card strong {
-  font-size: calc(11px * var(--text-scale, 1));
-}
-.battle-active.touch-mode .health-track {
-  height: 6px;
-}
-.battle-active.touch-mode .health-card > small {
-  font-size: calc(8px * var(--text-scale, 1));
-  margin-top: 3px;
 }
 .battle-active.touch-mode .timer-wrap strong {
   font-size: calc(24px * var(--text-scale, 1));
@@ -1832,7 +1938,7 @@ main {
 dialog {
   max-width: calc(100vw - var(--safe-left) - var(--safe-right) - 24px);
   max-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 24px);
-  overflow: auto;
+  overflow: hidden auto;
   top: var(--safe-top);
   bottom: var(--safe-bottom);
   left: var(--safe-left);
@@ -1925,6 +2031,7 @@ dialog {
   min-width: 210px;
   max-width: calc(100vw - var(--safe-left) - var(--safe-right) - 40px);
   max-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 150px);
+  overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 9px;
@@ -2149,7 +2256,7 @@ dialog {
   right: 0;
   width: min(420px, calc(100vw - var(--safe-left) - var(--safe-right) - 32px));
   max-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 80px);
-  overflow: auto;
+  overflow: hidden auto;
   background: #152947f5;
   border: 1px solid #9bc4f34a;
   border-radius: 12px;
@@ -2174,10 +2281,8 @@ dialog {
     bottom: calc(var(--safe-bottom) + var(--stadium-bottom, 44px) + 6px);
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .spectator {
-    animation: none;
-  }
+:where(:root[data-motion="reduced"]) .spectator {
+  animation: none;
 }
 /* Battle quality Low: the stands' crowd stands still (decoration only). */
 body.battle-still .spectator {
@@ -2229,7 +2334,7 @@ body.battle-still .spectator {
 .overlay-card {
   max-height: calc(100% - 24px);
   max-width: calc(100% - 24px);
-  overflow: auto;
+  overflow: hidden auto;
 }
 .battle-active.touch-mode #arena-overlay {
   position: fixed;
@@ -2242,7 +2347,7 @@ body.battle-still .spectator {
 .battle-active.touch-mode .overlay-card {
   max-height: 100%;
   max-width: 100%;
-  overflow: auto;
+  overflow: hidden auto;
 }
 
 /* Empty phase overlays must not shade or intercept an active match. */
@@ -2406,12 +2511,10 @@ body.battle-still .spectator {
     letter-spacing: 1px;
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .selected-art .fighter-ears,
-  .selected-art .fighter-armR,
-  .selected-art .fighter-torso {
-    animation: none;
-  }
+:where(:root[data-motion="reduced"]) .selected-art .fighter-ears,
+:where(:root[data-motion="reduced"]) .selected-art .fighter-armR,
+:where(:root[data-motion="reduced"]) .selected-art .fighter-torso {
+  animation: none;
 }
 .selected-art .creature-portrait {
   width: 190px;
@@ -2464,10 +2567,8 @@ body.battle-still .spectator {
     transform: scale(1.015, 1.035);
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .selected-art .creature-portrait {
-    animation: none;
-  }
+:where(:root[data-motion="reduced"]) .selected-art .creature-portrait {
+  animation: none;
 }
 .selected-art {
   position: relative;
@@ -2538,6 +2639,10 @@ body.battle-still .spectator {
 .battle-nameplate {
   left: 0;
   top: 0;
+  /* Under the touch controls (.touch-pad, 20): a fighter behind the skill
+     buttons kept its name and bar over them (owner, 22 Nov 2026). The
+     fighter itself is drawn under them too. */
+  z-index: 19;
   will-change: transform;
 }
 .battle-nameplate .fighter-health {
@@ -2666,12 +2771,10 @@ body.battle-still .spectator {
 .player-title.steady::after {
   animation: none;
 }
-@media (prefers-reduced-motion: reduce) {
-  .player-title,
-  .player-title::before,
-  .player-title::after {
-    animation: none;
-  }
+:where(:root[data-motion="reduced"]) .player-title,
+:where(:root[data-motion="reduced"]) .player-title::before,
+:where(:root[data-motion="reduced"]) .player-title::after {
+  animation: none;
 }
 /* Alive selection artwork uses the same independent parts as the Phaser rig. */
 .selected-art .fighter-face {
@@ -2717,10 +2820,8 @@ body.battle-still .spectator {
     transform: rotate(8deg);
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .selected-art svg g {
-    animation: none !important;
-  }
+:where(:root[data-motion="reduced"]) .selected-art svg g {
+  animation: none !important;
 }
 
 /* Ground contact is separate from the creature group. */
@@ -2792,7 +2893,7 @@ body.battle-still .spectator {
 dialog.has-dialog-tabs {
   width: min(760px, 94vw);
   max-height: 90vh;
-  overflow: auto;
+  overflow: hidden auto;
 }
 .admin-tabs,
 .report-filter {
@@ -3176,10 +3277,8 @@ dialog.has-dialog-tabs {
     box-shadow: 0 0 0 6px #3ccf7a00;
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .online-dot.match {
-    animation: none;
-  }
+:where(:root[data-motion="reduced"]) .online-dot.match {
+  animation: none;
 }
 .online-state {
   padding: 2px 8px;
@@ -3329,56 +3428,6 @@ dialog.has-dialog-tabs {
   border-color: #f7d780;
   background: #f7d78022;
   box-shadow: 0 0 0 1px #f7d780 inset;
-}
-.hud.hud-teams {
-  grid-template-columns: repeat(2, minmax(0, 1fr)) 140px repeat(
-      2,
-      minmax(0, 1fr)
-    );
-  gap: 12px;
-}
-.hud-teams .health-card {
-  --team: #5ab0ff;
-  border-top: 3px solid var(--team);
-  padding-top: 4px;
-  min-width: 0;
-}
-.hud-teams .health-card.team-1 {
-  --team: #ff5d6c;
-}
-.hud-teams .health-card.me b {
-  color: #fff;
-  text-decoration: underline;
-  text-decoration-color: var(--team);
-  text-underline-offset: 3px;
-}
-.hud-teams .health-card b {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.battle-active.touch-mode .hud.hud-teams {
-  grid-template-columns: repeat(2, minmax(0, 1fr)) 64px repeat(
-      2,
-      minmax(0, 1fr)
-    );
-  gap: 6px;
-}
-.battle-active.touch-mode .hud-teams .health-card > div:first-child > span,
-.battle-active.touch-mode .hud-teams .health-card small[id^="status-"] {
-  display: none;
-}
-@media (max-width: 700px) {
-  .hud.hud-teams {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) 64px repeat(
-        2,
-        minmax(0, 1fr)
-      );
-    gap: 6px;
-  }
-  .hud-teams .health-card > div:first-child > span {
-    display: none;
-  }
 }
 .briefing-versus.teams .vs-team {
   display: flex;
@@ -3539,11 +3588,9 @@ body::before {
     transform: rotate(0deg);
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .rotate-hint .rotate-phone {
-    animation: none;
-    transform: rotate(-90deg);
-  }
+:where(:root[data-motion="reduced"]) .rotate-hint .rotate-phone {
+  animation: none;
+  transform: rotate(-90deg);
 }
 
 /* ---- Desktop battle: one fixed screen, no page scrolling ----
@@ -3776,9 +3823,7 @@ dialog label.choice.assist {
   text-transform: uppercase;
 }
 button.binding {
-  font:
-    600 calc(11px * var(--text-scale, 1)) "DM Sans",
-    sans-serif;
+  font: 600 calc(11px * var(--text-scale, 1)) var(--font-body);
   color: #dce5f6;
   background: #ffffff0a;
   border: 1px solid #ffffff20;
@@ -3805,10 +3850,8 @@ button.binding.listening {
     background: color-mix(in srgb, var(--ui-accent) 3.1%, transparent);
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  button.binding.listening {
-    animation: none;
-  }
+:where(:root[data-motion="reduced"]) button.binding.listening {
+  animation: none;
 }
 .binding-note {
   min-height: 2.8em;
@@ -3865,6 +3908,8 @@ html.zoom-locked .overlay-card,
 html.zoom-locked .overlay-card *,
 html.zoom-locked .rc-card,
 html.zoom-locked .rc-card *,
+html.zoom-locked .rites-screen,
+html.zoom-locked .rites-screen *,
 html.zoom-locked #practice-controls,
 html.zoom-locked .practice-panel,
 html.zoom-locked .practice-panel *,
@@ -3922,59 +3967,61 @@ html.zoom-locked dialog :is(input, textarea) {
 
 /* ---- Smooth transitions across the site ----
    Everything here is skipped for players who ask for reduced motion. */
-@media (prefers-reduced-motion: no-preference) {
-  @keyframes ea-rise {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-    }
+@keyframes ea-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
   }
-  @keyframes ea-fade {
-    from {
-      opacity: 0;
-    }
+}
+@keyframes ea-fade {
+  from {
+    opacity: 0;
   }
-  @keyframes ea-pop {
-    from {
-      opacity: 0;
-      transform: translateY(8px) scale(0.97);
-    }
+}
+@keyframes ea-pop {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
   }
-  /* Screens: menu, room and battle fade up as they appear. */
-  #menu:not([hidden]),
-  #battle:not([hidden]) {
-    animation: ea-fade 0.28s ease-out;
-  }
-  #menu.screen-enter .room-panel {
-    animation: ea-rise 0.42s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  }
-  #menu.screen-enter .room-panel {
-    animation-delay: 0.1s;
-  }
-  /* The fighter panel slides open under the chosen card. */
-  /* Cards respond to hover and taps. */
-  /* Menu buttons press in slightly (touch battle buttons have their own). */
+}
+/* Screens: menu, room and battle fade up as they appear. */
+:where(:root:not([data-motion="reduced"])) #menu:not([hidden]),
+:where(:root:not([data-motion="reduced"])) #battle:not([hidden]) {
+  animation: ea-fade 0.28s ease-out;
+}
+:where(:root:not([data-motion="reduced"])) #menu.screen-enter .room-panel {
+  animation: ea-rise 0.42s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+:where(:root:not([data-motion="reduced"])) #menu.screen-enter .room-panel {
+  animation-delay: 0.1s;
+}
+/* The fighter panel slides open under the chosen card. */
+/* Cards respond to hover and taps. */
+/* Menu buttons press in slightly (touch battle buttons have their own). */
+:where(:root:not([data-motion="reduced"]))
   :is(.primary, .secondary, .quiet, .bot-level):not(:disabled):active {
-    transform: scale(0.97);
-  }
-  /* Dialogs and their backdrop ease in. */
-  dialog[open] {
-    animation: ea-pop 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
-  }
-  dialog[open]::backdrop {
-    animation: ea-fade 0.24s ease-out;
-  }
-  /* The countdown card updates every second, so it stays still. The Reveal
+  transform: scale(0.97);
+}
+/* Dialogs and their backdrop ease in. */
+:where(:root:not([data-motion="reduced"])) dialog[open] {
+  animation: ea-pop 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+:where(:root:not([data-motion="reduced"])) dialog[open]::backdrop {
+  animation: ea-fade 0.24s ease-out;
+}
+/* The countdown card updates every second, so it stays still. The Reveal
      is a whole-screen loading screen: there from its first frame, opaque,
      never fading in over the arena (owner, 20 Nov 2026: the arena and both
      fighters showed for a second or two before it on an iPhone). */
+:where(:root:not([data-motion="reduced"]))
   .overlay-card:not(:empty):not(.countdown-card):not(.match-reveal) {
-    animation: ea-pop 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
-  }
-  /* Room list rows and the header menu panel. */
-  .header-menu[open] .header-menu-panel {
-    animation: ea-pop 0.18s ease-out;
-  }
+  animation: ea-pop 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+/* Room list rows and the header menu panel. */
+:where(:root:not([data-motion="reduced"]))
+  .header-menu[open]
+  .header-menu-panel {
+  animation: ea-pop 0.18s ease-out;
 }
 /* Dialogs scroll on their own; reaching their end never scrolls the page. */
 dialog {
@@ -4024,15 +4071,13 @@ html.scroll-locked {
   color: var(--lime);
   font-weight: 800;
 }
-@media (prefers-reduced-motion: no-preference) {
-  .ability.ult-ready,
-  .touch-buttons button.ult-ready {
-    animation: ult-pulse 1.1s ease-in-out infinite;
-  }
-  @keyframes ult-pulse {
-    50% {
-      box-shadow: 0 0 32px color-mix(in srgb, var(--ui-accent) 80%, transparent);
-    }
+:where(:root:not([data-motion="reduced"])) .ability.ult-ready,
+:where(:root:not([data-motion="reduced"])) .touch-buttons button.ult-ready {
+  animation: ult-pulse 1.1s ease-in-out infinite;
+}
+@keyframes ult-pulse {
+  50% {
+    box-shadow: 0 0 32px color-mix(in srgb, var(--ui-accent) 80%, transparent);
   }
 }
 /* ---- Post-match recap ---- */
@@ -4281,10 +4326,6 @@ html.scroll-locked {
     grid-row: auto;
   }
 }
-/* Free-for-all HUD: each card in its fighter's own colour. */
-.hud-ffa .health-card {
-  --team: var(--element);
-}
 /* Fighter mastery badge on roster cards. */
 .result-actions {
   display: flex;
@@ -4307,6 +4348,21 @@ body.spectating #abilities,
 body.spectating #mobile-controls,
 body.spectating #control-hints {
   display: none !important;
+}
+/* "Watching room …" says it once, then fades off the court: the gear keeps
+   Stop watching (restarts each time play starts, as the banner reshows). */
+body.spectating #spectate:not(.pvp-spectator) {
+  pointer-events: none;
+  animation: watch-banner-fade 6s ease-in forwards;
+}
+@keyframes watch-banner-fade {
+  0%,
+  75% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
 }
 .teamup-note {
   margin: 10px auto 4px;
@@ -4443,68 +4499,73 @@ button.small {
     0 0 6px color-mix(in srgb, var(--ui-accent) 80%, transparent)
   );
 }
-@media (prefers-reduced-motion: no-preference) {
-  .ability.ult-ready::before,
-  .touch-buttons button.ult-ready::before {
-    animation: ult-spin 1.6s linear infinite;
+:where(:root:not([data-motion="reduced"])) .ability.ult-ready::before,
+:where(:root:not([data-motion="reduced"]))
+  .touch-buttons
+  button.ult-ready::before {
+  animation: ult-spin 1.6s linear infinite;
+}
+:where(:root:not([data-motion="reduced"])) .ability.ult-ready::after,
+:where(:root:not([data-motion="reduced"]))
+  .touch-buttons
+  button.ult-ready::after {
+  animation: ult-sweep 2.4s ease-in-out infinite;
+}
+:where(:root:not([data-motion="reduced"])) .ability.ult-ready .skill-icon,
+:where(:root:not([data-motion="reduced"]))
+  .touch-buttons
+  button.ult-ready
+  .skill-icon {
+  animation: ult-bob 1.2s ease-in-out infinite;
+}
+/* The moment it fills: a quick pop and flash. */
+:where(:root:not([data-motion="reduced"])) .ability.ult-burst,
+:where(:root:not([data-motion="reduced"])) .touch-buttons button.ult-burst {
+  animation:
+    ult-pop 0.55s cubic-bezier(0.2, 1.6, 0.4, 1),
+    ult-pulse 1.1s ease-in-out 0.55s infinite;
+}
+@keyframes ult-spin {
+  from {
+    transform: translate(-50%, -50%) rotate(0turn);
   }
-  .ability.ult-ready::after,
-  .touch-buttons button.ult-ready::after {
-    animation: ult-sweep 2.4s ease-in-out infinite;
+  to {
+    transform: translate(-50%, -50%) rotate(1turn);
   }
-  .ability.ult-ready .skill-icon,
-  .touch-buttons button.ult-ready .skill-icon {
-    animation: ult-bob 1.2s ease-in-out infinite;
+}
+@keyframes ult-sweep {
+  0%,
+  55% {
+    background-position:
+      -160% 0,
+      0 0,
+      0 0;
   }
-  /* The moment it fills: a quick pop and flash. */
-  .ability.ult-burst,
-  .touch-buttons button.ult-burst {
-    animation:
-      ult-pop 0.55s cubic-bezier(0.2, 1.6, 0.4, 1),
-      ult-pulse 1.1s ease-in-out 0.55s infinite;
+  100% {
+    background-position:
+      260% 0,
+      0 0,
+      0 0;
   }
-  @keyframes ult-spin {
-    from {
-      transform: translate(-50%, -50%) rotate(0turn);
-    }
-    to {
-      transform: translate(-50%, -50%) rotate(1turn);
-    }
+}
+@keyframes ult-bob {
+  50% {
+    transform: translateY(-2px) scale(1.08);
+    filter: drop-shadow(0 0 10px #fff2b0);
   }
-  @keyframes ult-sweep {
-    0%,
-    55% {
-      background-position:
-        -160% 0,
-        0 0,
-        0 0;
-    }
-    100% {
-      background-position:
-        260% 0,
-        0 0,
-        0 0;
-    }
+}
+@keyframes ult-pop {
+  0% {
+    transform: scale(1);
+    filter: brightness(1);
   }
-  @keyframes ult-bob {
-    50% {
-      transform: translateY(-2px) scale(1.08);
-      filter: drop-shadow(0 0 10px #fff2b0);
-    }
+  35% {
+    transform: scale(1.14);
+    filter: brightness(1.9);
   }
-  @keyframes ult-pop {
-    0% {
-      transform: scale(1);
-      filter: brightness(1);
-    }
-    35% {
-      transform: scale(1.14);
-      filter: brightness(1.9);
-    }
-    100% {
-      transform: scale(1);
-      filter: brightness(1);
-    }
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
   }
 }
 /* ---- Rite icons: the skill it changes + a badge for the kind of change ---- */
@@ -4866,71 +4927,71 @@ dialog:has(.illustrated-guide) {
   color: var(--accent);
   padding-top: 5px;
 }
-.guide-ultimate {
-  position: absolute;
-  right: 15%;
-  top: 19px;
-  width: 66px;
-  height: 66px;
-  border: 2px solid #ffda67;
-  border-radius: 50%;
+/* Ultimate and EX: the button (and EX's mark) above its meter and label,
+   centred in the picture. */
+.guide-charge {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 8px;
+  height: 100%;
+}
+.guide-charge-row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.guide-ultimate,
+.guide-charge .guide-move {
+  box-sizing: border-box;
+  width: 62px;
+  height: 62px;
   padding: 8px;
+  border-radius: 50%;
+}
+.guide-ultimate {
+  border: 2px solid #ffda67;
   background: #ffe07112;
   box-shadow: 0 0 22px #ffda6755;
 }
-.guide-meter,
-.guide-ex-meter {
-  position: absolute;
-  bottom: 14px;
-  left: 12%;
-  width: 76%;
+.guide-charge .guide-move {
+  border: 2px solid #83c7ff;
+  box-shadow: 0 0 20px #6dbfff66;
+}
+.guide-ex {
+  font-size: calc(36px * var(--text-scale, 1));
+  font-weight: 900;
+  font-style: italic;
+  line-height: 1;
+  color: #b2dbff;
+  text-shadow: 0 0 16px #6dbfff;
+}
+.guide-charge-bar {
+  display: block;
+  width: min(76%, 240px);
   height: 10px;
   border-radius: 6px;
   background: #0e1d34;
   border: 1px solid color-mix(in srgb, var(--ui-accent) 53.3%, transparent);
 }
-.guide-meter i,
-.guide-ex-meter i {
+.guide-charge-bar i {
   display: block;
   height: 100%;
   width: 100%;
-  background: linear-gradient(90deg, #cf943c, #ffe794);
   border-radius: 6px;
+  background: linear-gradient(90deg, #cf943c, #ffe794);
 }
-.guide-meter b,
-.guide-ex-meter b {
-  position: absolute;
-  width: 100%;
-  text-align: center;
-  bottom: 14px;
-  font-size: calc(9px * var(--text-scale, 1));
-  letter-spacing: 1.5px;
-  color: #ffe08a;
-}
-.guide-ex {
-  position: absolute;
-  left: 18%;
-  top: 28px;
-  font-size: calc(36px * var(--text-scale, 1));
-  font-weight: 900;
-  font-style: italic;
-  color: #b2dbff;
-  text-shadow: 0 0 16px #6dbfff;
-}
-.guide-ex + .guide-move {
-  position: absolute;
-  right: 18%;
-  top: 19px;
-  width: 65px;
-  height: 65px;
-  border: 2px solid #83c7ff;
-  box-shadow: 0 0 20px #6dbfff66;
-}
-.guide-ex-meter i {
+.is-ex .guide-charge-bar i {
   width: 33.333%;
   background: #82caff;
 }
-.guide-ex-meter b {
+.guide-charge-label {
+  font-size: calc(10px * var(--text-scale, 1));
+  line-height: 1;
+  letter-spacing: 1.5px;
+  color: #ffe08a;
+}
+.is-ex .guide-charge-label {
   color: #a8d5ff;
 }
 .guide-orb {
@@ -5110,21 +5171,14 @@ dialog:has(.illustrated-guide) {
   .guide-clock {
     font-size: calc(10px * var(--text-scale, 1));
   }
-  .guide-ultimate {
-    width: 54px;
-    height: 54px;
-    right: 9%;
-    top: 12px;
+  .guide-ultimate,
+  .guide-charge .guide-move {
+    width: 52px;
+    height: 52px;
     padding: 7px;
   }
   .guide-ex {
-    left: 9%;
     font-size: calc(28px * var(--text-scale, 1));
-  }
-  .guide-ex + .guide-move {
-    width: 52px;
-    height: 52px;
-    right: 9%;
   }
   .guide-orb {
     width: 40px;
@@ -5166,14 +5220,6 @@ dialog:has(.illustrated-guide) {
   .guide-safe-ring ~ .guide-fighter {
     left: calc(50% - 38px);
     top: 12px;
-  }
-}
-
-@media (max-width: 480px) {
-  .guide-meter b {
-    width: auto;
-    right: 0;
-    font-size: calc(8px * var(--text-scale, 1));
   }
 }
 
@@ -5274,6 +5320,9 @@ dialog:has(.illustrated-guide) {
   display: block;
   height: 100%;
   background: #8cf7e3;
+  /* --fill (0–100), drawn with a transform: no layout per snapshot. */
+  transform-origin: left;
+  transform: scaleX(calc(var(--fill, 100) / 100));
 }
 .raid-stagger span {
   position: absolute;
@@ -5317,30 +5366,6 @@ dialog:has(.illustrated-guide) {
   font-size: calc(10px * var(--text-scale, 1));
   line-height: 1.4;
   margin: 9px 0 0;
-}
-.raid-team {
-  display: grid;
-  gap: 8px;
-  margin: 15px 0;
-}
-.raid-team > div {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-.raid-team svg {
-  width: 45px;
-  height: 45px;
-}
-.raid-team span {
-  display: grid;
-  gap: 4px;
-}
-.raid-team small,
-.raid-small {
-  color: #a8bbd5;
-  font-size: calc(11px * var(--text-scale, 1));
-  line-height: 1.6;
 }
 .raid-instructions {
   display: grid;
@@ -5453,35 +5478,6 @@ dialog:has(.illustrated-guide) {
 .raid-instructions small {
   margin: 0;
 }
-.raid-bestiary-art {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  height: 150px;
-  background: radial-gradient(ellipse, #c1a16a40, transparent 70%);
-}
-.raid-bestiary-art span {
-  font-size: calc(80px * var(--text-scale, 1));
-  color: #e7bd72;
-  text-shadow: 0 0 25px #cf975c;
-}
-.raid-bestiary-art b {
-  font-size: calc(10px * var(--text-scale, 1));
-  letter-spacing: 3px;
-  color: #ffdf9d;
-}
-.raid-board p {
-  font-size: calc(12px * var(--text-scale, 1));
-  line-height: 1.6;
-}
-.raid-board {
-  padding: 12px;
-  border: 1px solid #7d9dc244;
-  border-radius: 10px;
-  margin: 8px 0;
-}
 @media (max-width: 600px) {
   .raid-boss-heading {
     font-size: calc(10px * var(--text-scale, 1));
@@ -5546,11 +5542,6 @@ body.battle-raid:not(.touch-mode) #battle {
   margin: 0;
   width: 100%;
 }
-.raid-bestiary-art {
-  height: auto;
-  min-height: 190px;
-  padding: 12px 0;
-}
 @media (orientation: landscape) and (max-height: 600px) {
   .raid-rite-options > button {
     padding: 9px 12px;
@@ -5602,30 +5593,6 @@ body.battle-raid:not(.touch-mode) #battle {
 }
 
 /* Color and an effect illustration make each raid upgrade recognizable. */
-.raid-rite-shelter {
-  --rite-color: #83e8cf;
-  --rite-rgb: 131, 232, 207;
-}
-.raid-rite-sharing {
-  --rite-color: #ffd86b;
-  --rite-rgb: 255, 216, 107;
-}
-.raid-rite-core {
-  --rite-color: #ffb17d;
-  --rite-rgb: 255, 177, 125;
-}
-.raid-rite-rescue {
-  --rite-color: #91d5ff;
-  --rite-rgb: 145, 213, 255;
-}
-.raid-rite-courage {
-  --rite-color: #ffa0b6;
-  --rite-rgb: 255, 160, 182;
-}
-.raid-rite-mending {
-  --rite-color: #b2f598;
-  --rite-rgb: 178, 245, 152;
-}
 .raid-rite-options > button {
   grid-template-columns: 64px minmax(0, 1fr);
   min-height: 94px;
@@ -5748,10 +5715,8 @@ body.battle-raid:not(.touch-mode) #battle {
     visibility: visible;
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  #arena-overlay.raid-victory-reveal {
-    animation: none;
-  }
+:where(:root[data-motion="reduced"]) #arena-overlay.raid-victory-reveal {
+  animation: none;
 }
 
 /* Raid brief: miniature combat diagrams, with short captions. */
@@ -5792,10 +5757,6 @@ body.battle-raid:not(.touch-mode) #battle {
 .raid-guide-bolt {
   animation: raid-guide-shot 2s ease-out infinite;
 }
-.raid-guide-core {
-  animation: raid-guide-glow 2s ease-in-out infinite;
-  transform-origin: 145px 75px;
-}
 .raid-guide-revive {
   stroke-dasharray: 90;
   animation: raid-guide-revive 3s ease-in-out infinite;
@@ -5833,12 +5794,6 @@ body.battle-raid:not(.touch-mode) #battle {
   100% {
     transform: translateX(48px);
     opacity: 0;
-  }
-}
-@keyframes raid-guide-glow {
-  50% {
-    transform: scale(1.12);
-    opacity: 0.5;
   }
 }
 @keyframes raid-guide-revive {
@@ -5894,62 +5849,17 @@ body.battle-raid:not(.touch-mode) #battle {
     font-size: calc(11px * var(--text-scale, 1));
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .raid-guide-scene * {
-    animation: none !important;
-  }
-  .raid-guide-revive {
-    stroke-dashoffset: 0;
-  }
+:where(:root[data-motion="reduced"]) .raid-guide-scene * {
+  animation: none !important;
+}
+:where(:root[data-motion="reduced"]) .raid-guide-revive {
+  stroke-dashoffset: 0;
 }
 /* Raid lobby: room, party, challenge and actions each have a consistent track. */
 .raid-lobby {
   display: grid;
   gap: 20px;
   min-width: 0;
-}
-.raid-peril-label {
-  display: block;
-  margin: 0 0 7px;
-  font-size: calc(10px * var(--text-scale, 1));
-  letter-spacing: 0.3px;
-  color: #acbdd3;
-}
-.raid-select-wrap {
-  position: relative;
-}
-.raid-select-wrap select {
-  appearance: none;
-  width: 100%;
-  min-height: 46px;
-  padding: 12px 36px 12px 12px;
-  border: 1px solid #8caed14d;
-  border-radius: 9px;
-  background: #12223a;
-  color: #edf3ff;
-  font:
-    600 calc(12px * var(--text-scale, 1)) Inter,
-    sans-serif;
-  cursor: pointer;
-}
-.raid-select-wrap select:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-.raid-select-wrap > svg {
-  position: absolute;
-  right: 12px;
-  top: 14px;
-  width: 18px;
-  height: 18px;
-  color: #dfc48e;
-  pointer-events: none;
-}
-.raid-unlock-note {
-  margin: 8px 0 0;
-  font-size: calc(10px * var(--text-scale, 1));
-  line-height: 1.5;
-  color: #94a9c5;
 }
 .raid-lobby :is(button, select, input):focus-visible {
   outline: 2px solid #ffdc84;
@@ -5958,21 +5868,6 @@ body.battle-raid:not(.touch-mode) #battle {
 
 .raid-lobby {
   gap: 16px;
-}
-.raid-lobby .raid-peril-label {
-  margin: 0 0 7px;
-  text-transform: none;
-  letter-spacing: 0.3px;
-}
-
-.raid-rite-intro {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 8px 16px;
-  margin: 12px 0 16px;
-  text-align: left;
 }
 .raid-choice-timer {
   display: inline-flex;
@@ -6018,9 +5913,6 @@ body.battle-raid:not(.touch-mode) #battle {
     font-size: calc(30px * var(--text-scale, 1));
     margin: 8px 0;
   }
-  .raid-rite-intro {
-    margin: 8px 0 10px;
-  }
   .raid-choice-timer {
     padding: 6px 9px;
   }
@@ -6044,12 +5936,6 @@ body.battle-raid:not(.touch-mode) #battle {
 .raid-party-bars small {
   font-variant-numeric: tabular-nums;
   line-height: 1.4;
-}
-.raid-rite-intro > span:first-child {
-  flex: 1;
-  min-width: 120px;
-  font-size: calc(12px * var(--text-scale, 1));
-  line-height: 1.5;
 }
 .raid-choice-timer {
   display: inline-grid;
@@ -6159,11 +6045,6 @@ body.battle-raid:not(.touch-mode) #battle {
   width: 42px;
   height: 42px;
 }
-.raid-reward > small {
-  font-size: calc(9px * var(--text-scale, 1));
-  line-height: 1.4;
-  color: #91a6c1;
-}
 /* Let shorter appearance groups fill columns instead of waiting below the longest skin list. */
 .raid-cosmetic-preview {
   position: relative;
@@ -6197,11 +6078,6 @@ body.battle-raid:not(.touch-mode) #battle {
   box-shadow:
     inset 0 0 0 2px #ffda8299,
     0 0 14px #ffcd6244;
-}
-@media (max-width: 420px) {
-  .raid-reward > small {
-    grid-column: 2;
-  }
 }
 
 /* Locked/equipped cosmetics are idle; reserve the wait cursor for a save. */
@@ -6238,118 +6114,6 @@ html:has(body.battle-active)::before {
 body.battle-active {
   background:
     radial-gradient(ellipse at 24% 12%, #1e3763 0, transparent 48%), #101c35;
-}
-
-/* Custom list keeps the open difficulty menu consistent across operating systems. */
-.raid-difficulty-picker {
-  position: relative;
-}
-.raid-lobby .raid-peril-trigger {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  width: 100%;
-  min-height: 46px;
-  margin: 0;
-  padding: 12px;
-  border: 1px solid #8caed14d;
-  border-radius: 10px;
-  background: #12223a;
-  color: #edf3ff;
-  font-size: calc(12px * var(--text-scale, 1));
-  font-weight: 600;
-  text-align: left;
-}
-.raid-peril-trigger > svg {
-  width: 18px;
-  height: 18px;
-  color: #ffe099;
-  flex: 0 0 18px;
-}
-.raid-peril-trigger[aria-expanded="true"] {
-  border-color: #ffe099;
-  background: #1b2e4b;
-}
-.raid-peril-trigger[aria-expanded="true"] > svg {
-  transform: rotate(180deg);
-}
-.raid-lobby .raid-peril-trigger:disabled {
-  cursor: default;
-  opacity: 0.6;
-}
-.raid-peril-options {
-  position: absolute;
-  top: calc(100% + 7px);
-  left: 0;
-  right: 0;
-  z-index: 60;
-  padding: 6px;
-  border: 1px solid #c9aa665c;
-  border-radius: 12px;
-  background: #14243e;
-  box-shadow: 0 16px 32px #03091699;
-}
-.raid-peril-options[hidden] {
-  display: none;
-}
-.raid-lobby .raid-peril-options > button {
-  display: grid;
-  grid-template-columns: 30px minmax(0, 1fr) 18px;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  min-height: 58px;
-  margin: 0;
-  padding: 9px 10px;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  background: transparent;
-  color: #e8effc;
-  text-align: left;
-}
-.raid-peril-options > button > span:nth-child(2) {
-  display: grid;
-  gap: 4px;
-}
-.raid-peril-options b {
-  font-size: calc(12px * var(--text-scale, 1));
-  line-height: 1.3;
-}
-.raid-peril-options small {
-  font-size: calc(10px * var(--text-scale, 1));
-  line-height: 1.4;
-  color: #a9bbd4;
-}
-.raid-peril-number {
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  border: 1px solid #7996bb44;
-  border-radius: 8px;
-  color: #c4d0e4;
-  font-size: calc(13px * var(--text-scale, 1));
-  font-weight: 800;
-}
-.raid-peril-options > button[aria-selected="true"] {
-  background: #ffd87012;
-  border-color: #e8c57566;
-}
-.raid-peril-options
-  > button[aria-selected="true"]
-  :is(b, .raid-peril-number, .raid-peril-check) {
-  color: #ffe099;
-}
-.raid-peril-options > button:hover,
-.raid-peril-options > button:focus-visible {
-  background: #2c4161;
-  outline: 2px solid #ffe099;
-  outline-offset: -2px;
-}
-.raid-peril-check {
-  text-align: center;
-  font-size: calc(14px * var(--text-scale, 1));
 }
 
 /* Frosted lobby navigation lets the coliseum show through without losing contrast. */
@@ -6392,40 +6156,6 @@ body.lobby-active::before {
 .raid-overlay {
   width: min(720px, 100%);
   scrollbar-gutter: stable;
-}
-.raid-overlay .raid-phase-objective {
-  font-size: calc(12px * var(--text-scale, 1));
-  line-height: 1.6;
-  text-align: left;
-  color: #c0d0e4;
-  margin: 12px 0;
-}
-.raid-team-builds {
-  display: grid;
-  gap: 6px;
-  margin-top: 14px;
-  padding-top: 12px;
-  border-top: 1px solid #7b9aba33;
-  text-align: left;
-}
-.raid-team-builds > div {
-  display: grid;
-  grid-template-columns: minmax(70px, 1fr) minmax(0, 3fr);
-  gap: 12px;
-  align-items: baseline;
-}
-.raid-team-builds b {
-  font-size: calc(11px * var(--text-scale, 1));
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: #e7eef9;
-}
-.raid-team-builds span {
-  font-size: calc(10px * var(--text-scale, 1));
-  line-height: 1.5;
-  color: #a9c0d7;
-  overflow-wrap: anywhere;
 }
 .raid-party-bars .is-targeted {
   color: #ffe099;
@@ -6490,12 +6220,6 @@ body.lobby-active::before {
   .raid-score-avatar > svg {
     width: 30px;
     height: 30px;
-  }
-}
-@media (orientation: landscape) and (max-height: 600px) {
-  .raid-overlay .raid-phase-objective {
-    font-size: calc(11px * var(--text-scale, 1));
-    margin: 8px 0;
   }
 }
 /* Put the outcome beside its next action on wide screens; stack on phones. */
@@ -6597,14 +6321,6 @@ body.lobby-active::before {
   margin: 6px 0;
   line-height: 1.15;
 }
-.raid-draft .raid-phase-objective {
-  margin: 8px 0;
-  font-size: calc(12px * var(--text-scale, 1));
-  line-height: 1.5;
-}
-.raid-draft .raid-rite-intro {
-  margin: 8px 0 12px;
-}
 .raid-draft .raid-rite-options > p {
   grid-column: 1/-1;
   margin: 12px 0;
@@ -6625,11 +6341,6 @@ body.lobby-active::before {
 .raid-team-summary > summary:focus-visible {
   outline: 2px solid #ffe099;
   outline-offset: 2px;
-}
-.raid-team-summary .raid-team-builds {
-  margin: 0;
-  padding: 0 0 8px;
-  border: 0;
 }
 @media (min-width: 560px) {
   .raid-draft .raid-rite-options {
@@ -6687,17 +6398,6 @@ body.lobby-active::before {
   .raid-overlay.raid-draft h2 {
     font-size: calc(23px * var(--text-scale, 1));
     margin: 4px 0;
-  }
-  .raid-draft .raid-phase-objective {
-    font-size: calc(11px * var(--text-scale, 1));
-    line-height: 1.35;
-    margin: 6px 0;
-  }
-  .raid-draft .raid-rite-intro {
-    margin: 6px 0 8px;
-  }
-  .raid-draft .raid-rite-intro > span:first-child {
-    font-size: calc(11px * var(--text-scale, 1));
   }
   .raid-draft .raid-choice-timer {
     min-height: 28px;
@@ -6759,14 +6459,6 @@ body.lobby-active::before {
   }
   .raid-draft h2 {
     font-size: calc(23px * var(--text-scale, 1));
-  }
-  .raid-draft .raid-phase-objective {
-    font-size: calc(11px * var(--text-scale, 1));
-    line-height: 1.4;
-    margin: 6px 0;
-  }
-  .raid-draft .raid-rite-intro {
-    margin: 6px 0 8px;
   }
   .raid-draft .raid-rite-options > button {
     padding: 8px;
@@ -6918,7 +6610,7 @@ button.small .button-icon {
 /* Profile title picker: every title drawn as it looks in the arena. */
 
 /* ---------------------------------------------------------------------------
-   Raid Hub: a page of bosses, today's featured raid and each boss's page. */
+   Dialogs (dialog.ts), raid crests and the Rockslide Flex preview. */
 .dialog-toolbar {
   display: flex;
   align-items: center;
@@ -6949,16 +6641,11 @@ button.small .button-icon {
   min-width: 0;
   min-height: 0;
   max-height: calc(var(--raid-dialog-height) - 54px);
+  overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
   padding: 16px 28px 28px;
-}
-.raid-boss-head > div {
-  min-width: 0;
-}
-.raid-boss-head h2 {
-  overflow-wrap: anywhere;
 }
 .raid-crest {
   width: 100%;
@@ -6966,45 +6653,6 @@ button.small .button-icon {
   display: block;
 }
 
-/* This week: seven day tiles. */
-.raid-board summary {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  cursor: pointer;
-}
-.raid-board summary span {
-  color: #93a8c6;
-  font-variant-numeric: tabular-nums;
-}
-
-/* Boss cards. */
-.raid-hub-join label {
-  margin: 0 0 8px;
-}
-
-/* A boss's page. */
-.raid-boss-head {
-  display: flex;
-  gap: 16px;
-  align-items: center;
-}
-.raid-boss-art {
-  flex: 0 0 96px;
-  width: 96px;
-  height: 96px;
-  border-radius: 16px;
-  background: radial-gradient(
-    circle at 50% 40%,
-    color-mix(in srgb, var(--boss) 35%, transparent),
-    #101c33 72%
-  );
-}
-.raid-boss-head p {
-  margin: 4px 0 0;
-  color: #c1cfe4;
-  font-size: calc(13px * var(--text-scale, 1));
-}
 .raid-cosmetic-preview[data-cosmetic="rockslide-flex"] {
   align-items: start;
   box-shadow:
@@ -7013,55 +6661,6 @@ button.small .button-icon {
 }
 .raid-cosmetic-preview[data-cosmetic="rockslide-flex"] > svg {
   transform: translateY(-3px);
-}
-
-@media (max-width: 720px) {
-  .raid-boss-art {
-    flex-basis: 72px;
-    width: 72px;
-    height: 72px;
-  }
-}
-
-/* Short landscape screens need room for the selected tab's actual content. */
-@media (orientation: landscape) and (max-height: 500px) {
-  .raid-boss-head {
-    gap: 12px;
-  }
-  .raid-boss-art {
-    flex-basis: 48px;
-    width: 48px;
-    height: 48px;
-    border-radius: 10px;
-  }
-  .raid-boss-head h2 {
-    font-size: calc(22px * var(--text-scale, 1));
-    line-height: 1.15;
-    margin: 2px 0;
-  }
-  .raid-boss-head .eyebrow {
-    font-size: calc(9px * var(--text-scale, 1));
-  }
-  .raid-boss-head p {
-    font-size: calc(11px * var(--text-scale, 1));
-    margin: 2px 0 0;
-  }
-}
-@media (max-width: 380px) {
-  .raid-boss-head {
-    gap: 10px;
-  }
-  .raid-boss-art {
-    flex-basis: 56px;
-    width: 56px;
-    height: 56px;
-  }
-  .raid-boss-head h2 {
-    font-size: calc(23px * var(--text-scale, 1));
-  }
-  .raid-boss-head p {
-    font-size: calc(11px * var(--text-scale, 1));
-  }
 }
 
 /* ---- Shop collection pieces (Colours, Aura, Entrance, Frame, Victory) ----
@@ -7412,7 +7011,7 @@ button.small .button-icon {
 .coin-chip .button-icon {
   width: 15px;
   height: 15px;
-  color: var(--accent);
+  color: var(--ui-coin);
 }
 .coin-button {
   padding: 4px 6px;
@@ -7690,6 +7289,8 @@ button.small .button-icon {
     #auth-form,
     #report-form,
     .credits-screen,
+    .skills-screen,
+    .fp-screen,
     .fullscreen-steps,
     .fullscreen-actions
   ) {
@@ -7814,7 +7415,9 @@ button.small .button-icon {
 }
 
 /* Consistent menu rhythm and a live fitting room for Shop cosmetics. */
-dialog :is(.help-screen, .credits-screen, .settings-screen) > h2 {
+dialog
+  :is(.help-screen, .credits-screen, .settings-screen, .skills-screen)
+  > h2 {
   padding-right: 32px;
   line-height: 1.15;
   overflow-wrap: anywhere;
@@ -8565,11 +8168,9 @@ dialog::backdrop {
     transform: rotate(0deg);
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .rotate-gate-phone {
-    animation: none;
-    transform: rotate(-90deg);
-  }
+:where(:root[data-motion="reduced"]) .rotate-gate-phone {
+  animation: none;
+  transform: rotate(-90deg);
 }
 /* :has(#admin-message) keeps this rule's ID weight (it was
    :has(#leaderboard-body), then :has(#profile-progress)); the admin screen
@@ -8588,7 +8189,6 @@ dialog:is(:has(.admin-tabs), :has(#admin-message)) {
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
 }
-/* Shop and Raid Hub: toolbar on top, the rest scrolls. */
 
 /* Somnara: a compact private dream and four calls, clear of movement controls. */
 #raid-dream-panel {
@@ -8848,7 +8448,7 @@ dialog.framed-dialog > .dialog-content {
   height: auto;
   max-height: none;
   padding: 14px 24px 24px;
-  overflow: auto;
+  overflow: hidden auto;
   overscroll-behavior: contain;
   scroll-padding: 12px;
 }
@@ -8916,6 +8516,13 @@ dialog.framed-dialog > .dialog-toolbar > .dialog-tabs {
   line-height: 1.15;
   margin: 0;
 }
+/* A dialog's title is set as a hub panel's is (ui-heading: "MISSIONS",
+   "FRIENDS"): capitals, so "SETTINGS" outranks its own cards' "SOUND" and
+   "DISPLAY" instead of reading smaller than them. */
+.dialog-toolbar h2.dialog-heading {
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
 @media (orientation: landscape) and (max-height: 600px) {
   dialog.framed-dialog > .dialog-content {
     padding: 10px 16px 16px;
@@ -8953,7 +8560,7 @@ dialog.framed-dialog > .dialog-toolbar > .dialog-tabs {
 .panel-scroll {
   min-width: 0;
   min-height: 0;
-  overflow: auto;
+  overflow: hidden auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
   padding: 0 8px;
@@ -9102,11 +8709,12 @@ dialog.framed-dialog > .dialog-content:focus-visible {
     transform: rotate(360deg);
   }
 }
-@media (prefers-reduced-motion: no-preference) {
-  :is(.player-avatar, .vs-fighter) svg[data-fighter="auralynx"] .fighter-wings {
-    transform-origin: 100px 122.98px;
-    animation: fighter-aura-ring 8.8s linear infinite;
-  }
+:where(:root:not([data-motion="reduced"]))
+  :is(.player-avatar, .vs-fighter)
+  svg[data-fighter="auralynx"]
+  .fighter-wings {
+  transform-origin: 100px 122.98px;
+  animation: fighter-aura-ring 8.8s linear infinite;
 }
 
 /* Prismatail: compact controls leave the relay lanes clear on short screens. */
@@ -9295,6 +8903,8 @@ dialog.framed-dialog > .dialog-content:focus-visible {
   display: block;
   height: 100%;
   background: #95e6d1;
+  transform-origin: left;
+  transform: scaleX(calc(var(--fill, 100) / 100));
 }
 #raid-storm-targets {
   display: none;
@@ -9612,9 +9222,7 @@ dialog.framed-dialog > .dialog-content:focus-visible {
   letter-spacing: 0.15em;
 }
 .journey-level-badge b {
-  font:
-    700 calc(30px * var(--text-scale, 1))/1 "Barlow Condensed",
-    sans-serif;
+  font: 700 calc(30px * var(--text-scale, 1))/1 var(--font-display);
 }
 .journey-level-line {
   display: flex;
@@ -9676,9 +9284,7 @@ dialog.framed-dialog > .dialog-content:focus-visible {
 .journey-result-xp > strong {
   display: block;
   color: #a8efd8;
-  font:
-    700 calc(22px * var(--text-scale, 1))/1 "Barlow Condensed",
-    sans-serif;
+  font: 700 calc(22px * var(--text-scale, 1))/1 var(--font-display);
   margin-bottom: 12px;
   animation: xp-arrive 0.35s ease-out;
 }
@@ -9731,13 +9337,13 @@ dialog.framed-dialog > .dialog-content:focus-visible {
     flex-direction: row;
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .journey-result-xp > strong {
-    animation: none;
-  }
-  .journey-result-xp progress::-webkit-progress-value {
-    transition: none;
-  }
+:where(:root[data-motion="reduced"]) .journey-result-xp > strong {
+  animation: none;
+}
+:where(:root[data-motion="reduced"])
+  .journey-result-xp
+  progress::-webkit-progress-value {
+  transition: none;
 }
 /* The player level bar (match results and the profile). */
 .journey-level progress {
@@ -9766,16 +9372,12 @@ dialog.framed-dialog > .dialog-content:focus-visible {
   border-radius: 10px;
   background: #ffe09b0a;
   color: #ffe09b;
-  font:
-    700 calc(17px * var(--text-scale, 1))/1.3 "Barlow Condensed",
-    sans-serif;
+  font: 700 calc(17px * var(--text-scale, 1))/1.3 var(--font-display);
 }
 .journey-level-up small {
   display: block;
   margin-top: 5px;
-  font:
-    400 calc(10px * var(--text-scale, 1))/1.5 "DM Sans",
-    sans-serif;
+  font: 400 calc(10px * var(--text-scale, 1))/1.5 var(--font-body);
   color: #dce8e0;
 }
 .journey-xp-breakdown {
@@ -9836,15 +9438,13 @@ dialog.framed-dialog > .dialog-content:focus-visible {
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
 }
-@media (prefers-reduced-motion: reduce) {
-  .btn-primary,
-  .btn-secondary {
-    transition: none;
-  }
-  .btn-primary:active:not(:disabled),
-  .btn-secondary:active:not(:disabled) {
-    transform: none;
-  }
+:where(:root[data-motion="reduced"]) .btn-primary,
+:where(:root[data-motion="reduced"]) .btn-secondary {
+  transition: none;
+}
+:where(:root[data-motion="reduced"]) .btn-primary:active:not(:disabled),
+:where(:root[data-motion="reduced"]) .btn-secondary:active:not(:disabled) {
+  transform: none;
 }
 
 /* Phase 2: the scene uses real content rows, so its fighter, text and actions
@@ -10059,12 +9659,10 @@ body.home-active .header-menu summary > span {
   height: 44px;
   flex: none;
   padding: 0;
-  font:
-    400 calc(26px * var(--text-scale, 1))/1 "DM Sans",
-    sans-serif;
+  font: 400 calc(26px * var(--text-scale, 1))/1 var(--font-body);
 }
 .home-drawer-scroll {
-  overflow: auto;
+  overflow: hidden auto;
   overscroll-behavior: contain;
   min-width: 0;
   min-height: 0;
@@ -10221,14 +9819,12 @@ body.home-active .header-menu summary > span {
     --home-top: calc(44px + var(--safe-top));
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .home-screen *,
-  .home-screen *::before,
-  .home-screen *::after {
-    animation: none !important;
-    transition: none !important;
-    scroll-behavior: auto !important;
-  }
+:where(:root[data-motion="reduced"]) .home-screen *,
+:where(:root[data-motion="reduced"]) .home-screen *::before,
+:where(:root[data-motion="reduced"]) .home-screen *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
 }
 
 /* Phase 3: portrait roster, persistent preview and anchored room actions. */
@@ -10304,98 +9900,6 @@ body.battle-active:not(.battle-raid) .hud {
   background: transparent;
   border: 0;
   padding: 0;
-}
-body.battle-active:not(.battle-raid) .hud.hud-teams {
-  grid-template-columns: repeat(2, minmax(0, 200px)) minmax(100px, 1fr) repeat(
-      2,
-      minmax(0, 200px)
-    );
-  gap: 10px;
-}
-.health-card {
-  min-width: 0;
-  padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--bg-0) 90%, transparent);
-  box-shadow: 0 4px 16px #0003;
-}
-.health-card > div:first-child {
-  gap: 8px;
-  font-size: calc(14px * var(--text-scale, 1));
-  margin-bottom: 7px;
-}
-.health-card b {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  min-width: 0;
-}
-.health-card > div:first-child > span {
-  font-size: calc(12px * var(--text-scale, 1));
-  white-space: nowrap;
-}
-.health-card strong {
-  flex: none;
-  font: 700 calc(18px * var(--text-scale, 1))/1 var(--display);
-}
-.health-card .health-track {
-  height: 7px;
-  border-radius: 999px;
-  background: #ffffff1a;
-}
-.health-card .health-track span {
-  border-radius: inherit;
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--element) 70%, white),
-    var(--element)
-  );
-}
-.health-card > small {
-  font-size: calc(11px * var(--text-scale, 1));
-  margin-top: 5px;
-  line-height: 1.3;
-}
-.health-card > small:last-of-type {
-  color: var(--element);
-  float: right;
-}
-.hud-ultimate {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  clear: both;
-  padding-top: 5px;
-}
-.health-card .hud-ultimate > span {
-  flex: none;
-  font-size: calc(10px * var(--text-scale, 1));
-  letter-spacing: 0.5px;
-  color: var(--text-dim);
-  white-space: nowrap;
-}
-.hud-ultimate b {
-  color: var(--text);
-  font-size: inherit;
-  font-weight: 600;
-}
-.hud-ultimate-track {
-  flex: 1;
-  height: 3px;
-  background: #ffffff1a;
-  border-radius: 999px;
-  overflow: hidden;
-}
-.hud-ultimate-track i {
-  display: block;
-  width: 0;
-  height: 100%;
-  background: var(--accent);
-}
-.hud-ultimate.is-ready > span,
-.hud-ultimate.is-ready b {
-  color: var(--accent);
 }
 .timer-wrap {
   justify-self: center;
@@ -10486,9 +9990,15 @@ body.battle-active:not(.touch-mode) .ability .cooldown-fill {
   inset: 2px;
   border-radius: 50%;
   pointer-events: none;
+  /* The control's own cooldown, taken by the ring alone. --cooldown does
+     not inherit (@property), so the icon and the countdown under the same
+     control are not restyled each time it moves: a copy that did inherit
+     (--skill-sweep) restyled every shape of every cooling button's icon,
+     about 110 elements a snapshot (section 20). */
+  --cooldown: inherit;
   background: conic-gradient(
     from -90deg,
-    #ffffff18 var(--skill-sweep, 0%),
+    #ffffff18 var(--cooldown, 0%),
     var(--element, var(--accent)) 0
   );
   mask: radial-gradient(
@@ -10528,7 +10038,7 @@ body.battle-active:not(.touch-mode) .ability .cooldown-fill {
   animation: none;
   background: conic-gradient(
     from -90deg,
-    #ffffff18 var(--skill-sweep, 0%),
+    #ffffff18 var(--cooldown, 0%),
     var(--element, var(--accent)) 0
   );
 }
@@ -10557,41 +10067,6 @@ body.battle-active.touch-mode:not(.battle-raid) .hud {
   grid-template-columns: minmax(0, 220px) minmax(72px, 1fr) minmax(0, 220px);
   gap: 8px;
 }
-body.battle-active.touch-mode:not(.battle-raid) .hud.hud-teams {
-  grid-template-columns: repeat(2, minmax(0, 1fr)) 72px repeat(
-      2,
-      minmax(0, 1fr)
-    );
-  gap: 6px;
-}
-body.battle-active.touch-mode .health-card {
-  padding: 6px 8px;
-  border-radius: var(--radius-sm);
-}
-body.battle-active.touch-mode .health-card > div:first-child {
-  font-size: calc(12px * var(--text-scale, 1));
-  margin-bottom: 4px;
-}
-body.battle-active.touch-mode .health-card b {
-  max-width: none;
-}
-body.battle-active.touch-mode .health-card strong {
-  font-size: calc(14px * var(--text-scale, 1));
-}
-body.battle-active.touch-mode .health-card > small {
-  font-size: calc(10px * var(--text-scale, 1));
-  margin-top: 3px;
-}
-body.battle-active.touch-mode .health-card .health-track {
-  height: 5px;
-}
-body.battle-active.touch-mode .hud-ultimate {
-  gap: 5px;
-  padding-top: 3px;
-}
-body.battle-active.touch-mode .hud-ultimate > span {
-  font-size: calc(10px * var(--text-scale, 1));
-}
 body.battle-active.touch-mode .timer-wrap {
   min-width: 0;
   padding: 4px 0;
@@ -10603,43 +10078,15 @@ body.battle-active.touch-mode .timer-wrap > span {
   font-size: calc(10px * var(--text-scale, 1));
   letter-spacing: 0;
 }
-@media (max-width: 700px) {
-  body.battle-active.touch-mode .health-card {
-    padding: 5px;
-  }
-  body.battle-active.touch-mode .health-card > div:first-child {
-    font-size: calc(11px * var(--text-scale, 1));
-    gap: 3px;
-  }
-  body.battle-active.touch-mode .hud.hud-teams .health-card > div:first-child {
-    flex-wrap: wrap;
-  }
-  body.battle-active.touch-mode .hud.hud-teams .health-card strong {
-    font-size: calc(12px * var(--text-scale, 1));
-  }
-  body.battle-active.touch-mode .hud.hud-teams .health-card > small {
-    font-size: calc(9px * var(--text-scale, 1));
-  }
-  body.battle-active.touch-mode .hud.hud-teams .hud-ultimate {
-    flex-wrap: wrap;
-    gap: 2px;
-  }
-  body.battle-active.touch-mode .hud.hud-teams .hud-ultimate-track {
-    min-width: 100%;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .health-card *,
-  .ability,
-  .ability *,
-  .ability::before,
-  .ability::after,
-  .touch-buttons button,
-  .touch-buttons button::before,
-  .touch-buttons button::after {
-    animation: none !important;
-    transition: none !important;
-  }
+:where(:root[data-motion="reduced"]) .ability,
+:where(:root[data-motion="reduced"]) .ability *,
+:where(:root[data-motion="reduced"]) .ability::before,
+:where(:root[data-motion="reduced"]) .ability::after,
+:where(:root[data-motion="reduced"]) .touch-buttons button,
+:where(:root[data-motion="reduced"]) .touch-buttons button::before,
+:where(:root[data-motion="reduced"]) .touch-buttons button::after {
+  animation: none !important;
+  transition: none !important;
 }
 /* The canvas is sized by its frame; its previous pixel height must not enlarge it. */
 body.battle-active:not(.touch-mode) .arena-frame {
@@ -10651,40 +10098,6 @@ body.battle-active:not(.touch-mode) #game {
   width: 100%;
   height: 100%;
   aspect-ratio: auto;
-}
-.health-card {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 4px 6px;
-  padding: 8px 10px;
-  line-height: 1.2;
-}
-.health-card > div:first-child,
-.health-card .health-track,
-.health-card .hud-ultimate {
-  grid-column: 1 / -1;
-}
-.health-card > div:first-child,
-.health-card > small {
-  margin: 0;
-}
-.health-card > small:last-of-type {
-  float: none;
-  text-align: right;
-}
-.health-card .hud-ultimate {
-  padding-top: 0;
-}
-body.battle-active.touch-mode .health-card {
-  padding: 5px 7px;
-  gap: 3px 5px;
-}
-body.battle-active.touch-mode .health-card > div:first-child,
-body.battle-active.touch-mode .health-card > small {
-  margin: 0;
-}
-body.battle-active.touch-mode .health-card .hud-ultimate {
-  padding-top: 0;
 }
 body.battle-active.touch-mode:not(.battle-raid) .timer-wrap {
   position: relative;
@@ -10726,28 +10139,8 @@ body.battle-active.touch-mode:not(.battle-raid) #phase-label {
     white-space: normal;
     line-height: 1.1;
   }
-  body.battle-active.touch-mode .hud.hud-teams .health-card > div:first-child {
-    flex-wrap: nowrap;
-  }
-  body.battle-active.touch-mode .hud.hud-teams .hud-ultimate {
-    flex-wrap: nowrap;
-  }
-  body.battle-active.touch-mode .hud.hud-teams .hud-ultimate-track {
-    min-width: 0;
-  }
 }
 
-/* Resolve the registered, non-inheriting cooldown on the control itself. */
-.ability,
-.touch-buttons button {
-  --skill-sweep: var(--cooldown, 0%);
-}
-body.battle-active.touch-mode:not(.battle-raid) .hud.hud-teams {
-  grid-template-columns: repeat(2, minmax(0, 1fr)) 120px repeat(
-      2,
-      minmax(0, 1fr)
-    );
-}
 body.battle-active.touch-mode:not(.battle-raid) #round-label {
   width: 100%;
   left: 0;
@@ -10762,47 +10155,8 @@ body.battle-active.touch-mode:not(.battle-raid) #phase-label {
   line-height: 1.15;
 }
 @media (max-width: 700px) {
-  body.battle-active.touch-mode:not(.battle-raid) .hud.hud-teams {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) 90px repeat(
-        2,
-        minmax(0, 1fr)
-      );
-  }
   body.battle-active.touch-mode:not(.battle-raid) #phase-label {
     font-size: calc(9px * var(--text-scale, 1));
-  }
-}
-/* Share the last row between HP and ultimate rather than making the HUD taller. */
-.health-card {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-}
-.health-card > small[id^="health-text-"] {
-  grid-column: 1;
-  grid-row: 3;
-  white-space: nowrap;
-}
-.health-card > small[id^="status-"] {
-  grid-column: 1 / -1;
-  grid-row: 4;
-}
-.health-card > small[id^="status-"]:empty {
-  display: none;
-}
-.health-card .hud-ultimate {
-  grid-column: 2;
-  grid-row: 3;
-  clear: none;
-}
-@media (max-width: 700px) {
-  body.battle-active.touch-mode .hud.hud-teams .health-card .hud-ultimate {
-    grid-column: 1 / -1;
-    grid-row: 4;
-  }
-  body.battle-active.touch-mode
-    .hud.hud-teams
-    .health-card
-    > small[id^="status-"] {
-    grid-row: 5;
   }
 }
 body.battle-active:not(.touch-mode) .timer-wrap {
@@ -10854,12 +10208,6 @@ body.battle-active:not(.touch-mode) .hud {
   margin: 0;
   z-index: 22;
   grid-template-columns: minmax(0, 280px) minmax(100px, 1fr) minmax(0, 280px);
-}
-body.battle-active:not(.touch-mode) .hud.hud-teams {
-  grid-template-columns: repeat(2, minmax(0, 200px)) minmax(150px, 1fr) repeat(
-      2,
-      minmax(0, 200px)
-    );
 }
 body.battle-active:not(.touch-mode) .ability-bar {
   position: absolute;
@@ -10918,7 +10266,7 @@ body.battle-active:not(.touch-mode) .practice-panel {
   left: 0;
   width: min(560px, calc(100vw - var(--safe-left) - var(--safe-right) - 32px));
   max-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 112px);
-  overflow: auto;
+  overflow: hidden auto;
   overscroll-behavior: contain;
   padding: 16px;
   border: 1px solid var(--line);
@@ -11019,18 +10367,19 @@ body.battle-active .ability.ult-ready,
   height: 52%;
   margin-bottom: 8px;
 }
-.hud-ultimate.is-ready .hud-ultimate-track {
-  box-shadow: 0 0 8px color-mix(in srgb, var(--ui-accent) 43.9%, transparent);
+:where(:root:not([data-motion="reduced"]))
+  .ability.ult-ready
+  .skill-cooldown-ring,
+:where(:root:not([data-motion="reduced"]))
+  .touch-buttons
+  button.ult-ready::before {
+  animation: ultimate-energy-orbit 3.6s linear infinite;
 }
-@media (prefers-reduced-motion: no-preference) {
-  .ability.ult-ready .skill-cooldown-ring,
-  .touch-buttons button.ult-ready::before {
-    animation: ultimate-energy-orbit 3.6s linear infinite;
-  }
-  .ability.ult-ready::after,
-  .touch-buttons button.ult-ready::after {
-    animation: ultimate-energy-breathe 2.4s ease-in-out infinite;
-  }
+:where(:root:not([data-motion="reduced"])) .ability.ult-ready::after,
+:where(:root:not([data-motion="reduced"]))
+  .touch-buttons
+  button.ult-ready::after {
+  animation: ultimate-energy-breathe 2.4s ease-in-out infinite;
 }
 @keyframes ultimate-energy-orbit {
   to {
@@ -11238,25 +10587,8 @@ body.battle-active .ability.ult-ready,
   max-width: 29ch;
   margin: 0 auto;
   color: var(--text-dim);
-  font:
-    400 calc(15px * var(--text-scale, 1))/1.5 "DM Sans",
-    sans-serif;
+  font: 400 calc(15px * var(--text-scale, 1))/1.5 var(--font-body);
   text-align: center;
-}
-#arena-overlay .raid-draft .raid-rite-intro {
-  grid-row: 2;
-  display: flex;
-  flex-direction: column-reverse;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  margin: 0;
-}
-#arena-overlay .raid-draft .raid-rite-intro > span:first-child {
-  flex: none;
-  min-width: 0;
-  color: var(--text-dim);
-  font-size: calc(12px * var(--text-scale, 1));
 }
 #arena-overlay .raid-draft .raid-choice-timer {
   grid-template-columns: 18px auto 100px;
@@ -11278,13 +10610,6 @@ body.battle-active .ability.ult-ready,
   border-top: 1px solid var(--line);
   text-align: center;
 }
-#arena-overlay .raid-draft .raid-phase-objective {
-  max-width: 90ch;
-  margin: 3px auto;
-  color: var(--text-dim);
-  font-size: calc(12px * var(--text-scale, 1));
-  line-height: 1.4;
-}
 #arena-overlay .raid-draft .raid-team-summary {
   margin: 0;
   border: 0;
@@ -11293,9 +10618,6 @@ body.battle-active .ability.ult-ready,
 #arena-overlay .raid-draft .raid-team-summary > summary {
   min-height: 28px;
   padding: 5px 0;
-}
-#arena-overlay .raid-draft .raid-team-builds {
-  text-align: left;
 }
 #arena-overlay .raid-draft .raid-rite-options > p {
   display: grid;
@@ -11307,43 +10629,6 @@ body.battle-active .ability.ult-ready,
   border-radius: 18px;
   background: var(--bg-1);
   font: 600 calc(24px * var(--text-scale, 1))/1.3 var(--display);
-}
-/* The icon and its enclosing card use the same existing rite colour. */
-#arena-overlay .raid-draft .raid-rite-options > .raid-rite-shelter {
-  --rite-color: #83e8cf;
-}
-#arena-overlay .raid-draft .raid-rite-options > .raid-rite-sharing {
-  --rite-color: #ffd86b;
-}
-#arena-overlay .raid-draft .raid-rite-options > .raid-rite-core {
-  --rite-color: #ffb17d;
-}
-#arena-overlay .raid-draft .raid-rite-options > .raid-rite-rescue {
-  --rite-color: #91d5ff;
-}
-#arena-overlay .raid-draft .raid-rite-options > .raid-rite-courage {
-  --rite-color: #ffa0b6;
-}
-#arena-overlay .raid-draft .raid-rite-options > .raid-rite-mending {
-  --rite-color: #b2f598;
-}
-#arena-overlay .raid-draft .raid-rite-options > .raid-rite-grounded {
-  --rite-color: #9fdfff;
-}
-#arena-overlay .raid-draft .raid-rite-options > .raid-rite-fireproof {
-  --rite-color: #ffbd83;
-}
-#arena-overlay .raid-draft .raid-rite-options > .raid-rite-polished {
-  --rite-color: #ffe2a0;
-}
-#arena-overlay .raid-draft .raid-rite-options > .raid-rite-lucid {
-  --rite-color: #c9a3ff;
-}
-#arena-overlay .raid-draft .raid-rite-options > .raid-rite-footing {
-  --rite-color: #7fe9ff;
-}
-#arena-overlay .raid-draft .raid-rite-options > .raid-rite-lamplighter {
-  --rite-color: var(--ui-accent);
 }
 
 @media (orientation: landscape) and (max-height: 600px) {
@@ -11385,13 +10670,6 @@ body.battle-active .ability.ult-ready,
     font-size: calc(13px * var(--text-scale, 1));
     line-height: 1.4;
   }
-  #arena-overlay .raid-draft .raid-rite-intro {
-    gap: 4px;
-  }
-  #arena-overlay .raid-draft .raid-rite-intro > span:first-child {
-    font-size: calc(11px * var(--text-scale, 1));
-    line-height: 1.3;
-  }
   #arena-overlay .raid-draft .raid-choice-timer {
     min-height: 32px;
     padding: 4px 12px;
@@ -11400,9 +10678,6 @@ body.battle-active .ability.ult-ready,
     height: 32px;
     max-height: 32px;
     padding: 3px 8px 0;
-  }
-  #arena-overlay .raid-draft .raid-phase-objective {
-    font-size: calc(11px * var(--text-scale, 1));
   }
 }
 @media (orientation: landscape) and (max-height: 430px) {
@@ -11492,26 +10767,14 @@ body.battle-active .ability.ult-ready,
     font-size: calc(11.5px * var(--text-scale, 1));
     line-height: 1.35;
   }
-  #arena-overlay .raid-draft .raid-rite-intro {
-    position: relative;
-    flex-direction: column-reverse;
-    gap: 0;
-  }
-  #arena-overlay .raid-draft .raid-rite-intro > span:first-child {
-    position: absolute;
-    left: calc(50% + 112px);
-    top: 50%;
-    transform: translateY(-50%);
-    max-width: calc(50% - 120px);
-    text-align: left;
-    font-size: calc(9px * var(--text-scale, 1));
-    line-height: 1.2;
-  }
 }
-@media (prefers-reduced-motion: reduce) {
-  #arena-overlay .raid-draft .panel-actions .raid-rite-options > button {
-    transition: none;
-  }
+:where(:root[data-motion="reduced"])
+  #arena-overlay
+  .raid-draft
+  .panel-actions
+  .raid-rite-options
+  > button {
+  transition: none;
 }
 
 /* Compact currency, retaining the header button's full touch target. */
@@ -11579,7 +10842,7 @@ body.battle-active:not(.touch-mode) .topbar:has(.header-menu[open]) {
   flex-direction: column;
   align-items: stretch;
   gap: 12px;
-  overflow: auto;
+  overflow: hidden auto;
   padding: 16px;
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
@@ -11646,10 +10909,6 @@ body.battle-active:not(.touch-mode) .battle-footer {
   margin-top: 4px;
   padding-right: 102px;
   gap: 8px 12px;
-}
-body.battle-active:not(.touch-mode) .health-card {
-  padding: 6px 8px;
-  gap: 3px 6px;
 }
 body.battle-active:not(.touch-mode) .ability-bar {
   width: min(820px, calc(var(--desktop-arena-width, 100%) - 24px));
@@ -11926,9 +11185,7 @@ body.hub-screen #account-profile .account-avatar {
 body.lobby-active #account-profile .account-name,
 body.hub-screen #account-profile .account-name {
   grid-area: name;
-  font:
-    800 calc(17px * var(--text-scale, 1))/1 "Barlow Condensed",
-    sans-serif;
+  font: 800 calc(17px * var(--text-scale, 1))/1 var(--font-display);
   letter-spacing: 0.02em;
 }
 body.lobby-active #account-profile .nav-level,
@@ -11957,9 +11214,7 @@ body.lobby-active .nav-title,
 body.hub-screen .nav-title {
   display: block;
   grid-area: title;
-  font:
-    700 calc(11px * var(--text-scale, 1))/1 "DM Sans",
-    sans-serif;
+  font: 700 calc(11px * var(--text-scale, 1))/1 var(--font-body);
 }
 /* Coins: pushed to the right, a glass pill. */
 body.lobby-active #account-coins,
@@ -12083,9 +11338,7 @@ body.hub-screen .menu-gear svg {
    instead of a solid gold fill. */
 .play-start h3 {
   margin: 0 0 4px;
-  font:
-    700 calc(13px * var(--text-scale, 1))/1 "DM Sans",
-    sans-serif;
+  font: 700 calc(13px * var(--text-scale, 1))/1 var(--font-body);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-dim, var(--ui-dim));
@@ -12131,18 +11384,14 @@ body.hub-screen .menu-gear svg {
 }
 .play-start .mode-card b {
   overflow: hidden;
-  font:
-    600 calc(15px * var(--text-scale, 1))/1.2 "DM Sans",
-    sans-serif;
+  font: 600 calc(15px * var(--text-scale, 1))/1.2 var(--font-body);
   letter-spacing: 0;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .play-start .mode-card small {
   overflow: hidden;
-  font:
-    400 calc(12px * var(--text-scale, 1))/1.3 "DM Sans",
-    sans-serif;
+  font: 400 calc(12px * var(--text-scale, 1))/1.3 var(--font-body);
   color: #93a4c0;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -12262,17 +11511,13 @@ body.gate-active main {
 }
 .gate-kicker {
   color: #f2c25b;
-  font:
-    700 calc(12px * var(--text-scale, 1))/1 "DM Sans",
-    sans-serif;
+  font: 700 calc(12px * var(--text-scale, 1))/1 var(--font-body);
   letter-spacing: 0.2em;
   text-transform: uppercase;
 }
 .gate-intro h1 {
   margin: 0;
-  font:
-    800 clamp(48px, 7vw, 92px) / 0.9 "Barlow Condensed",
-    sans-serif;
+  font: 800 clamp(48px, 7vw, 92px) / 0.9 var(--font-display);
   letter-spacing: 0.02em;
   text-transform: uppercase;
   text-shadow:
@@ -12288,9 +11533,7 @@ body.gate-active main {
   margin: 4px 0 6px;
   max-width: 460px;
   color: #d6def0;
-  font:
-    400 calc(17px * var(--text-scale, 1))/1.5 "DM Sans",
-    sans-serif;
+  font: 400 calc(17px * var(--text-scale, 1))/1.5 var(--font-body);
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
 }
 .gate-invite b {
@@ -12356,6 +11599,7 @@ body.gate-active main {
   }
   .gate-card {
     max-height: calc(100dvh - 32px);
+    overflow-x: hidden;
     overflow-y: auto;
     padding: 20px;
   }
@@ -12388,9 +11632,7 @@ dialog .auth-panel {
   height: 100%;
 }
 .auth-title {
-  font:
-    700 calc(24px * var(--text-scale, 1))/1.15 "DM Sans",
-    sans-serif;
+  font: 700 calc(24px * var(--text-scale, 1))/1.15 var(--font-body);
   letter-spacing: -0.01em;
 }
 .auth-head p {
@@ -12412,9 +11654,7 @@ dialog .auth-panel {
   border-radius: 9px;
   background: none;
   color: #9fb0cc;
-  font:
-    600 calc(14px * var(--text-scale, 1))/1 "DM Sans",
-    sans-serif;
+  font: 600 calc(14px * var(--text-scale, 1))/1 var(--font-body);
   cursor: pointer;
 }
 .auth-tabs button[aria-selected="true"] {
@@ -12435,9 +11675,7 @@ dialog .auth-panel {
 }
 .auth-field > span:first-child {
   color: #c9d4e8;
-  font:
-    600 calc(13px * var(--text-scale, 1))/1 "DM Sans",
-    sans-serif;
+  font: 600 calc(13px * var(--text-scale, 1))/1 var(--font-body);
 }
 /* Matches the global input rule's specificity plus the panel class, so it wins. */
 .auth-panel
@@ -12452,9 +11690,7 @@ dialog .auth-panel {
   border-radius: 11px;
   background: rgba(5, 10, 22, 0.6);
   color: #fff;
-  font:
-    400 calc(15px * var(--text-scale, 1))/1 "DM Sans",
-    sans-serif;
+  font: 400 calc(15px * var(--text-scale, 1))/1 var(--font-body);
   transition:
     border-color 0.15s,
     box-shadow 0.15s;
@@ -12528,9 +11764,7 @@ dialog .auth-panel {
   border: 0;
   background: none;
   color: #f2c25b;
-  font:
-    600 calc(13px * var(--text-scale, 1))/1 "DM Sans",
-    sans-serif;
+  font: 600 calc(13px * var(--text-scale, 1))/1 var(--font-body);
   cursor: pointer;
 }
 .auth-link:hover {
@@ -12547,9 +11781,7 @@ dialog .auth-panel {
   border-radius: 12px;
   background: var(--btn-primary-bg);
   color: var(--ui-accent-ink);
-  font:
-    700 calc(15px * var(--text-scale, 1))/1 "DM Sans",
-    sans-serif;
+  font: 700 calc(15px * var(--text-scale, 1))/1 var(--font-body);
   box-shadow: 0 8px 24px rgba(242, 185, 59, 0.28);
   cursor: pointer;
   transition:
@@ -12577,9 +11809,7 @@ dialog .auth-panel {
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.04);
   color: var(--ui-text);
-  font:
-    600 calc(14px * var(--text-scale, 1))/1 "DM Sans",
-    sans-serif;
+  font: 600 calc(14px * var(--text-scale, 1))/1 var(--font-body);
   cursor: pointer;
 }
 .auth-secondary:hover {
@@ -12814,7 +12044,6 @@ body.battle-active.court-view #game canvas {
   font-size: calc(13px * var(--text-scale, 1));
   color: var(--text-dim);
 }
-.prefs-grid,
 .credits-grid {
   display: grid;
   gap: 12px;
@@ -12879,24 +12108,6 @@ body.battle-active.court-view #game canvas {
   font: 700 calc(14px * var(--text-scale, 1))/1.3 var(--body);
   font-variant-numeric: tabular-nums;
   color: var(--accent);
-}
-.prefs-status {
-  display: grid;
-  gap: 8px;
-  justify-items: start;
-}
-.prefs-status > b {
-  padding: 4px 10px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  font: 700 calc(12px * var(--text-scale, 1))/1.2 var(--body);
-  color: var(--text-dim);
-  background: #ffffff0a;
-}
-.prefs-status > b.is-on {
-  color: var(--equipped);
-  border-color: color-mix(in srgb, var(--equipped) 45%, transparent);
-  background: color-mix(in srgb, var(--equipped) 12%, transparent);
 }
 .prefs-card a {
   color: var(--accent);
@@ -13051,7 +12262,6 @@ body.battle-active.court-view #game canvas {
     margin-bottom: 8px;
     font-size: calc(12px * var(--text-scale, 1));
   }
-  .prefs-grid,
   .credits-grid {
     gap: 8px;
   }
@@ -13086,50 +12296,6 @@ body.battle-active.court-view #game canvas {
   }
   .prefs-slider > output {
     grid-column: 3;
-  }
-  .prefs-card:has(> .prefs-status) {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-  }
-  .framed-dialog .prefs-card:has(> .prefs-status) > h3 {
-    margin: 0;
-  }
-  .prefs-status > span {
-    display: none;
-  }
-  /* Sound on the left, Motion and Graphics stacked on the right. (A class
-     set with the cards, not :has(): see "Battle style recalculation" in
-     docs/network-performance.md.) */
-  .prefs-grid.has-graphics {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .prefs-grid.has-graphics > :first-child {
-    grid-row: span 2;
-  }
-  /* Graphics: one line too (name, then Auto / High / Low). */
-  .prefs-card.prefs-graphics {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-  }
-  .framed-dialog .prefs-card.prefs-graphics > h3 {
-    margin: 0;
-  }
-  .prefs-graphics .prefs-choice {
-    flex: 0 1 230px;
-    margin: 0;
-    padding: 2px;
-  }
-  .framed-dialog .prefs-graphics .prefs-choice > button {
-    min-height: 28px;
-    padding: 3px 6px;
-    font-size: calc(12px * var(--text-scale, 1));
-  }
-  .prefs-graphics-note {
-    display: none;
   }
   /* App icon (iPhone app): one line across both columns, icons only (each
      button keeps its name in aria-label). */
@@ -13203,34 +12369,13 @@ body.battle-active.court-view #game canvas {
   min-height: 0;
   gap: 12px;
 }
-.raid-rite-heading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-width: 0;
-  max-width: 100%;
-  gap: 20px;
-}
-#arena-overlay .raid-draft .panel-actions .raid-rite-heading > b {
-  min-width: 0;
-  grid-column: auto;
-  text-align: center;
-}
 #arena-overlay .raid-draft .panel-actions .raid-rite-copy > small {
   grid-column: auto;
   align-self: center;
   margin: 0;
   text-align: center;
 }
-.raid-rite-heading > .raid-rite-icon {
-  flex: 0 0 auto;
-}
 @media (orientation: landscape) and (max-height: 600px) {
-  .raid-rite-heading {
-    flex-direction: row;
-    gap: 9px;
-  }
   #arena-overlay .raid-draft .panel-actions .raid-rite-copy {
     gap: 8px;
   }
@@ -13410,125 +12555,6 @@ body.battle-active.court-view #game canvas {
   width: 128px;
   height: 96px;
 }
-.raid-rite-heading {
-  gap: 14px;
-}
-#arena-overlay .raid-draft .panel-actions .raid-rite-trigger {
-  color: var(--text-dim);
-  font:
-    500 calc(13px * var(--text-scale, 1))/1.3 "DM Sans",
-    sans-serif;
-}
-#arena-overlay .raid-draft .raid-rite-intro {
-  position: static;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  align-items: center;
-  gap: 12px;
-  min-height: 44px;
-}
-#arena-overlay .raid-draft .raid-rite-intro > span:first-child {
-  position: static;
-  transform: none;
-  max-width: none;
-  justify-self: start;
-  text-align: left;
-  font-size: calc(12px * var(--text-scale, 1));
-}
-.raid-rite-more {
-  position: static;
-  justify-self: end;
-  min-width: 0;
-}
-.raid-rite-more > summary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-height: 44px;
-  padding: 6px 10px;
-  border: 1px solid var(--line);
-  border-radius: 9px;
-  background: var(--bg-1);
-  color: var(--text);
-  font:
-    600 calc(12px * var(--text-scale, 1))/1.2 "DM Sans",
-    sans-serif;
-  list-style: none;
-  cursor: pointer;
-}
-.raid-rite-more > summary::-webkit-details-marker {
-  display: none;
-}
-.raid-rite-more > summary > svg {
-  width: 18px;
-  height: 18px;
-  flex: none;
-}
-.raid-rite-more > summary:focus-visible,
-.raid-rite-reference:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: -3px;
-}
-.raid-rite-more:not([open]) .rite-details-open,
-.raid-rite-more[open] .rite-details-closed,
-.raid-rite-more:not([open]) .raid-rite-reference {
-  display: none;
-}
-.raid-rite-more[open] > summary {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-.raid-rite-reference {
-  position: absolute;
-  inset: 0 0 calc(44px + var(--rite-footer-gap));
-  z-index: 5;
-  min-height: 0;
-  overflow: auto;
-  padding: 18px 22px;
-  border: 1px solid color-mix(in srgb, var(--ui-accent) 40%, transparent);
-  border-radius: 16px;
-  background: #142039;
-  box-shadow: 0 8px 28px #0005;
-  text-align: left;
-  touch-action: pan-y;
-  overscroll-behavior: contain;
-}
-#arena-overlay .raid-draft .raid-rite-reference > h3 {
-  margin: 0 0 12px;
-  font: 700 calc(23px * var(--text-scale, 1))/1.2 var(--display);
-}
-.raid-rite-reference > ul {
-  display: grid;
-  gap: 12px;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-.raid-rite-reference li {
-  display: grid;
-  grid-template-columns: 72px minmax(0, 1fr);
-  gap: 14px;
-  align-items: center;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--line);
-}
-#arena-overlay .raid-draft .panel-actions .raid-rite-reference .raid-rite-icon,
-#arena-overlay .raid-draft .raid-rite-reference .raid-rite-icon > svg {
-  width: 64px;
-  height: 48px;
-}
-#arena-overlay .raid-draft .raid-rite-reference h4 {
-  margin: 0 0 5px;
-  font: 700 calc(20px * var(--text-scale, 1))/1.2 var(--display);
-}
-#arena-overlay .raid-draft .raid-rite-reference p {
-  margin: 0;
-  color: var(--text-dim);
-  font:
-    400 calc(14px * var(--text-scale, 1))/1.5 "DM Sans",
-    sans-serif;
-}
 @media (orientation: landscape) and (max-height: 600px) {
   #arena-overlay .raid-draft > .panel-actions {
     --rite-footer-gap: 10px;
@@ -13541,23 +12567,8 @@ body.battle-active.court-view #game canvas {
     width: 104px;
     height: 78px;
   }
-  .raid-rite-heading {
-    gap: 8px;
-  }
-  #arena-overlay .raid-draft .panel-actions .raid-rite-heading > b {
-    font-size: calc(22px * var(--text-scale, 1));
-  }
   #arena-overlay .raid-draft .panel-actions .raid-rite-copy {
     gap: 6px;
-  }
-  #arena-overlay .raid-draft .panel-actions .raid-rite-trigger {
-    font-size: calc(12px * var(--text-scale, 1));
-  }
-  .raid-rite-reference {
-    padding: 12px 16px;
-  }
-  #arena-overlay .raid-draft .raid-rite-reference p {
-    font-size: calc(12px * var(--text-scale, 1));
   }
 }
 @media (orientation: landscape) and (max-height: 350px) {
@@ -13572,113 +12583,17 @@ body.battle-active.court-view #game canvas {
     width: 64px;
     height: 48px;
   }
-  #arena-overlay .raid-draft .panel-actions .raid-rite-heading > b {
-    font-size: calc(19px * var(--text-scale, 1));
-  }
   #arena-overlay .raid-draft .panel-actions .raid-rite-copy {
     gap: 3px;
   }
-  #arena-overlay .raid-draft .panel-actions .raid-rite-trigger {
-    font-size: calc(11px * var(--text-scale, 1));
-  }
-  #arena-overlay .raid-draft .raid-rite-intro > span:first-child {
-    font-size: calc(10px * var(--text-scale, 1));
-  }
-  .raid-rite-reference {
-    padding: 10px 12px;
-  }
-  .raid-rite-reference > ul {
-    gap: 9px;
-  }
 }
 
-/* Buff figures belong to the illustrated payoff (shield, core, heart, etc.).
-   HTML figures stay crisp and readable instead of shrinking with SVG text. */
-#arena-overlay .raid-draft .panel-actions .raid-rite-icon--buff {
-  position: relative;
-  display: block;
-  width: 200px;
-  height: 145px;
-  overflow: visible;
-}
-#arena-overlay .raid-draft .raid-rite-icon--buff > svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-.raid-rite-icon--buff .raid-rite-buff-stat {
-  position: absolute;
-  top: 43%;
-  left: 46%;
-  width: 49.5%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1px;
-  color: #f2f7ff;
-  text-align: center;
-  white-space: nowrap;
-  text-shadow:
-    0 1px 4px #10182e,
-    0 0 8px #10182e;
-}
-.raid-rite-buff-value {
-  font:
-    800 calc(29px * var(--text-scale, 1))/1.05 "DM Sans",
-    sans-serif;
-  letter-spacing: -1px;
-  font-variant-numeric: tabular-nums;
-}
-.raid-rite-buff-unit {
-  font:
-    600 calc(11px * var(--text-scale, 1))/1.3 "DM Sans",
-    sans-serif;
-  color: var(--rite-color);
-}
-.raid-rite-icon--dual .raid-rite-buff-stat {
-  top: 56%;
-  left: 55%;
-  width: 40%;
-}
-.raid-rite-icon--dual .raid-rite-buff-stat--second {
-  left: 5%;
-}
 @media (orientation: landscape) and (max-height: 600px) {
-  .raid-rite-heading {
-    flex-direction: column;
-    gap: 5px;
-    width: 100%;
-  }
-  #arena-overlay .raid-draft .panel-actions .raid-rite-icon--buff {
-    width: 160px;
-    height: 116px;
-  }
-  .raid-rite-buff-value {
-    font-size: calc(24px * var(--text-scale, 1));
-  }
-  .raid-rite-buff-unit {
-    font-size: calc(10px * var(--text-scale, 1));
-  }
   #arena-overlay .raid-draft .panel-actions .raid-rite-copy {
     gap: 6px;
   }
 }
 @media (orientation: landscape) and (max-height: 350px) {
-  .raid-rite-heading {
-    flex-direction: row;
-    gap: 6px;
-  }
-  #arena-overlay .raid-draft .panel-actions .raid-rite-icon--buff {
-    width: 132px;
-    height: 96px;
-  }
-  #arena-overlay .raid-draft .panel-actions .raid-rite-heading > b {
-    max-width: 9ch;
-    font-size: calc(19px * var(--text-scale, 1));
-  }
-  .raid-rite-buff-value {
-    font-size: calc(22px * var(--text-scale, 1));
-  }
   #arena-overlay .raid-draft .panel-actions .raid-rite-copy {
     gap: 2px;
   }
@@ -13746,17 +12661,13 @@ body.battle-active.court-view #game canvas {
 }
 .spectator-copy small {
   color: #a6bad4;
-  font:
-    500 calc(10px * var(--text-scale, 1))/1.2 "DM Sans",
-    sans-serif;
+  font: 500 calc(10px * var(--text-scale, 1))/1.2 var(--font-body);
 }
 .spectator-copy b {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font:
-    700 calc(14px * var(--text-scale, 1))/1.3 "DM Sans",
-    sans-serif;
+  font: 700 calc(14px * var(--text-scale, 1))/1.3 var(--font-body);
 }
 body.pvp-knocked-out #mobile-controls .joystick-area,
 body.pvp-knocked-out #mobile-controls .touch-buttons,
@@ -14035,14 +12946,6 @@ body.battle-active.touch-mode.pvp-knocked-out #battle-menu {
   left: auto;
   right: calc(var(--safe-right) + 4px);
 }
-.practice-heading #practice-close {
-  width: 36px;
-  min-height: 36px;
-  padding: 2px;
-  margin-left: auto;
-  font-size: calc(22px * var(--text-scale, 1));
-  line-height: 1;
-}
 /* Ally HP sits in the left gutter below the boss, with no extra HUD row. */
 @media (orientation: landscape) {
   body.battle-active.touch-mode.battle-raid #raid-hud .raid-party-bars {
@@ -14178,16 +13081,6 @@ body.battle-active.touch-mode.pvp-knocked-out #battle-menu {
 }
 body.battle-active.touch-mode .battle-dock .practice-settings > summary {
   display: none;
-}
-.settings-quick-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin: 8px 0 12px;
-}
-.settings-quick-actions > button {
-  min-height: 44px;
 }
 
 /* One shared boss layout: name on the HP track, cue and Peril below on the right. */
@@ -14455,9 +13348,12 @@ body.battle-active:not(.touch-mode).battle-raid .raid-party-bars small {
   .touch-mode.battle-raid #raid-hud .raid-boss-heading > span {
     line-height: 12px;
   }
+  /* Left of the target button's column: on a squat screen there is no
+     room between the boss bar and the button (it tops the corner layout,
+     over skill 3). */
   body.battle-active.touch-mode.battle-raid
     :is(#raid-prism-controls, #raid-storm-targets):not([hidden]) {
-    right: calc(var(--safe-right) + 52px);
+    right: calc(var(--safe-right) + 72px);
   }
 }
 
@@ -14471,88 +13367,6 @@ body.battle-active:not(.touch-mode).battle-raid
   right: calc((100% - var(--desktop-arena-width, 100%)) / 2 + 8px);
   left: auto;
   transform: none;
-}
-#arena-overlay .raid-draft .panel-actions .raid-rite-icon--buff {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: min(200px, 100%);
-  height: auto;
-  gap: 8px;
-}
-#arena-overlay .raid-draft .raid-rite-icon--buff > svg {
-  width: 128px;
-  height: 96px;
-  filter: drop-shadow(0 3px 8px #0005);
-}
-.raid-rite-stats {
-  display: flex;
-  justify-content: center;
-  gap: 8px;
-  width: 100%;
-}
-.raid-rite-icon--buff .raid-rite-buff-stat {
-  position: static;
-  width: auto;
-  flex: 1;
-  min-width: 0;
-  padding: 6px 4px;
-  border-radius: 10px;
-  border: 1px solid color-mix(in srgb, var(--rite-color), transparent 65%);
-  background: #0c182dcc;
-  white-space: normal;
-}
-.raid-rite-buff-value {
-  font-size: calc(24px * var(--text-scale, 1));
-  letter-spacing: -0.5px;
-}
-.raid-rite-buff-unit {
-  font-size: calc(10px * var(--text-scale, 1));
-}
-#arena-overlay .raid-draft .raid-rite-heading {
-  align-items: center;
-  justify-content: center;
-}
-@media (orientation: landscape) and (max-height: 450px) {
-  #arena-overlay .raid-draft .raid-rite-icon--buff > svg {
-    width: 96px;
-    height: 72px;
-  }
-  #arena-overlay .raid-draft .panel-actions .raid-rite-icon--buff {
-    gap: 4px;
-  }
-  .raid-rite-buff-value {
-    font-size: calc(20px * var(--text-scale, 1));
-  }
-}
-@media (orientation: landscape) and (max-height: 450px) {
-  .raid-rite-buff-value {
-    font-size: calc(22px * var(--text-scale, 1));
-  }
-}
-@media (orientation: landscape) and (max-height: 350px) {
-  #arena-overlay .raid-draft .panel-actions .raid-rite-icon--buff {
-    display: grid;
-    grid-template-columns: 52px minmax(0, 1fr);
-    width: 138px;
-    gap: 4px;
-  }
-  #arena-overlay .raid-draft .raid-rite-icon--buff > svg {
-    width: 52px;
-    height: 48px;
-  }
-  .raid-rite-stats {
-    flex-direction: column;
-    gap: 2px;
-  }
-  .raid-rite-icon--buff .raid-rite-buff-stat {
-    padding: 2px;
-  }
-  #arena-overlay .raid-draft .panel-actions .raid-rite-heading > b {
-    max-width: 7ch;
-    font-size: calc(18px * var(--text-scale, 1));
-  }
 }
 
 /* Keep the boss health and name together, with the cue and Peril in the center. */
@@ -14617,41 +13431,6 @@ body.battle-active:not(.touch-mode)
     pointer-events: none;
   }
 }
-
-/* Raid boss roster showcase: a still boss portrait over a themed scene. */
-.raid-showcase-aura {
-  position: absolute;
-  inset: 14% 12% 8%;
-  border-radius: 50%;
-  background: radial-gradient(
-    ellipse,
-    color-mix(in srgb, var(--boss) 21%, transparent),
-    transparent 70%
-  );
-  filter: blur(8px);
-}
-.raid-showcase-sprite {
-  position: relative;
-  z-index: 1;
-  display: block;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  filter: drop-shadow(0 12px 13px #050a16a8);
-}
-.raid-showcase-ground {
-  position: absolute;
-  z-index: 0;
-  right: 18%;
-  bottom: 12%;
-  left: 18%;
-  height: 10px;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--boss) 36%, transparent);
-  filter: blur(12px);
-}
-
-/* Raise small Raid Hub labels so descriptions stay readable at normal zoom. */
 
 /* Keep the name, status and Peril in distinct cells on the same baseline. */
 body.battle-active.battle-raid #raid-hud .raid-callout,
@@ -14737,23 +13516,6 @@ button[data-raid-boss="prismatail"] .raid-splash-image {
   object-position: 60% 40%;
 }
 
-/* Keep the optional Practice shortcut beside the note on short screens. */
-@media (orientation: landscape) and (max-height: 500px) {
-  .settings-screen > .settings-quick-actions {
-    float: right;
-    margin: 0 0 8px 12px;
-  }
-  .settings-screen:has(> .settings-quick-actions) > .prefs-note {
-    display: flex;
-    align-items: center;
-    min-height: 44px;
-    margin: 0 0 8px;
-  }
-  .settings-screen > .prefs-grid {
-    clear: both;
-  }
-}
-
 /* Raid scenery fills the viewport; the camera keeps the fighting floor below HP. */
 body.battle-active:not(.touch-mode).battle-raid .arena-frame {
   width: 100cqw;
@@ -14795,8 +13557,6 @@ body.battle-active:not(.touch-mode).battle-raid .arena-frame {
     border-radius: 0;
   }
 }
-
-/* Raid Hub: independent boss navigation, scrollable details, persistent actions. */
 
 /* Mobile thumb arc: larger circles retain their original icon scale. */
 .touch-buttons
@@ -15309,11 +14069,9 @@ body.battle-raid.touch-mode #battle #raid-hud#raid-hud .raid-callout {
   animation: skill-press-denied 0.2s ease-in-out;
   box-shadow: inset 0 0 0 2px #ff5d6c99;
 }
-@media (prefers-reduced-motion: reduce) {
-  .press-ok,
-  .press-denied {
-    animation: none;
-  }
+:where(:root[data-motion="reduced"]) .press-ok,
+:where(:root[data-motion="reduced"]) .press-denied {
+  animation: none;
 }
 
 /* Ping badge: a small pill just left of the battle gear. */
@@ -15329,9 +14087,7 @@ body.battle-raid.touch-mode #battle #raid-hud#raid-hud .raid-callout {
   border-radius: 999px;
   background: #0b1222e6;
   color: #d6deec;
-  font:
-    700 calc(10px * var(--text-scale, 1))/14px "DM Sans",
-    sans-serif;
+  font: 700 calc(10px * var(--text-scale, 1))/14px var(--font-body);
   font-variant-numeric: tabular-nums;
   letter-spacing: 0;
   white-space: nowrap;
@@ -15417,55 +14173,6 @@ body #arena-overlay .raid-draft .panel-actions .raid-rite-copy {
   width: 100%;
   gap: 6px;
 }
-body #arena-overlay .raid-draft .panel-actions .raid-rite-heading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  width: 100%;
-}
-body #arena-overlay .raid-draft .panel-actions .raid-rite-icon--buff {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: 100%;
-  height: auto;
-  gap: 6px;
-  background: none;
-}
-body #arena-overlay .raid-draft .panel-actions .raid-rite-icon--buff > svg {
-  width: 96px;
-  height: 72px;
-}
-body #arena-overlay .raid-draft .panel-actions .raid-rite-stats {
-  justify-content: center;
-  gap: 6px;
-  width: auto;
-  max-width: 100%;
-}
-body
-  #arena-overlay
-  .raid-draft
-  .panel-actions
-  .raid-rite-icon--buff
-  .raid-rite-buff-stat {
-  flex: 0 1 auto;
-  min-width: 76px;
-  padding: 4px 8px;
-}
-body #arena-overlay .raid-draft .panel-actions .raid-rite-heading > b {
-  max-width: none;
-  font-size: calc(22px * var(--text-scale, 1));
-  line-height: 1.1;
-}
-body #arena-overlay .raid-draft .panel-actions .raid-rite-trigger {
-  font-size: calc(12px * var(--text-scale, 1));
-  line-height: 1.3;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 
 /* Landscape phones and short windows (up to 700px tall, where six full
    cards no longer fit above the timer): art and chips side by side. */
@@ -15477,38 +14184,8 @@ body #arena-overlay .raid-draft .panel-actions .raid-rite-trigger {
     padding: 7px 8px 6px;
     border-radius: 12px;
   }
-  body #arena-overlay .raid-draft .panel-actions .raid-rite-copy,
-  body #arena-overlay .raid-draft .panel-actions .raid-rite-heading {
+  body #arena-overlay .raid-draft .panel-actions .raid-rite-copy {
     gap: 2px;
-  }
-  body #arena-overlay .raid-draft .panel-actions .raid-rite-icon--buff {
-    flex-direction: row;
-    justify-content: center;
-    gap: 6px;
-  }
-  body #arena-overlay .raid-draft .panel-actions .raid-rite-icon--buff > svg {
-    flex: none;
-    width: 52px;
-    height: 39px;
-  }
-  body #arena-overlay .raid-draft .panel-actions .raid-rite-stats {
-    flex-direction: row;
-    gap: 4px;
-  }
-  body
-    #arena-overlay
-    .raid-draft
-    .panel-actions
-    .raid-rite-icon--buff
-    .raid-rite-buff-stat {
-    min-width: 0;
-    padding: 2px 6px;
-  }
-  body #arena-overlay .raid-draft .panel-actions .raid-rite-heading > b {
-    font-size: calc(17px * var(--text-scale, 1));
-  }
-  body #arena-overlay .raid-draft .panel-actions .raid-rite-trigger {
-    font-size: calc(11px * var(--text-scale, 1));
   }
 }
 /* Portrait phones: two columns. */
@@ -15517,30 +14194,10 @@ body #arena-overlay .raid-draft .panel-actions .raid-rite-trigger {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
-/* Short screens: the chapter tip was in the briefing a moment ago; the
-   six choices get its room. */
-@media (orientation: landscape) and (max-height: 560px) {
-  body #arena-overlay .raid-draft .raid-phase-objective {
-    display: none;
-  }
-}
 /* Very short screens: the one-line description lives in Rite details. */
 @media (orientation: landscape) and (max-height: 350px) {
-  body #arena-overlay .raid-draft .panel-actions .raid-rite-trigger {
-    display: none;
-  }
-  body #arena-overlay .raid-draft .panel-actions .raid-rite-heading > b {
-    font-size: calc(15px * var(--text-scale, 1));
-  }
   body #arena-overlay .raid-draft .panel-actions .raid-rite-options > button {
     padding: 4px 6px;
-  }
-  body #arena-overlay .raid-draft .panel-actions .raid-rite-icon--buff > svg {
-    width: 44px;
-    height: 33px;
-  }
-  body #arena-overlay .raid-draft .panel-actions .raid-rite-buff-value {
-    font-size: calc(20px * var(--text-scale, 1));
   }
   /* Teammates' picks show once you have chosen; its whole strip goes. */
   body #arena-overlay .raid-draft > .panel-scroll {
@@ -15719,10 +14376,8 @@ body.battle-active:not(.touch-mode)
     transform: rotate(360deg);
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .hub-world-spinner {
-    animation: none;
-  }
+:where(:root[data-motion="reduced"]) .hub-world-spinner {
+  animation: none;
 }
 
 /* Solo against a ★★★ boss: no self-revive (raid-solo.ts). */
@@ -15805,6 +14460,28 @@ body.battle-active:not(.touch-mode)
 /* (main.ts marks the overlay .is-reveal with the markup, in one step: a
    :has(> .match-reveal) rule here could apply a frame late in Safari, and
    the arena showed before the Reveal on the owner's iPhone.) */
+/* Solo test mode's cover while the arena loads (main.ts practiceLoading):
+   the whole screen, like the Reveal, a bar in the middle. */
+body.battle-active #arena-overlay.is-practice-loading:not(:empty) {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  padding: max(20px, var(--safe-top, 0px)) max(32px, var(--safe-right, 0px))
+    max(16px, var(--safe-bottom, 0px)) max(32px, var(--safe-left, 0px));
+  background: #070d1f;
+}
+.practice-loading {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  width: min(420px, 100%);
+}
+.practice-loading .rv-load {
+  width: 100%;
+  text-align: center;
+}
 body.battle-active:not(.battle-raid) #arena-overlay.is-reveal:not(:empty) {
   /* The whole screen, as a loading screen: not a panel over the arena. */
   position: fixed;
@@ -15868,9 +14545,7 @@ body.battle-active:not(.battle-raid) #arena-overlay.is-reveal:not(:empty) {
 }
 #arena-overlay .overlay-card.match-reveal > h2 {
   margin: 2px 0 10px;
-  font:
-    800 calc(38px * var(--text-scale, 1)) / 1 "Barlow Condensed",
-    sans-serif;
+  font: 800 calc(38px * var(--text-scale, 1)) / 1 var(--font-display);
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -15888,9 +14563,7 @@ body.battle-active:not(.battle-raid) #arena-overlay.is-reveal:not(:empty) {
 }
 .match-reveal .vs-mark {
   flex: none;
-  font:
-    800 calc(var(--rv-vs) * var(--text-scale, 1)) / 1 "Barlow Condensed",
-    sans-serif;
+  font: 800 calc(var(--rv-vs) * var(--text-scale, 1)) / 1 var(--font-display);
   color: #f7d780;
   letter-spacing: 0.02em;
   text-shadow:
@@ -15944,9 +14617,8 @@ body.battle-active:not(.battle-raid) #arena-overlay.is-reveal:not(:empty) {
   margin-top: 4px;
   overflow: hidden;
   color: #fff;
-  font:
-    800 calc(var(--rv-name) * var(--text-scale, 1)) / 1.05 "Barlow Condensed",
-    sans-serif;
+  font: 800 calc(var(--rv-name) * var(--text-scale, 1)) / 1.05
+    var(--font-display);
   letter-spacing: 0.03em;
   text-overflow: ellipsis;
   text-transform: uppercase;
@@ -16200,9 +14872,7 @@ body.battle-active:not(.battle-raid) #arena-overlay.is-reveal:not(:empty) {
 }
 .vs-back .vs-q {
   color: #8fa0c8;
-  font:
-    800 calc(var(--rv-art, 90px) * 0.6) / 1 "Barlow Condensed",
-    sans-serif;
+  font: 800 calc(var(--rv-art, 90px) * 0.6) / 1 var(--font-display);
 }
 .vs-back small {
   display: -webkit-box;
@@ -16246,13 +14916,11 @@ body.battle-active:not(.battle-raid) #arena-overlay.is-reveal:not(:empty) {
   animation-play-state: paused;
   animation-delay: 0ms;
 }
-@media (prefers-reduced-motion: reduce) {
-  .vs-back {
-    display: none;
-  }
-  .vs-flip > :not(.vs-back) {
-    animation: none;
-  }
+:where(:root[data-motion="reduced"]) .vs-back {
+  display: none;
+}
+:where(:root[data-motion="reduced"]) .vs-flip > :not(.vs-back) {
+  animation: none;
 }
 
 /* The countdown (3, 2, 1) before each round: the whole screen, edge to edge
@@ -16260,10 +14928,10 @@ body.battle-active:not(.battle-raid) #arena-overlay.is-reveal:not(:empty) {
    fighters in view, and one big number in the middle; no card (owner,
    19 Nov 2026: the card sat over the middle of the arena, and the shade
    stopped short of the screen's sides). main.ts marks the overlay
-   .is-countdown. Every mode's (owner, 20 Nov 2026): PvP, bot matches, the
-   raids and the Spire draw the same countdownCard (overlay.ts); the id is
-   doubled to win over the raids' touch rule, which keeps their other cards
-   inside the safe area. */
+   .is-countdown. */
+/* Raids and the Spire too (raid-ui.ts marks their overlay; owner, 20 Nov
+   2026): the doubled id beats the raid's touch rule that keeps its card
+   inside the notch insets. */
 body.battle-active #arena-overlay#arena-overlay.is-countdown:not(:empty) {
   position: fixed;
   inset: 0;
@@ -16308,18 +14976,231 @@ body.battle-active #arena-overlay#arena-overlay.is-countdown:not(:empty) {
 #arena-overlay.is-countdown .countdown-card > h2 {
   margin: 0;
   color: #fff;
-  font:
-    800 clamp(110px, 40vh, 240px) / 0.95 "Barlow Condensed",
-    sans-serif;
+  font: 800 clamp(110px, 40vh, 240px) / 0.95 var(--font-display);
   letter-spacing: 0.02em;
   text-shadow:
     0 0 32px color-mix(in srgb, var(--element, #f7d780) 55%, transparent),
     0 6px 24px #000d;
 }
-#arena-overlay.is-countdown .countdown-card > div {
+/* The line under the number: a div in PvP, a paragraph in raids and the
+   Spire (their objective, or the floor). */
+#arena-overlay.is-countdown .countdown-card > :is(div, p) {
   margin: 0;
   color: #eaf1ff;
   font-size: calc(16px * var(--text-scale, 1));
   font-weight: 700;
   text-shadow: 0 2px 10px #000e;
+}
+
+/* The raid clock on phones: the game's glass tint and gold rim (ui/aero.css
+   tokens), see-through rather than a solid box (owner, 20 Nov 2026), and no
+   blur: battles stay blur-free (aero.css: the court changes every frame, so
+   a blur would be redrawn every frame). The time's <b> drops aero.css's
+   solid battle fill: that rule's :is() counts "#hud.hud-badge #phase-label"
+   (two ids) on top of #battle, so this needs three (#app #battle #raid-hud)
+   to win. */
+@media (orientation: landscape) {
+  :root body.battle-active.touch-mode.battle-raid #raid-hud .raid-elapsed {
+    border: 1px solid var(--aero-rim);
+    border-radius: 7px;
+    background: var(--glass-thin);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  }
+  :root
+    body.battle-active.touch-mode.battle-raid
+    #app
+    #battle
+    #raid-hud
+    .raid-elapsed
+    b {
+    border: 0;
+    background: none;
+  }
+}
+
+/* Prismatail's icons are drawn (prismatail-controls.ts ICON), sized to the
+   label beside them on desktop. */
+#raid-prism-controls .prism-icon {
+  display: inline-grid;
+  place-items: center;
+}
+#raid-prism-controls .prism-icon svg {
+  display: block;
+  width: 1.15em;
+  height: 1.15em;
+}
+
+/* ── Contextual boss actions on phones (owner, 20 Nov 2026; moved and
+   both shown, 24 Nov 2026) ──
+   Prismatail's Turn mirror and Look away sit side by side in the court's
+   free top-right corner, left of the target button (mobile-input.ts
+   contextPair), both always showing. Turn mirror dims while no mirror is in
+   reach; Look away lights up while Glare winds up, with the wind-up as a
+   gold ring. Each icon is centred on its circle exactly (a drawn icon in a
+   box over the whole button). */
+.touch-buttons .touch-context {
+  position: absolute;
+  pointer-events: none;
+}
+body.battle-active.touch-mode.battle-raid
+  .touch-context
+  #raid-prism-controls.is-context:not([hidden]) {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  transform: none;
+  pointer-events: none;
+}
+body.battle-active.touch-mode.battle-raid
+  .touch-context
+  #raid-prism-controls.is-context
+  button {
+  position: relative;
+  display: block;
+  flex: none;
+  width: var(--ctx-size, 44px);
+  height: var(--ctx-size, 44px);
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  border: 2px solid #e5cc89;
+  border-radius: 50%;
+  background: #14223bf0;
+  color: #ffebaf;
+  font-size: 0;
+  pointer-events: auto;
+  transition:
+    opacity 0.15s ease-out,
+    box-shadow 0.15s ease-out;
+}
+/* Not a skill: no cooldown ring (.touch-buttons button::before). */
+body.battle-active.touch-mode.battle-raid
+  .touch-context
+  #raid-prism-controls.is-context
+  button::before {
+  content: none;
+}
+/* Turn mirror with no mirror in reach: still there, dimmed. */
+body.battle-active.touch-mode.battle-raid
+  .touch-context
+  #raid-prism-controls.is-context
+  button:not([data-ready]) {
+  opacity: 0.5;
+}
+body.battle-active.touch-mode.battle-raid
+  .touch-context
+  #raid-prism-controls.is-context
+  [data-prism-away]:not([data-ready]) {
+  opacity: 0.8;
+}
+body.battle-active.touch-mode.battle-raid
+  .touch-context
+  #raid-prism-controls.is-context
+  .prism-icon {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+body.battle-active.touch-mode.battle-raid
+  .touch-context
+  #raid-prism-controls.is-context
+  .prism-icon
+  svg {
+  width: 48%;
+  height: 48%;
+}
+body.battle-active.touch-mode.battle-raid
+  .touch-context
+  #raid-prism-controls.is-context
+  button::after {
+  content: attr(aria-label);
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 50%;
+  transform: translateX(-50%);
+  color: #fff4cf;
+  font: 700 calc(9px * var(--text-scale, 1)) / 1 var(--font-body);
+  white-space: nowrap;
+  text-shadow: 0 1px 2px #000;
+}
+body.battle-active.touch-mode.battle-raid
+  .touch-context
+  #raid-prism-controls.is-context
+  [data-prism-turn][data-ready] {
+  border-color: #8bf0cc;
+  box-shadow: 0 0 10px #8bf0cc66;
+}
+body.battle-active.touch-mode.battle-raid
+  .touch-context
+  #raid-prism-controls.is-context
+  [data-prism-away][data-ready] {
+  border-color: #ffd65b;
+  background: #3a2a10f0;
+  box-shadow: 0 0 14px #ffd65baa;
+  animation: glare-call 0.5s ease-in-out infinite alternate;
+}
+@keyframes glare-call {
+  to {
+    box-shadow: 0 0 22px #ffd65b;
+  }
+}
+/* Glare's wind-up: a gold ring round Look away that fills to the flash. */
+body.battle-active.touch-mode.battle-raid
+  .touch-context
+  #raid-prism-controls.is-context
+  [data-prism-away][data-ready]::before {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  background: conic-gradient(
+    #ffd65b calc(var(--charge, 0) * 360deg),
+    #ffffff26 0
+  );
+  -webkit-mask: radial-gradient(
+    farthest-side,
+    transparent calc(100% - 4px),
+    #000 calc(100% - 3px)
+  );
+  mask: radial-gradient(
+    farthest-side,
+    transparent calc(100% - 4px),
+    #000 calc(100% - 3px)
+  );
+}
+:where(:root[data-motion="reduced"])
+  body.battle-active.touch-mode.battle-raid
+  .touch-context
+  #raid-prism-controls.is-context
+  button[data-ready] {
+  animation: none;
+}
+
+/* Phones in a raid: the quick-chat button in the top-left corner, matching
+   the gear in the top-right (owner, 21 Nov 2026), and the boss's HUD keeps
+   the same 56px clear on both sides. Under them, the clock on the right and
+   the party's health list on the left (screens/raid-party.css) start at the
+   same height. The #battle-chat id outranks the rule that steps the button
+   down below a long party list. */
+@media (orientation: landscape) {
+  body.battle-active.touch-mode.battle-raid #raid-hud {
+    left: calc(var(--safe-left) + 56px);
+  }
+  body.battle-active.battle-raid.touch-mode #battle-chat[data-raid="true"] {
+    top: calc(var(--safe-top, 0px) + 4px);
+    left: calc(var(--safe-left, 0px) + 4px);
+  }
 }

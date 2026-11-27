@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
-import type {
-  FriendsBoard,
-  Leaderboard,
-  Rating,
+import {
+  RANK_TIERS,
+  type FriendsBoard,
+  type Leaderboard,
+  type Rating,
 } from "../../packages/shared/src/accounts";
 import {
   boardRow,
@@ -11,6 +12,9 @@ import {
   rankCard,
   rankProgress,
   ranksMarkup,
+  ranksView,
+  roadMarkup,
+  roadTiers,
   ratedSeasonCountdown,
   ratedSeasonEndsAt,
 } from "../../apps/client/src/screens/ranks-view";
@@ -21,9 +25,9 @@ const expert: Rating = {
   rating: 1110,
   matches: 62,
   peak: 1140,
-  rank: "Expert",
+  rank: "Flare III",
   placementLeft: 0,
-  next: { name: "Candidate Master", at: 1150 },
+  next: { name: "Flare II", at: 1140 },
 };
 const board = (extra: Partial<Leaderboard> = {}): Leaderboard => ({
   season: "2026-11",
@@ -33,7 +37,7 @@ const board = (extra: Partial<Leaderboard> = {}): Leaderboard => ({
     title: null,
     titleColor: null,
     rating: 1600 - i * 20,
-    rankName: "Grandmaster",
+    rankName: "Legend III",
     wins: 10,
     matches: 15,
     me: false,
@@ -47,9 +51,9 @@ const board = (extra: Partial<Leaderboard> = {}): Leaderboard => ({
 describe("your rank", () => {
   it("measures progress from your rank's floor to the next rank", () => {
     expect(rankProgress(expert)).toEqual({
-      value: 35,
-      max: 75,
-      text: "40 more for Candidate Master",
+      value: 5,
+      max: 35,
+      text: "30 more for Flare II",
     });
   });
   it("counts placement matches while you place", () => {
@@ -70,45 +74,121 @@ describe("your rank", () => {
       }).text,
     ).toBe("1 placement match to go");
   });
-  it("asks for #1 past the Legendary rating, and knows the top", () => {
-    expect(
-      rankProgress({
-        rating: 1600,
-        matches: 50,
-        rank: "International Grandmaster",
-        placementLeft: 0,
-        next: { name: "Legendary Grandmaster", at: 1550 },
-      }).text,
-    ).toBe("Reach #1 to become Legendary Grandmaster");
+  it("knows the top of the road", () => {
     expect(
       rankProgress({
         rating: 1700,
         matches: 50,
-        rank: "Legendary Grandmaster",
+        rank: "Legend II",
+        placementLeft: 0,
+        next: { name: "Legend I", at: 1750 },
+      }),
+    ).toEqual({ value: 25, max: 75, text: "50 more for Legend I" });
+    expect(
+      rankProgress({
+        rating: 1800,
+        matches: 50,
+        rank: "Legend I",
         placementLeft: 0,
         next: null,
       }).text,
-    ).toBe("Top of the ladder");
+    ).toBe("Top of the road");
   });
-  it("shows the badge, rating, best and the ladder with yours lit", () => {
+  it("shows the badge, rating, best, and the shield when you hold one", () => {
     const html = rankCard(expert);
-    expect(html).toContain('<b class="rk-rank">Expert</b>');
+    expect(html).toContain('<b class="rk-rank">Flare III</b>');
     expect(html).toContain("1,110");
-    expect(html).toContain("40 more for Candidate Master · best 1,140");
-    expect(html.match(/<li /g)?.length ?? 0).toBeGreaterThanOrEqual(10);
-    expect(html).toMatch(
-      /class="is-cur"[^>]*aria-current="true"><i aria-hidden="true"><\/i><span>Expert</,
-    );
+    expect(html).toContain("30 more for Flare II · best 1,140");
     expect(html).toContain("How ranks work");
-    // Placing: no rank lit yet.
+    expect(html).not.toContain('class="rk-shield"');
+    expect(rankCard({ ...expert, shield: true })).toContain(
+      'class="rk-shield"',
+    );
+    // Placing: no shield to show, whatever the reply says.
     expect(
       rankCard({
         rating: 1012,
         matches: 2,
         rank: "Unranked",
         placementLeft: 3,
+        shield: true,
       }),
-    ).not.toContain("is-cur");
+    ).not.toContain('class="rk-shield"');
+  });
+});
+
+describe("the rank road", () => {
+  it("marks your tier and step, and every tier under it as earned", () => {
+    const tiers = roadTiers(expert);
+    expect(tiers.map((t) => t.name)).toEqual(RANK_TIERS.map((t) => t.name));
+    expect(tiers.map((t) => t.earned)).toEqual([
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+    ]);
+    expect(tiers.filter((t) => t.current).map((t) => [t.name, t.step])).toEqual(
+      [["Flare", 0]],
+    );
+    expect(tiers.map((t) => [t.from, t.coins])).toEqual(
+      RANK_TIERS.map((t) => [t.floors[0], t.coins]),
+    );
+  });
+  it("keeps a tier reached once ticked: its title is still yours", () => {
+    const tiers = roadTiers(expert, ["Tempest", "Pupil"]);
+    expect(tiers.filter((t) => t.earned).map((t) => t.name)).toEqual([
+      "Sprout",
+      "Spark",
+      "Flare",
+      "Tempest",
+    ]);
+    // Still standing in Flare.
+    expect(tiers.find((t) => t.current)?.name).toBe("Flare");
+  });
+  it("stands nowhere while placing or unrated", () => {
+    for (const r of [
+      undefined,
+      { rating: 1300, matches: 2, rank: "Unranked", placementLeft: 3 },
+    ]) {
+      const tiers = roadTiers(r);
+      expect(tiers.some((t) => t.current || t.earned)).toBe(false);
+      expect(roadMarkup(r)).not.toContain("is-cur");
+    }
+  });
+  it("draws the road highest tier first, yours lit, with each reward", () => {
+    const html = roadMarkup({ ...expert, rating: 1150, rank: "Flare II" });
+    const names = [...html.matchAll(/class="rk-tier-name"><b>([^<]+)</g)].map(
+      (m) => m[1],
+    );
+    expect(names).toEqual([...RANK_TIERS].reverse().map((t) => t.name));
+    expect(html.match(/<li class="rk-tier/g)).toHaveLength(7);
+    expect(html).toMatch(
+      /<li class="rk-tier is-cur is-earned"[^>]*aria-current="true">.*?<b>Flare<\/b><span class="ui-tag is-new">You<\/span>/,
+    );
+    // Flare II: steps III and II lit, II yours; every step under Flare lit.
+    const flare = html.slice(html.indexOf("<b>Flare</b>"));
+    const marks = [...flare.matchAll(/<i class="([^"]*)"><b>(I+)<\/b>/g)]
+      .slice(0, 6)
+      .map((m) => [m[2], m[1]]);
+    expect(marks).toEqual([
+      ["III", "is-on"],
+      ["II", "is-on is-you"],
+      ["I", ""],
+      ["III", "is-on"],
+      ["II", "is-on"],
+      ["I", "is-on"],
+    ]);
+    // Every tier's coins, and the first tier's title alone.
+    for (const t of RANK_TIERS)
+      if (t.coins)
+        expect(html).toContain(
+          `${t.coins.toLocaleString("en-US")}<span class="sr-only"> coins`,
+        );
+    expect(html.match(/rk-reward-title/g)).toHaveLength(7);
+    expect(html.match(/aria-label="Earned"/g)).toHaveLength(3);
   });
 });
 
@@ -119,7 +199,7 @@ describe("the board", () => {
     expect(e.me).toMatchObject({
       place: 23,
       name: "tester",
-      rankName: "Expert",
+      rankName: "Flare III",
       rating: 1110,
       wins: 36,
       matches: 62,
@@ -136,7 +216,7 @@ describe("the board", () => {
           title: null,
           titleColor: null,
           rating: 1300,
-          rankName: "Master",
+          rankName: "Tempest III",
           wins: 5,
           matches: 6,
           me: true,
@@ -178,7 +258,7 @@ describe("the board", () => {
           place: 1,
           name: "Kai",
           rating: 1388,
-          rankName: "Grandmaster",
+          rankName: "Legend III",
           placementLeft: 0,
           wins: 14,
           matches: 22,
@@ -189,7 +269,7 @@ describe("the board", () => {
           place: 2,
           name: "tester",
           rating: 1110,
-          rankName: "Expert",
+          rankName: "Flare III",
           placementLeft: 0,
           wins: 36,
           matches: 62,
@@ -217,7 +297,7 @@ describe("the board", () => {
       boardRow({
         place,
         name: "N",
-        rankName: "Master",
+        rankName: "Tempest III",
         rating: 1,
         wins,
         matches,
@@ -240,7 +320,7 @@ describe("the board", () => {
       boardRow({
         place: 1,
         name: "<b>x</b>",
-        rankName: "Master",
+        rankName: "Tempest III",
         rating: 1,
         wins: 0,
         matches: 0,
@@ -252,6 +332,29 @@ describe("the board", () => {
 
 describe("the panel", () => {
   const data = { board: board(), friends: null, me: { name: "tester" } };
+  it("opens on the road, which needs no board to show", () => {
+    expect(ranksView()).toEqual({ scope: "road" });
+    const html = ranksMarkup({ scope: "road" }, data);
+    expect(html).toContain('aria-pressed="true" data-ui-scope="road"');
+    expect(html).toContain("data-ranks-road");
+    expect(html).not.toContain("rk-pin");
+    expect(html).toContain('<b class="rk-rank">Flare III</b>');
+    // Before the board arrives: the road, nobody standing on it yet.
+    const early = ranksMarkup(
+      { scope: "road" },
+      { board: null, friends: null, me: { name: "t" } },
+    );
+    expect(early).toContain("data-ranks-road");
+    expect(early).not.toContain("is-cur");
+    expect(early).not.toContain("Loading ranks");
+    // A tier reached before stays ticked from your titles.
+    expect(
+      ranksMarkup(
+        { scope: "road" },
+        { ...data, me: { name: "tester", titles: ["Nova"] } },
+      ).match(/aria-label="Earned"/g),
+    ).toHaveLength(4);
+  });
   it("switches Everyone / Friends and loads Friends when picked", () => {
     const html = ranksMarkup({ scope: "everyone" }, data);
     expect(html).toContain('aria-pressed="true" data-ui-scope="everyone"');

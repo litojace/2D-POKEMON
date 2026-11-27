@@ -18,6 +18,19 @@
  * and SERVER_HZ=<rate> runs the server's ticks at that real rate while the
  * phone keeps its exact 30 (docs/network-performance.md, section 15).
  *
+ * RAID=<boss id> (VARIANT=ascendant, HUMANS=2, RITES=footing,...) is a raid
+ * instead: you and HUMANS-1 raiders standing by, against the boss's own
+ * attacks, a third of the run in each chapter, the corrections counted per
+ * chapter. NO_RAID_CARRY=1 replays without stepRaidCarry (Tidelotl's
+ * Undertow, Bubble Prison and bubble roots left out of the prediction, as
+ * before 26 Nov 2026). DIAG=1 tags each "other" correction with the
+ * Tidelotl mechanic active at the time; DIAG=2 lists them one by one.
+ * Measured 26 Nov 2026 (180 s, 33 ms each way): Tidelotl went from about
+ * 150 "other" corrections a minute to 2-4, and Lumiwick's 1-3 (each a
+ * 140-220 px Wing Gust or Snuffing Gale) to 0; the other five bosses 0-0.3
+ * (network-performance.md, section 22). NO_RAID_CARRY=1 also leaves out
+ * Lumiwick's blows.
+ *
  * Measured 11 Nov 2026 (120 s, 33 ms each way, as an iPhone on school
  * Wi-Fi with a 67 ms ping): 30-50 corrections a minute, every one a
  * knockback or a status that landed (the phone cannot know a hit is coming).
@@ -27,6 +40,9 @@
  */
 import { Arena } from "../../apps/server/src/simulation.js";
 import { BotBrain, type BotDifficulty } from "../../apps/server/src/bot.js";
+import { createRaidArena } from "../../apps/server/src/raid-bosses.js";
+import type { RaidBossId } from "../../packages/shared/src/raid-roster.js";
+import type { RaidVariant } from "../../packages/shared/src/raid-ascendant.js";
 import {
   CHARACTERS,
   RULES,
@@ -46,7 +62,10 @@ import {
   carryCurrent,
   newestStep,
   predictFighter,
+  raidCarry,
   serverSteps,
+  stepRaidCarry,
+  type RaidCarry,
 } from "../../apps/client/src/predict-fighter.js";
 import {
   correctionCause,
@@ -97,6 +116,10 @@ class Link<T> {
 
 export interface Correction extends CorrectionReason {
   px: number;
+  /** A raid's chapter (1-3) when the snapshot arrived. */
+  chapter?: number;
+  /** DIAG=2: your fighter's state on the server then. */
+  note?: string;
 }
 /**
  * A hit on you, measured as the phone measures it (battle-perf hitsFar:
@@ -146,28 +169,60 @@ export function simulateCorrections(o: {
    * reading before 20 Nov 2026).
    */
   hitLead?: "estimate" | "lead";
+  /**
+   * A raid on this boss instead of a duel: you and `humans - 1` more
+   * raiders (they stand still) against the boss's own attacks. The boss is
+   * held in each chapter for a third of the run, then taken to the next.
+   */
+  raid?: RaidBossId;
+  variant?: RaidVariant;
+  humans?: number;
+  /** Raid rites you hold (the boss's own leads every offer). */
+  rites?: string[];
+  /** Replay without stepRaidCarry (the Undertow and Bubble Prison left out, before 26 Nov 2026). */
+  noRaidCarry?: boolean;
 }) {
   const seconds = o.seconds ?? 120;
   const random = rng(o.seed ?? 11);
-  const arena = new Arena("CORSIM", o.mode ?? "duel");
+  const arena = o.raid
+    ? createRaidArena("CORSIM", o.raid, { variant: o.variant })
+    : new Arena("CORSIM", o.mode ?? "duel");
   const me = arena.add("me", "Me", o.me ?? "tidefin");
-  const others = Array.from({ length: Math.max(1, o.bots ?? 1) }, (_, i) => {
-    const id = i ? `bot${i}` : "bot";
-    const pick = i
-      ? (Object.keys(CHARACTERS) as CharacterId[])[
-          (i * 7) % Object.keys(CHARACTERS).length
-        ]
-      : (o.bot ?? "cindrake");
-    const f = arena.add(id, `Bot ${i}`, pick);
-    if (!o.noBot)
-      arena.bots.set(id, new BotBrain(id, o.level ?? "normal", 4242 + i));
-    return f;
-  });
-  const bot = others[0];
+  const raiders = o.raid
+    ? Array.from({ length: Math.max(0, (o.humans ?? 2) - 1) }, (_, i) =>
+        arena.add(
+          `raider${i + 1}`,
+          `Raider ${i + 1}`,
+          (Object.keys(CHARACTERS) as CharacterId[])[(i * 5 + 3) % 18],
+        ),
+      )
+    : [];
+  const others = o.raid
+    ? []
+    : Array.from({ length: Math.max(1, o.bots ?? 1) }, (_, i) => {
+        const id = i ? `bot${i}` : "bot";
+        const pick = i
+          ? (Object.keys(CHARACTERS) as CharacterId[])[
+              (i * 7) % Object.keys(CHARACTERS).length
+            ]
+          : (o.bot ?? "cindrake");
+        const f = arena.add(id, `Bot ${i}`, pick);
+        if (!o.noBot)
+          arena.bots.set(id, new BotBrain(id, o.level ?? "normal", 4242 + i));
+        return f;
+      });
   if (o.arena) arena.arenaId = o.arena;
   arena.start();
   arena.phase = "playing";
   arena.deadline = 1e9;
+  const boss = o.raid ? arena.players.find((p) => p.raidBoss) : undefined;
+  // Rites you picked (RITES=footing,...): the server plays them on you.
+  if (o.raid && o.rites?.length)
+    (
+      arena as unknown as { raid: { rites: Record<string, string[]> } }
+    ).raid.rites.me = o.rites;
+  const bot = boss ?? others[0];
+  const maxHp = boss?.hp ?? 0;
   const up = new Link<Input>(
     o.latency ?? 33,
     o.jitter ?? 4,
@@ -192,6 +247,16 @@ export function simulateCorrections(o: {
     dx = 0,
     dy = 0;
   const corrections: Correction[] = [];
+  let carry: RaidCarry | undefined;
+  const isRaid = !!o.raid;
+  // main.ts predict(): what Tidelotl does to you, then your input.
+  const step = (input: Input, time: number) =>
+    predictFighter(
+      local!,
+      o.noRaidCarry ? input : stepRaidCarry(local!, carry, input, time),
+      time,
+      isRaid,
+    );
   let snapshots = 0,
     pendingSum = 0;
   // The hit-gap reading (main.ts measureHitGap): your fighter as drawn
@@ -215,6 +280,20 @@ export function simulateCorrections(o: {
       // (A knockout would end the round and reset both to their spawns.)
       me.hp = 100_000;
       for (const f of others) f.hp = 100_000;
+      for (const f of raiders) f.hp = 100_000;
+      if (boss) {
+        // A third of the run in each chapter: above 67%, above 33%, then low.
+        const part = Math.min(
+          2,
+          Math.floor((3 * serverClock) / (seconds * 1000)),
+        );
+        const [floor, ceiling] = [
+          [0.75, 1],
+          [0.4, 0.6],
+          [0.1, 0.3],
+        ][part];
+        boss.hp = Math.min(Math.max(boss.hp, maxHp * floor), maxHp * ceiling);
+      }
       if (o.fullUlt) bot.ult = RULES.ultMax;
       arena.tick();
       for (const e of arena.events)
@@ -239,10 +318,16 @@ export function simulateCorrections(o: {
       pendingSum += pending.length;
       local = structuredClone(server);
       if (!o.noCarry) carryCurrent(local, state.time);
+      carry = raidCarry(
+        server,
+        state.raid,
+        state.players.find((p) => p.raidBoss),
+        state.time,
+      );
       held = server.held ?? 0;
       timeline.snapshot(Math.max(0, pending.length - held), now);
       for (const { input, tick } of serverSteps(pending, held))
-        predictFighter(local, input, state.time + tick / RULES.tick, false);
+        step(input, state.time + tick / RULES.tick);
       for (const e of state.events) {
         if (e.kind !== "hit" || e.target !== "me") continue;
         const lead =
@@ -261,8 +346,37 @@ export function simulateCorrections(o: {
       if (px <= 4) continue;
       const was = previous?.players.find((p) => p.id === "me");
       // The same reading the game makes on the phone (battle-perf).
+      const u = (state.raid as { undertow?: { until: number } } | undefined)
+        ?.undertow;
+      const tide = state.raid as Record<string, unknown> | undefined;
       corrections.push({
         px,
+        chapter: state.raid?.phase,
+        note:
+          process.env.DIAG === "2"
+            ? `at ${server.x.toFixed(0)},${server.y.toFixed(0)} statuses [${server.statuses.map((x) => x.kind).join(",")}] jump ${server.jumpUntil > state.time} dash ${server.dashUntil > state.time} vx ${server.vx.toFixed(0)} vy ${server.vy.toFixed(0)} events [${[...new Set(state.events.map((e) => e.kind))].join(",")}]`
+            : undefined,
+        ...(process.env.DIAG
+          ? {
+              diag:
+                [
+                  u && u.until > state.time ? "undertow" : "",
+                  (tide?.waves as unknown[] | undefined)?.length ? "waves" : "",
+                  ((tide?.floodUntil as number | undefined) ?? 0 > state.time)
+                    ? "flood"
+                    : "",
+                  (tide?.bubbles as unknown[] | undefined)?.length
+                    ? "bubbles"
+                    : "",
+                  tide?.hightide ? "hightide" : "",
+                  (tide?.prisons as unknown[] | undefined)?.length
+                    ? "prison"
+                    : "",
+                ]
+                  .filter(Boolean)
+                  .join("+") || "none",
+            }
+          : {}),
         ...correctionCause(server, was, state.events, state.time),
       });
     }
@@ -279,7 +393,7 @@ export function simulateCorrections(o: {
         dx = random() < 0.15 ? 0 : Math.cos(a);
         dy = dx === 0 ? 0 : Math.sin(a);
       }
-      const target = state.players.find((p) => p.id === "bot")!;
+      const target = state.players.find((p) => p.id === bot.id)!;
       // A player presses a skill now and then, and the basic often.
       const skill =
         !o.noSkill && random() < 0.03 ? Math.floor(random() * 3) : -1;
@@ -298,13 +412,7 @@ export function simulateCorrections(o: {
       pending.push(input);
       if (pending.length > 90) pending.shift();
       const next = newestStep(pending, held);
-      if (next)
-        predictFighter(
-          local,
-          next.input,
-          state.time + next.tick / RULES.tick,
-          false,
-        );
+      if (next) step(next.input, state.time + next.tick / RULES.tick);
     }
     // The scene eases your drawn fighter onto the prediction (main.ts).
     drawn ??= { x: local.x, y: local.y };
@@ -348,6 +456,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     arena: (process.env.ARENA as ArenaId | undefined) || undefined,
     serverHz: Number(process.env.SERVER_HZ ?? RULES.tick),
     hitLead: process.env.HIT_LEAD === "lead" ? "lead" : "estimate",
+    raid: (process.env.RAID as RaidBossId | undefined) || undefined,
+    variant: (process.env.VARIANT as RaidVariant | undefined) || undefined,
+    humans: Number(process.env.HUMANS ?? 2),
+    rites: process.env.RITES ? process.env.RITES.split(",") : undefined,
+    noRaidCarry: process.env.NO_RAID_CARRY === "1",
   });
   const by = new Map<string, Correction[]>();
   for (const c of corrections) {
@@ -364,6 +477,27 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       `${String(list.length).padStart(5)}  median ${px[Math.floor(px.length / 2)].toFixed(0)} px, max ${px.at(-1)!.toFixed(0)} px  ${key}`,
     );
   }
+  if (process.env.DIAG) {
+    const tally = new Map<string, number>();
+    for (const c of corrections as (Correction & { diag?: string })[])
+      if (c.cause === "other")
+        tally.set(c.diag ?? "?", (tally.get(c.diag ?? "?") ?? 0) + 1);
+    console.log("other, by what was active:", Object.fromEntries(tally));
+    if (process.env.DIAG === "2")
+      for (const c of corrections as (Correction & { diag?: string })[])
+        if (c.cause === "other")
+          console.log(
+            `  other ${c.px.toFixed(1)} px, chapter ${c.chapter}, ${c.diag}${c.detail ? `, hits ${c.detail}` : ""}${c.note ? `, ${c.note}` : ""}`,
+          );
+  }
+  if (corrections.some((c) => c.chapter !== undefined))
+    for (const chapter of [1, 2, 3]) {
+      const list = corrections.filter((c) => c.chapter === chapter);
+      const causes = ["hit", "status", "move", "other"].map(
+        (k) => `${k} ${list.filter((c) => c.cause === k).length}`,
+      );
+      console.log(`chapter ${chapter}: ${list.length} (${causes.join(", ")})`);
+    }
   const far = (k: "gap" | "aligned") =>
     hits.filter((h) => h[k] > HIT_GAP_PX).length;
   console.log(

@@ -40,7 +40,68 @@ export const PLAZA = {
   /** Free treats a Pacific day (migration 20261119190000_remove_farm_bistro_leaves). */
   treatsDaily: 10,
 } as const;
-/** The treats, thrown in this order through the day (the database's list). */
+/**
+ * Gift boxes (owner, 23 Nov 2026), in place of the treats: tossed ahead of
+ * you, a box flies, lands and bursts open, and its orbs spill out for
+ * everyone else nearby to catch (each counts toward the orbs quest, under
+ * its caps; the thrower can't catch their own). Where they come from:
+ * `freeDaily` a Pacific day, one more for each Plaza quest done today, and
+ * one for each Rare or Legendary fish caught today (at most `fishDaily`).
+ * Must match migration 20261123120000_plaza_gifts.sql.
+ */
+export const PLAZA_GIFT = {
+  freeDaily: 3,
+  perQuest: 1,
+  fishDaily: 3,
+  /** Fish of these rarities earn a box. */
+  fishRarities: ["rare", "legendary"] as readonly string[],
+  /** At most one toss this often (s). */
+  throwSeconds: 1.5,
+  /** Where it lands: this far ahead of you (px, kept on open ground). */
+  reach: 170,
+  /** Its flight and the moment it opens after landing (ms). */
+  flightMs: 750,
+  openMs: 300,
+  /** The orbs it spills, and how far they fly from the box (px). */
+  orbs: 4,
+  goldenOrbs: 8,
+  spill: 80,
+  /** How often a box is golden: more orbs, a bigger burst. */
+  goldenChance: 0.1,
+  /** Orbs lie this long before they fade (ms after the toss). */
+  lastsMs: 14_000,
+} as const;
+/** Gift boxes a player may still toss today. */
+export function plazaGiftsLeft(
+  questsDone: number,
+  fish: number,
+  thrown: number,
+) {
+  return Math.max(
+    0,
+    PLAZA_GIFT.freeDaily +
+      questsDone * PLAZA_GIFT.perQuest +
+      Math.min(fish, PLAZA_GIFT.fishDaily) -
+      thrown,
+  );
+}
+/** A gift box in flight or open: who tossed it (profile id), from and to,
+ * when, golden or not, and its orbs still lying there ([id, x, y]). */
+export interface PlazaGift {
+  id: number;
+  by: number;
+  x0: number;
+  y0: number;
+  x: number;
+  y: number;
+  at: number;
+  golden: boolean;
+  orbs: [number, number, number][];
+}
+/** Orbs gone from a gift box: [gift id, orb id, who caught it (0 = nobody)]. */
+export type PlazaGiftGone = [number, number, number][];
+/** The treats, thrown in this order through the day (the database's list).
+ * Before the gift boxes; kept for the database's old treat functions. */
 export const PLAZA_TREATS = [
   { id: "candy", name: "a candy", color: "#ff6fae" },
   { id: "cupcake", name: "a cupcake", color: "#ffb3d1" },
@@ -62,7 +123,20 @@ export interface PlazaTreat {
 }
 
 export const PLAZA_SQUARE = { x: 1350, y: 900, rx: 372, ry: 246 } as const;
-export const PLAZA_FOUNTAIN = { x: 1350, y: 892, rx: 118, ry: 74 } as const;
+/**
+ * The fountain's basin as drawn (plaza-scene.ts drawFountain): its
+ * rim, an ellipse round (x, y), and a wall `wall` px tall below it, so its
+ * foot on the ground is the same ellipse `wall` px lower. Bodies keep out of
+ * both (PLAZA_OBSTACLES[0]); before, a smaller ellipse let feet stand on the
+ * rim and in the water.
+ */
+export const PLAZA_FOUNTAIN = {
+  x: 1350,
+  y: 892,
+  rx: 126,
+  ry: 80,
+  wall: 24,
+} as const;
 export const PLAZA_STAGE = { x0: 1140, x1: 1560, y0: 340, y1: 450 } as const;
 export const PLAZA_WALK = { x0: 1300, x1: 1400, y0: 450, y1: 612 } as const;
 export const PLAZA_LED = { x0: 1130, x1: 1570, y0: 150, y1: 300 } as const;
@@ -83,6 +157,19 @@ export const PLAZA_TRACK = {
   ri: [262, 168],
 } as const;
 export const PLAZA_POND = { x: 2210, y: 1450, rx: 220, ry: 118 } as const;
+/**
+ * The fishing dock: planks from the pond's west bank out over the water
+ * (drawn by plaza-fishing.ts). Feet may stand on it (`walk`, plazaCollide),
+ * and Fish walks you to `stand`, near its end, facing the water.
+ */
+export const PLAZA_DOCK = {
+  x0: 1966,
+  x1: 2072,
+  y0: 1398,
+  y1: 1436,
+  walk: { x1: 2056, y0: 1408, y1: 1432 },
+  stand: { x: 2038, y: 1427 },
+} as const;
 export const PLAZA_GATE = { x: 1350, y: 1600 } as const;
 export const PLAZA_PADS: readonly (readonly [number, number])[] = [
   [1145, 765],
@@ -239,7 +326,6 @@ export const PLAZA_HOUSES: readonly {
       sd: 2,
       w: 140,
       windows: 1,
-      sign: { t: "STUDIO", bg: "#2a1f4c" },
     },
   },
   {
@@ -257,7 +343,6 @@ export const PLAZA_HOUSES: readonly {
       sd: 4,
       w: 150,
       windows: 1,
-      sign: { t: "BAKERY", bg: "#7a3a1a" },
     },
   },
   {
@@ -290,8 +375,7 @@ export const PLAZA_TREES: readonly { x: number; y: number; kind: string }[] = (
     [1800, 210, "cherry"],
     [2660, 600, "pine"],
     [2660, 1280, "mint"],
-    [2520, 1520, "autumn"],
-    [1880, 1530, "round"],
+    [2600, 1560, "autumn"],
     [930, 1180, "apple"],
     [1810, 1240, "orange"],
     [2655, 920, "pine"],
@@ -628,10 +712,61 @@ export const PLAZA_BENCHES: readonly { x: number; y: number }[] = [
   { x: 990, y: 680 },
   { x: 1710, y: 680 },
 ];
+/**
+ * Things by the fishing dock (drawn by the client: gfx rodRack, bucket,
+ * tackleBox, reeds, rowboat). `r`: a footprint nobody walks through (reeds stand on
+ * the pond's rim, which nobody walks on anyway).
+ */
+export const PLAZA_DECOR: readonly {
+  x: number;
+  y: number;
+  kind:
+    | "rodrack"
+    | "bucket"
+    | "tackle"
+    | "reeds"
+    | "rowboat"
+    | "chalkboard"
+    | "parasol"
+    | "pot";
+  r: number;
+  /** Squashes the footprint (a long thing seen at a slant). */
+  sy?: number;
+  seed?: number;
+}[] = [
+  { x: 1872, y: 1492, kind: "rodrack", r: 26 },
+  { x: 1745, y: 1500, kind: "rowboat", r: 50, sy: 2.4 },
+  { x: 1914, y: 1500, kind: "tackle", r: 18 },
+  { x: 1952, y: 1494, kind: "bucket", r: 12 },
+  { x: 1992, y: 1520, kind: "reeds", r: 0, seed: 1 },
+  { x: 2036, y: 1556, kind: "reeds", r: 0, seed: 2 },
+  { x: 1996, y: 1350, kind: "reeds", r: 0, seed: 3 },
+  // Volt Boba: its chalkboard (what it gives, for free) and a café table in
+  // the shade, south of the truck, just off the paths.
+  // (Wider since its board grew to fit its words: its legs stand ±30 px.)
+  { x: 1790, y: 614, kind: "chalkboard", r: 22, sy: 1.6 },
+  { x: 1885, y: 630, kind: "parasol", r: 22, sy: 1.6 },
+  // A pot of flowers either side of each house's door (where nobody can
+  // stand: the house keeps everyone a step away).
+  ...PLAZA_HOUSES.flatMap((h, i) =>
+    [-1, 1].map((side) => ({
+      x: h.x + side * 40,
+      y: h.y + 6,
+      kind: "pot" as const,
+      r: 0,
+      seed: i * 2 + (side > 0 ? 1 : 0),
+    })),
+  ),
+];
 const SCATTER = scatter();
-/** Benches and lamps, as round footprints scattered scenery keeps clear of. */
+/** Benches, decor and lamps, as round footprints scattered scenery keeps clear of. */
 const FIXTURES = [
   ...PLAZA_BENCHES.map((b) => ({ x: b.x, y: b.y, size: 100 })),
+  ...PLAZA_DECOR.map((d) => ({
+    x: d.x,
+    y: d.y,
+    size: Math.max(70, d.r * 2 + 40),
+  })),
   ...PLAZA_LAMPS.map((l) => ({ x: l.x, y: l.y, size: 24 })),
 ];
 export const PLAZA_BUSHES = settle(SCATTER.bushes, FIXTURES);
@@ -653,9 +788,29 @@ export interface PlazaObstacle {
   sy?: number;
 }
 export const PLAZA_OBSTACLES: readonly PlazaObstacle[] = [
-  { x: PLAZA_FOUNTAIN.x, y: PLAZA_FOUNTAIN.y, r: 100, sy: 1.6 },
+  // The basin's rim and its foot (PLAZA_FOUNTAIN): an ellipse from the rim's
+  // far edge to the wall's near foot, a few px clear all round.
+  (() => {
+    const F = PLAZA_FOUNTAIN,
+      top = F.y - F.ry - 4,
+      bottom = F.y + F.wall + F.ry + 4,
+      rx = F.rx + 6,
+      ry = (bottom - top) / 2;
+    return {
+      x: F.x,
+      y: (top + bottom) / 2,
+      r: rx - PLAZA.radius,
+      sy: rx / ry,
+    };
+  })(),
   ...PLAZA_TREES.map((t) => ({ x: t.x, y: t.y, r: 22 })),
   ...PLAZA_LAMPS.map((l) => ({ x: l.x, y: l.y, r: 9 })),
+  ...PLAZA_DECOR.filter((d) => d.r).map((d) => ({
+    x: d.x,
+    y: d.y - 2,
+    r: d.r,
+    sy: 1.6,
+  })),
   ...PLAZA_BENCHES.map((b) => ({ x: b.x, y: b.y - 6, r: 40, sy: 3 })),
   ...PLAZA_BUSHES.map((b) => ({ x: b.x, y: b.y - 4, r: 26, sy: 1.6 })),
   ...PLAZA_ROCKS.map((b) => ({ x: b.x, y: b.y - 4, r: 16, sy: 1.6 })),
@@ -676,9 +831,13 @@ export function plazaCollide(b: { x: number; y: number }) {
       dy = (b.y - o.y) * sy,
       d = Math.hypot(dx, dy),
       m = o.r + R;
-    if (d < m && d > 0) {
-      b.x = o.x + (dx / d) * m;
-      b.y = o.y + ((dy / d) * m) / sy;
+    if (d < m) {
+      // Right on its centre: out the front (no way is better than another).
+      if (d === 0) b.y = o.y + m / sy;
+      else {
+        b.x = o.x + (dx / d) * m;
+        b.y = o.y + ((dy / d) * m) / sy;
+      }
     }
   }
   if (
@@ -694,6 +853,14 @@ export function plazaCollide(b: { x: number; y: number }) {
   if (b.y > PLAZA_GATE.y + 30) b.y = PLAZA_GATE.y + 30;
   const P = PLAZA_POND;
   if (((b.x - P.x) / P.rx) ** 2 + ((b.y - P.y) / P.ry) ** 2 < 1) {
+    // On the dock (or stepping off its sides): kept on its planks.
+    const D = PLAZA_DOCK,
+      W = D.walk;
+    if (b.x <= W.x1 + 24 && b.y >= W.y0 - 24 && b.y <= W.y1 + 24) {
+      b.x = Math.min(b.x, W.x1);
+      b.y = Math.max(W.y0, Math.min(W.y1, b.y));
+      return b;
+    }
     const a = Math.atan2((b.y - P.y) / P.ry, (b.x - P.x) / P.rx);
     b.x = P.x + Math.cos(a) * P.rx;
     b.y = P.y + Math.sin(a) * P.ry;
@@ -802,6 +969,43 @@ export function plazaStick(x: unknown, y: unknown) {
   }
   return { x: dx, y: dy };
 }
+/**
+ * When a hurdle trips you: within `band` px of its line and lower than `low`
+ * px. The browser trips you by these (it is what you see); the server, for a
+ * player whose inputs are timed, by the narrower PLAZA_HURDLE_LENIENT, and
+ * trips you itself only on a hurdle you plainly didn't jump: a jump the
+ * browser just cleared then never trips the server's copy of you a few px
+ * or ms off (which stood you still on the server while your screen ran on,
+ * and pulled you back: the halt after a good jump). A trip of the browser's
+ * own comes to the server as a timed "trip" input (plazaTrip).
+ */
+export const PLAZA_HURDLE = { band: 12, low: 16 } as const;
+export const PLAZA_HURDLE_LENIENT = { band: 6, low: 8 } as const;
+export type PlazaHurdleRule = { readonly band: number; readonly low: number };
+/** How near a hurdle's line a trip the browser reports may be (px). */
+export const PLAZA_TRIP_REACH = 40;
+/** The nearest hurdle's distance from a point (px). */
+export function hurdleDistance(x: number, y: number) {
+  let d = Infinity;
+  for (const [a, b] of PLAZA_HURDLE_SEGMENTS)
+    d = Math.min(d, segmentDistance(x, y, a, b));
+  return d;
+}
+/**
+ * Trip `b` with `left` seconds of stumbling still to go (the browser's own
+ * trip, reported): false when it isn't near a hurdle or already stumbling.
+ */
+export function plazaTrip(b: PlazaBody, left: number = PLAZA.stunSeconds) {
+  if (!Number.isFinite(left) || b.stun > 0) return false;
+  if (hurdleDistance(b.x, b.y) > PLAZA_TRIP_REACH) return false;
+  b.stun = Math.max(0, Math.min(PLAZA.stunSeconds, left));
+  b.stumbled = true;
+  b.dash = 0;
+  b.air = 0;
+  b.z = 0;
+  b.speed = b.vx = b.vy = 0;
+  return true;
+}
 export interface PlazaStepEvents {
   /** A bounce pad threw the body up (pad index). */
   bounced?: number;
@@ -819,6 +1023,7 @@ export function plazaStep(
   b: PlazaBody,
   dir: { x: number; y: number },
   dt: number,
+  hurdle: PlazaHurdleRule = PLAZA_HURDLE,
 ): PlazaStepEvents {
   dt = Math.min(Math.max(dt, 0), 0.1);
   const events: PlazaStepEvents = {};
@@ -893,7 +1098,9 @@ export function plazaStep(
     }
   }
   const trip =
-    hd < 12 && !b.stumbled ? hurdleTrip(b, hit!, ox, oy, oAir, dt) : undefined;
+    hd < hurdle.band && !b.stumbled
+      ? hurdleTrip(b, hit!, ox, oy, oAir, dt, hurdle)
+      : undefined;
   if (trip !== undefined) {
     // Fall where and when you reached the hurdle, not a whole step past it:
     // the rest of the step counts as stumbling.
@@ -902,6 +1109,9 @@ export function plazaStep(
     b.stun = PLAZA.stunSeconds - (1 - trip) * dt;
     b.stumbled = true;
     b.dash = 0;
+    // Down you go: a trip in the air doesn't hang there while you stumble.
+    b.air = 0;
+    b.z = 0;
     events.tripped = true;
   }
   if (hd > 30) b.stumbled = false;
@@ -910,8 +1120,8 @@ export function plazaStep(
 
 /**
  * When in this step (0..1) the body trips over hurdle `h`, or undefined if it
- * clears it: the first moment it is both within 12 px of the hurdle and
- * lower than 16 px. Worked out exactly rather than at the step's end, so the
+ * clears it: the first moment it is both within `band` px of the hurdle and
+ * lower than `low` px (PLAZA_HURDLE). Worked out exactly rather than at the step's end, so the
  * server's 20 steps a second and the browser's 60 frames trip (or clear)
  * alike, even on a late jump.
  */
@@ -922,31 +1132,34 @@ function hurdleTrip(
   oy: number,
   oAir: number,
   dt: number,
+  { band, low }: PlazaHurdleRule,
 ) {
   const len = Math.hypot(p1.x - p0.x, p1.y - p0.y),
     side = (px: number, py: number) =>
       ((p1.x - p0.x) * (py - p0.y) - (p1.y - p0.y) * (px - p0.x)) / len,
     s0 = side(ox, oy),
     s1 = side(b.x, b.y);
-  // The part of the step within 12 px of the hurdle's line.
-  let r0 = 0,
-    r1 = 1;
-  if (s1 !== s0) {
-    const ra = (-12 - s0) / (s1 - s0),
-      rb = (12 - s0) / (s1 - s0);
-    r0 = Math.max(0, Math.min(ra, rb));
-    r1 = Math.min(1, Math.max(ra, rb));
-  } else if (Math.abs(s0) >= 12) return undefined;
+  // Only on the way to its line: once you are over it you have cleared it,
+  // however low you come down (owner, 25 Nov: an early jump landed just past
+  // the bar, tripped there and hung in the air, the halt after a good jump).
+  // Standing still, or moving away from the line, never trips.
+  if (Math.abs(s1) >= Math.abs(s0) && Math.sign(s1) === Math.sign(s0))
+    return undefined;
+  // The part of the step within `band` px of the line, up to the line.
+  const ra = (-band - s0) / (s1 - s0),
+    rb = (band - s0) / (s1 - s0),
+    r0 = Math.max(0, Math.min(ra, rb)),
+    r1 = Math.min(1, Math.max(ra, rb), s0 / (s0 - s1));
   if (r0 > r1) return undefined;
   const height = (r: number) => {
     if (!oAir) return 0;
     const a = oAir + r * dt;
     return a >= b.airDur ? 0 : Math.sin((Math.PI * a) / b.airDur) * b.airH;
   };
-  if (height(r0) < 16) return r0;
-  // High when you got there: you trip only if you come down below 16 px
-  // before you're past it.
-  const down = b.airDur * (1 - Math.asin(16 / b.airH) / Math.PI),
+  if (height(r0) < low) return r0;
+  // High when you got there: you trip only if you come down below `low` px
+  // before you reach its line.
+  const down = b.airDur * (1 - Math.asin(low / b.airH) / Math.PI),
     r = (down - oAir) / dt;
   return r <= r1 ? Math.max(r0, r) : undefined;
 }
@@ -1083,17 +1296,27 @@ export function orbHeight(ms: number) {
 }
 
 /* ---------- Plaza today: daily quests paid in shop coins (the database's
-   arena_plaza_quests(), migration 20261119190000_remove_farm_bistro_leaves) ---------- */
+   arena_plaza_quests(), migration 20261120120000_raise_plaza_quest_coins) ---------- */
 export const PLAZA_QUESTS = [
-  { id: "goal", text: "Score a goal on the pitch", max: 1, coins: 2 },
-  { id: "lap", text: "Run a lap in under 30 s", max: 1, coins: 2 },
-  { id: "cheers", text: "15 cheers on the runway", max: 15, coins: 2 },
-  { id: "orbs", text: "Catch 10 falling orbs", max: 10, coins: 1 },
-  { id: "photo", text: "Use the Photo Spot", max: 1, coins: 1 },
+  // An even 100 coins a day, weighted by effort (migration
+  // 20261121180000_plaza_quests_hundred, docs/plaza-economy.md).
+  { id: "goal", text: "Score a goal on the pitch", max: 1, coins: 15 },
+  { id: "lap", text: "Run 3 laps in a row in 30 s", max: 1, coins: 20 },
+  { id: "cheers", text: "15 cheers on the runway", max: 15, coins: 10 },
+  { id: "orbs", text: "Catch 10 falling orbs", max: 10, coins: 20 },
+  { id: "photo", text: "Use the Photo Spot", max: 1, coins: 5 },
+  // Migration 20261120180000_plaza_fishing.
+  { id: "fish", text: "Catch 10 fish", max: 10, coins: 30 },
 ] as const;
 export type PlazaQuestId = (typeof PLAZA_QUESTS)[number]["id"];
-/** A lap under this time completes the lap quest. */
-export const PLAZA_LAP_QUEST_MS = 30_000;
+/**
+ * The lap quest: this many laps in a row, without leaving the lane, in under
+ * `ms` all told (owner, 25 Nov 2026: one lap under 30 s was too easy for its
+ * 20 coins; players' best laps run 4.8-7.8 s, so 3 in 30 s leaves room for a
+ * trip or two). Any 3 in a row count, so a slow first lap is no reason to
+ * stop. The database checks it again (arena_plaza_record).
+ */
+export const PLAZA_LAP_RUN = { laps: 3, ms: 30_000 } as const;
 /** On the runway, the crowd cheers about this often (s). */
 export const PLAZA_CHEER_SECONDS = 0.6;
 
@@ -1116,12 +1339,14 @@ export const PLAZA_SPOTS = [
     icon: "boba",
   },
   {
+    // The Plaza map board (it used to be an "Event board" that only opened
+    // the quest list already on screen).
     id: "board",
     x: PLAZA_BOARD.x,
     y: PLAZA_BOARD.y + 30,
     r: 100,
-    label: "Event board",
-    icon: "clipboard",
+    label: "Plaza map",
+    icon: "map",
   },
   {
     id: "leader",
@@ -1131,11 +1356,527 @@ export const PLAZA_SPOTS = [
     label: "Leaderboard",
     icon: "trophy",
   },
+  {
+    // The west bank of the pond, where its path arrives (PLAZA_FISHING).
+    id: "fish",
+    x: PLAZA_POND.x - PLAZA_POND.rx - 5,
+    y: PLAZA_POND.y - 35,
+    r: 100,
+    label: "Fish",
+    icon: "fish",
+  },
 ] as const;
 export type PlazaSpotId = (typeof PLAZA_SPOTS)[number]["id"];
+/* ---------- places on the Plaza map ---------- */
+/**
+ * What the Plaza map shows and where its Go takes you: each place's name,
+ * icon (a hub icon), where you walk to (on open ground, on or by a path),
+ * and the daily quests done there (PLAZA_QUESTS ids), so the map and the
+ * quest list can send a player straight to them. New places and quests are
+ * data here, not branches in the screen.
+ */
+export interface PlazaPlace {
+  id: string;
+  name: string;
+  /** One short line on the map card. */
+  blurb: string;
+  icon: string;
+  x: number;
+  y: number;
+  quests: readonly string[];
+  /** Which side of its pin the map writes its name (default: centred). */
+  label?: "left" | "right";
+}
+export const PLAZA_PLACES: readonly PlazaPlace[] = [
+  {
+    id: "fountain",
+    name: "Fountain",
+    blurb: "Toss gift boxes, catch orbs",
+    icon: "sparkle",
+    x: PLAZA_SQUARE.x,
+    y: PLAZA_FOUNTAIN.y + 120,
+    quests: ["orbs"],
+  },
+  {
+    id: "runway",
+    name: "Runway",
+    blurb: "Show off your skin, collect cheers",
+    icon: "star",
+    x: PLAZA_SQUARE.x,
+    y: PLAZA_WALK.y1 - 40,
+    quests: ["cheers"],
+  },
+  {
+    id: "photo",
+    name: "Photo Spot",
+    blurb: "Take a photo for your album",
+    icon: "camera",
+    x: PLAZA_PHOTO.x,
+    y: PLAZA_PHOTO.y + 40,
+    quests: ["photo"],
+  },
+  {
+    id: "cafe",
+    name: "Volt Boba",
+    blurb: "A free drink: 30 s of speed",
+    icon: "boba",
+    x: PLAZA_CAFE.x - 30,
+    y: PLAZA_CAFE.y + 80,
+    quests: [],
+  },
+  {
+    id: "pitch",
+    name: "Orb Ball pitch",
+    blurb: "Kick the ball into a goal",
+    icon: "ball",
+    x: (PLAZA_PITCH.x0 + PLAZA_PITCH.x1) / 2,
+    y: (PLAZA_PITCH.y0 + PLAZA_PITCH.y1) / 2 + 60,
+    quests: ["goal"],
+  },
+  {
+    id: "track",
+    name: "Dash Track",
+    blurb: "Run laps, jump the hurdles",
+    icon: "flag",
+    // The start line: the top of the lane.
+    x: PLAZA_TRACK.cx + 40,
+    y: PLAZA_TRACK.cy - (PLAZA_TRACK.ro[1] + PLAZA_TRACK.ri[1]) / 2,
+    quests: ["lap"],
+    // Clear of the TOP DASH board's name, just up and to the left.
+    label: "right",
+  },
+  {
+    id: "leader",
+    name: "TOP DASH board",
+    blurb: "This week's fastest laps",
+    icon: "trophy",
+    x: PLAZA_LEADER.x + 10,
+    y: PLAZA_LEADER.y + 40,
+    quests: [],
+  },
+  {
+    id: "pond",
+    name: "Fishing pond",
+    blurb: "Cast a line, fill the Fish book",
+    icon: "fish",
+    x: PLAZA_POND.x - PLAZA_POND.rx - 40,
+    y: PLAZA_POND.y - 40,
+    quests: ["fish"],
+  },
+];
+/** The place where a daily quest is done. */
+export const plazaPlaceOf = (quest: string) =>
+  PLAZA_PLACES.find((p) => p.quests.includes(quest));
 /** The spot within reach of (x, y), if any (the server checks reach with a little slack). */
 export function plazaSpotAt(x: number, y: number, slack = 0) {
   return PLAZA_SPOTS.find((s) => Math.hypot(x - s.x, y - s.y) < s.r + slack);
+}
+
+/* ---------- fishing at the pond ---------- */
+/**
+ * Fishing (the "fish" spot): cast, wait, and tap when the bobber dips. The
+ * game server decides when a fish bites and which one (apps/server/src/
+ * plaza.ts); the browser only shows it. Catches go to the database through
+ * arena_plaza_record (migration 20261120180000_plaza_fishing).
+ */
+export const PLAZA_FISHING = {
+  /** A fish bites this long after the cast (ms, uniformly at random). */
+  biteMinMs: 2000,
+  biteMaxMs: 6000,
+  /** The bobber stays under this long: tap within it to catch. */
+  windowMs: 1000,
+  /** The server also takes a tap this much later (the round trip). */
+  slackMs: 450,
+  /** After a line comes in, the next cast waits this long (ms). */
+  castGapMs: 1000,
+  /** Walking this far past the spot's reach reels the line in (px). */
+  reachSlack: 40,
+  /** The most catches that count per Pacific day (toward the fish quest). */
+  perDay: 30,
+  /** Where the bobber lands: out near the pond's middle, in open water
+   * clear of the lily pads and the ducks' rounds (plaza-scene.ts). */
+  bobber: {
+    x: PLAZA_POND.x - 25,
+    y: PLAZA_POND.y + 4,
+  },
+} as const;
+/** How common each rarity is (relative weight per fish) and its colour. */
+/** `firstCoins`: shop coins for the first catch of each fish of that
+ * rarity, once per player (the database caps one at PLAZA_FISH_FIRST_MAX). */
+export const PLAZA_FISH_RARITY = {
+  common: { name: "Common", weight: 30, color: "#b9c4d6", firstCoins: 5 },
+  uncommon: { name: "Uncommon", weight: 14, color: "#6fdc8c", firstCoins: 10 },
+  rare: { name: "Rare", weight: 5, color: "#5fb3ff", firstCoins: 25 },
+  legendary: { name: "Legendary", weight: 1, color: "#ffc83d", firstCoins: 50 },
+} as const;
+/** The most a first catch pays (migration 20261120180000_plaza_fishing). */
+export const PLAZA_FISH_FIRST_MAX = 50;
+/** The title for catching every fish in the Fish book (the same migration). */
+export const PLAZA_FISH_TITLE = {
+  name: "Master Angler",
+  description: "Catch every fish in the Plaza pond's Fish book.",
+  color: "#5fb3ff",
+} as const;
+export type PlazaFishRarity = keyof typeof PLAZA_FISH_RARITY;
+export interface PlazaFish {
+  id: string;
+  name: string;
+  /** The element it is themed on. */
+  element: string;
+  rarity: PlazaFishRarity;
+  /** Only bites at this time of day (the player's own clock); any time if unset. */
+  time?: "day" | "night";
+  /** Body and fin colours (the Fish book and the catch). */
+  color: string;
+  fin: string;
+  /** How it is drawn: its body (PLAZA_FISH_SHAPES) and its markings. */
+  shape: PlazaFishShape;
+  mark: PlazaFishMark;
+}
+/** Body shapes the browser knows how to draw (plaza-fish-art.ts). */
+export const PLAZA_FISH_SHAPES = [
+  "minnow",
+  "guppy",
+  "carp",
+  "perch",
+  "eel",
+  "koi",
+  "catfish",
+  "betta",
+  "angel",
+  "lantern",
+  "sturgeon",
+  "trout",
+  "puffer",
+  "ray",
+  "marlin",
+] as const;
+export type PlazaFishShape = (typeof PLAZA_FISH_SHAPES)[number];
+/** Markings over the body. */
+export type PlazaFishMark =
+  "lateral" | "bars" | "spots" | "scales" | "zigzag" | "sparkle";
+/**
+ * The pond's fish, in Fish book order. Add a fish here and it bites, shows
+ * in the book and is recorded: the database only checks the id's shape.
+ * Ids are kept for good once shipped (players' books store them).
+ */
+export const PLAZA_FISH: readonly PlazaFish[] = [
+  {
+    id: "ember-minnow",
+    name: "Ember Minnow",
+    element: "Fire",
+    rarity: "common",
+    color: "#ff7a45",
+    fin: "#ffd65b",
+    shape: "minnow",
+    mark: "lateral",
+  },
+  {
+    id: "tide-guppy",
+    name: "Tide Guppy",
+    element: "Water",
+    rarity: "common",
+    color: "#4fb3ff",
+    fin: "#bfe8ff",
+    shape: "guppy",
+    mark: "spots",
+  },
+  {
+    id: "pebble-carp",
+    name: "Pebble Carp",
+    element: "Earth",
+    rarity: "common",
+    color: "#b08a5a",
+    fin: "#e3c99a",
+    shape: "carp",
+    mark: "scales",
+  },
+  {
+    id: "reed-perch",
+    name: "Reed Perch",
+    element: "Nature",
+    rarity: "common",
+    color: "#6fbf4a",
+    fin: "#d4f59a",
+    shape: "perch",
+    mark: "bars",
+  },
+  {
+    id: "volt-shiner",
+    name: "Volt Shiner",
+    element: "Electric",
+    rarity: "common",
+    color: "#ffd84a",
+    fin: "#5fb3ff",
+    shape: "trout",
+    mark: "lateral",
+  },
+  {
+    id: "dawn-dace",
+    name: "Dawn Dace",
+    element: "Light",
+    rarity: "common",
+    time: "day",
+    color: "#ffc98a",
+    fin: "#fff1b0",
+    shape: "minnow",
+    mark: "scales",
+  },
+  {
+    id: "dusk-loach",
+    name: "Dusk Loach",
+    element: "Shadow",
+    rarity: "common",
+    time: "night",
+    color: "#6b5a8a",
+    fin: "#b99bff",
+    shape: "eel",
+    mark: "bars",
+  },
+  {
+    id: "dream-darter",
+    name: "Dream Darter",
+    element: "Psychic",
+    rarity: "common",
+    color: "#e48bd8",
+    fin: "#ffd0f4",
+    shape: "perch",
+    mark: "spots",
+  },
+  {
+    id: "zap-eel",
+    name: "Zap Eel",
+    element: "Electric",
+    rarity: "uncommon",
+    color: "#ffd84a",
+    fin: "#fff3a8",
+    shape: "eel",
+    mark: "zigzag",
+  },
+  {
+    id: "sunscale-koi",
+    name: "Sunscale Koi",
+    element: "Light",
+    rarity: "uncommon",
+    time: "day",
+    color: "#fff1c2",
+    fin: "#ff9f43",
+    shape: "koi",
+    mark: "spots",
+  },
+  {
+    id: "gloom-catfish",
+    name: "Gloom Catfish",
+    element: "Shadow",
+    rarity: "uncommon",
+    time: "night",
+    color: "#5a4a7a",
+    fin: "#a48bd6",
+    shape: "catfish",
+    mark: "spots",
+  },
+  {
+    id: "bubble-puffer",
+    name: "Bubble Puffer",
+    element: "Water",
+    rarity: "uncommon",
+    color: "#7fd3ff",
+    fin: "#ffffff",
+    shape: "puffer",
+    mark: "spots",
+  },
+  {
+    id: "rust-trout",
+    name: "Rust Trout",
+    element: "Earth",
+    rarity: "uncommon",
+    color: "#c9774a",
+    fin: "#ffcf8a",
+    shape: "trout",
+    mark: "spots",
+  },
+  {
+    id: "thorn-puffer",
+    name: "Thorn Puffer",
+    element: "Nature",
+    rarity: "uncommon",
+    color: "#7fcf5a",
+    fin: "#e8ff9a",
+    shape: "puffer",
+    mark: "bars",
+  },
+  {
+    id: "glow-tetra",
+    name: "Glow Tetra",
+    element: "Aura",
+    rarity: "uncommon",
+    time: "night",
+    color: "#5fe0c8",
+    fin: "#fff5a0",
+    shape: "guppy",
+    mark: "lateral",
+  },
+  {
+    id: "mindfin-betta",
+    name: "Mindfin Betta",
+    element: "Psychic",
+    rarity: "rare",
+    color: "#ff6fae",
+    fin: "#c47dff",
+    shape: "betta",
+    mark: "scales",
+  },
+  {
+    id: "aura-angelfish",
+    name: "Aura Angelfish",
+    element: "Aura",
+    rarity: "rare",
+    color: "#7fe7ff",
+    fin: "#e8fbff",
+    shape: "angel",
+    mark: "bars",
+  },
+  {
+    id: "moon-lanternfish",
+    name: "Moon Lanternfish",
+    element: "Shadow",
+    rarity: "rare",
+    time: "night",
+    color: "#2f3a6a",
+    fin: "#ffe58f",
+    shape: "lantern",
+    mark: "sparkle",
+  },
+  {
+    id: "tidal-ray",
+    name: "Tidal Ray",
+    element: "Water",
+    rarity: "rare",
+    color: "#3f8fd0",
+    fin: "#bfe8ff",
+    shape: "ray",
+    mark: "spots",
+  },
+  {
+    id: "storm-ray",
+    name: "Storm Ray",
+    element: "Electric",
+    rarity: "rare",
+    time: "night",
+    color: "#2e3a7a",
+    fin: "#ffe25a",
+    shape: "ray",
+    mark: "zigzag",
+  },
+  {
+    id: "starlight-sturgeon",
+    name: "Starlight Sturgeon",
+    element: "Light",
+    rarity: "legendary",
+    time: "night",
+    color: "#1e2a5a",
+    fin: "#fff6c8",
+    shape: "sturgeon",
+    mark: "sparkle",
+  },
+  {
+    id: "solar-marlin",
+    name: "Solar Marlin",
+    element: "Fire",
+    rarity: "legendary",
+    time: "day",
+    color: "#ff7a2e",
+    fin: "#ffd65b",
+    shape: "marlin",
+    mark: "sparkle",
+  },
+];
+export const PLAZA_FISH_BY_ID: Record<string, PlazaFish> = Object.fromEntries(
+  PLAZA_FISH.map((f) => [f.id, f]),
+);
+/**
+ * The time of day on the player's own clock (0 = midnight .. 1), from server
+ * time and the browser's UTC offset (Date#getTimezoneOffset, minutes): the
+ * Plaza's day and night follow the device clock (plaza-scene.ts).
+ */
+export function plazaTimeOfDay(now: number, tzOffsetMin = 0) {
+  const tz =
+    Number.isFinite(tzOffsetMin) && Math.abs(tzOffsetMin) <= 14 * 60
+      ? Math.round(tzOffsetMin)
+      : 0;
+  const day = 86_400_000;
+  return ((((now - tz * 60_000) % day) + day) % day) / day;
+}
+/** Night (the Plaza's night grading past half): 18:00 to 06:00. */
+export const plazaIsNight = (tod: number) => tod >= 0.75 || tod < 0.25;
+/** The fish that can bite now. */
+export const plazaFishFor = (night: boolean) =>
+  PLAZA_FISH.filter((f) => !f.time || f.time === (night ? "night" : "day"));
+/** Which fish bites, for a random number `r` in [0, 1): by rarity weight. */
+export function plazaFishPick(r: number, night: boolean): PlazaFish {
+  const pool = plazaFishFor(night),
+    total = pool.reduce((s, f) => s + PLAZA_FISH_RARITY[f.rarity].weight, 0);
+  let left = Math.min(Math.max(r, 0), 0.999999) * total;
+  for (const f of pool) {
+    left -= PLAZA_FISH_RARITY[f.rarity].weight;
+    if (left < 0) return f;
+  }
+  return pool[pool.length - 1];
+}
+/** What the server tells the angler (socket "plaza-fish"). */
+export type PlazaFishNote =
+  { state: "bite" } | { state: "gone"; why: "late" | "moved" };
+
+/* ---------- pair emotes ---------- */
+/**
+ * Emotes two players share, asked for from a player's card. In snapshots a
+ * pair emote is the walker's emote field set to `emote` (one of
+ * PLAZA_EMOTES, so a browser that doesn't know pair emotes still pops that
+ * bubble) with PLAZA_FLAG.pair set. Each must use a different `emote`.
+ */
+export const PLAZA_PAIR_EMOTES = [
+  { id: "highfive", label: "High five", icon: "✋", emote: "👏" },
+  { id: "hug", label: "Hug", icon: "🤗", emote: "❤️" },
+  { id: "dance", label: "Dance together", icon: "💃", emote: "💃" },
+] as const satisfies readonly {
+  id: string;
+  label: string;
+  icon: string;
+  emote: PlazaEmote;
+}[];
+export type PlazaPairEmoteId = (typeof PLAZA_PAIR_EMOTES)[number]["id"];
+export const PLAZA_PAIR = {
+  /** How near the other player must be to ask (px); answering allows `slack` more. */
+  reach: 160,
+  slack: 60,
+  /** An unanswered request lapses after this (s). */
+  askSeconds: 8,
+  /** How long the pair animation plays (s). */
+  playSeconds: 2,
+  /** At most one request this often per player (s). */
+  askEvery: 3,
+} as const;
+/** The pair emote a walker shows (emote field, flags), if any. */
+export function plazaPairOf(emote: number, flags: number) {
+  if (!(flags & PLAZA_FLAG.pair) || !emote) return undefined;
+  const e = PLAZA_EMOTES[emote - 1];
+  return PLAZA_PAIR_EMOTES.find((p) => p.emote === e);
+}
+/** A pair request, as the asked player hears it. */
+export interface PlazaPairAsk {
+  /** The asker's walker id and name. */
+  from: number;
+  name: string;
+  kind: PlazaPairEmoteId;
+  /** How long it stays open (ms). */
+  ms: number;
+}
+/** A pair emote starting, told to both players. */
+export interface PlazaPairStart {
+  kind: PlazaPairEmoteId;
+  /** The two walker ids: the asker, then the one who said yes. */
+  a: number;
+  b: number;
 }
 
 /* ---------- the ball pitch (Orb Ball) ---------- */
@@ -1212,6 +1953,8 @@ export function plazaBallStep<K>(
       last.key = key;
     }
   }
+  const fromX = ball.x,
+    fromY = ball.y;
   ball.x += ball.vx * dt;
   ball.y += ball.vy * dt;
   if (ball.z > 0 || ball.vz > 0) {
@@ -1230,16 +1973,35 @@ export function plazaBallStep<K>(
     ball.y = P.y1 - r;
     ball.vy = -Math.abs(ball.vy) * PLAZA_BALL.bounce;
   }
-  const mouth = ball.y > P.gy0 + 8 && ball.y < P.gy1 - 8;
-  if (ball.x < P.x0 + r && !mouth) {
-    ball.x = P.x0 + r;
-    ball.vx = Math.abs(ball.vx) * PLAZA_BALL.bounce;
+  // The ends. Between the posts (less the ball's own size) it can go on
+  // into the goal; elsewhere the end line turns it back. A ball already in
+  // the goal's mouth when it drifts sideways hits the inside of a post and
+  // stays in the mouth: it used to be pulled back out onto the pitch, past
+  // the line it had crossed (owner, 23 Nov: "kicked in, didn't count, slid
+  // out").
+  const lo = P.gy0 + 8,
+    hi = P.gy1 - 8,
+    mouth = ball.y > lo && ball.y < hi;
+  for (const right of [false, true]) {
+    const past = right ? ball.x > P.x1 - r : ball.x < P.x0 + r;
+    if (!past || mouth) continue;
+    // In the mouth before this step: past the line's inner edge, between
+    // the posts. (Pushed into a corner by a body is not in the mouth.)
+    const wasIn =
+      (right ? fromX > P.x1 - r : fromX < P.x0 + r) && fromY > lo && fromY < hi;
+    if (wasIn) {
+      ball.y = ball.y <= lo ? lo + 0.01 : hi - 0.01;
+      ball.vy =
+        (ball.y < lo + 1 ? 1 : -1) * Math.abs(ball.vy) * PLAZA_BALL.bounce;
+    } else {
+      ball.x = right ? P.x1 - r : P.x0 + r;
+      ball.vx = (right ? -1 : 1) * Math.abs(ball.vx) * PLAZA_BALL.bounce;
+    }
   }
-  if (ball.x > P.x1 - r && !mouth) {
-    ball.x = P.x1 - r;
-    ball.vx = -Math.abs(ball.vx) * PLAZA_BALL.bounce;
-  }
-  if (ball.x < P.x0 - 14 || ball.x > P.x1 + 14) {
+  // A goal: the ball's middle over the goal line, between the posts. (It
+  // was 14 px further in, so a slow ball could stop over the line, half in
+  // the net, and not count.)
+  if (ball.x < P.x0 || ball.x > P.x1) {
     const right = ball.x > P.x1;
     ball.lock = PLAZA_BALL.resetSeconds;
     ball.vx = ball.vy = 0;
@@ -1252,7 +2014,14 @@ export function plazaBallStep<K>(
 
 /* ---------- what the server sends ---------- */
 /** Body flags in a snapshot. */
-export const PLAZA_FLAG = { dash: 1, stun: 2, boost: 4, bot: 8 } as const;
+export const PLAZA_FLAG = {
+  dash: 1,
+  stun: 2,
+  boost: 4,
+  bot: 8,
+  /** The emote is a pair emote (PLAZA_PAIR_EMOTES). */
+  pair: 16,
+} as const;
 /** One body: [id, x, y, z, face, flags, emote (1-based, 0 = none), speed]. */
 export type PlazaWalker = [
   number,
@@ -1290,13 +2059,25 @@ export interface PlazaState {
   /** Server time (ms), so the browser can line up the Orb Shower and laps. */
   now: number;
   walkers: PlazaWalker[];
-  /** The ball, when the pitch is in view: [x, y, z]. */
-  ball?: [number, number, number];
+  /**
+   * The ball, when the pitch is in view: [x, y, z], then its velocity
+   * [vx, vy, vz] (px/s) and the seconds left before it returns to the centre
+   * after a goal (0 in play), so the browser can run it on in your own
+   * timeline (plaza-net.ts). Older servers send only the first three.
+   */
+  ball?:
+    | [number, number, number]
+    | [number, number, number, number, number, number, number];
   score: [number, number];
   /** Runway cheers you've had this visit. */
   claps: number;
-  /** Your lap: started at (server ms) and progress 0..1, when running. */
-  lap?: [number, number];
+  /**
+   * Your lap: started at (server ms) and progress 0..1, when running; then,
+   * for the lap quest (PLAZA_LAP_RUN), when your run of laps in a row began
+   * (server ms, the oldest lap that still counts) and which lap of it this
+   * is (1..PLAZA_LAP_RUN.laps).
+   */
+  lap?: [number, number] | [number, number, number, number];
   /**
    * The newest stick, jump or dash number (`s`) the browser sent that the server
    * has applied, and for how many ms of steps it has moved you since: your
@@ -1321,6 +2102,14 @@ export interface PlazaProgress {
   quests: Record<PlazaQuestId, { n: number; done: boolean }>;
   /** Orbs that counted today. */
   orbsToday: number;
+  /** Catches that counted today (PLAZA_FISHING.perDay; older servers: none). */
+  fishToday?: number;
+  /** The Fish book: counted catches of each fish ever caught, by id. */
+  fishBook?: Record<string, number>;
+  /** Has the Fish book's title (PLAZA_FISH_TITLE). */
+  fishTitle?: boolean;
+  /** Gift boxes still to toss today (PLAZA_GIFT; older databases: none). */
+  gifts?: number;
   bestLapMs: number | null;
   board: { name: string; ms: number; me?: boolean }[];
 }
@@ -1332,11 +2121,20 @@ export type PlazaNews =
 /** What the game server reports to the database (arena_plaza_record). */
 export interface PlazaRecord {
   player: string;
-  kind: "orb" | "goal" | "lap" | "cheers" | "photo";
-  /** Orbs: "<shower>-<orb id>". */
+  kind: "orb" | "goal" | "lap" | "cheers" | "photo" | "fish";
+  /** Orbs: "<shower>-<orb id>"; fish: the fish's id (PLAZA_FISH). */
   ref?: string;
   /** Laps: the time in ms. */
   ms?: number;
+  /** Laps: the last PLAZA_LAP_RUN.laps laps in a row, all told (ms), once
+   * there are that many; the lap quest needs it under PLAZA_LAP_RUN.ms. */
+  run?: number;
   /** Cheers so far today. */
   n?: number;
+  /** Fish: coins for a first catch of this fish (paid once), and how many
+   * fish the book holds (catching them all earns PLAZA_FISH_TITLE). */
+  coins?: number;
+  bookSize?: number;
+  /** Fish: a Rare or Legendary one, which earns a gift box (PLAZA_GIFT). */
+  gift?: boolean;
 }

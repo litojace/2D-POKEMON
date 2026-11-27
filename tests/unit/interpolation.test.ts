@@ -16,8 +16,11 @@ it("interpolates remote movement on the server timeline and wraps facing angles"
   p.angle = -3.1;
   a.time = 0.2;
   b.add(a.snapshot(), 1200);
-  expect(b.sample("one", 1200)!.x).toBeCloseTo(150);
-  expect(Math.abs(b.sample("one", 1200)!.angle)).toBeCloseTo(Math.PI);
+  // Drawn the initial delay behind the clock: halfway (server time 0.1)
+  // when the clock reads 0.1 s plus that delay past the first arrival.
+  const halfway = 1000 + (0.1 + INTERPOLATION.initial) * 1000;
+  expect(b.sample("one", halfway)!.x).toBeCloseTo(150);
+  expect(Math.abs(b.sample("one", halfway)!.angle)).toBeCloseTo(Math.PI);
   expect(b.sample("one", 2000)!.x).toBe(200);
 });
 it("bounds buffered snapshots and clears across round transitions", () => {
@@ -25,10 +28,11 @@ it("bounds buffered snapshots and clears across round transitions", () => {
   a.add("one", "One");
   const b = new InterpolationBuffer();
   for (let i = 0; i < 100; i++) {
-    a.time = i / 15;
-    b.add(a.snapshot(), (i * 1000) / 15);
+    a.time = i / 30;
+    b.add(a.snapshot(), (i * 1000) / 30);
   }
-  expect(b.frames).toHaveLength(12);
+  // About 0.8 s of history at 30 snapshots a second.
+  expect(b.frames).toHaveLength(24);
   b.clear();
   expect(b.sample("one", 2000)).toBeUndefined();
 });
@@ -101,7 +105,7 @@ it("plays close to the minimum delay on a steady connection", () => {
 });
 it("buys more delay on a jittery connection, never beyond the maximum", () => {
   let seed = 3;
-  const random = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const random = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
   const jittery = stream(() => random() * 90).b;
   expect(jittery.delay).toBeGreaterThan(0.12);
   expect(jittery.delay).toBeLessThanOrEqual(INTERPOLATION.max);
@@ -119,7 +123,11 @@ it("fast-forwards smoothly after a stall instead of teleporting", () => {
     now += 1000 / 60;
     // Snapshots every 4 frames, except a 400 ms stall that then bursts.
     if (frame % 4 === 0 && !(frame > 60 && frame < 84)) {
-      for (let t = Math.round((arena.time + 1 / 15) * 15); t <= frame / 4; t++) {
+      for (
+        let t = Math.round((arena.time + 1 / 15) * 15);
+        t <= frame / 4;
+        t++
+      ) {
         arena.time = t / 15;
         p.x = 100 + 240 * arena.time;
         p.vx = 240;
@@ -150,7 +158,9 @@ it("extrapolates a starved opponent only a short, bounded step", () => {
   const newest = 100 + 1200 * (2 / 15);
   const far = b.sample("remote", 5000)!.x;
   expect(far).toBeGreaterThan(newest);
-  expect(far - newest).toBeLessThanOrEqual(INTERPOLATION.extrapolateReach + 1e-9);
+  expect(far - newest).toBeLessThanOrEqual(
+    INTERPOLATION.extrapolateReach + 1e-9,
+  );
 });
 it("resumes from a backgrounded tab on the newest frames without rewinding", () => {
   const arena = new Arena("RESUME"),

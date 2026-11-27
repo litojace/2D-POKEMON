@@ -1,0 +1,947 @@
+{
+  "datePT": "2026-11-23",
+  "baselineCommit": "d7b44b0021c57286ccaf91fa26a10179ee3313cf",
+  "note": "Audit baseline, not a gameplay before/after. Only the server is CPU/memory limited. Linux Xeon Platinum 8573C; driver Node 24.19.0; server Node 22.16.0. See the audit for workload and phone/GPU limitations.",
+  "inputClock": [
+    {
+      "name": "60 fps, steady",
+      "realSeconds": 60,
+      "gameSeconds": 60,
+      "inputHz": 29.98,
+      "maxSendGapMs": 50,
+      "maxInputsInOneFrame": 1
+    },
+    {
+      "name": "150 ms hitch every 120 frames",
+      "realSeconds": 64,
+      "gameSeconds": 63.88,
+      "inputHz": 29.94,
+      "maxSendGapMs": 166.7,
+      "maxInputsInOneFrame": 1
+    },
+    {
+      "name": "250 ms hitch every 120 frames",
+      "realSeconds": 67,
+      "gameSeconds": 60,
+      "inputHz": 26.85,
+      "maxSendGapMs": 266.7,
+      "maxInputsInOneFrame": 1
+    },
+    {
+      "name": "200 ms per frame",
+      "realSeconds": 60,
+      "gameSeconds": 59.17,
+      "inputHz": 14.92,
+      "maxSendGapMs": 200,
+      "maxInputsInOneFrame": 3
+    }
+  ],
+  "netSim": [
+    {
+      "profile": "good-wifi",
+      "seconds": 120,
+      "bytesPerSnapshot": 1723,
+      "localCorrectionPx": {
+        "n": 3598,
+        "p50": 0,
+        "p95": 0,
+        "p99": 0,
+        "max": 0
+      },
+      "correctionsOver4px": 0,
+      "remote": {
+        "movingFrames": 4930,
+        "starvedPercent": 0,
+        "leapPercent": 0,
+        "drawnBehindMs": {
+          "n": 7080,
+          "p50": 53.33,
+          "p95": 70,
+          "p99": 70,
+          "max": 70.02
+        },
+        "pathErrorPx": {
+          "n": 7196,
+          "p50": 0.8,
+          "p95": 4.8,
+          "p99": 17,
+          "max": 17
+        }
+      }
+    },
+    {
+      "profile": "mobile-4g",
+      "seconds": 120,
+      "bytesPerSnapshot": 1726,
+      "localCorrectionPx": {
+        "n": 3596,
+        "p50": 0,
+        "p95": 0,
+        "p99": 0,
+        "max": 27.91
+      },
+      "correctionsOver4px": 0.1,
+      "remote": {
+        "movingFrames": 3636,
+        "starvedPercent": 1.2,
+        "leapPercent": 0.2,
+        "drawnBehindMs": {
+          "n": 7080,
+          "p50": 120.01,
+          "p95": 164.51,
+          "p99": 186.49,
+          "max": 186.67
+        },
+        "pathErrorPx": {
+          "n": 7194,
+          "p50": 0.46,
+          "p95": 8.89,
+          "p99": 14.75,
+          "max": 50.17
+        }
+      }
+    },
+    {
+      "profile": "congested",
+      "seconds": 120,
+      "bytesPerSnapshot": 1718,
+      "localCorrectionPx": {
+        "n": 3589,
+        "p50": 0,
+        "p95": 0,
+        "p99": 0,
+        "max": 30.72
+      },
+      "correctionsOver4px": 0.2,
+      "remote": {
+        "movingFrames": 4408,
+        "starvedPercent": 0.4,
+        "leapPercent": 0.3,
+        "drawnBehindMs": {
+          "n": 7080,
+          "p50": 266.67,
+          "p95": 283.33,
+          "p99": 283.33,
+          "max": 283.33
+        },
+        "pathErrorPx": {
+          "n": 7190,
+          "p50": 0,
+          "p95": 7.22,
+          "p99": 15.94,
+          "max": 113.33
+        }
+      }
+    },
+    {
+      "profile": "wifi-stalls",
+      "seconds": 120,
+      "bytesPerSnapshot": 1728,
+      "localCorrectionPx": {
+        "n": 3597,
+        "p50": 0,
+        "p95": 0,
+        "p99": 0,
+        "max": 103.89
+      },
+      "correctionsOver4px": 0.5,
+      "remote": {
+        "movingFrames": 4685,
+        "starvedPercent": 3.2,
+        "leapPercent": 0.2,
+        "drawnBehindMs": {
+          "n": 7080,
+          "p50": 200.31,
+          "p95": 258.52,
+          "p99": 293.33,
+          "max": 350
+        },
+        "pathErrorPx": {
+          "n": 7179,
+          "p50": 0.05,
+          "p95": 5.24,
+          "p99": 14.17,
+          "max": 74.28
+        }
+      }
+    }
+  ],
+  "serverLoads": [
+    {
+      "file": "render-1-room.json",
+      "rooms": 1,
+      "mix": ["pvp2"],
+      "resources": {
+        "profile": "render-1c-2g",
+        "verified": true,
+        "cpu": 1,
+        "memoryBytes": 2147483648,
+        "node": "v22.16.0"
+      },
+      "seconds": 20,
+      "cycles": 0,
+      "results": [
+        {
+          "server": {
+            "seconds": 20,
+            "rooms": 1,
+            "sessions": 2,
+            "sockets": 2,
+            "heapAfterGcMB": 34.3,
+            "tickMs": {
+              "n": 600,
+              "p50": 0.35,
+              "p95": 0.53,
+              "p99": 0.95,
+              "max": 2.18
+            },
+            "broadcastMs": {
+              "n": 600,
+              "p50": 0.22,
+              "p95": 0.36,
+              "p99": 0.76,
+              "max": 1.89
+            },
+            "snapshotBytes": {
+              "n": 30,
+              "p50": 2506,
+              "p95": 2942,
+              "p99": 2992,
+              "max": 2992
+            },
+            "eventLoopDelayMs": {
+              "p50": 0.1,
+              "p99": 0.94,
+              "max": 2.86
+            },
+            "cpuPercent": 3.23,
+            "rssMB": 158.32,
+            "heapUsedMB": 34.3,
+            "bytesOutPerSecond": 151654,
+            "messagesOutPerSecond": 62,
+            "congestedSkips": 0
+          },
+          "client": {
+            "clients": 2,
+            "bytesInPerClientPerSecond": 75963,
+            "statesPerClientPerSecond": 30,
+            "snapshotBytes": {
+              "n": 240,
+              "p50": 2512,
+              "p95": 2964,
+              "p99": 3100,
+              "max": 3125
+            },
+            "arrivalIntervalMs": {
+              "n": 1202,
+              "p50": 33.3,
+              "p95": 34.29,
+              "p99": 34.92,
+              "max": 36.87
+            },
+            "arrivalJitterMs": {
+              "n": 1202,
+              "p50": 0.24,
+              "p95": 1.09,
+              "p99": 2,
+              "max": 3.78
+            },
+            "unpackMs": {
+              "n": 1202,
+              "p50": 0.01,
+              "p95": 0.04,
+              "p99": 0.07,
+              "max": 0.36
+            },
+            "rttMs": {
+              "n": 40,
+              "p50": 0.46,
+              "p95": 0.88,
+              "p99": 1.02,
+              "max": 1.02
+            }
+          }
+        }
+      ]
+    },
+    {
+      "file": "render-24-r1.json",
+      "rooms": 24,
+      "mix": ["pvp2", "pvp4", "raid4"],
+      "resources": {
+        "profile": "render-1c-2g",
+        "verified": true,
+        "cpu": 1,
+        "memoryBytes": 2147483648,
+        "node": "v22.16.0"
+      },
+      "seconds": 20,
+      "cycles": 0,
+      "results": [
+        {
+          "server": {
+            "seconds": 20,
+            "rooms": 24,
+            "sessions": 80,
+            "sockets": 80,
+            "heapAfterGcMB": 40.63,
+            "tickMs": {
+              "n": 600,
+              "p50": 4.02,
+              "p95": 10.05,
+              "p99": 13.28,
+              "max": 18.25
+            },
+            "broadcastMs": {
+              "n": 14400,
+              "p50": 0.1,
+              "p95": 0.29,
+              "p99": 0.54,
+              "max": 6.53
+            },
+            "snapshotBytes": {
+              "n": 720,
+              "p50": 4398,
+              "p95": 6882,
+              "p99": 7327,
+              "max": 7890
+            },
+            "eventLoopDelayMs": {
+              "p50": 0.18,
+              "p99": 7.25,
+              "max": 23.21
+            },
+            "cpuPercent": 23.63,
+            "rssMB": 178.07,
+            "heapUsedMB": 40.63,
+            "bytesOutPerSecond": 11753993,
+            "messagesOutPerSecond": 2482,
+            "congestedSkips": 0
+          },
+          "client": {
+            "clients": 80,
+            "bytesInPerClientPerSecond": 146959,
+            "statesPerClientPerSecond": 30,
+            "snapshotBytes": {
+              "n": 9600,
+              "p50": 4861,
+              "p95": 7063,
+              "p99": 7700,
+              "max": 8556
+            },
+            "arrivalIntervalMs": {
+              "n": 48000,
+              "p50": 33.31,
+              "p95": 35.66,
+              "p99": 38.53,
+              "max": 61.77
+            },
+            "arrivalJitterMs": {
+              "n": 48000,
+              "p50": 0.59,
+              "p95": 3.52,
+              "p99": 5.99,
+              "max": 29.48
+            },
+            "unpackMs": {
+              "n": 48000,
+              "p50": 0.01,
+              "p95": 0.02,
+              "p99": 0.05,
+              "max": 4.02
+            },
+            "rttMs": {
+              "n": 1648,
+              "p50": 0.9,
+              "p95": 2.66,
+              "p99": 5.7,
+              "max": 7.04
+            }
+          }
+        }
+      ]
+    },
+    {
+      "file": "render-24-r2.json",
+      "rooms": 24,
+      "mix": ["pvp2", "pvp4", "raid4"],
+      "resources": {
+        "profile": "render-1c-2g",
+        "verified": true,
+        "cpu": 1,
+        "memoryBytes": 2147483648,
+        "node": "v22.16.0"
+      },
+      "seconds": 20,
+      "cycles": 0,
+      "results": [
+        {
+          "server": {
+            "seconds": 20.01,
+            "rooms": 24,
+            "sessions": 80,
+            "sockets": 80,
+            "heapAfterGcMB": 44.06,
+            "tickMs": {
+              "n": 601,
+              "p50": 5.51,
+              "p95": 11.78,
+              "p99": 20.67,
+              "max": 41.59
+            },
+            "broadcastMs": {
+              "n": 14424,
+              "p50": 0.14,
+              "p95": 0.37,
+              "p99": 0.59,
+              "max": 15.95
+            },
+            "snapshotBytes": {
+              "n": 744,
+              "p50": 4671,
+              "p95": 7070,
+              "p99": 7749,
+              "max": 8460
+            },
+            "eventLoopDelayMs": {
+              "p50": 0.17,
+              "p99": 10.59,
+              "max": 43.15
+            },
+            "cpuPercent": 30.72,
+            "rssMB": 173.5,
+            "heapUsedMB": 44.06,
+            "bytesOutPerSecond": 11767174,
+            "messagesOutPerSecond": 2487,
+            "congestedSkips": 0
+          },
+          "client": {
+            "clients": 80,
+            "bytesInPerClientPerSecond": 147150,
+            "statesPerClientPerSecond": 30,
+            "snapshotBytes": {
+              "n": 9600,
+              "p50": 4873,
+              "p95": 7061,
+              "p99": 7697,
+              "max": 8363
+            },
+            "arrivalIntervalMs": {
+              "n": 48080,
+              "p50": 33.31,
+              "p95": 36.06,
+              "p99": 43.58,
+              "max": 63.97
+            },
+            "arrivalJitterMs": {
+              "n": 48080,
+              "p50": 0.66,
+              "p95": 4.47,
+              "p99": 18.72,
+              "max": 30.63
+            },
+            "unpackMs": {
+              "n": 48080,
+              "p50": 0.01,
+              "p95": 0.02,
+              "p99": 0.05,
+              "max": 2.91
+            },
+            "rttMs": {
+              "n": 1679,
+              "p50": 1.08,
+              "p95": 2.58,
+              "p99": 11.08,
+              "max": 15.07
+            }
+          }
+        }
+      ]
+    },
+    {
+      "file": "render-48-r1.json",
+      "rooms": 48,
+      "mix": ["pvp2", "pvp4", "raid4"],
+      "resources": {
+        "profile": "render-1c-2g",
+        "verified": true,
+        "cpu": 1,
+        "memoryBytes": 2147483648,
+        "node": "v22.16.0"
+      },
+      "seconds": 20,
+      "cycles": 0,
+      "results": [
+        {
+          "server": {
+            "seconds": 20,
+            "rooms": 48,
+            "sessions": 160,
+            "sockets": 160,
+            "heapAfterGcMB": 47.71,
+            "tickMs": {
+              "n": 600,
+              "p50": 13.79,
+              "p95": 22.51,
+              "p99": 47.61,
+              "max": 140.42
+            },
+            "broadcastMs": {
+              "n": 28800,
+              "p50": 0.14,
+              "p95": 0.34,
+              "p99": 0.54,
+              "max": 53.7
+            },
+            "snapshotBytes": {
+              "n": 1440,
+              "p50": 4527,
+              "p95": 6908,
+              "p99": 7457,
+              "max": 8758
+            },
+            "eventLoopDelayMs": {
+              "p50": 0.29,
+              "p99": 25.45,
+              "max": 163.93
+            },
+            "cpuPercent": 56.48,
+            "rssMB": 188.01,
+            "heapUsedMB": 47.72,
+            "bytesOutPerSecond": 23585344,
+            "messagesOutPerSecond": 4959,
+            "congestedSkips": 0
+          },
+          "client": {
+            "clients": 160,
+            "bytesInPerClientPerSecond": 147429,
+            "statesPerClientPerSecond": 30,
+            "snapshotBytes": {
+              "n": 19200,
+              "p50": 4904,
+              "p95": 7070,
+              "p99": 7713,
+              "max": 8743
+            },
+            "arrivalIntervalMs": {
+              "n": 96000,
+              "p50": 33.34,
+              "p95": 38.42,
+              "p99": 60.19,
+              "max": 157.45
+            },
+            "arrivalJitterMs": {
+              "n": 96000,
+              "p50": 1.08,
+              "p95": 11.08,
+              "p99": 27.76,
+              "max": 124.12
+            },
+            "unpackMs": {
+              "n": 96000,
+              "p50": 0.01,
+              "p95": 0.02,
+              "p99": 0.06,
+              "max": 4.09
+            },
+            "rttMs": {
+              "n": 3200,
+              "p50": 2.22,
+              "p95": 63.05,
+              "p99": 66.77,
+              "max": 72.62
+            }
+          }
+        }
+      ]
+    },
+    {
+      "file": "render-48-r2.json",
+      "rooms": 48,
+      "mix": ["pvp2", "pvp4", "raid4"],
+      "resources": {
+        "profile": "render-1c-2g",
+        "verified": true,
+        "cpu": 1,
+        "memoryBytes": 2147483648,
+        "node": "v22.16.0"
+      },
+      "seconds": 20,
+      "cycles": 0,
+      "results": [
+        {
+          "server": {
+            "seconds": 20,
+            "rooms": 48,
+            "sessions": 160,
+            "sockets": 160,
+            "heapAfterGcMB": 45.08,
+            "tickMs": {
+              "n": 600,
+              "p50": 14.41,
+              "p95": 23.25,
+              "p99": 48.28,
+              "max": 74.1
+            },
+            "broadcastMs": {
+              "n": 28800,
+              "p50": 0.14,
+              "p95": 0.33,
+              "p99": 0.61,
+              "max": 57.54
+            },
+            "snapshotBytes": {
+              "n": 1440,
+              "p50": 4668,
+              "p95": 6914,
+              "p99": 7361,
+              "max": 8271
+            },
+            "eventLoopDelayMs": {
+              "p50": 0.46,
+              "p99": 30.89,
+              "max": 97.28
+            },
+            "cpuPercent": 58.96,
+            "rssMB": 190.27,
+            "heapUsedMB": 45.09,
+            "bytesOutPerSecond": 23482130,
+            "messagesOutPerSecond": 4959,
+            "congestedSkips": 0
+          },
+          "client": {
+            "clients": 160,
+            "bytesInPerClientPerSecond": 146790,
+            "statesPerClientPerSecond": 30,
+            "snapshotBytes": {
+              "n": 19200,
+              "p50": 4883,
+              "p95": 7024,
+              "p99": 7598,
+              "max": 8491
+            },
+            "arrivalIntervalMs": {
+              "n": 96000,
+              "p50": 33.28,
+              "p95": 39.74,
+              "p99": 59.05,
+              "max": 86.39
+            },
+            "arrivalJitterMs": {
+              "n": 96000,
+              "p50": 1,
+              "p95": 15.08,
+              "p99": 25.72,
+              "max": 53.06
+            },
+            "unpackMs": {
+              "n": 96000,
+              "p50": 0.01,
+              "p95": 0.02,
+              "p99": 0.05,
+              "max": 4.1
+            },
+            "rttMs": {
+              "n": 3200,
+              "p50": 2.13,
+              "p95": 7.69,
+              "p99": 10.25,
+              "max": 11.3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "file": "render-72-r1.json",
+      "rooms": 72,
+      "mix": ["pvp2", "pvp4", "raid4"],
+      "resources": {
+        "profile": "render-1c-2g",
+        "verified": true,
+        "cpu": 1,
+        "memoryBytes": 2147483648,
+        "node": "v22.16.0"
+      },
+      "seconds": 20,
+      "cycles": 0,
+      "results": [
+        {
+          "server": {
+            "seconds": 20,
+            "rooms": 72,
+            "sessions": 240,
+            "sockets": 240,
+            "heapAfterGcMB": 48.97,
+            "tickMs": {
+              "n": 590,
+              "p50": 25.71,
+              "p95": 53.61,
+              "p99": 76.54,
+              "max": 102.61
+            },
+            "broadcastMs": {
+              "n": 42480,
+              "p50": 0.17,
+              "p95": 0.37,
+              "p99": 0.94,
+              "max": 68.2
+            },
+            "snapshotBytes": {
+              "n": 2160,
+              "p50": 4560,
+              "p95": 6977,
+              "p99": 7563,
+              "max": 8381
+            },
+            "eventLoopDelayMs": {
+              "p50": 19.43,
+              "p99": 84.5,
+              "max": 136.54
+            },
+            "cpuPercent": 96.12,
+            "rssMB": 202.75,
+            "heapUsedMB": 48.98,
+            "bytesOutPerSecond": 34744367,
+            "messagesOutPerSecond": 7307,
+            "congestedSkips": 0
+          },
+          "client": {
+            "clients": 240,
+            "bytesInPerClientPerSecond": 144792,
+            "statesPerClientPerSecond": 29.5,
+            "snapshotBytes": {
+              "n": 28320,
+              "p50": 4867,
+              "p95": 7030,
+              "p99": 7659,
+              "max": 8471
+            },
+            "arrivalIntervalMs": {
+              "n": 141600,
+              "p50": 31.22,
+              "p95": 64.13,
+              "p99": 94.32,
+              "max": 184.07
+            },
+            "arrivalJitterMs": {
+              "n": 141600,
+              "p50": 5.22,
+              "p95": 33.32,
+              "p99": 60.99,
+              "max": 150.73
+            },
+            "unpackMs": {
+              "n": 141600,
+              "p50": 0.01,
+              "p95": 0.03,
+              "p99": 0.07,
+              "max": 5.21
+            },
+            "rttMs": {
+              "n": 4560,
+              "p50": 21.97,
+              "p95": 37.72,
+              "p99": 59.29,
+              "max": 72.56
+            }
+          }
+        }
+      ]
+    },
+    {
+      "file": "render-72-r2.json",
+      "rooms": 72,
+      "mix": ["pvp2", "pvp4", "raid4"],
+      "resources": {
+        "profile": "render-1c-2g",
+        "verified": true,
+        "cpu": 1,
+        "memoryBytes": 2147483648,
+        "node": "v22.16.0"
+      },
+      "seconds": 20,
+      "cycles": 0,
+      "results": [
+        {
+          "server": {
+            "seconds": 20.03,
+            "rooms": 72,
+            "sessions": 240,
+            "sockets": 240,
+            "heapAfterGcMB": 64.07,
+            "tickMs": {
+              "n": 592,
+              "p50": 19.26,
+              "p95": 42.14,
+              "p99": 74.07,
+              "max": 86.16
+            },
+            "broadcastMs": {
+              "n": 42624,
+              "p50": 0.13,
+              "p95": 0.32,
+              "p99": 0.67,
+              "max": 50.85
+            },
+            "snapshotBytes": {
+              "n": 2160,
+              "p50": 4415,
+              "p95": 6989,
+              "p99": 7447,
+              "max": 8385
+            },
+            "eventLoopDelayMs": {
+              "p50": 5.61,
+              "p99": 75,
+              "max": 124.48
+            },
+            "cpuPercent": 80.96,
+            "rssMB": 204.63,
+            "heapUsedMB": 64.08,
+            "bytesOutPerSecond": 34612897,
+            "messagesOutPerSecond": 7333,
+            "congestedSkips": 0
+          },
+          "client": {
+            "clients": 240,
+            "bytesInPerClientPerSecond": 144460,
+            "statesPerClientPerSecond": 29.6,
+            "snapshotBytes": {
+              "n": 28320,
+              "p50": 4837,
+              "p95": 6957,
+              "p99": 7587,
+              "max": 8988
+            },
+            "arrivalIntervalMs": {
+              "n": 142096,
+              "p50": 33.01,
+              "p95": 52.92,
+              "p99": 84.9,
+              "max": 144.89
+            },
+            "arrivalJitterMs": {
+              "n": 142096,
+              "p50": 2.62,
+              "p95": 24.21,
+              "p99": 51.57,
+              "max": 111.55
+            },
+            "unpackMs": {
+              "n": 142096,
+              "p50": 0.01,
+              "p95": 0.02,
+              "p99": 0.06,
+              "max": 3.39
+            },
+            "rttMs": {
+              "n": 4800,
+              "p50": 18.99,
+              "p95": 39.72,
+              "p99": 56.82,
+              "max": 60.58
+            }
+          }
+        }
+      ]
+    },
+    {
+      "file": "render-24-long.json",
+      "rooms": 24,
+      "mix": ["pvp2", "pvp4", "raid4"],
+      "resources": {
+        "profile": "render-1c-2g",
+        "verified": true,
+        "cpu": 1,
+        "memoryBytes": 2147483648,
+        "node": "v22.16.0"
+      },
+      "seconds": 60,
+      "cycles": 0,
+      "results": [
+        {
+          "server": {
+            "seconds": 60,
+            "rooms": 24,
+            "sessions": 80,
+            "sockets": 80,
+            "heapAfterGcMB": 43.47,
+            "tickMs": {
+              "n": 1800,
+              "p50": 4.68,
+              "p95": 9.94,
+              "p99": 14.31,
+              "max": 47.03
+            },
+            "broadcastMs": {
+              "n": 43360,
+              "p50": 0.12,
+              "p95": 0.31,
+              "p99": 0.52,
+              "max": 35.98
+            },
+            "snapshotBytes": {
+              "n": 2160,
+              "p50": 4571,
+              "p95": 7406,
+              "p99": 7929,
+              "max": 8664
+            },
+            "eventLoopDelayMs": {
+              "p50": 0.14,
+              "p99": 9.37,
+              "max": 57.83
+            },
+            "cpuPercent": 24.58,
+            "rssMB": 153.04,
+            "heapUsedMB": 43.47,
+            "bytesOutPerSecond": 12345530,
+            "messagesOutPerSecond": 2492,
+            "congestedSkips": 0
+          },
+          "client": {
+            "clients": 80,
+            "bytesInPerClientPerSecond": 154326,
+            "statesPerClientPerSecond": 30.1,
+            "snapshotBytes": {
+              "n": 28864,
+              "p50": 5012,
+              "p95": 7487,
+              "p99": 8026,
+              "max": 9715
+            },
+            "arrivalIntervalMs": {
+              "n": 144576,
+              "p50": 33.34,
+              "p95": 36.15,
+              "p99": 40.66,
+              "max": 79.88
+            },
+            "arrivalJitterMs": {
+              "n": 144576,
+              "p50": 0.68,
+              "p95": 4.66,
+              "p99": 18.07,
+              "max": 46.55
+            },
+            "unpackMs": {
+              "n": 144576,
+              "p50": 0.01,
+              "p95": 0.02,
+              "p99": 0.06,
+              "max": 22.95
+            },
+            "rttMs": {
+              "n": 4800,
+              "p50": 0.95,
+              "p95": 4.79,
+              "p99": 15.26,
+              "max": 22.85
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,5 +1,5 @@
 import type { CharacterId } from "@arena/shared";
-import { DESIGNS, backPanel, torso, type Design, type Kit } from "./modern-designs";
+import { DESIGNS, backUnder, torso, type Design, type Kit } from "./modern-designs";
 import type { Tint } from "./fashion-art";
 
 /**
@@ -96,7 +96,7 @@ export const PIRATES: Partial<Record<CharacterId, Design>> = {
       bolt = "#ffe25a";
     const compass = (x: number, y: number) => k.circle(x, y, 7, GOLD, GOLD_DARK, 1) + k.circle(x, y, 5.2, "#1b2440", "none") +
       k.lume("pulse", k.path(`M${x} ${y - 4.6}L${x + 1.6} ${y}L${x} ${y + 4.6}L${x - 1.6} ${y}Z`, bolt, "none") + k.circle(x, y, 1, "#ffffff", "none", 0), 1, bolt);
-    if (k.back) backPanel(k, navy, [0, 1, 2].map((i) => k.line(`M${k.C - 12} ${k.T + 8 + i * 8}H${k.C + 12}`, GOLD, 1.4)).join("") + k.line(`M${k.C} ${k.B - 14}V${k.B + 2}`, "#1b2440", 1.4));
+    if (k.back) backUnder(k, navy, [0, 1, 2].map((i) => k.line(`M${k.C - 12} ${k.T + 8 + i * 8}H${k.C + 12}`, GOLD, 1.4)).join("") + k.line(`M${k.C} ${k.B - 14}V${k.B + 2}`, "#1b2440", 1.4));
     else {
       const c = cx(k);
       k.put("body", coat(k, navy, GOLD,
@@ -118,7 +118,7 @@ export const PIRATES: Partial<Record<CharacterId, Design>> = {
     const navy = "#1d2c58";
     const epaulette = (x: number, y: number) => `<ellipse cx="${x}" cy="${y}" rx="8" ry="4" fill="${GOLD}" stroke="${GOLD_DARK}" stroke-width="0.8"/>` +
       [-6, -3, 0, 3, 6].map((dx) => k.line(`M${x + dx} ${y + 3}v5`, GOLD, 1.1)).join("");
-    if (k.back) backPanel(k, navy, k.line(`M${k.C} ${k.T + 20}V${k.B + 2}`, "#14203f", 1.4) + epaulette(k.L + 4, k.T + 2) + epaulette(k.R - 4, k.T + 2));
+    if (k.back) backUnder(k, navy, k.line(`M${k.C} ${k.T + 20}V${k.B + 2}`, "#14203f", 1.4) + epaulette(k.L + 4, k.T + 2) + epaulette(k.R - 4, k.T + 2));
     else {
       const c = cx(k);
       k.put("body", coat(k, navy, GOLD, SHIRT,
@@ -159,7 +159,7 @@ export const PIRATES: Partial<Record<CharacterId, Design>> = {
   mystowl(k) {
     const plum = "#4a2550";
     if (k.back) {
-      backPanel(k, plum, k.line(`M${k.C - 16} ${k.T + 2}L${k.C + 16} ${k.B - 8}`, "#5a3a22", 2));
+      backUnder(k, plum, k.line(`M${k.C - 16} ${k.T + 2}L${k.C + 16} ${k.B - 8}`, "#5a3a22", 2));
       // The map's rolled end showing past the hip, on its right side.
       k.put("scarf", k.rect(k.C + 26, k.B - 26, 9, 22, 3, "#e8d6a6", "#8a6a3a", 0.9) + k.circle(k.C + 30.5, k.B - 26, 3, "#d6c08a", "#8a6a3a", 0.7));
     }
@@ -203,7 +203,7 @@ export const PIRATES: Partial<Record<CharacterId, Design>> = {
       for (let i = 0; i < n; i++) d += `L${k.L - 2 + step * (i + 0.5)} ${y + (i % 2 ? 9 : 5)}L${k.L - 2 + step * (i + 1)} ${y}`;
       return d;
     };
-    if (k.back) backPanel(k, ghost, k.lume("chase", k.line(hem(k.B - 4), green, 1.6), 0, green), 6);
+    if (k.back) backUnder(k, ghost, k.lume("chase", k.line(hem(k.B - 4), green, 1.6), 0, green), 6);
     else {
       const c = cx(k);
       k.put("body", coat(k, ghost, "#4f7a6e", "#1b2422",
@@ -221,7 +221,7 @@ export const PIRATES: Partial<Record<CharacterId, Design>> = {
   // shoulder; the hat band glows like the last of the sun.
   sunbara(k) {
     const vest = "#c8562c";
-    if (k.back) backPanel(k, vest, k.lume("chase", [0, 1, 2].map((i) => k.circle(k.C - 10 + i * 10, k.T + 14, 2.6, "#ffb347", k.ink, 0.4)).join(""), 1, "#ffb347") + k.rect(k.L, k.B - 12, k.R - k.L, 6, 0, "#f2c14e", "none"));
+    if (k.back) backUnder(k, vest, k.lume("chase", [0, 1, 2].map((i) => k.circle(k.C - 10 + i * 10, k.T + 14, 2.6, "#ffb347", k.ink, 0.4)).join(""), 1, "#ffb347") + k.rect(k.L, k.B - 12, k.R - k.L, 6, 0, "#f2c14e", "none"));
     else {
       const c = cx(k);
       k.put("body", torso(k, "#f4ecd8", [0, 1, 2, 3, 4].map((i) => k.line(`M${k.L} ${k.T + 3 + i * 8}H${k.R}`, "#2f5d8c", 2.2)).join("") +
@@ -252,7 +252,7 @@ export const PIRATES: Partial<Record<CharacterId, Design>> = {
   shadopus(k) {
     const coatC = "#13324a",
       bio = "#5ff0ff";
-    if (k.back) backPanel(k, coatC, [0, 1, 2, 3].map((i) => k.lume("chase", k.circle(k.C - 12 + i * 8, k.B - 6, 1.5, bio, "none", 0), i, bio)).join(""));
+    if (k.back) backUnder(k, coatC, [0, 1, 2, 3].map((i) => k.lume("chase", k.circle(k.C - 12 + i * 8, k.B - 6, 1.5, bio, "none", 0), i, bio)).join(""));
     else {
       const c = cx(k);
       k.put("body", coat(k, coatC, GOLD, "#0d1e2c",
@@ -284,7 +284,7 @@ export const PIRATES: Partial<Record<CharacterId, Design>> = {
       scarf = "#22222c",
       ember = "#ffb347";
     const c = cx(k);
-    if (k.back) backPanel(k, vest, k.line(`M${k.R} ${k.T + 2}L${k.L + 4} ${k.B - 6}`, red, 3));
+    if (k.back) backUnder(k, vest, k.line(`M${k.R} ${k.T + 2}L${k.L + 4} ${k.B - 6}`, red, 3));
     else
       k.put("body", torso(k, SHIRT, [0, 1, 2, 3, 4].map((i) => k.line(`M${k.L} ${k.T + 3 + i * 8}H${k.R}`, red, 2.2)).join("") +
         k.path(`M${k.L - 2} ${k.T - 2}H${c - 6}L${c - 4} ${k.B + 4}H${k.L - 2}Z M${k.R + 2} ${k.T - 2}H${c + 6}L${c + 4} ${k.B + 4}H${k.R + 2}Z`, vest, k.ink, 0.8) +
@@ -293,7 +293,9 @@ export const PIRATES: Partial<Record<CharacterId, Design>> = {
     // right from behind, at the hip nearest us in profile.
     const lx = k.back ? k.R + 8 : k.side ? k.C - k.side * 10 : k.L - 8,
       ly = k.B - 2;
-    k.put("flame", k.line(`M${lx} ${ly - 16}V${ly - 10}`, "#3a2a1c", 1.4) + k.path(`M${lx - 6} ${ly - 9}L${lx} ${ly - 14}L${lx + 6} ${ly - 9}Z`, "#3a2a1c", k.ink, 0.6) +
+    // On the scarf layer: it rides the torso (swaying a touch, never with
+    // the living flame) and is drawn over the arms, so it shows in profile.
+    k.put("scarf", k.line(`M${lx} ${ly - 16}V${ly - 10}`, "#3a2a1c", 1.4) + k.path(`M${lx - 6} ${ly - 9}L${lx} ${ly - 14}L${lx + 6} ${ly - 9}Z`, "#3a2a1c", k.ink, 0.6) +
       k.rect(lx - 6, ly - 9, 12, 16, 2, "#3a2a1c", k.ink, 0.8) +
       k.lume("pulse", k.rect(lx - 4, ly - 7, 8, 12, 1.5, ember, "none") + k.path(`M${lx} ${ly - 5}q3 3 0 7q-3 -3 0 -7Z`, "#fff3b0", "none"), 1, ember) +
       k.rect(lx - 7, ly + 6, 14, 3, 1, "#3a2a1c", k.ink, 0.6));
@@ -306,11 +308,12 @@ export const PIRATES: Partial<Record<CharacterId, Design>> = {
     const skull = k.back ? "" : k.side
       ? k.circle(x + k.side * 27, y + 3, 2.6, "#f4ecd8", k.ink, 0.5)
       : k.circle(x, y + 2.5, 3.4, "#f4ecd8", k.ink, 0.6) + k.circle(x - 1.2, y + 2.2, 0.8, "#1b1b1b", "none", 0) + k.circle(x + 1.2, y + 2.2, 0.8, "#1b1b1b", "none", 0);
-    // Cindrake's head-top layer sits behind its head in profile and from
-    // behind (creature-profile.ts), so there the bandana goes on the layer
-    // drawn after the head; the flame stays behind, rising over the top.
-    if (k.side || k.back) k.put("flame", flame);
-    k.put(k.side || k.back ? "eyes" : "flame", (k.side || k.back ? "" : flame) + headBand(k, y, 37, 8, scarf) + [-22, -8, 8, 22].map((dx) => (k.side && dx * k.side > 12) || (!k.side && Math.abs(dx) < 10) ? "" : k.circle(x + dx, y + 3.5 + Math.abs(dx) * 0.04, 1.1, "#f4ecd8", "none", 0)).join("") + skull + backKnot(k, y + 1, 37, scarf));
+    // The redrawn flame is the crest itself, so it stays on the flame layer
+    // and keeps its living flicker (data-crest); the bandana and its knot
+    // are headwear and ride the head on the hat layer, over the face in
+    // every view (creature-design.ts, ANIMATED_CRESTS).
+    k.put("flame", `<g data-crest="1">${flame}</g>`);
+    k.put("flame", headBand(k, y, 37, 8, scarf) + [-22, -8, 8, 22].map((dx) => (k.side && dx * k.side > 12) || (!k.side && Math.abs(dx) < 10) ? "" : k.circle(x + dx, y + 3.5 + Math.abs(dx) * 0.04, 1.1, "#f4ecd8", "none", 0)).join("") + skull + backKnot(k, y + 1, 37, scarf));
   },
   // Prism Navigator: a long indigo coat under a star-chart capelet whose
   // stars light up in turn, a compass-rose pin on its brow band, and a brass
@@ -321,7 +324,7 @@ export const PIRATES: Partial<Record<CharacterId, Design>> = {
     const c = cx(k);
     const cape = (y0: number, y1: number) => k.path(`M${k.L - 4} ${y0}Q${k.C} ${y0 - 6} ${k.R + 4} ${y0}L${k.R + 6} ${y1}Q${k.C + 12} ${y1 + 5} ${k.C} ${y1}Q${k.C - 12} ${y1 + 5} ${k.L - 6} ${y1}Z`, "#3a3c7a", k.ink, 0.9);
     const dots = (y0: number, n: number) => Array.from({ length: n }, (_, i) => k.lume("chase", k.path(k.star(k.L + 4 + ((k.R - k.L - 8) * i) / (n - 1), y0 + (i % 2 ? 7 : 3), 2.2, 4), star, "none"), i, star)).join("");
-    if (k.back) backPanel(k, coatC, cape(k.T - 2, k.T + 18) + dots(k.T + 2, 5));
+    if (k.back) backUnder(k, coatC, cape(k.T - 2, k.T + 18) + dots(k.T + 2, 5));
     else k.put("body", coat(k, coatC, GOLD, "#e8e4f4") + cape(k.T - 3, k.T + 9) + dots(k.T - 2, k.side ? 3 : 5) + belt(k, "#4a3b8c"));
     // The spyglass at its left hip, lens forward.
     const d = k.back ? -1 : k.side ? k.side : 1;
@@ -338,7 +341,7 @@ export const PIRATES: Partial<Record<CharacterId, Design>> = {
   lumoth(k) {
     const wool = "#c8323a",
       cream = "#f4ecd8";
-    if (k.back) backPanel(k, "#24345e", [0, 1, 2].map((i) => k.line(`M${k.L} ${k.T + 8 + i * 8}H${k.R}`, cream, 2)).join(""));
+    if (k.back) backUnder(k, "#24345e", [0, 1, 2].map((i) => k.line(`M${k.L} ${k.T + 8 + i * 8}H${k.R}`, cream, 2)).join(""));
     else {
       const c = cx(k);
       k.put("body", torso(k, "#24345e", [0, 1, 2].map((i) => k.line(`M${k.L} ${k.T + 8 + i * 8}H${k.R}`, cream, 2)).join("") +
@@ -404,7 +407,7 @@ export const PIRATES: Partial<Record<CharacterId, Design>> = {
       [0.25, 0.5, 0.75].map((t, i) => k.lume("chase", k.circle(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, 1.8, lamp, k.ink, 0.4), i, lamp)).join("");
     const stripes = [0, 1, 2, 3, 4].map((i) => k.line(`M${k.L} ${k.T + 3 + i * 8}H${k.R}`, blue, 2.4)).join("");
     // The rope goes over the right shoulder to the left hip.
-    if (k.back) backPanel(k, "#f4ecd8", stripes + ropeLine(k.R - 2, k.T, k.L + 4, k.B - 6));
+    if (k.back) backUnder(k, "#f4ecd8", stripes + ropeLine(k.R - 2, k.T, k.L + 4, k.B - 6));
     else if (k.side) k.put("body", torso(k, "#f4ecd8", stripes) + profile(k, k.C, ropeLine(k.C - 10, k.T, k.C + 12, k.B - 8)));
     else k.put("body", torso(k, "#f4ecd8", stripes) + ropeLine(k.L + 2, k.T - 1, k.R - 4, k.B - 6));
     // The grappling hook at its left hip.
@@ -423,7 +426,7 @@ export const PIRATES: Partial<Record<CharacterId, Design>> = {
       saffron = "#e8a23a",
       ruby = "#ff4a5a";
     const c = cx(k);
-    if (k.back) backPanel(k, vest, [0, 1, 2].map((i) => k.circle(k.C - 10 + i * 10, k.T + 14, 1.6, GOLD, "none", 0)).join("") + k.rect(k.L, k.B - 12, k.R - k.L, 6, 0, GOLD, "none"));
+    if (k.back) backUnder(k, vest, [0, 1, 2].map((i) => k.circle(k.C - 10 + i * 10, k.T + 14, 1.6, GOLD, "none", 0)).join("") + k.rect(k.L, k.B - 12, k.R - k.L, 6, 0, GOLD, "none"));
     else {
       k.put("body", torso(k, "#f4ecd8", k.path(`M${k.L - 2} ${k.T - 2}H${c - 6}L${c - 4} ${k.B + 4}H${k.L - 2}Z M${k.R + 2} ${k.T - 2}H${c + 6}L${c + 4} ${k.B + 4}H${k.R + 2}Z`, vest, k.ink, 0.8) +
         [0, 1, 2, 3].map((i) => k.circle(c - 9, k.T + 4 + i * 7, 1, GOLD, "none", 0) + k.circle(c + 9, k.T + 4 + i * 7, 1, GOLD, "none", 0)).join("") + belt(k, GOLD)));
@@ -457,7 +460,7 @@ export const PIRATES: Partial<Record<CharacterId, Design>> = {
       return `M${x - dx} ${y - dy}L${x + dx} ${y + dy}`;
     }).join("");
     const collar = (y: number) => [0, 1, 2, 3, 4, 5, 6].map((i) => k.circle(k.L + 2 + ((k.R - k.L - 4) * i) / 6, y + (i % 2) * 1.5, 3.4, fur, "#c8d8e4", 0.6)).join("");
-    if (k.back) backPanel(k, ice, collar(k.T - 1));
+    if (k.back) backUnder(k, ice, collar(k.T - 1));
     else {
       const c = cx(k);
       k.put("body", coat(k, ice, fur, "#dff0fa") + collar(k.T - 2) +
@@ -479,7 +482,7 @@ export const PIRATES: Partial<Record<CharacterId, Design>> = {
       lens = "#ffcf5a";
     const c = cx(k);
     const collar = k.path(`M${k.L - 2} ${k.T - 2}Q${k.C} ${k.T + 8} ${k.R + 2} ${k.T - 2}L${k.R} ${k.T + 4}Q${k.C} ${k.T + 14} ${k.L} ${k.T + 4}Z`, "#e8dcc4", k.ink, 0.8);
-    if (k.back) backPanel(k, leather, collar + k.path(`M${k.C - 4} ${k.T}Q${k.C - 18} ${k.T + 10} ${k.L - 10} ${k.T + 22}L${k.L - 6} ${k.T + 14}Q${k.C - 10} ${k.T + 4} ${k.C + 4} ${k.T}Z`, "#ffffff", k.ink, 0.7));
+    if (k.back) backUnder(k, leather, collar + k.path(`M${k.C - 4} ${k.T}Q${k.C - 18} ${k.T + 10} ${k.L - 10} ${k.T + 22}L${k.L - 6} ${k.T + 14}Q${k.C - 10} ${k.T + 4} ${k.C + 4} ${k.T}Z`, "#ffffff", k.ink, 0.7));
     else {
       k.put("body", coat(k, leather, "#5a321a", "#c8b48a") + collar + belt(k, "#3a2418"));
       // The scarf, its tail streaming to the left (back in profile).
@@ -510,7 +513,7 @@ export const PIRATES: Partial<Record<CharacterId, Design>> = {
     const navy = "#1f2f5c",
       whistle = "#ffe08a";
     const c = cx(k);
-    if (k.back) backPanel(k, "#f7f7fb", k.rect(k.L + 1, k.T - 2, k.R - k.L - 2, 20, 1, navy, k.ink, 0.8) + [3, 6].map((o) => k.rect(k.L + 1 + o, k.T - 2 + o, k.R - k.L - 2 - o * 2, 20 - o * 2, 0, "none", "#ffffff", 1)).join(""));
+    if (k.back) backUnder(k, "#f7f7fb", k.rect(k.L + 1, k.T - 2, k.R - k.L - 2, 20, 1, navy, k.ink, 0.8) + [3, 6].map((o) => k.rect(k.L + 1 + o, k.T - 2 + o, k.R - k.L - 2 - o * 2, 20 - o * 2, 0, "none", "#ffffff", 1)).join(""));
     else {
       const collar = k.side
         ? k.path(`M${k.C - k.side * 14} ${k.T - 2}L${k.C + k.side * 6} ${k.T + 10}L${k.C - k.side * 14} ${k.T + 14}Z`, navy, k.ink, 0.8)
@@ -549,7 +552,7 @@ export const PIRATES: Partial<Record<CharacterId, Design>> = {
         [0.3, 0.5, 0.7].map((t, i) => k.lume("chase", k.circle(x0 + (x1 - x0) * t + px * 4, y0 + (y1 - y0) * t + py * 4, 1.5, glowC, "none", 0), i + 1, glowC)).join("");
     };
     if (k.back) {
-      backPanel(k, navy, k.line(`M${k.C} ${k.T + 18}V${k.B + 2}`, "#14203f", 1.4));
+      backUnder(k, navy, k.line(`M${k.C} ${k.T + 18}V${k.B + 2}`, "#14203f", 1.4));
       k.put("scarf", anchor(k.R + 4, k.T - 16, k.L + 12, k.B + 2));
     } else {
       const c = cx(k);
@@ -578,7 +581,7 @@ export const PIRATES: Partial<Record<CharacterId, Design>> = {
     const vine = (x0: number, y0: number, x1: number, y1: number) => k.line(`M${x0} ${y0}Q${(x0 + x1) / 2 + 6} ${(y0 + y1) / 2 - 6} ${x1} ${y1}`, "#3f6a2a", 2.6) +
       [0.2, 0.45, 0.7].map((t) => k.path(`M${x0 + (x1 - x0) * t} ${y0 + (y1 - y0) * t}q4 -6 9 -3q-4 6 -9 3Z`, "#5fae4a", k.ink, 0.4)).join("") +
       [0.32, 0.58, 0.84].map((t, i) => k.lume("chase", k.circle(x0 + (x1 - x0) * t + 2, y0 + (y1 - y0) * t - 4, 1.6, fly, "none", 0), i, fly)).join("");
-    if (k.back) backPanel(k, "#8a6a3a", vine(k.R - 2, k.T, k.L + 4, k.B - 6));
+    if (k.back) backUnder(k, "#8a6a3a", vine(k.R - 2, k.T, k.L + 4, k.B - 6));
     else {
       k.put("body", torso(k, "#f4ecd8", k.path(`M${k.L - 2} ${k.T - 2}H${c - 6}L${c - 4} ${k.B + 4}H${k.L - 2}Z M${k.R + 2} ${k.T - 2}H${c + 6}L${c + 4} ${k.B + 4}H${k.R + 2}Z`, "#8a6a3a", k.ink, 0.8)) +
         (k.side ? profile(k, k.C, vine(k.C - 10, k.T, k.C + 12, k.B - 8)) : vine(k.L + 2, k.T - 1, k.R - 4, k.B - 6)));
@@ -612,7 +615,7 @@ export const PIRATES: Partial<Record<CharacterId, Design>> = {
       Array.from({ length: Math.floor((x1 - x0) / 7) }, (_, i) => k.line(`M${x0 + 4 + i * 7} ${y - 6}l4 12`, "#b8a27a", 0.7)).join("") +
       Array.from({ length: Math.max(2, Math.floor((x1 - x0) / 12)) }, (_, i) => k.lume("chase", k.circle(x0 + 6 + i * 12, y - 6.5, 1.6, bulb, k.ink, 0.3), i, bulb)).join("");
     if (k.back) {
-      backPanel(k, "#6a5a3a", k.line(`M${k.L} ${k.B - 10}H${k.R}`, "#c8a26a", 2.4));
+      backUnder(k, "#6a5a3a", k.line(`M${k.L} ${k.B - 10}H${k.R}`, "#c8a26a", 2.4));
       k.put("scarf", roll(k.L - 12, k.R + 12, k.T + 4));
     } else {
       const c = cx(k);

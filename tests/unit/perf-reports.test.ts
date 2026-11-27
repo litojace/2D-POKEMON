@@ -59,6 +59,25 @@ describe("match reports exported to GitHub", () => {
     expect(perf).not.toHaveProperty("email");
   });
 
+  it("keeps the device, timeline and scene detail (technical numbers only)", () => {
+    const r = toReport(
+      entry(
+        'arena-perf {"fps":50,"shell":"ios-app","model":"iPhone12,1","osVersion":"18.2","screen":"896x414@2","workP50":5.1,"workP95":9.4,"sliceFps":[59,52,41],"sliceJank":[0,0.05,0.2],"glowP50":0.2,"glowSlow":0.9,"softP50":0.1,"softSlow":0.4,"particlesP50":30,"particlesSlow":210,"objectsP50":160,"objectsSlow":320,"phases":[{"phase":1,"seconds":40,"fps":57,"jank":0.02}],"attacksSlow":["nightfall"],"account":"x"}',
+      ),
+    );
+    expect(r).toMatchObject({
+      shell: "ios-app",
+      model: "iPhone12,1",
+      screen: "896x414@2",
+      workP95: 9.4,
+      sliceFps: [59, 52, 41],
+      glowSlow: 0.9,
+      phases: [{ phase: 1, seconds: 40, fps: 57, jank: 0.02 }],
+      attacksSlow: ["nightfall"],
+    });
+    expect(r).not.toHaveProperty("account");
+  });
+
   it("ignores other log lines and broken ones", () => {
     expect(toReport(entry("arena-diagnostics {}"))).toBeNull();
     expect(toReport(entry("arena-perf {not json"))).toBeNull();

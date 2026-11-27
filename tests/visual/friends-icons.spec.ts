@@ -1,5 +1,9 @@
 import { test, expect } from "@playwright/test";
 import { openLobby, hubMenu } from "./helpers";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // Friends on phones: every row and options button shows its icon beside
 // its label (owner, 19 Nov), and no label is cut on the 76 px buttons;
@@ -111,3 +115,55 @@ for (const [width, height] of [
       await context.close();
     }
   });
+
+test("a tap anywhere on a friend's row opens its options", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    const errors = await openLobby(page);
+    await page.evaluate((pal) => {
+      const f0 = window.fetch.bind(window);
+      window.fetch = async (input, init) =>
+        String(input).endsWith("/api/friends")
+          ? new Response(
+              JSON.stringify({
+                code: "AABBCCDD",
+                incoming: [],
+                outgoing: [],
+                friends: [
+                  { id: pal, name: "Kai", online: true, activity: "town" },
+                ],
+              }),
+              { headers: { "Content-Type": "application/json" } },
+            )
+          : f0(input, init);
+    }, PAL);
+    await hubMenu(page, "friends");
+    const row = page.locator(`[data-friend-row="${PAL}"] > .ui-row`);
+    const opts = page.locator(`#fr-opts-${PAL}`);
+    await expect(opts).toBeHidden();
+    // The name opens the options, a second tap closes them.
+    await row.locator(".ui-row-main b").tap();
+    await expect(opts).toBeVisible();
+    await expect(page.locator(`[data-friend-menu="${PAL}"]`)).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+    await row.locator(".fr-avatar, .ui-row-main").first().tap();
+    await expect(opts).toBeHidden();
+    // A tap inside the open options doesn't close them.
+    await row.locator(".ui-row-main small").tap();
+    await expect(opts).toBeVisible();
+    await opts.locator(".fr-opts-text").tap();
+    await expect(opts).toBeVisible();
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});

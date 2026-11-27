@@ -1,21 +1,27 @@
+import { watchSheetScroll } from "./sheet-scroll";
+
 const markupByElement = new WeakMap<HTMLElement, string>();
 /** Countdown values are filled separately so timer ticks preserve focused cards. */
 export const LIVE_SECONDS = '<span class="live-seconds"></span>';
 /** Countdown digits update in place so the overlay card is not remounted each second. */
 export const LIVE_COUNTDOWN = '<span class="live-countdown"></span>';
-/**
- * The countdown before a fight (3, 2, 1), the same in every mode: PvP, bot
- * matches, the raids and the Spire. The fight's name, one big number and a
- * line under it; style.css draws it over the whole screen, no card, once
- * main.ts marks #arena-overlay .is-countdown. The detail is markup.
- */
-export function countdownCard(eyebrow: string, detail: string) {
-  return `<div class="overlay-card countdown-card"><span class="eyebrow">${eyebrow}</span><h2>${LIVE_COUNTDOWN}</h2><div>${detail}</div></div>`;
-}
 export function fillLiveCountdown(root: HTMLElement, seconds: number) {
   const text = String(Math.max(1, Math.ceil(seconds)));
   root.querySelectorAll<HTMLElement>(".live-countdown").forEach((slot) => {
     if (slot.textContent !== text) slot.textContent = text;
+  });
+}
+/** The seconds left as one big number and its unit (the raid's rites). */
+export const LIVE_NUMBER =
+  '<b class="live-number"></b> <span class="live-unit"></span>';
+export function fillLiveNumber(root: HTMLElement, seconds: number) {
+  const n = Math.max(0, Math.ceil(seconds));
+  const unit = n === 1 ? "second" : "seconds";
+  root.querySelectorAll<HTMLElement>(".live-number").forEach((slot) => {
+    if (slot.textContent !== String(n)) slot.textContent = String(n);
+  });
+  root.querySelectorAll<HTMLElement>(".live-unit").forEach((slot) => {
+    if (slot.textContent !== unit) slot.textContent = unit;
   });
 }
 export function fillLiveSeconds(root: HTMLElement, seconds: number) {
@@ -26,19 +32,48 @@ export function fillLiveSeconds(root: HTMLElement, seconds: number) {
   });
 }
 /**
- * The overlay card pops in (style.css, `ea-pop`). Writing new markup makes a
+ * The overlay card pops in (style.css, `ea-pop`; the raid's rites screen
+ * fades in, `rites-in`, screens/raid-rites.css). Writing new markup makes a
  * new card, which would replay the pop on every snapshot that changes the
  * same panel (a rite picked, a player getting ready). When the panel is the
  * same one, the new card's pop carries on from where the old one was, or
  * stays finished.
  */
+const ENTRY_ANIMATIONS = ["ea-pop", "rites-in"];
 function popOf(card: Element | null | undefined) {
   return card
     ?.getAnimations?.()
     .find(
       (a): a is CSSAnimation =>
-        "animationName" in a && (a as CSSAnimation).animationName === "ea-pop",
+        "animationName" in a &&
+        ENTRY_ANIMATIONS.includes((a as CSSAnimation).animationName),
     );
+}
+/**
+ * The battle overlays that take the whole screen (match-sheet.css), by the
+ * class main.ts and raid-ui.ts mark #arena-overlay with before they write
+ * it: the results (and a raid's or the Spire's briefing), the rites, the
+ * break between rounds and the Reveal. One at a time.
+ */
+const WHOLE_SCREEN = ["sheet", "rites", "break", "reveal"] as const;
+let shownOverlay = "";
+/**
+ * Which one is up, on body as data-battle-overlay="sheet" (and so on), so
+ * CSS can say "over the results" without a :has() rule on body that Chrome
+ * rechecks on every change inside the overlay (CLAUDE.md): the toast and
+ * the update note move off a sheet's buttons (ui/components.css,
+ * style.css), the chat buttons go flat on it (match-sheet.css). Written
+ * only when it changes, never on a write that keeps the same screen.
+ */
+function markWholeScreen(element: HTMLElement, markup: string) {
+  const kind =
+    markup === ""
+      ? ""
+      : (WHOLE_SCREEN.find((k) => element.classList.contains(`is-${k}`)) ?? "");
+  if (kind === shownOverlay) return;
+  shownOverlay = kind;
+  if (kind) document.body.dataset.battleOverlay = kind;
+  else delete document.body.dataset.battleOverlay;
 }
 export function setOverlayMarkup(
   element: HTMLElement,
@@ -47,6 +82,7 @@ export function setOverlayMarkup(
   /** Same value as last time: the same panel, so it doesn't pop in again. */
   panelKey = scrollKey,
 ) {
+  if (element.id === "arena-overlay") markWholeScreen(element, markup);
   if (markupByElement.get(element) === markup) return false;
   const samePanel =
     panelKey !== undefined && element.dataset?.popKey === panelKey;
@@ -71,6 +107,7 @@ export function setOverlayMarkup(
     if (pop && typeof previousPop === "number") pop.currentTime = previousPop;
     else pop?.finish();
   }
+  if (element.id === "arena-overlay") watchSheetScroll(element);
   if (scrollKey) {
     element.dataset.panelKey = scrollKey;
     const scroller = element.querySelector<HTMLElement>(".panel-scroll");

@@ -17,10 +17,19 @@
  * for every person on screen, sixty times a second.
  */
 
-/** The fighter viewBox (CREATURE_VIEWBOX, 200×202), one pixel per unit:
- * the Plaza shows a fighter at most 84 units wide at twice the pixels. */
+/** The fighter viewBox (CREATURE_VIEWBOX, 200×202), one pixel per unit. */
 export const SPRITE_W = 200;
 export const SPRITE_H = 202;
+/**
+ * Pixels per viewBox unit the sprite is painted at. The Plaza shows a
+ * fighter 84 units tall, times its zoom and the screen's pixel ratio: on a
+ * phone (ratio 3) that is 230-500 pixels, so one pixel per unit was blown
+ * up and soft (owner, 22 Nov). Dense screens paint at twice that; a
+ * one-ratio screen never shows it bigger than 200 pixels.
+ */
+export function spriteScale(ratio: number) {
+  return ratio > 1.25 ? 2 : 1;
+}
 
 /** Alpha above this counts as painted, at or below FLAT_CLEAR as empty. */
 const PAINTED = 40;
@@ -70,22 +79,40 @@ function load(url: string): Promise<HTMLImageElement> {
  * Drawing them into the Plaza's canvas is a single upload each.
  */
 function paint(im: CanvasImageSource): HTMLCanvasElement {
-  const c = document.createElement("canvas");
-  c.width = SPRITE_W;
-  c.height = SPRITE_H;
+  const k = spriteScale(
+      typeof devicePixelRatio === "number" ? devicePixelRatio : 1,
+    ),
+    c = document.createElement("canvas");
+  c.width = SPRITE_W * k;
+  c.height = SPRITE_H * k;
   c.getContext("2d", { willReadFrequently: true })!.drawImage(
     im,
     0,
     0,
-    SPRITE_W,
-    SPRITE_H,
+    c.width,
+    c.height,
   );
   return c;
 }
 const pixels = (c: HTMLCanvasElement) =>
   c
     .getContext("2d", { willReadFrequently: true })!
-    .getImageData(0, 0, SPRITE_W, SPRITE_H).data;
+    .getImageData(0, 0, c.width, c.height).data;
+/**
+ * The checked sprite as an ImageBitmap where the browser has them: ready
+ * for the GPU, so the bigger sprite costs no more a frame, and the CPU
+ * canvas the check needed is let go.
+ */
+async function handOver(c: HTMLCanvasElement): Promise<CanvasImageSource> {
+  if (typeof createImageBitmap !== "function") return c;
+  try {
+    const bitmap = await createImageBitmap(c);
+    c.width = c.height = 0;
+    return bitmap;
+  } catch {
+    return c;
+  }
+}
 
 /**
  * A fighter's sprite for the canvas: the full drawing when this browser
@@ -101,21 +128,25 @@ export async function bakeSprite(
       full.addEventListener("load", resolve, { once: true });
       full.addEventListener("error", reject, { once: true });
     });
-  if (flatOnly) return paint(await load(flatUrl));
+  if (flatOnly) return handOver(paint(await load(flatUrl)));
   const fullSprite = paint(full);
   let flat: HTMLImageElement;
   try {
     flat = await load(flatUrl);
   } catch {
-    return fullSprite;
+    return handOver(fullSprite);
   }
   const flatSprite = paint(flat);
+  let failed = false;
   try {
-    if (!masksFailed(pixels(fullSprite), pixels(flatSprite))) return fullSprite;
+    failed = masksFailed(pixels(fullSprite), pixels(flatSprite));
   } catch {
     // An unreadable (tainted) canvas: keep the full drawing, as before.
-    return fullSprite;
   }
-  flatOnly = true;
-  return flatSprite;
+  if (failed) flatOnly = true;
+  const [keep, drop] = failed
+    ? [flatSprite, fullSprite]
+    : [fullSprite, flatSprite];
+  drop.width = drop.height = 0;
+  return handOver(keep);
 }

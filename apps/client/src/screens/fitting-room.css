@@ -10,6 +10,79 @@
   isolation: isolate;
   container-type: size;
 }
+/* The stage by rarity (data-rarity: the item in focus, else the skin worn).
+   A 5,500-coin skin used to stand on the same stage as a 500-coin one: the
+   stage only knew the fighter's element. One still layer behind everything,
+   richer with each tier; the element's light and floor ring stay.
+   Common     nothing added
+   Rare       a blue wash from above
+   Epic       purple light from above and both lower corners
+   Legendary  a gold halo behind the head, gold at the feet, a warm rim
+   Mythical   a prismatic aurora and stars, a prismatic rim */
+.fit-stage[data-rarity]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+.fit-stage[data-rarity="common"]::before {
+  content: none;
+}
+.fit-stage[data-rarity="rare"]::before {
+  background: radial-gradient(
+    ellipse 90% 50% at 50% 0%,
+    color-mix(in srgb, var(--r-rare) 26%, transparent),
+    transparent 72%
+  );
+}
+.fit-stage[data-rarity="epic"]::before {
+  background:
+    radial-gradient(
+      ellipse 85% 48% at 50% 0%,
+      color-mix(in srgb, var(--r-epic) 36%, transparent),
+      transparent 72%
+    ),
+    radial-gradient(
+      ellipse 50% 40% at 0% 78%,
+      color-mix(in srgb, var(--r-epic) 22%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 50% 40% at 100% 78%,
+      color-mix(in srgb, var(--r-epic) 22%, transparent),
+      transparent 70%
+    );
+}
+.fit-stage[data-rarity="legendary"] {
+  border-color: color-mix(in srgb, var(--r-legendary) 60%, transparent);
+}
+.fit-stage[data-rarity="legendary"]::before {
+  background:
+    radial-gradient(ellipse 80% 46% at 50% 0%, #ffc44d3d, transparent 72%),
+    linear-gradient(180deg, #2b1f0a8c, transparent 70%);
+}
+/* The halo is part of the stage light's picture (stage-light.ts), so it
+   sits behind the fighter's head at any stage size: the same light as a
+   Legendary tile's backdrop. It replaced a fan of rays (owner, 26 Nov). */
+.fit-stage[data-rarity="legendary"] .stage-light-halo {
+  visibility: visible;
+}
+.fit-stage[data-rarity="mythical"] {
+  border-color: color-mix(in srgb, var(--r-mythic) 60%, transparent);
+}
+.fit-stage[data-rarity="mythical"]::before {
+  background:
+    radial-gradient(circle at 14% 12%, #fff 0 1.2px, transparent 2px),
+    radial-gradient(circle at 84% 9%, #fff 0 1.5px, transparent 2.3px),
+    radial-gradient(circle at 72% 30%, #ffffffb3 0 1px, transparent 1.8px),
+    radial-gradient(circle at 9% 44%, #ffffffb3 0 1px, transparent 1.8px),
+    radial-gradient(circle at 91% 52%, #ffffff99 0 1px, transparent 1.8px),
+    radial-gradient(circle at 30% 22%, #ffffff80 0 0.8px, transparent 1.5px),
+    radial-gradient(ellipse 60% 45% at 12% 70%, #ff8fd870, transparent 70%),
+    radial-gradient(ellipse 60% 45% at 88% 70%, #7ff3ff5c, transparent 70%),
+    radial-gradient(ellipse 90% 50% at 50% 0%, #b56bff75, transparent 72%);
+}
 /* The stage light (stage-light.ts, owner's option C): the element's glow
    behind the fighter and a lit disc with a ring under the feet, in the
    fighter's own frame, behind the still fighter and the live rig alike. */
@@ -42,7 +115,11 @@
   /* The old Shop preview's inset outline: on a host narrower than the
      stage (desktop) or moved down (phones) it drew a stray line. */
   box-shadow: none;
-  /* The floor fades out above the name instead of ending in an edge. */
+}
+/* The floor fades out above the name instead of ending in an edge. On the
+   host's layers, not the host: a mask clips whatever lies outside the box
+   it is on. */
+.fit-stage > .shop-live-stage:not(.is-frame) > * {
   mask-image: linear-gradient(180deg, #000 82%, transparent);
 }
 .fit-stage > .shop-live-stage.is-frame {
@@ -69,26 +146,9 @@
   right: 14px;
   top: 14px;
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: flex-start;
   gap: var(--sp-2);
-}
-.fit-frame-badge {
-  position: relative;
-  display: grid;
-  justify-items: center;
-  gap: 4px;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--ui-dim);
-  font-size: var(--fs-micro);
-  cursor: pointer;
-}
-.fit-frame-badge > :first-child {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
 }
 .fit-plays {
   display: grid;
@@ -159,6 +219,19 @@
   min-width: var(--ctl-s);
   padding: 0 8px;
 }
+/* Tablets (a touch screen taller than a phone: an iPad): the stage's
+   buttons are 32 px, under a 44 px finger, and the phone hit areas
+   (ui/phone-fit.css) stop at 500 px tall. The stage has the room, so the
+   buttons themselves grow: Entrance / Victory / Your look, Hold to compare
+   and the Awakening stages. */
+@media (pointer: coarse) and (min-height: 501px) {
+  :is(.fit-plays, .fit-stage-tools) .ui-btn.is-s {
+    --h: 44px;
+  }
+  .fit-awaken .ui-btn.is-s {
+    min-width: 44px;
+  }
+}
 :is(.fit-awaken, .fit-stars) .ui-btn[aria-pressed="true"] {
   border-color: var(--ui-accent);
   color: var(--ui-accent);
@@ -200,6 +273,12 @@
   height: 92cqh;
   max-width: none;
   object-fit: contain;
+}
+/* A skin in a tile fills the picture, whole (ui/components.css,
+   ".ui-tile-art > .skin-thumb"), in the box's own units. */
+.fit-room .ui-tile-art > .skin-thumb {
+  width: 100cqw;
+  height: 100cqh;
 }
 /* Effect pieces (aura, entrance, victory, frame) and Colors are drawn by
    cosmetic-picture.ts at a small default size: fill the picture box, as a
@@ -310,8 +389,48 @@
   flex: 1 1 0;
   min-width: 0;
 }
+/* The Skins order: ◆ Rarest | coin Cheapest, two halves of one switch
+   (fitting-room-view.ts, filters). The diamond is the tiles' rarity mark
+   (.ui-rarity), the coin their price's. */
+.fit-sort > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.fit-gem {
+  width: 8px;
+  height: 8px;
+  transform: rotate(45deg);
+  background: var(--r-legendary);
+  flex: none;
+}
+.fit-sort .ui-coin {
+  width: 14px;
+  height: 14px;
+}
+/* On the lit (gold) half the marks take the ink colour or an edge. */
+.fit-sort > button[aria-pressed="true"] .fit-gem {
+  background: var(--ui-accent-ink);
+}
+.fit-sort > button[aria-pressed="true"] .ui-coin {
+  box-shadow: 0 0 0 1.5px var(--ui-accent-ink);
+}
 .fit-count {
   margin-left: auto;
+}
+/* Above a phone's height the rarity chips take a row of their own under
+   ownership, the order and the count. Sharing the row, they were squeezed
+   to "All rarities · Common · Rar…" with "23 skins" over the cut edge
+   (audit A23, 1440 x 900). Phones keep one row (below). */
+@media (min-height: 501px) {
+  .fit-filters > .fit-count {
+    order: 1;
+  }
+  .fit-filters > .ui-chips {
+    order: 2;
+    flex: 1 1 100%;
+  }
 }
 /* Wide enough to keep the row short, tall enough for a whole fighter. */
 .fit-picks .ui-tile-art {
@@ -336,7 +455,9 @@
   justify-items: center;
   gap: 2px;
   width: 64px;
-  padding: 4px 2px 5px;
+  /* No side padding: "Wombolder" is 60 px at 11 px and was cut to
+     "Wombol…" in the 58 px the 2 px a side left. */
+  padding: 4px 0 5px;
   border-radius: var(--rad-md);
   border: 1px solid var(--ui-line);
   background: var(--fill-card);
@@ -384,10 +505,14 @@
 .fit-deal-art {
   height: 160px;
   border-radius: var(--rad-md);
-  background: radial-gradient(
-    ellipse at 50% 85%,
-    color-mix(in srgb, var(--r) 34%, var(--ui-bg-2)),
-    var(--ui-bg-0) 75%
+  /* The deal stands on its rarity's backdrop, like a tile. */
+  background: var(
+    --r-backdrop,
+    radial-gradient(
+      ellipse at 50% 85%,
+      color-mix(in srgb, var(--r) 34%, var(--ui-bg-2)),
+      var(--ui-bg-0) 75%
+    )
   );
   display: grid;
   place-items: center;
@@ -424,10 +549,15 @@
   font-size: calc(26px * var(--text-scale, 1));
   margin-top: 6px;
 }
+/* The countdown is the tags' row's last child, pushed to its end, and wraps
+   under the tags when the card is narrow: pinned to the card's corner it
+   covered "20% off today" on a 667 px phone and on a 1024 px iPad. */
+.fit-deal-text > .fit-row {
+  flex-wrap: wrap;
+  row-gap: 4px;
+}
 .fit-deal-timer {
-  position: absolute;
-  top: 12px;
-  right: 14px;
+  margin-left: auto;
 }
 /* A set: its pieces in a strip, the full and the discounted price. */
 .fit-bundle {
@@ -438,8 +568,18 @@
   padding: 10px 16px 10px 10px;
   text-align: left;
   border-radius: var(--rad-lg);
-  border: 1px solid color-mix(in srgb, var(--r) 50%, transparent);
-  background: linear-gradient(110deg, #b56bff1f, var(--ui-bg-1) 60%);
+  border: 1px solid color-mix(in srgb, var(--r) 60%, transparent);
+  /* The set's own rarity (its rarest piece), not purple for every set. */
+  background: linear-gradient(
+    110deg,
+    color-mix(in srgb, var(--r) 20%, var(--ui-bg-1)),
+    var(--ui-bg-1) 60%
+  );
+}
+.fit-bundle[data-rarity="legendary"],
+.fit-bundle[data-rarity="mythical"] {
+  border-width: 1.5px;
+  border-color: color-mix(in srgb, var(--r) 85%, transparent);
 }
 .fit-bundle[aria-pressed="true"] {
   border-color: var(--ui-accent);
@@ -589,12 +729,18 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
+/* What a slot holds may take two lines, on every screen: "Star-tunnel
+   ent…", "Supernova vict…" in a desktop's six slots (audit B09). */
 .fit-slot b {
   font-size: calc(12px * var(--text-scale, 1));
   max-width: 100%;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-align: center;
+  line-height: 1.15;
 }
 .fit-slot b.is-none {
   color: var(--ui-dim);
@@ -644,6 +790,10 @@
 }
 .fit-foot-text {
   display: grid;
+  /* A column that shrinks: an auto one grew to the name's full width and
+     the name ran under Revert (VOLTKIT at 1024x768) instead of ending in
+     "…". */
+  grid-template-columns: minmax(0, 1fr);
   gap: 2px;
   min-width: 0;
 }
@@ -652,6 +802,19 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+/* The Wardrobe's count of changes, above the fighter's name (as the Shop's
+   bar shows the rarity there, in the same small bold type): gold once there
+   is something to Equip. Not in capitals: "NO CHANGES" ran into Revert on a
+   667 px phone. */
+.fit-foot-count {
+  font-size: var(--fs-micro);
+  font-weight: 700;
+  color: var(--ui-dim);
+  white-space: nowrap;
+}
+.fit-foot-count[data-changes] {
+  color: var(--ui-accent);
 }
 /* One-line names clip their overflow; give Vietnamese marks above and
    below (Liền Chị Quan Họ) room inside the clip without moving the line. */
@@ -729,11 +892,17 @@
     top: 42px;
   }
   /* Entrance and Victory stand in the stage's top-right corner, over the
-     fighter's ears and crest: the fighter is drawn lower (the host moves
-     down whole, so the fighter keeps its size), into the room above Hold
-     to compare. */
+     fighter's ears and crest: the fighter is drawn lower, into the room
+     above Hold to compare, keeping its size. The canvas still covers the
+     stage from its top edge (the camera leaves a --fit-drop band above the
+     fighter: shop-preview-layout.ts shopPreviewCamera), so an entrance or a
+     victory reaches the top instead of stopping in a straight line 34 px
+     down, where the host used to start (owner, 26 Nov). */
+  .fit-stage {
+    --fit-drop: 34px;
+  }
   .fit-stage > .shop-live-stage:not(.is-frame) {
-    transform: translate(-50%, var(--fit-drop, 34px));
+    bottom: calc(var(--fit-info-h) - var(--fit-drop));
   }
   /* Small buttons on a phone stay 8 px from the stage's edge, so each
      still catches a 44 px finger. */
@@ -741,22 +910,6 @@
     left: 8px;
     right: 8px;
     top: 9px;
-  }
-  .fit-frame-badge::after {
-    content: "";
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    width: 44px;
-    height: 44px;
-    transform: translate(-50%, -50%);
-  }
-  .fit-frame-badge > small {
-    display: none;
-  }
-  .fit-frame-badge > :first-child {
-    width: 38px;
-    height: 38px;
   }
   /* Entrance and Victory: round icon buttons in a column at the stage's
      right edge (as mobile games put their side actions), 40 px each. As
@@ -813,7 +966,14 @@
   }
   /* Awakening stages: a column at the stage's right edge, beside the
      fighter, so the stage never changes size for a Mythical. One group of
-     three, 6px apart (16px spread them over half the stage). */
+     three, 6px apart (16px spread them over half the stage). Each is 40 px
+     square, the size of the round buttons above it, so with half of each
+     gap (ui/phone-fit.css, ::after) every stage catches a 44 px finger;
+     at 28 px the middle one caught 34. */
+  .fit-awaken .ui-btn.is-s {
+    --h: 40px;
+    min-width: 40px;
+  }
   .fit-awaken {
     position: absolute;
     right: 0;
@@ -872,17 +1032,6 @@
     font-size: calc(18px * var(--text-scale, 1));
     margin-top: 0;
   }
-  /* The countdown sits in the tags' row (it is the row's last child) and
-     wraps under them when the card is narrow: pinned to the corner it
-     covered "20% off today" on a 667 px phone. */
-  .fit-deal-text > .fit-row {
-    flex-wrap: wrap;
-    row-gap: 4px;
-  }
-  .fit-deal-timer {
-    position: static;
-    margin-left: auto;
-  }
   .fit-bundle {
     grid-template-columns: minmax(0, 1fr) auto;
     padding: 6px 10px;
@@ -936,6 +1085,15 @@
   }
   .fit-slot b {
     font-size: var(--fs-micro);
+    /* What a slot holds may take two lines: a skin's name ("Storm
+       Revenant", 84 px) read "Storm Reve…" in a 75 px slot at 844x390. */
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    white-space: normal;
+    text-align: center;
+    line-height: 1.15;
   }
   /* A slot's name and what it holds stay inside it: they get its width,
      and end in an ellipsis rather than run into the next slot. */
@@ -1047,6 +1205,59 @@
   }
   .fit-filters > .ui-chips {
     order: 2;
+  }
+  /* Skins: ownership and the order share the one row; the count is read
+     out, not shown. */
+  .fit-filters.has-sort {
+    flex-wrap: nowrap;
+  }
+  /* The order shows its two marks alone, each half a 44 px target; the
+     words stay as the halves' names (aria-label). */
+  .fit-sort > button {
+    min-width: 44px;
+    padding: 0 10px;
+  }
+  .fit-sort-word {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .fit-filters.has-sort > .fit-count {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+}
+
+/* The narrowest phones: the Wardrobe's bar drops the fighter's picture (the
+   stage beside it shows the same fighter), so a name like "Wombolder" and
+   the count above it read in full beside Revert and Equip: the text had
+   59 px there. The Shop's bar keeps its picture, of the item to buy. */
+@media (max-height: 500px) and (max-width: 720px) {
+  .fit-room[data-fit-mode="wardrobe"] .fit-foot-art {
+    display: none;
+  }
+}
+/* The same on a small tablet held sideways (an iPad at 1024x768): the panel
+   is as narrow as a phone's, and the text had 24 px beside Revert and
+   Equip. */
+@media (min-height: 501px) and (max-width: 1100px) {
+  .fit-room[data-fit-mode="wardrobe"] .fit-foot-art {
+    display: none;
+  }
+}
+/* A tablet held sideways (1024-1200 px): six slots a row left 53-79 px
+   each, too narrow for "ENTRANCE" beside "VICTORY" or a skin's name
+   ("Storm Revenant" read "Storm …"): three a row, as on the narrowest
+   phones. */
+@media (min-height: 501px) and (max-width: 1200px) {
+  .fit-slots {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 

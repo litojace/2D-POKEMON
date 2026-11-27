@@ -1,7 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
-import { box, inside, openLobby, openWardrobe, snap } from "./helpers";
+import { box, inside, openLobby, openWardrobe, settle, snap } from "./helpers";
 import { ISLAND, closeSpot, layoutProblems, setInsets } from "./ui-measure";
 import { exposeAccount, shopServer } from "./shop-server";
+import { SHOP_ARRIVALS } from "../../apps/client/src/shop-arrivals";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // UI remodel step 2 (docs/ui-remodel/PLAN.md): the fitting room, the Shop and
 // the Wardrobe in one screen inside the Lobby. Measured at the four review
@@ -181,7 +186,10 @@ for (const size of SIZES)
       expect(await calls(page)).toEqual([]);
       // Escape again leaves to the Lobby.
       await page.keyboard.press("Escape");
-      await expect(room).toHaveCount(0);
+      // (A closed Shop stays in the page, hidden, for its next open: ui/hub-panel.ts park.)
+      await expect(
+        page.locator(".fit-room:not([data-ui-leaving])"),
+      ).toHaveCount(0);
       expect(errors).toEqual([]);
     } finally {
       await context.close();
@@ -279,7 +287,7 @@ test("the Wardrobe: try several things, then Equip once or Revert", async ({
     page.locator('[data-fit-slot][data-changed="true"]'),
   ).toHaveCount(2);
   await page.click("[data-fit-revert]");
-  await expect(page.locator(".ui-panel-foot")).toContainText("no changes");
+  await expect(page.locator(".ui-panel-foot")).toContainText("No changes");
   await expect(page.locator(".fit-stage .shop-live-stage")).toHaveAttribute(
     "data-preview-skin",
     "voltkit-stormcrown",
@@ -303,7 +311,7 @@ test("the Wardrobe: try several things, then Equip once or Revert", async ({
     ["look", { slot: "skin", item: "candy-colours" }],
     ["look", { slot: "aura", item: "galaxy-aura" }],
   ]);
-  await expect(page.locator(".ui-panel-foot")).toContainText("no changes");
+  await expect(page.locator(".ui-panel-foot")).toContainText("No changes");
   await expect(page.locator('[data-fit-slot="aura"]')).toContainText(
     "Nebula aura",
   );
@@ -320,6 +328,57 @@ test("the Wardrobe: try several things, then Equip once or Revert", async ({
   );
   await snap(page, info, "fitting-room-more-in-shop");
   expect(errors).toEqual([]);
+});
+
+// The Wardrobe's bar on the smallest phone: the count of changes and the
+// fighter's name read in full, and their text stops short of Revert.
+// ("Voltkit · no changes" on one line was cut to "VOLTKI…", and the first
+// fix's capitals ran into Revert: a box that fits can still hold text that
+// spills, so this measures the text itself.)
+test("the Wardrobe's bar reads in full at 667x375", async ({ browser }) => {
+  const context = await browser.newContext({
+    viewport: { width: 667, height: 375 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    await shopServer(page, { owned: ["voltkit-midnight", "wombolder-coal"] });
+    const errors = await openLobby(page);
+    await openWardrobe(page);
+    const fits = () =>
+      page.evaluate(() => {
+        const revert = document
+          .querySelector(".ui-panel-foot [data-fit-revert]")!
+          .getBoundingClientRect();
+        return [".fit-foot-count", ".fit-foot-text .ui-h"].map((sel) => {
+          const el = document.querySelector<HTMLElement>(
+            `.ui-panel-foot ${sel}`,
+          )!;
+          const range = document.createRange();
+          range.selectNodeContents(el);
+          const text = range.getBoundingClientRect();
+          return {
+            text: el.textContent,
+            whole: el.scrollWidth <= el.clientWidth + 1,
+            clear: text.right <= revert.left - 4,
+          };
+        });
+      });
+    const ok = (text: string) => ({ text, whole: true, clear: true });
+    expect(await fits()).toEqual([ok("No changes"), ok("Voltkit")]);
+    await page.click('[data-ui-item="voltkit-midnight"]');
+    expect(await fits()).toEqual([ok("1 change"), ok("Voltkit")]);
+    // The longest fighter name.
+    await page
+      .locator('[data-fit-fighter="wombolder"]')
+      .evaluate((el) => (el as HTMLElement).click());
+    await page.click('[data-ui-item="wombolder-coal"]');
+    expect(await fits()).toEqual([ok("1 change"), ok("Wombolder")]);
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
 });
 
 test("keyboard: tabs and grids move with the arrows, Escape leaves to the Lobby", async ({
@@ -360,7 +419,7 @@ test("keyboard: tabs and grids move with the arrows, Escape leaves to the Lobby"
   await page.keyboard.up(" ");
   await expect(compare).toHaveAttribute("aria-pressed", "false");
   await page.keyboard.press("Escape");
-  await expect(page.locator(".fit-room")).toHaveCount(0);
+  await expect(page.locator(".fit-room:not([data-ui-leaving])")).toHaveCount(0);
   await expect(rail).toBeFocused();
   expect(errors).toEqual([]);
 });
@@ -443,7 +502,7 @@ test("opening another screen from the rail replaces the fitting room", async ({
   );
   await expect(page.locator(".fit-room")).toHaveCount(1);
   await page.click('.lobby-rail [data-lobby-action="missions"]');
-  await expect(page.locator(".fit-room")).toHaveCount(0);
+  await expect(page.locator(".fit-room:not([data-ui-leaving])")).toHaveCount(0);
   await expect(page.locator(".missions-sheet")).toBeVisible();
   expect(errors).toEqual([]);
 });
@@ -471,7 +530,7 @@ test("a late answer can't reopen a closed Shop over another screen", async ({
     await w.__pendingShop;
   });
   await expect(page.locator(".friends-sheet")).toBeVisible();
-  await expect(page.locator(".fit-room")).toHaveCount(0);
+  await expect(page.locator(".fit-room:not([data-ui-leaving])")).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 
@@ -515,11 +574,19 @@ test("the open screen's rail icon lights up, and a second tap on it closes the s
 }) => {
   await shopServer(page);
   const errors = await openLobby(page);
-  // The open screen's button is solid gold in the rail's glass capsule.
+  // The open screen's button is a solid block in the element colour (gold
+  // for Voltkit): Poster draws it behind the button (its ::before, a
+  // slanted block inside the button's box), so read whichever is painted.
   const rim = (action: string) =>
     page
       .locator(`.lobby-rail [data-lobby-action="${action}"]`)
-      .evaluate((b) => getComputedStyle(b).backgroundColor);
+      .evaluate((b) => {
+        const block = getComputedStyle(b, "::before");
+        return block.content !== "none" &&
+          block.backgroundColor !== "rgba(0, 0, 0, 0)"
+          ? block.backgroundColor
+          : getComputedStyle(b).backgroundColor;
+      });
   const shop = page.locator('.lobby-rail [data-lobby-action="shop"]');
   await shop.click();
   await expect(page.locator(".fit-room")).toBeVisible();
@@ -533,7 +600,7 @@ test("the open screen's rail icon lights up, and a second tap on it closes the s
   await page.click('.fit-room [data-ui-mode="wardrobe"]');
   await expect(shop).toHaveAttribute("aria-current", "page");
   await shop.click();
-  await expect(page.locator(".fit-room")).toHaveCount(0);
+  await expect(page.locator(".fit-room:not([data-ui-leaving])")).toHaveCount(0);
   await expect(shop).not.toHaveAttribute("aria-current", "page");
   // A sheet too.
   const missions = page.locator('.lobby-rail [data-lobby-action="missions"]');
@@ -581,6 +648,33 @@ for (const size of [SIZES[0], SIZES[2]])
         expect(gap, "between two stages").toBeLessThanOrEqual(8);
       }
       if (size.phone) {
+        // Each stage catches a 44 px finger, down and across, without
+        // taking taps from its neighbours (they were 28 px with 34 px hit
+        // areas). Probed through elementFromPoint, so the ::after counts.
+        const reach = await page
+          .locator(".fit-awaken .ui-btn")
+          .evaluateAll((els) =>
+            els.map((b) => {
+              const r = b.getBoundingClientRect(),
+                cx = r.left + r.width / 2,
+                cy = r.top + r.height / 2;
+              const hits = (x: number, y: number) => {
+                const e = document.elementFromPoint(x, y);
+                return e === b || b.contains(e);
+              };
+              let down = 0,
+                across = 0;
+              for (let y = r.top - 20; y < r.bottom + 20; y++)
+                if (hits(cx, y)) down++;
+              for (let x = r.left - 20; x < r.right + 20; x++)
+                if (hits(x, cy)) across++;
+              return { down, across };
+            }),
+          );
+        for (const r of reach) {
+          expect(r.down, "stage hit area down").toBeGreaterThanOrEqual(44);
+          expect(r.across, "stage hit area across").toBeGreaterThanOrEqual(44);
+        }
         // Round icon buttons: each icon in the middle of its circle (the
         // -3px nudge for an icon beside a label pulled them 1.5px left).
         const centres = await page
@@ -626,6 +720,177 @@ for (const size of [SIZES[0], SIZES[2]])
         expect(new Set(lines.map((l) => l[0])).size, "icons").toBe(1);
         expect(new Set(lines.map((l) => l[1])).size, "labels").toBe(1);
       }
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+
+// A Shop opened again while the last one was still sliding away (a fast
+// close-and-reopen; on CI's slow runner, frame-level-preview.spec.ts does
+// it) got a new screen, and then the old one was parked for the next open
+// anyway: two Shops in the page, one hidden, until the next close. A lookup
+// for the room's pieces found both (frame-level-preview failed on main's CI,
+// "resolved to 2 elements", 20 Nov 2026).
+test("a Shop reopened while the last one is leaving is the only Shop left", async ({
+  page,
+}) => {
+  await exposeAccount(page);
+  await shopServer(page);
+  const errors = await openLobby(page);
+  await page.click('.lobby-rail [data-lobby-action="shop"]');
+  await expect(page.locator(".fit-room")).toBeVisible();
+  // Close and open again in the same moment: the first is still leaving.
+  await page.evaluate(() => {
+    document.querySelector<HTMLElement>(".fit-room .ui-close")!.click();
+    void (window as any).__account.showShop();
+  });
+  await expect(page.locator(".fit-room:not([data-ui-leaving])")).toHaveCount(1);
+  // Once the old one has left (its leave is well under a second), one Shop.
+  await page.waitForTimeout(1500);
+  await expect(page.locator(".ui-panel-host .fit-room")).toHaveCount(1);
+  await expect(page.locator(".ui-panel-host[data-ui-parked]")).toHaveCount(0);
+  // And closing that one parks it as before, for the next open.
+  await page.locator(".fit-room .ui-close").click();
+  await expect(page.locator(".ui-panel-host[data-ui-parked]")).toHaveCount(1);
+  expect(errors).toEqual([]);
+});
+
+// The Skins order (owner's pick B, 25 Nov): a switch of two halves, ◆ Rarest
+// and coin Cheapest, beside All / Owned / Not owned. It used to be one long
+// button that filled a phone's row for two choices. Both halves are in
+// sight, the lit one is the order shown; a phone shows the marks alone.
+for (const size of [
+  { name: "667x375", width: 667, height: 375, phone: true },
+  SIZES[2],
+  SIZES[3],
+  SIZES[0],
+])
+  test(`the Skins order is a two-half switch that fits the row (${size.name})`, async ({
+    browser,
+  }, info) => {
+    const context = await browser.newContext({
+      viewport: { width: size.width, height: size.height },
+      isMobile: size.phone,
+      hasTouch: size.phone,
+    });
+    try {
+      const page = await context.newPage();
+      await shopServer(page);
+      const errors = await openLobby(page);
+      if ("island" in size && size.island) await setInsets(page, ISLAND);
+      await page.click('.lobby-rail [data-lobby-action="shop"]');
+      await page.click('[data-ui-section="skins"]');
+      const rarest = page.locator('.fit-sort [data-fit-sort="rarity"]');
+      const cheapest = page.locator('.fit-sort [data-fit-sort="price"]');
+      await expect(rarest).toHaveAttribute("aria-pressed", "true");
+      await expect(cheapest).toHaveAttribute("aria-pressed", "false");
+      await expect(rarest).toHaveAccessibleName("Rarest first");
+      await expect(cheapest).toHaveAccessibleName("Cheapest first");
+      // Measured where the screen settles: it opens with a slight zoom
+      // (ui/hub-panel.ts, scale .985) and its parts arrive one by one, and
+      // CI's slow renderer measured a 44 px half mid-way (43.34, 43.99 px).
+      // Every finite animation is finished in the same step as the
+      // measuring, so none can start in between.
+      const look = async () => {
+        await settle(page);
+        return page.evaluate(() => {
+          for (const a of document.getAnimations())
+            if (a.effect?.getTiming().iterations !== Infinity) a.finish();
+          const row = document
+            .querySelector(".fit-filters")!
+            .getBoundingClientRect();
+          return [...document.querySelectorAll(".fit-sort > button")].map(
+            (b) => {
+              const r = b.getBoundingClientRect();
+              // Shown words are measured as drawn (a Range): text can spill
+              // out of a box that itself fits. A phone hides them (1 px box).
+              const span = b.querySelector(".fit-sort-word")!;
+              const shown = span.getBoundingClientRect().width > 1;
+              const range = document.createRange();
+              range.selectNodeContents(span);
+              const w = range.getBoundingClientRect();
+              return {
+                inRow: r.left >= row.left - 0.5 && r.right <= row.right + 0.5,
+                width: r.width,
+                word: shown,
+                wordInside:
+                  !shown ||
+                  (w.left >= r.left - 0.5 && w.right <= r.right + 0.5),
+              };
+            },
+          );
+        });
+      };
+      for (const half of await look()) {
+        expect(half.inRow).toBe(true);
+        expect(half.wordInside).toBe(true);
+        // A phone: the marks alone, each half a finger wide; else the words.
+        expect(half.word).toBe(!size.phone);
+        if (size.phone) expect(half.width).toBeGreaterThanOrEqual(44);
+      }
+      await snap(page, info, `fitting-room-sort-rarest-${size.name}`);
+      // One tap: Cheapest lights, the grid leads with a Common skin, and
+      // focus stays on the half you pressed.
+      await cheapest.click();
+      await expect(cheapest).toHaveAttribute("aria-pressed", "true");
+      await expect(rarest).toHaveAttribute("aria-pressed", "false");
+      await expect(cheapest).toBeFocused();
+      await expect(
+        page.locator(".fit-grid > .ui-tile").first().locator(".ui-rarity"),
+      ).toHaveText(/common/i);
+      for (const half of await look()) expect(half.inRow).toBe(true);
+      await snap(page, info, `fitting-room-sort-cheapest-${size.name}`);
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+
+// Today's "New in the Shop" follows the fighter you chose, not the one a
+// tapped tile puts on the stage (owner, 26 Nov: tapping a Daily pick of
+// another fighter changed the row's skins under the finger).
+for (const size of [SIZES[2], SIZES[0]])
+  test(`a Daily pick of another fighter leaves "New in the Shop" as it was (${size.name})`, async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({
+      viewport: { width: size.width, height: size.height },
+      isMobile: size.phone,
+      hasTouch: size.phone,
+    });
+    try {
+      const page = await context.newPage();
+      // A day after the newest arrival, so the row has something to show
+      // whatever today's date is.
+      const newest = Math.max(
+        ...Object.values(SHOP_ARRIVALS).map((d) =>
+          Date.parse(`${d}T12:00:00Z`),
+        ),
+      );
+      await page.clock.setFixedTime(newest + 86_400_000);
+      await shopServer(page);
+      const errors = await openLobby(page);
+      await page.click('.lobby-rail [data-lobby-action="shop"]');
+      const row = page.locator(".fit-new [data-ui-item]");
+      await expect(row.first()).toBeVisible();
+      const ids = () =>
+        row.evaluateAll((els) =>
+          els.map((e) => e.getAttribute("data-ui-item")),
+        );
+      const before = await ids();
+      // Voltkit is the fighter you came with: the row offers Voltkit's skins.
+      expect(before.some((id) => id!.startsWith("voltkit-"))).toBe(true);
+      // A Daily pick of Mystowl's puts Mystowl on the stage...
+      await page.click(
+        '.fit-picks:not(.fit-new) [data-ui-item="mystowl-scholar"]',
+      );
+      await expect(page.locator(".fit-stage .shop-live-stage")).toHaveAttribute(
+        "data-preview-champion",
+        "mystowl",
+      );
+      // ...and the row stays as it was.
+      expect(await ids()).toEqual(before);
       expect(errors).toEqual([]);
     } finally {
       await context.close();

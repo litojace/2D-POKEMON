@@ -14,7 +14,7 @@ import {
 // link beam. The atlas is drawn when the arena scene is created, and every
 // gameplay edge is drawn at the server's exact size.
 
-const MARKER = "if (state?.raid) prewarmRaidArena(this, state.raid);";
+const MARKER = "if (state?.raid) kit.prewarmRaidArena(this, state.raid);";
 /** Open a raid on `boss`, exposing the game and what was ready at create. */
 async function openRaid(page: Page, boss: string) {
   await page.route(/\/apps\/client\/src\/main\.ts(?:\?|$)/, async (route) => {

@@ -123,17 +123,26 @@ it("pays each quest once a day and keeps the best lap of the week", async () => 
   expect(p.quests.cheers).toEqual({ n: 9, done: false });
   p = await record({ player: runner, kind: "cheers", n: 40 });
   expect(p.quests.cheers).toEqual({ n: 15, done: true });
-  // A slow lap sets a time but not the quest; a fast one does both.
+  // A lap sets the week's best time; the quest takes 3 laps in a row in
+  // under 30 s (PLAZA_LAP_RUN): one fast lap alone, a 3-lap run of 30 s or
+  // more, or a run too fast to be real, don't count.
   p = await record({ player: runner, kind: "lap", ms: 31_000 });
   expect(p.bestLapMs).toBe(31_000);
   expect(p.quests.lap.done).toBe(false);
   p = await record({ player: runner, kind: "lap", ms: 6_420 });
-  p = await record({ player: runner, kind: "lap", ms: 9_000 });
+  expect(p.bestLapMs).toBe(6_420);
+  expect(p.quests.lap.done).toBe(false);
+  p = await record({ player: runner, kind: "lap", ms: 9_000, run: 30_000 });
+  expect(p.quests.lap.done).toBe(false);
+  p = await record({ player: runner, kind: "lap", ms: 9_000, run: 2_000 });
+  expect(p.quests.lap.done).toBe(false);
+  p = await record({ player: runner, kind: "lap", ms: 9_000, run: 24_420 });
   expect(p.bestLapMs).toBe(6_420);
   expect(p.quests.lap.done).toBe(true);
+  // Every quest but fishing (tests/integration/plaza-fishing.test.ts).
   expect(await ledger(runner, "plaza-quest")).toEqual({
-    n: 5,
-    s: PLAZA_QUESTS.reduce((s, q) => s + q.coins, 0),
+    n: PLAZA_QUESTS.length - 1,
+    s: PLAZA_QUESTS.reduce((s, q) => s + (q.id === "fish" ? 0 : q.coins), 0),
   });
   await record({ player: rival, kind: "lap", ms: 5_900 });
   expect((await progress(runner)).board).toEqual([

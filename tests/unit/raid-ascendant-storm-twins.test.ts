@@ -78,7 +78,7 @@ const arena = (
   const variant = form === "raid" ? undefined : form;
   const a = createRaidArena("ASC", "storm-twins", { variant }) as Inner;
   team.slice(0, size).forEach((c, i) => a.add("p" + i, "P" + i, c));
-  a.configure(3, false);
+  a.configure(3);
   a.start();
   a.phase = "playing";
   a.deadline = a.time + 600;
@@ -366,7 +366,7 @@ describe("the layer acts only for the twins' Ascendant form", () => {
     const Layered = AscendantStormTwinsRules(StormTwinsArena);
     const a = new Layered("L", "storm-twins") as unknown as Inner;
     a.add("p0", "P0", "voltkit");
-    a.configure(3, false);
+    a.configure(3);
     a.start();
     expect(a.twinsAscendant()).toBe(false);
     expect(a.pattern()).toEqual(stormTwinsPattern(a.raid.phase, a.raid.trait));
@@ -382,7 +382,7 @@ describe("the layer acts only for the twins' Ascendant form", () => {
     const Layered = AscendantStormTwinsRules(StormTwinsArena);
     const a = new Layered("L", "storm-twins") as unknown as Inner;
     a.add("p0", "P0", "voltkit");
-    a.configure(3, false);
+    a.configure(3);
     a.start();
     // The Spire: setupArena (variant off), then the variant on, then spawnBoss.
     a.players = a.players.filter((p: Fighter) => !p.raidBoss);

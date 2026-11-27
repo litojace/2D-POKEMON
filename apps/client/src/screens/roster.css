@@ -138,16 +138,18 @@
   gap: 8px;
   min-width: 0;
 }
-.roster-card-foot .ui-tag.is-ok {
+.roster-card-foot .ui-tag:is(.is-ok, .roster-locked) {
   margin-left: auto;
 }
 /* A card narrower than its foot (six to a row on a laptop): the one you
-   play shows Playing in place of its looks count. */
+   play shows Playing in place of its looks count; in a room, Locked (it
+   used to keep the count there, which wrapped to two lines and pushed
+   Locked past the card's edge: "LOCKE"). */
 .roster-card {
   container: roster-card / inline-size;
 }
 @container roster-card (max-width: 215px) {
-  .roster-card-foot:has(.is-ok) .ui-note {
+  .roster-card-foot:has(.is-ok, .roster-locked) .ui-note {
     display: none;
   }
 }
@@ -165,6 +167,19 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+/* A fighter's mastery line takes two lines beside the buttons instead of
+   ending in "…": "Mastery · Gold · Crystal in 29 matc…" at 1440 px, and
+   "Mastery · New · Bronze in …" in a phone's 140 px (audit B10; two
+   11 px lines and the bar still fit its 44 px buttons' height). */
+.roster-room[data-roster-mode="detail"] .roster-foot-text .ui-note {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  white-space: normal;
+  text-wrap: balance;
+  line-height: 1.25;
 }
 
 /* ---------------------------------------------------------- detail */
@@ -478,8 +493,11 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--sp-3);
 }
+/* The art, the name, then Owned / In the Shop pinned to the bottom, so the
+   cards of a row line up when one name takes two lines. */
 .roster-look {
   display: grid;
+  grid-template-rows: auto 1fr auto;
   gap: 2px;
   padding: 8px;
   border-radius: var(--rad-md);
@@ -506,12 +524,19 @@
   width: 88%;
   height: 88%;
 }
+/* The whole name, on two even lines where one is too short. On a 667 px
+   phone one line held 61 px, and 127 of the 432 skin names ended in "…"
+   ("Amber Path…", "Storm Astro…"). */
 .roster-look b {
   font-family: var(--font-display);
   font-size: calc(16px * var(--text-scale, 1));
-  white-space: nowrap;
+  line-height: 1.15;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-wrap: balance;
 }
 .roster-look small {
   font-size: var(--fs-micro);
@@ -676,6 +701,18 @@
     font-size: calc(12px * var(--text-scale, 1));
   }
 }
+/* Phones: a word too long for a card's 61 px line on a 667 px phone
+   ("Chrysanthemum", 72 px at 12 px) is set at the phone text floor, a touch
+   tighter, and may use 2 px of the card's padding on each side, so it reads
+   in full. The art keeps its size (skin-thumbnails.spec.ts matches its
+   bitmap to the drawing at that size). */
+@media (max-height: 500px) {
+  .roster-look.has-long-word b {
+    margin-inline: -2px;
+    font-size: var(--fs-micro);
+    letter-spacing: -0.02em;
+  }
+}
 /* Phones: six small cards to a row where they fit (three where not). */
 @media (max-height: 500px) {
   @container roster-grid (min-width: 560px) {
@@ -791,5 +828,29 @@
   }
   .roster-foot-range {
     display: none;
+  }
+}
+
+/* A fighter's page on a small phone (667 px wide: the page's half is
+   351 px). Three equal buttons at the widest label ("Test skills") need
+   386 px there, so Select ran off the panel's edge. The mastery line has
+   no room at this width anyway (ui/phone-fit.css folds it away): drop its
+   slot, let each button take its own label's width, and give what is left
+   to the main action. */
+@media (max-height: 500px) and (max-width: 740px) {
+  .roster-room[data-roster-mode="detail"] .ui-panel-foot > .ui-foot-info {
+    display: none;
+  }
+  .roster-room[data-roster-mode="detail"] .ui-panel-foot > .ui-actions {
+    flex: 1;
+    display: flex;
+    min-width: 0;
+  }
+  .roster-room[data-roster-mode="detail"] .ui-actions > .ui-btn {
+    flex: 0 1 auto;
+    width: auto;
+  }
+  .roster-room[data-roster-mode="detail"] .ui-actions > .ui-btn:last-child {
+    flex: 1 0 auto;
   }
 }

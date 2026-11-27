@@ -353,6 +353,29 @@ for (const size of SIZES)
       await expect(drawer.locator(".chat-empty")).toContainText(
         "Only your team reads this",
       );
+      // Four tabs in a room: each one whole, clear of the settings gear
+      // (the fourth read "FRIEN" under it at 844 x 390 and was gone at
+      // 667: UI audit, 27 Nov 2026).
+      const tabRow = await page.evaluate(() => {
+        const tabs = document.querySelector("#chat-drawer .chat-tabs")!;
+        const gear = document
+          .querySelector("#chat-drawer .chat-gear")!
+          .getBoundingClientRect();
+        const row = tabs.getBoundingClientRect();
+        return {
+          count: tabs.children.length,
+          overflow: tabs.scrollWidth - tabs.clientWidth,
+          gap: gear.left - tabs.lastElementChild!.getBoundingClientRect().right,
+          cut: [...tabs.children].filter((tab) => {
+            const r = tab.getBoundingClientRect();
+            return r.left < row.left - 0.5 || r.right > row.right + 0.5;
+          }).length,
+        };
+      });
+      expect(tabRow.count).toBe(4);
+      expect(tabRow.overflow).toBeLessThanOrEqual(0);
+      expect(tabRow.cut).toBe(0);
+      expect(tabRow.gap).toBeGreaterThanOrEqual(4);
       await snap(page, info, `chat-room-${size.name}`);
       expect(errors).toEqual([]);
     } finally {
@@ -817,7 +840,11 @@ test("notify me of friends' messages: the gear's switch, and when it can't be of
       const before = w.__reply;
       w.__reply = (ev: string, data: any) => {
         if (ev === "push-config") return { ok: true, key: w.__pushKey };
-        if (ev === "push-subscribe" || ev === "push-unsubscribe") {
+        if (
+          ev === "push-subscribe" ||
+          ev === "push-unsubscribe" ||
+          ev === "push-news"
+        ) {
           w.__pushSent.push([ev, data]);
           return { ok: true };
         }
@@ -830,8 +857,11 @@ test("notify me of friends' messages: the gear's switch, and when it can't be of
     await expect(toggle).toBeVisible();
     await expect(toggle).toHaveAttribute("aria-checked", "false");
     await expect(page.locator("#chat-drawer .chat-push-note")).toContainText(
-      "It says who, not what.",
+      "it says who, not what",
     );
+    // Game news shows only once notifications are on.
+    const news = page.locator("#chat-drawer .chat-news-toggle");
+    await expect(news).toBeHidden();
     await snap(page, info, "chat-push-off-844x390");
     // On: subscribed with the server's key, and the server told.
     await toggle.click();
@@ -848,6 +878,18 @@ test("notify me of friends' messages: the gear's switch, and when it can't be of
           keys: expect.objectContaining({ auth: "tBHItJI5svbpez7KI4CCXg" }),
         },
       ],
+    ]);
+    // Game news from the admins: on by default, off on this device.
+    await expect(news).toBeVisible();
+    await expect(news).toHaveAttribute("aria-checked", "true");
+    await snap(page, info, "chat-push-on-844x390");
+    await news.click();
+    await expect(news).toHaveAttribute("aria-checked", "false");
+    expect(
+      await page.evaluate(() => (window as any).__pushSent.at(-1)),
+    ).toEqual([
+      "push-news",
+      { endpoint: "https://fcm.googleapis.com/fcm/send/this-phone", on: false },
     ]);
     // Off again.
     await toggle.click();

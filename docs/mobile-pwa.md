@@ -6,7 +6,7 @@ Element Arena remains one Phaser client and one Socket.IO server. Mobile and des
 
 On touch devices, gameplay uses a viewport-sized arena with a fixed joystick at the lower left and a curved combat cluster at the lower right. The primary Attack button is largest. Skill order and artwork are unchanged; Dash and Jump have separate accents. Controls respect display safe areas, resize on rotation and viewport changes, and maintain at least 44-pixel button diameters. At narrow sizes, preferred sizes are constrained to fit safely. Portrait play remains available with a landscape suggestion.
 
-Open **Settings → Mobile Controls**, or **Mobile controls ⚙**, to adjust joystick size, combat button size, and opacity. **Reset mobile layout** restores defaults. Settings are stored on the device. The joystick is fixed; floating and drag-to-edit layouts are intentionally not implemented.
+The joystick and combat buttons have one layout, sized to the screen. Their size and opacity sliders were taken out on 22 Nov 2026 (players changed them by mistake and couldn't get back; the sizes also shared the `arena-controls` entry with key bindings, so moving a slider wiped the bindings). Sizes saved before then are ignored. **Settings → Controls** on a touch screen shows **Whole court in raids** and folds keys, mouse and controller away. The joystick is fixed; floating and drag-to-edit layouts are intentionally not implemented.
 
 DOM Pointer Events provide independent multi-finger capture for the DOM HUD. Phaser handles the arena and desktop controls. Cancellation, lost capture, blur, page hiding, orientation changes, and viewport resizing reset held touch input. Visibility and focus changes also send one neutral input packet through the existing protocol; normal input still runs at 30 Hz. No extra touch-move network stream is introduced.
 
@@ -14,7 +14,7 @@ DOM Pointer Events provide independent multi-finger capture for the DOM HUD. Pha
 
 Deploy first over HTTPS. Installation is optional.
 
-- **Android Chrome:** open `https://parena.litojace.com`, open **Menu → Want fullscreen?** for a one-tap install when available, or use the browser menu → Install app / Add to Home screen.
+- **Android Chrome:** open `https://play.elementarenausa.com`, open **Menu → Want fullscreen?** for a one-tap install when available, or use the browser menu → Install app / Add to Home screen.
 - **iPhone / iPad Safari:** open the same address, use Share → Add to Home Screen → Add. Open the new icon for standalone play.
 - **Desktop:** use **Menu → Want fullscreen?** or the browser's install control when supported.
 
@@ -38,14 +38,22 @@ The manifest requests standalone landscape display, with a `fullscreen` display 
 
 No API responses, authentication tokens, Socket.IO traffic, match snapshots, or dynamic state are cached by the service worker. Existing Supabase/session storage behavior is unchanged. Preview HTML files are development-only and are not included in the production build.
 
-A new worker waits for user approval. The update control stays unavailable during briefing, countdown, play, intermission, or a disconnect pause. Same-origin tab heartbeats also prevent updates while another tab reports an active match. Worker activation never automatically reloads a match: reloading is a separate guarded action outside the match. Tab heartbeats expire after two minutes to recover from crashed tabs. If storage is unavailable, current-tab protection still applies.
+A new worker waits for the player to agree (`pwa.ts`, `pwa-auto-update.ts`). The browser checks for one every minute and whenever the game comes back to the front. Once one is downloaded:
+
+- **In a match, or with a menu open:** a quiet note only ("Update ready · you can install it after closing menus…"). Nothing activates or reloads. Briefing, countdown, play, intermission, a disconnect pause and the results screen all count as a match. In a battle on a touch screen the note is a short pill ("Update after this match", or "Update after practice") at the bottom, centred in the gap between the joystick and the skill buttons, so it covers neither the score nor a control.
+- **In the Lobby or the Plaza, nothing open:** the first ask fills the screen like the round countdown: "NEW VERSION", **Update now** and **Later**. Update now activates the worker and reloads (a few seconds). Later (or Escape) hides it for 10 minutes (`UPDATE_SNOOZE_MS`); after that it asks again in the compact banner, not full screen. A new session asks full screen again.
+- **Another tab:** same-origin tab heartbeats hold the prompt back while another tab reports an active match. If another tab already applied the update, this tab still asks before reloading. Heartbeats expire after two minutes, so a crashed tab cannot block updates. Without storage, the current tab is still protected.
+
+On landscape phones the banner is one compact row beside PLAY, so PLAY and Quick Match stay reachable. `tests/visual/shop-stability.spec.ts` checks both the full-screen ask and the banner at 667×375, 844×390 and 932×430.
+
+When the server announces a deploy (`server-update`, [server updates](server-updates.md)), the client checks for the new version at once, so the prompt is ready when the match ends. The iPhone app updates through the App Store: it has no worker and no prompt, but still shows the server's notice.
 
 ## Deployment
 
 1. Use Node 22+ and `npm ci --include=dev`.
 2. Run `npm run build`, `npm run typecheck`, and `npm test`.
 3. Deploy the complete `apps/client/dist` directory with the existing server; run `npm run start`. The current Render configuration already uses this build/start flow.
-4. Keep the existing Supabase variables and callback URLs configured for the HTTPS domain. Keep one server instance under the existing room architecture.
+4. Keep the existing Supabase variables and callback URLs configured for the HTTPS domain. Keep one server instance under the existing room architecture. Deploys let matches in progress finish first; see [server updates](server-updates.md).
 5. Serve `/sw.js`, `/manifest.webmanifest`, HTML, and icons from that same origin. Express sets `no-cache` for the worker, manifest, and entry HTML and the manifest MIME type. If Cloudflare rules cache everything, exclude these files, `/api/*`, and `/socket.io/*`; purge previously cached entry HTML once after deployment.
 6. Confirm the manifest and icons load, install on each target device, play a match, and test a second deployment's update flow after the match.
 

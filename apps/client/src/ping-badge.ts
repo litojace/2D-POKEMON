@@ -1,3 +1,4 @@
+import { setHudText } from "./hud-dom";
 /**
  * The in-battle ping badge: a small pill by the settings gear showing the
  * round trip to the server, green under 80 ms, amber under 150 ms, red
@@ -52,7 +53,7 @@ export function startPingBadge(
       const ms = Math.round(ping);
       const level = pingLevel(ms);
       const text = `${ms} ms`;
-      if (badge.textContent !== text) badge.textContent = text;
+      setHudText(badge, text);
       badge.dataset.level = level;
       badge.title = `Ping ${ms} ms (${level === "good" ? "smooth" : level === "fair" ? "a little delay" : "laggy connection"})`;
     });

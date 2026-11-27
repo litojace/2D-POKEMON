@@ -11,6 +11,7 @@ export const PROFILE_FACE_PARTS: CreaturePart[] = [
   "ears",
   "eyes",
   "flame",
+  "hat",
 ];
 /** The drawing, texture bounds and particle landmarks share this side-head width. */
 export function profileArtX(dir: string, part: CreaturePart, x: number) {
@@ -82,9 +83,11 @@ export function profilePartOrder(
       ...face.filter((p) => p !== "flame"),
       "wings",
       "flame",
+      "hat",
       "scarf",
     ];
-  return [...lower, ...face, "scarf"];
+  // A skin's headwear on an animated crest rides the head, over the face.
+  return [...lower, ...face, "hat", "scarf"];
 }
 interface ProfileDrawing {
   palette: Palette;
@@ -97,7 +100,18 @@ interface ProfileDrawing {
     height: number,
     ink?: string,
   ) => string;
+  /** The skin draws a see-through champion solid (SkinArt.solid). */
+  solid?: boolean;
 }
+
+/**
+ * Champions that hold something in the near paw (Astrabun's mallet): seen
+ * from behind, that paw is on the viewer's left, as it is on the right from
+ * the front. Their rear arms are drawn mirrored (creatureLayers), their
+ * shoulder joints swap sides here and the rig mirrors their arm poses, so
+ * every move reads the same from behind.
+ */
+export const REAR_ARMS_MIRRORED: ReadonlySet<CharacterId> = new Set<CharacterId>(["astrabun"]);
 
 /** Authored joints, before the same cute-proportion transform as the front art. */
 export function profilePivot(
@@ -125,6 +139,10 @@ export function profilePivot(
         wings:
           id === "auralynx" ? [100, 115] : [116, id === "terradon" ? 134 : 126],
       };
+  if (rear && REAR_ARMS_MIRRORED.has(id)) {
+    points.armL = [128, 122];
+    points.armR = [72, 122];
+  }
   const point = points[part];
   return point && [dir === "right" ? 200 - point[0] : point[0], point[1]];
 }
@@ -135,9 +153,15 @@ export function profilePartBounds(
   _dir: ArticulatedFacing,
   part: CreaturePart,
 ) {
-  if (part === "body") return [44, 88, 112, 91];
-  // Astrabun carries its mallet in the near paw (over the shoulder in profile).
-  if (id === "astrabun" && part === "armR") return [32, 60, 150, 119];
+  // Glacelle's teardrop body tapers to a point below the usual box.
+  if (part === "body")
+    return id === "glacelle" ? [44, 88, 112, 102] : [44, 88, 112, 91];
+  // Shadopus's tentacle tips curl below the usual leg box.
+  if (id === "shadopus" && part === "legL") return [50, 135, 90, 58];
+  if (id === "shadopus" && part === "legR") return [60, 135, 90, 58];
+  // Astrabun carries its mallet in the near paw (over the shoulder in profile;
+  // its head reaches back past x 32 facing right).
+  if (id === "astrabun" && part === "armR") return [24, 60, 158, 119];
   if (part === "armL" || part === "armR") return [32, 104, 136, 75];
   if (part === "flame") return [10, -4, 180, 132];
   return undefined;
@@ -147,6 +171,18 @@ export function frontPartBounds(id: CharacterId, part: CreaturePart) {
   if (id === "halcyra" && part === "flame") return [30, -2, 140, 142];
   // Astrabun's mochi mallet rises past the paw.
   if (id === "astrabun" && part === "armR") return [60, 64, 126, 106];
+  // Glacelle's wing-flaps reach wider than a paw (the left one was clipped in
+  // the lobby), and its teardrop body tapers below the usual box.
+  if (id === "glacelle" && part === "armL") return [30, 108, 112, 60];
+  if (id === "glacelle" && part === "body") return [44, 103, 112, 87];
+  // Mossloth's long arms hang below the usual paw box.
+  if (id === "mossloth" && part === "armL") return [39, 114, 101, 68];
+  if (id === "mossloth" && part === "armR") return [60, 84, 110, 98];
+  // Shadopus's tentacle tips curl below the usual leg box.
+  if (id === "shadopus" && part === "legL") return [50, 135, 90, 58];
+  if (id === "shadopus" && part === "legR") return [60, 135, 90, 58];
+  // Coilemur's tail tip curls above the usual tail box.
+  if (id === "coilemur" && part === "tail") return [0, 30, 200, 150];
   return undefined;
 }
 export function profileViewBox(_id: CharacterId, _dir: ArticulatedFacing) {
@@ -257,6 +293,7 @@ export function creatureProfile(
     eyes: back ? "" : eyes(),
     scarf: "",
     flame: "",
+    hat: "",
   };
   const wingSpot = (x: number, y: number, rx = 9, ry = 11) =>
     e(x, y, rx, ry, p.light) +
@@ -294,10 +331,13 @@ export function creatureProfile(
         `url(#${prefix}-shine)`,
         ' class="lantern-glow" stroke="none"',
       ) +
+      // The lantern's body, marked as held (SkinArt.heldOff); its glow stays.
+      '<g data-held="1">' +
       path("M173 110H189L186 132H176Z", p.accent) +
       e(181, 121, 4.5, 7, p.glow) +
       e(180, 122, 1.8, 3.5, "#ffffff", ' stroke="none"') +
-      line("M172 109h18M174 133h14", p.dark, 2.8)
+      line("M172 109h18M174 133h14", p.dark, 2.8) +
+      "</g>"
     );
   };
 
@@ -522,8 +562,11 @@ export function creatureProfile(
       ) + (back ? "" : path("M113 152Q130 158 135 171L118 161Z", p.accent));
     if (!back)
       profiles.armR =
+        // The fin-blade, marked as held (SkinArt.heldOff).
+        '<g data-held="1">' +
         path("M103 151Q92 127 99 107Q116 118 113 149Z", jewel) +
         line("M105 147l-5-31", "#ffffff", 1.5, 0.7) +
+        "</g>" +
         arm(111) +
         path("M100 150h22v6H100Z", "#ffe7c2");
   }
@@ -1174,13 +1217,15 @@ export function creatureProfile(
         1.3,
         0.9,
       );
+    const see = (alpha: string) =>
+      drawing.solid ? "" : ` fill-opacity="${alpha}"`;
     // The body rises under the head as one shape: the neck joint stays
     // covered without a separate underpainting disc showing through.
     const teardrop = back
       ? "M72 120Q78 100 100 98Q122 100 128 120Q134 146 116 166Q106 178 100 186Q94 178 84 166Q66 146 72 120Z"
       : "M78 120Q82 100 100 98Q118 100 122 120Q128 146 112 166Q104 176 98 186Q92 176 84 164Q70 144 78 120Z";
     profiles.body =
-      path(teardrop, body, ' fill-opacity=".9"') +
+      path(teardrop, body, see(".9")) +
       (back
         ? line(
             "M86 128Q84 146 92 162M114 128Q116 146 108 162",
@@ -1192,7 +1237,7 @@ export function creatureProfile(
           e(98, 140, 16, 16, `url(#${prefix}-heartglow)`, ' stroke="none"') +
           line("M86 128Q84 146 92 162", "#ffffff", 1.6, 0.45));
     const flap = (d: string, vein: string) =>
-      path(d, jewel, ' fill-opacity=".85"') + line(vein, "#ffffff", 1.5, 0.75);
+      path(d, jewel, see(".85")) + line(vein, "#ffffff", 1.5, 0.75);
     profiles.legL = profiles.legR = "";
     if (back) {
       profiles.ears = horn(76, 34, -6) + horn(124, 34, 6);
@@ -1419,7 +1464,7 @@ export function creatureProfile(
         ) +
         path("M118 22Q128 6 146 8Q140 18 128 22Z");
       profiles.head = e(100, 88, 39, 33, face) + shine(76, 71, 22);
-      profiles.armR = mallet(140) + profiles.armR;
+      profiles.armR = `<g data-held="1">${mallet(140)}</g>` + profiles.armR;
       // The cotton tail sits over the back.
       profiles.wings =
         e(100, 152, 13, 12, "#ffffff") +
@@ -1459,7 +1504,7 @@ export function creatureProfile(
         ) + star(86, 62, 3);
       // Carried over the near shoulder.
       profiles.armR =
-        `<g transform="rotate(35 112 154)">${mallet(112)}</g>` + profiles.armR;
+        `<g transform="rotate(35 112 154)"><g data-held="1">${mallet(112)}</g></g>` + profiles.armR;
       profiles.tail =
         e(128, 150, 13, 12, "#ffffff") +
         e(124, 146, 5, 4, "#ffffff", ' stroke="none" opacity=".9"');

@@ -1,6 +1,7 @@
 import { healthTrail } from "./raid-health-trail";
 import type { Snapshot } from "@arena/shared";
 import { mirrorTwinFor } from "./ascendant-storm-twins-art";
+import { setHudText } from "./hud-dom";
 let targetId: string | undefined;
 /**
  * Is there a pair of twins to aim at? Their raid, and the Spire's floor 70
@@ -67,7 +68,7 @@ export function renderStormTargets(state: Snapshot, frame: HTMLElement) {
     // Mirror Charge: each button carries its twin's charge (written only when it changes).
     const charge = mirror?.twins.find((t) => t.id === id);
     const label = `Target ${index ? "Crackle" : "Fizz"}${charge && charge.hits < charge.need ? (charge.sign > 0 ? " +" : " \u2212") : ""}`;
-    if (b.textContent !== label) b.textContent = label;
+    setHudText(b, label);
   }
 }
 /** Separate bars show each twin's real health and stagger; the shared thin bar retains phase marks. */
@@ -113,7 +114,7 @@ export function stormTwinHealth(state: Snapshot) {
   return `<div class="raid-twin-health">${twinBars(state)
     .map(
       (t, i) =>
-        `<div class="raid-twin-bar" style="--twin-color:${i ? "#8edfff" : "#ffe18b"}"><div><b>${t.name}</b><span>${t.status}</span></div><div class="raid-twin-track" role="progressbar" aria-label="${t.name} health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(t.percent)}"><i class="raid-boss-trail" style="width:${t.trail}%"></i><i class="raid-boss-fill" style="width:${t.percent}%"></i><span class="raid-boss-pct" aria-hidden="true">${Math.ceil(t.percent)}%</span></div><div class="raid-twin-stagger" title="${t.name} stagger"><i style="width:${t.stagger}%"></i></div></div>`,
+        `<div class="raid-twin-bar" style="--twin-color:${i ? "#8edfff" : "#ffe18b"}"><div><b>${t.name}</b><span>${t.status}</span></div><div class="raid-twin-track" role="progressbar" aria-label="${t.name} health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(t.percent)}"><i class="raid-boss-trail" style="width:${t.trail}%"></i><i class="raid-boss-fill" style="width:${t.percent}%"></i><span class="raid-boss-pct" aria-hidden="true">${Math.ceil(t.percent)}%</span></div><div class="raid-twin-stagger" title="${t.name} stagger"><i style="--fill:${t.stagger}"></i></div></div>`,
     )
     .join("")}</div>`;
 }

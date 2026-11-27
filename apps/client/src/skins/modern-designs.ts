@@ -29,6 +29,10 @@ export interface Kit {
   lume: (kind: "pulse" | "blink" | "chase" | "twinkle", svg: string, i?: number, color?: string) => string;
   garment: (svg: string) => string;
   star: (x: number, y: number, r: number, n: number, inner?: number) => string;
+  /** An Epic collection's costume: tailored cloth (see `tailorFront`). */
+  epic?: boolean;
+  /** Its back piece is already tailored (`backUnder`): sew nothing else. */
+  backTailored?: boolean;
 }
 
 /** Eye areas (both eyes, front; the near eye, side), measured from the art. */
@@ -53,9 +57,124 @@ function lenses(k: Kit) {
 }
 
 // ---- Shared shapes.
-export const torso = (k: Kit, color: string, extra = "") => k.garment(k.rect(k.L - 2, k.T - 2, k.R - k.L + 4, k.B - k.T + 6, 0, color, "none") + extra);
-export const backPanel = (k: Kit, color: string, extra = "", hem = 2) =>
-  k.put("scarf", k.path(`M${k.C - k.W - 1} ${k.T + 1}Q${k.C} ${k.T - 4} ${k.C + k.W + 1} ${k.T + 1}L${k.C + k.W + 2} ${k.B + hem}L${k.C - k.W - 2} ${k.B + hem}Z`, color) + extra);
+export const torso = (k: Kit, color: string, extra = "") =>
+  k.garment(k.rect(k.L - 2, k.T - 2, k.R - k.L + 4, k.B - k.T + 6, 0, color, "none") + (k.epic ? tailorFront(k) : "") + extra);
+
+// ---- Epic tailoring. An Epic costume reads as cut cloth rather than a flat
+// sticker: light on the shoulders, shade at the hem and the sides, seams and
+// stitching. It is drawn in the garment's own colours (white and black at a
+// low opacity), never in metal or a second body hue: the gold rim, clasp and
+// two-tone body stay Legendary's.
+/** The light (top) and shade (bottom, sides) gradients the tailoring uses. */
+export const CLOTH_DEFS =
+  `<defs><linearGradient id="epic-cloth-v" x1="0" y1="0" x2="0" y2="1">` +
+  `<stop offset="0" stop-color="#ffffff" stop-opacity=".32"/><stop offset=".32" stop-color="#ffffff" stop-opacity="0"/>` +
+  `<stop offset=".62" stop-color="#000000" stop-opacity="0"/><stop offset="1" stop-color="#000000" stop-opacity=".36"/></linearGradient>` +
+  `<linearGradient id="epic-cloth-h" x1="0" y1="0" x2="1" y2="0">` +
+  `<stop offset="0" stop-color="#000000" stop-opacity=".26"/><stop offset=".24" stop-color="#000000" stop-opacity="0"/>` +
+  `<stop offset=".76" stop-color="#000000" stop-opacity="0"/><stop offset="1" stop-color="#000000" stop-opacity=".26"/></linearGradient></defs>`;
+/** Shading, seams and a stitched hem over a front or profile garment's
+ * base cloth (inside its clip, under the design's own pieces). */
+export function tailorFront(k: Kit) {
+  const box = `x="${k.L - 3}" y="${k.T - 3}" width="${k.R - k.L + 6}" height="${k.B - k.T + 8}"`;
+  const seam = (d: string) => `<path d="${d}" fill="none" stroke="#000000" stroke-opacity=".3" stroke-width=".9" stroke-linecap="round"/>`;
+  const seams = k.side
+    ? // The side seam, toward the back of the profile.
+      seam(`M${k.C - k.side * k.W * 0.35} ${k.T + 2}Q${k.C - k.side * k.W * 0.45} ${(k.T + k.B) / 2} ${k.C - k.side * k.W * 0.38} ${k.B + 2}`)
+    : // Princess seams from the shoulders to the hem.
+      [-1, 1].map((s) => seam(`M${k.C + s * k.W * 0.62} ${k.T}Q${k.C + s * k.W * 0.42} ${(k.T + k.B) / 2} ${k.C + s * k.W * 0.5} ${k.B + 2}`)).join("");
+  return (
+    CLOTH_DEFS +
+    `<rect ${box} fill="url(#epic-cloth-v)"/><rect ${box} fill="url(#epic-cloth-h)"/>` +
+    seams +
+    // A stitched hem and its fold line.
+    `<path d="M${k.L - 2} ${k.B - 4.5}H${k.R + 2}" stroke="#000000" stroke-opacity=".22" stroke-width="1"/>` +
+    `<path d="M${k.L} ${k.B - 2.4}H${k.R}" stroke="#ffffff" stroke-opacity=".55" stroke-width=".8" stroke-dasharray="1.8 1.5"/>`
+  );
+}
+/** The box of an SVG path's points. Paths here use absolute commands; H and
+ * V break the x y pairing, so only the M/L/Q/C/T points are read. */
+function pathBox(d: string) {
+  const xs: number[] = [],
+    ys: number[] = [];
+  for (const m of d.matchAll(/[MLQCT]\s*([-\d.\s,]+)/g)) {
+    const v = (m[1].match(/-?\d*\.?\d+/g) ?? []).map(Number);
+    for (let i = 0; i + 1 < v.length; i += 2) xs.push(v[i]), ys.push(v[i + 1]);
+  }
+  if (!xs.length) return null;
+  return { x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) };
+}
+let clothIds = 0;
+/**
+ * The back of an Epic costume: its panel or cape (the first filled shape
+ * of the back piece, if it is wide enough to be one) gains the same light
+ * and shade, a yoke seam across the shoulders, a centre back seam and
+ * topstitching round its edge, so it reads as a garment from behind too.
+ */
+export function tailorBack(k: Kit, svg: string) {
+  // Opaque cloth only: a see-through piece (a jelly bell) is not sewn.
+  const m = svg.match(/<path d="([^"]+)" fill="(#[0-9a-fA-F]{6}|#[0-9a-fA-F]{3})"[^>]*\/>/);
+  if (!m) return svg;
+  const box = pathBox(m[1]);
+  if (!box || box.x1 - box.x0 < k.W * 1.4 || box.y1 - box.y0 < (k.B - k.T) * 0.7) return svg;
+  const id = `epic-back-${k.id}-${clothIds++}`;
+  const { x0, x1, y0, y1 } = box,
+    c = (x0 + x1) / 2,
+    w = x1 - x0,
+    h = y1 - y0;
+  const overlay =
+    CLOTH_DEFS +
+    `<defs><clipPath id="${id}"><path d="${m[1]}"/></clipPath></defs><g clip-path="url(#${id})">` +
+    `<path d="${m[1]}" fill="url(#epic-cloth-v)"/><path d="${m[1]}" fill="url(#epic-cloth-h)"/>` +
+    // A yoke across the shoulders and a centre back seam below it.
+    `<path d="M${x0} ${y0 + h * 0.2}Q${c} ${y0 + h * 0.28} ${x1} ${y0 + h * 0.2}" fill="none" stroke="#000000" stroke-opacity=".3" stroke-width="1"/>` +
+    `<path d="M${x0} ${y0 + h * 0.2 + 1.6}Q${c} ${y0 + h * 0.28 + 1.6} ${x1} ${y0 + h * 0.2 + 1.6}" fill="none" stroke="#ffffff" stroke-opacity=".4" stroke-width=".7" stroke-dasharray="1.8 1.5"/>` +
+    `<path d="M${c} ${y0 + h * 0.26}V${y1}" stroke="#000000" stroke-opacity=".24" stroke-width=".9"/>` +
+    // Fold lines falling from the yoke to the hem.
+    [-1, 1].map((s) => `<path d="M${c + s * w * 0.22} ${y0 + h * 0.34}Q${c + s * w * 0.28} ${y0 + h * 0.7} ${c + s * w * 0.3} ${y1}" fill="none" stroke="#000000" stroke-opacity=".16" stroke-width="1.6"/>`).join("") +
+    // Topstitching just inside the edge.
+    `<path d="${m[1]}" fill="none" stroke="#ffffff" stroke-opacity=".5" stroke-width="3" stroke-dasharray="1.8 1.5"/>` +
+    `<path d="${m[1]}" fill="none" stroke="#000000" stroke-opacity=".25" stroke-width="6.4"/></g>`;
+  const at = (m.index ?? 0) + m[0].length;
+  return svg.slice(0, at) + overlay + svg.slice(at);
+}
+/** The back piece of a costume: a tailored panel for an Epic, plain otherwise. */
+const backShape = (k: Kit, color: string, extra = "", hem = 2) =>
+  k.epic
+      ? // Tailored: sloped shoulders, a hem that curves and a collar.
+        k.path(`M${k.C - k.W - 2} ${k.T + 5}Q${k.C - k.W + 2} ${k.T - 2} ${k.C - k.W * 0.45} ${k.T - 2}Q${k.C} ${k.T - 5} ${k.C + k.W * 0.45} ${k.T - 2}Q${k.C + k.W - 2} ${k.T - 2} ${k.C + k.W + 2} ${k.T + 5}L${k.C + k.W + 3} ${k.B + hem - 1}Q${k.C} ${k.B + hem + 4} ${k.C - k.W - 3} ${k.B + hem - 1}Z`, color) +
+          `<path d="M${k.C - k.W * 0.5} ${k.T - 2}Q${k.C} ${k.T - 6} ${k.C + k.W * 0.5} ${k.T - 2}L${k.C + k.W * 0.42} ${k.T + 3}Q${k.C} ${k.T + 0.5} ${k.C - k.W * 0.42} ${k.T + 3}Z" fill="${color}" stroke="${k.ink}" stroke-width=".9" stroke-linejoin="round"/>` +
+          `<path d="M${k.C - k.W * 0.5} ${k.T - 2}Q${k.C} ${k.T - 6} ${k.C + k.W * 0.5} ${k.T - 2}L${k.C + k.W * 0.42} ${k.T + 3}Q${k.C} ${k.T + 0.5} ${k.C - k.W * 0.42} ${k.T + 3}Z" fill="#000000" fill-opacity=".28" stroke="none"/>` +
+          extra
+      : k.path(`M${k.C - k.W - 1} ${k.T + 1}Q${k.C} ${k.T - 4} ${k.C + k.W + 1} ${k.T + 1}L${k.C + k.W + 2} ${k.B + hem}L${k.C - k.W - 2} ${k.B + hem}Z`, color) + extra;
+/**
+ * What a champion carries on its back, from behind (the art's "wings" part,
+ * measured in final units): Terradon's shell, Wombolder's boulder, Halcyra's
+ * folded wings, Mossloth's moss, Pangrove's leaf scales and Astrabun's
+ * cotton tail. Costumes that keep these in sight draw their back piece with
+ * `backUnder` and put what must show on top of it, clear of the box or on it.
+ */
+export const BACK_TRAIT: Partial<Record<CharacterId, { kind: "shell" | "rock" | "wings" | "moss" | "leaves" | "tail"; box: [number, number, number, number] }>> = {
+  terradon: { kind: "shell", box: [62, 101, 137, 165] },
+  wombolder: { kind: "rock", box: [54, 100, 146, 172] },
+  halcyra: { kind: "wings", box: [66, 126, 134, 170] },
+  mossloth: { kind: "moss", box: [65, 114, 135, 163] },
+  pangrove: { kind: "leaves", box: [70, 112, 160, 163] },
+  astrabun: { kind: "tail", box: [89, 144, 111, 165] },
+};
+/**
+ * A costume's back piece worn under the champion's own back: on the body
+ * layer, which draws before the art's back parts, so wings, a shell, a
+ * boulder, moss, leaf scales or a tail stay on top of the cloth, as they
+ * would on a real one. An Epic's cloth is tailored here (tailorBack only
+ * sews the back layer by itself).
+ */
+export const backUnder = (k: Kit, color: string, extra = "", hem = 2) => putUnder(k, backShape(k, color, extra, hem));
+/** The same for a back piece of another shape: a cape, an áo dài's tails. */
+export const putUnder = (k: Kit, svg: string) => {
+  if (k.epic) k.backTailored = true;
+  k.put("body", k.epic ? tailorBack(k, svg) : svg);
+};
 /** Something carried on a pole slung across the back, shown above a shoulder. */
 export function onPole(k: Kit, item: (x: number, y: number) => string) {
   const s = k.side ? -k.side : 1;
@@ -68,6 +187,20 @@ export function onPole(k: Kit, item: (x: number, y: number) => string) {
       y = k.T - 46;
     k.put("body", k.line(`M${k.C + s * 12} ${k.B - 6}L${x - s * 2} ${y + 9}`, "#7a5a3a", 2.2) + item(x, y), true);
   }
+}
+/**
+ * A goggle or lens strap round the head at height y: `front` across the
+ * brow from the front; in profile from the near lens back over the skull,
+ * ending at the head's edge rather than past it; across the back of the head
+ * from behind, with a small buckle.
+ */
+export function headStrap(k: Kit, y: number, color: string, sw: number, front: string) {
+  const d = k.back
+    ? `M${k.hx - 44} ${y + 6}Q${k.hx} ${y + 12} ${k.hx + 44} ${y + 6}`
+    : k.side
+      ? `M${k.hx + k.side * 8} ${y - 2}Q${k.hx - k.side * 14} ${y - 6} ${k.hx - k.side * 30} ${y + 8}`
+      : front;
+  return k.line(d, color, sw) + (k.back ? k.rect(k.hx - 3.5, y + 6.5, 7, 5, 1.2, "#8a8f9c", k.ink, 0.6) : "");
 }
 /** A brimmed hat crown + brim, front or side. */
 export function hatShape(k: Kit, w: number, h: number, y: number, crown: string, brim: string, brimW = 1.25) {
@@ -88,7 +221,7 @@ export const DESIGNS: Partial<Record<ModernTheme, Partial<Record<CharacterId, De
     voltkit(k) {
       const hood = "#2b2f3d",
         neon = "#59f0ff";
-      if (k.back) backPanel(k, hood, k.path(`M${k.C - 16} ${k.T + 1}Q${k.C} ${k.T + 18} ${k.C + 16} ${k.T + 1}`, "#363b4d") +
+      if (k.back) backUnder(k, hood, k.path(`M${k.C - 16} ${k.T + 1}Q${k.C} ${k.T + 18} ${k.C + 16} ${k.T + 1}`, "#363b4d") +
         [0, 1, 2, 3].map((i) => k.lume("chase", k.circle(k.C - 9 + i * 6, k.B - 8 + (i % 2) * 3, 1, neon, "none", 0), i, neon)).join(""));
       else {
         const c = k.C + k.side * 3;
@@ -118,7 +251,7 @@ export const DESIGNS: Partial<Record<ModernTheme, Partial<Record<CharacterId, De
     mystowl(k) {
       const vest = "#6a3f7e",
         diamond = "#8a5aa0";
-      if (k.back) backPanel(k, vest, [0, 1].map((i) => k.path(`M${k.C - 10 + i * 20} ${k.T + 6}l6 8l-6 8l-6 -8Z`, diamond, "none")).join(""));
+      if (k.back) backUnder(k, vest, [0, 1].map((i) => k.path(`M${k.C - 10 + i * 20} ${k.T + 6}l6 8l-6 8l-6 -8Z`, diamond, "none")).join(""));
       else {
         const c = k.C + k.side * 3;
         k.put("body", torso(k, vest,
@@ -142,8 +275,12 @@ export const DESIGNS: Partial<Record<ModernTheme, Partial<Record<CharacterId, De
     terradon(k) {
       const jersey = "#2f8a4f",
         white = "#f7f4ee";
-      if (k.back) backPanel(k, jersey, k.lume("pulse", `<text x="${k.C}" y="${k.B - 6}" font-family="Arial Black,Arial,sans-serif" font-weight="900" font-size="22" text-anchor="middle" fill="#d6ff7a" stroke="${k.ink}" stroke-width="0.8">1</text>`, 0, "#d6ff7a"));
-      else {
+      if (k.back) {
+        // The jersey goes under the shell, and its lit number on the shell.
+        const [, y0, , y1] = BACK_TRAIT.terradon!.box;
+        backUnder(k, jersey);
+        k.put("scarf", k.lume("pulse", `<text x="${k.C}" y="${(y0 + y1) / 2 + 8}" font-family="Arial Black,Arial,sans-serif" font-weight="900" font-size="22" text-anchor="middle" fill="#d6ff7a" stroke="${k.ink}" stroke-width="0.8">1</text>`, 0, "#d6ff7a"));
+      } else {
         const c = k.C + k.side * 3;
         k.put("body", torso(k, jersey,
           k.path(`M${c - 10} ${k.T - 2}Q${c} ${k.T + 8} ${c + 10} ${k.T - 2}`, white, k.ink, 0.8) +
@@ -164,7 +301,7 @@ export const DESIGNS: Partial<Record<ModernTheme, Partial<Record<CharacterId, De
     tidefin(k) {
       const capC = "#ff6f8f",
         jacket = "#1f6f8b";
-      if (k.back) backPanel(k, jacket, k.line(`M${k.C - k.W} ${k.T + 12}H${k.C + k.W}`, "#ffffff", 2) + k.path(`M${k.C - 14} ${k.T - 2}Q${k.C} ${k.T + 10} ${k.C + 14} ${k.T - 2}`, "#ffffff"));
+      if (k.back) backUnder(k, jacket, k.line(`M${k.C - k.W} ${k.T + 12}H${k.C + k.W}`, "#ffffff", 2) + k.path(`M${k.C - 14} ${k.T - 2}Q${k.C} ${k.T + 10} ${k.C + 14} ${k.T - 2}`, "#ffffff"));
       else {
         const c = k.C + k.side * 3;
         k.put("body", torso(k, jacket,
@@ -196,7 +333,7 @@ export const DESIGNS: Partial<Record<ModernTheme, Partial<Record<CharacterId, De
         k.lume("twinkle", k.path(`M${x - r} ${y}Q${x - r} ${y - r} ${x} ${y - r}Q${x + r * 1.2} ${y - r * 0.8} ${x + r} ${y + r * 0.2}Q${x + r * 0.4} ${y + r * 1.3} ${x - r * 0.4} ${y + r * 0.8}Z`, c, "none"), i, c);
       const dots = (c: number) =>
         splash(c - 12, k.T + 12, 3.2, "#ff4fd8", 0) + splash(c + 9, k.T + 20, 2.8, "#59f0ff", 1) + splash(c - 4, k.B - 8, 3, "#b6ff4f", 2) + splash(c + 13, k.T + 6, 2, "#ffd84a", 3);
-      if (k.back) backPanel(k, smock, dots(k.C) + k.line(`M${k.C - 12} ${k.T + 2}L${k.C + 12} ${k.T + 2}`, k.ink, 0.6));
+      if (k.back) backUnder(k, smock, dots(k.C) + k.line(`M${k.C - 12} ${k.T + 2}L${k.C + 12} ${k.T + 2}`, k.ink, 0.6));
       else {
         const c = k.C + k.side * 3;
         k.put("body", torso(k, smock, k.path(`M${c - 9} ${k.T - 1}L${c} ${k.T + 8}L${c + 9} ${k.T - 1}`, "none", k.ink, 0.8) + k.rect(c - 7, k.B - 18, 14, 8, 2, "#ece6da", k.ink, 0.6) + dots(c)));
@@ -222,7 +359,7 @@ export const DESIGNS: Partial<Record<ModernTheme, Partial<Record<CharacterId, De
       const suit = "#2b4c9b",
         bolt = "#ffd84a";
       const boltD = (c: number, t: number, b: number) => `M${c + 3} ${t}L${c - 6} ${(t + b) / 2 + 1}L${c} ${(t + b) / 2 + 1}L${c - 3} ${b}L${c + 7} ${(t + b) / 2 - 3}L${c + 1} ${(t + b) / 2 - 3}Z`;
-      if (k.back) backPanel(k, suit, k.lume("chase", k.path(boltD(k.C, k.T + 3, k.B - 2), bolt, k.ink, 0.6), 0, bolt));
+      if (k.back) backUnder(k, suit, k.lume("chase", k.path(boltD(k.C, k.T + 3, k.B - 2), bolt, k.ink, 0.6), 0, bolt));
       else {
         const c = k.C + k.side * 3;
         k.put("body", torso(k, suit, k.line(`M${k.L} ${k.T + 3}Q${c} ${k.T + 10} ${k.R} ${k.T + 3}`, "#ffffff", 1.4) + k.lume("chase", k.path(boltD(c, k.T + 4, k.B - 3), bolt, k.ink, 0.6), 0, bolt)));
@@ -269,7 +406,7 @@ export const DESIGNS: Partial<Record<ModernTheme, Partial<Record<CharacterId, De
         dark = "#4a3f34",
         lava = "#ff8a3a";
       const cracks = (c: number, y: number) => k.line(`M${c - 9} ${y - 6}L${c - 3} ${y}L${c - 6} ${y + 6}M${c - 3} ${y}L${c + 5} ${y - 2}L${c + 9} ${y + 5}M${c + 5} ${y - 2}L${c + 3} ${y - 8}`, lava, 1.3);
-      if (k.back) backPanel(k, dark, k.path(`M${k.C - 14} ${k.T + 6}H${k.C + 14}L${k.C + 10} ${k.B - 4}H${k.C - 10}Z`, stone) + k.lume("pulse", cracks(k.C, k.T + 18), 0, lava));
+      if (k.back) backUnder(k, dark, k.path(`M${k.C - 14} ${k.T + 6}H${k.C + 14}L${k.C + 10} ${k.B - 4}H${k.C - 10}Z`, stone) + k.lume("pulse", cracks(k.C, k.T + 18), 0, lava));
       else {
         const c = k.C + k.side * 3;
         k.put("body", torso(k, dark, k.path(`M${c - 15} ${k.T + 2}H${c + 15}L${c + 11} ${k.B - 6}L${c} ${k.B - 2}L${c - 11} ${k.B - 6}Z`, stone) + k.lume("pulse", cracks(c, k.T + 16), 0, lava)));
@@ -322,14 +459,15 @@ export const DESIGNS: Partial<Record<ModernTheme, Partial<Record<CharacterId, De
         k.put("body", k.path(`M${k.C - k.W - 4} ${k.T + 2}L${k.C - k.W - 8} ${k.B + 8}L${k.C - k.W + 2} ${k.B}Z M${k.C + k.W + 4} ${k.T + 2}L${k.C + k.W + 8} ${k.B + 8}L${k.C + k.W - 2} ${k.B}Z`, "#ff8a3a", k.ink, 0.9), true);
         k.put("body", torso(k, suit, k.line(`M${k.L} ${k.B - 9}H${k.R}`, sun, 2) + k.lume("pulse", sunEm(c, k.T + 15, 6), 0, sun)));
       }
-      // A ring of light round the orange on the head, its rays running.
+      // A ring of light round the orange on the head, its rays running. It
+      // is part of the solar core, so it rocks with the orange (data-crest).
       const ox = k.hx + k.side * 2,
         oy = k.ht - 12;
-      k.put("flame", `<circle cx="${ox}" cy="${oy}" r="17" fill="none" stroke="#ffb347" stroke-width="2"/>` +
+      k.put("flame", `<g data-crest="1"><circle cx="${ox}" cy="${oy}" r="17" fill="none" stroke="#ffb347" stroke-width="2"/>` +
         Array.from({ length: 8 }, (_, i) => {
           const a = (i / 8) * Math.PI * 2;
           return k.lume("chase", k.line(`M${ox + Math.cos(a) * 20} ${oy + Math.sin(a) * 20}L${ox + Math.cos(a) * 25} ${oy + Math.sin(a) * 25}`, sun, 1.8), i, sun);
-        }).join(""));
+        }).join("") + "</g>");
     },
   },
 
@@ -340,7 +478,7 @@ export const DESIGNS: Partial<Record<ModernTheme, Partial<Record<CharacterId, De
       const leather = "#23232c",
         hot = "#ff4f8a";
       const studs = (c: number) => [0, 1, 2, 3, 4].map((i) => k.lume("twinkle", k.circle(c - 14 + i * 7, k.T + 4 + (i % 2) * 2, 0.9, "#e8e8f0", "none", 0), i, "#ffffff")).join("");
-      if (k.back) backPanel(k, leather, k.lume("pulse", k.path(k.star(k.C, k.T + 16, 8, 5), hot, k.ink, 0.6), 0, hot) + studs(k.C));
+      if (k.back) backUnder(k, leather, k.lume("pulse", k.path(k.star(k.C, k.T + 16, 8, 5), hot, k.ink, 0.6), 0, hot) + studs(k.C));
       else {
         const c = k.C + k.side * 3;
         k.put("body", torso(k, leather,
@@ -361,7 +499,7 @@ export const DESIGNS: Partial<Record<ModernTheme, Partial<Record<CharacterId, De
     mystowl(k) {
       const cloth = "#2a1f44",
         frill = "#c9a3e7";
-      if (k.back) backPanel(k, cloth, k.path(`M${k.C - k.W - 4} ${k.T + 2}Q${k.C} ${k.T + 16} ${k.C + k.W + 4} ${k.T + 2}L${k.C + k.W + 6} ${k.T + 12}Q${k.C} ${k.T + 26} ${k.C - k.W - 6} ${k.T + 12}Z`, frill));
+      if (k.back) backUnder(k, cloth, k.path(`M${k.C - k.W - 4} ${k.T + 2}Q${k.C} ${k.T + 16} ${k.C + k.W + 4} ${k.T + 2}L${k.C + k.W + 6} ${k.T + 12}Q${k.C} ${k.T + 26} ${k.C - k.W - 6} ${k.T + 12}Z`, frill));
       else {
         const c = k.C + k.side * 3;
         k.put("body", torso(k, cloth,
@@ -385,7 +523,11 @@ export const DESIGNS: Partial<Record<ModernTheme, Partial<Record<CharacterId, De
     terradon(k) {
       const hoodie = "#f2b84a",
         neon = "#4fff9a";
-      if (k.back) backPanel(k, hoodie, k.lume("pulse", k.line(`M${k.C - 12} ${k.T + 18}q4 -8 8 0t8 0t8 0`, "#ff4fd8", 2), 0, "#ff4fd8"));
+      if (k.back) {
+        // The hoodie under the shell; the neon tag is sprayed on the shell.
+        backUnder(k, hoodie);
+        k.put("scarf", k.lume("pulse", k.line(`M${k.C - 12} ${k.T + 22}q4 -8 8 0t8 0t8 0`, "#ff4fd8", 2.4), 0, "#ff4fd8"));
+      }
       else {
         const c = k.C + k.side * 3;
         k.put("body", torso(k, hoodie,
@@ -409,7 +551,7 @@ export const DESIGNS: Partial<Record<ModernTheme, Partial<Record<CharacterId, De
         const u = i / 6;
         return k.lume("twinkle", k.circle(c - 12 + u * 24, y + Math.sin(u * Math.PI) * 6, 1.6, pearl, "#c9b8b0", 0.4), i, "#ffffff");
       }).join("");
-      if (k.back) backPanel(k, top, k.path(`M${k.C - k.W - 2} ${k.B - 6}q4 6 8 0t8 0t8 0t8 0t8 0t8 0`, "#7fd8e0", k.ink, 0.7));
+      if (k.back) backUnder(k, top, k.path(`M${k.C - k.W - 2} ${k.B - 6}q4 6 8 0t8 0t8 0t8 0t8 0t8 0`, "#7fd8e0", k.ink, 0.7));
       else {
         const c = k.C + k.side * 3;
         k.put("body", torso(k, top, k.path(`M${k.L - 2} ${k.B - 8}q5 7 10 0t10 0t10 0t10 0t10 0t10 0L${k.R + 2} ${k.B + 4}H${k.L - 2}Z`, "#7fd8e0", k.ink, 0.7)) + pearls(c, k.T + 1));
@@ -427,7 +569,7 @@ export const DESIGNS: Partial<Record<ModernTheme, Partial<Record<CharacterId, De
       const top = "#ffd84a",
         heart = "#ff4f8a";
       const heartD = (x: number, y: number, r: number) => `M${x} ${y + r * 0.9}C${x - r * 1.4} ${y - r * 0.1} ${x - r * 0.6} ${y - r * 1.1} ${x} ${y - r * 0.35}C${x + r * 0.6} ${y - r * 1.1} ${x + r * 1.4} ${y - r * 0.1} ${x} ${y + r * 0.9}Z`;
-      if (k.back) backPanel(k, top, k.line(`M${k.C - k.W} ${k.T + 10}H${k.C + k.W}`, "#ffffff", 2.4));
+      if (k.back) backUnder(k, top, k.line(`M${k.C - k.W} ${k.T + 10}H${k.C + k.W}`, "#ffffff", 2.4));
       else {
         const c = k.C + k.side * 3;
         k.put("body", torso(k, top, k.path(`M${k.L - 2} ${k.T + 8}L${c} ${k.T + 20}L${k.R + 2} ${k.T + 8}L${k.R + 2} ${k.T + 12}L${c} ${k.T + 24}L${k.L - 2} ${k.T + 12}Z`, "#ffffff", "none") +
@@ -456,7 +598,7 @@ export const DESIGNS: Partial<Record<ModernTheme, Partial<Record<CharacterId, De
     // Trung Thu: áo bà ba and a star lantern (đèn ông sao) carried on a pole.
     voltkit(k) {
       const shirt = "#2f6fb8";
-      if (k.back) backPanel(k, shirt);
+      if (k.back) backUnder(k, shirt);
       else {
         const c = k.C + k.side * 3;
         k.put("body", torso(k, shirt, k.path(`M${c - 9} ${k.T - 1}Q${c} ${k.T + 6} ${c + 9} ${k.T - 1}`, "none", k.ink, 0.9) + k.line(`M${c} ${k.T + 4}V${k.B}`, "#1f4f8c", 0.9) +
@@ -470,7 +612,7 @@ export const DESIGNS: Partial<Record<ModernTheme, Partial<Record<CharacterId, De
     mystowl(k) {
       const outer = "#6b3f2a",
         yem = "#e8322a";
-      if (k.back) backPanel(k, outer, k.line(`M${k.C - k.W} ${k.B - 10}H${k.C + k.W}`, "#3fa04f", 3));
+      if (k.back) backUnder(k, outer, k.line(`M${k.C - k.W} ${k.B - 10}H${k.C + k.W}`, "#3fa04f", 3));
       else {
         const c = k.C + k.side * 3;
         k.put("body", torso(k, outer,
@@ -499,7 +641,7 @@ export const DESIGNS: Partial<Record<ModernTheme, Partial<Record<CharacterId, De
         gold = "#f2c14e";
       const drum = (c: number, y: number, r: number) => k.circle(c, y, r, "#2b4a86", gold, 0.8) +
         k.lume("pulse", k.path(k.star(c, y, r * 0.75, 12, 0.4), gold, "none"), 0, gold);
-      if (k.back) backPanel(k, brocade, drum(k.C, k.T + 18, 8));
+      if (k.back) backUnder(k, brocade, drum(k.C, k.T + 18, 8));
       else {
         const c = k.C + k.side * 3;
         k.put("body", torso(k, brocade, k.line(`M${c + 2} ${k.T + 2}Q${c + 8} ${k.T + 5} ${c + 12} ${k.T + 11}`, gold, 1) + drum(c - (k.side ? 0 : 3), k.T + 18, 7.5)) +
@@ -573,7 +715,7 @@ export const DESIGNS: Partial<Record<ModernTheme, Partial<Record<CharacterId, De
     voltkit(k) {
       const suit = "#f2f2f6";
       const patch = (c: number, y: number) => k.circle(c, y, 6.5, "#1f2f5c", "#c8323a", 1.4) + k.lume("pulse", k.path(k.star(c, y, 4, 5), "#ffffff", "none"), 0, "#bfe0ff");
-      if (k.back) backPanel(k, suit, k.rect(k.C - 10, k.T + 4, 20, 22, 4, "#d9d9e0") + k.lume("blink", k.circle(k.C, k.T + 10, 1.5, "#5aff7a", "none", 0), 0, "#5aff7a"));
+      if (k.back) backUnder(k, suit, k.rect(k.C - 10, k.T + 4, 20, 22, 4, "#d9d9e0") + k.lume("blink", k.circle(k.C, k.T + 10, 1.5, "#5aff7a", "none", 0), 0, "#5aff7a"));
       else {
         const c = k.C + k.side * 3;
         k.put("body", torso(k, suit, k.line(`M${c} ${k.T + 2}V${k.B}`, "#c8c8d0", 1.2) +
@@ -590,14 +732,15 @@ export const DESIGNS: Partial<Record<ModernTheme, Partial<Record<CharacterId, De
     mystowl(k) {
       const toga = "#5fae9a",
         fold = "#4a8f7e";
-      if (k.back) backPanel(k, toga, k.line(`M${k.C - k.W} ${k.T + 4}L${k.C + k.W} ${k.B - 4}`, fold, 2));
+      if (k.back) backUnder(k, toga, k.line(`M${k.C - k.W} ${k.T + 4}L${k.C + k.W} ${k.B - 4}`, fold, 2));
       else {
         const c = k.C + k.side * 3;
         k.put("body", torso(k, toga, [0, 1, 2].map((i) => k.line(`M${k.L + i * 6} ${k.T - 2}L${k.R} ${k.B - 12 + i * 6}`, fold, 1.4)).join("") +
           k.lume("pulse", k.rect(c - 5, k.B - 18, 10, 7, 1, "#cfe8d8", k.ink, 0.6), 0, "#ffffff")));
       }
-      onPole(k, (x, y) => k.path(`M${x - 5} ${y + 4}H${x + 5}L${x + 3} ${y + 10}H${x - 3}Z`, "#5fae9a") +
-        k.lume("pulse", k.path(`M${x} ${y - 10}Q${x + 7} ${y - 2} ${x + 4} ${y + 4}H${x - 4}Q${x - 7} ${y - 2} ${x} ${y - 10}Z`, "#ffb347", k.ink, 0.7) + k.path(`M${x} ${y - 4}Q${x + 3} ${y} ${x + 2} ${y + 3}H${x - 2}Q${x - 3} ${y} ${x} ${y - 4}Z`, "#fff3a8", "none"), 1, "#ffb347"));
+      // The torch, held high (drawn larger than the pole's other loads).
+      onPole(k, (x, y) => `<g transform="translate(${x} ${y}) scale(1.4) translate(${-x} ${-y})">` + k.path(`M${x - 5} ${y + 4}H${x + 5}L${x + 3} ${y + 10}H${x - 3}Z`, "#5fae9a") +
+        k.lume("pulse", k.path(`M${x} ${y - 10}Q${x + 7} ${y - 2} ${x + 4} ${y + 4}H${x - 4}Q${x - 7} ${y - 2} ${x} ${y - 10}Z`, "#ffb347", k.ink, 0.7) + k.path(`M${x} ${y - 4}Q${x + 3} ${y} ${x + 2} ${y + 3}H${x - 2}Q${x - 3} ${y} ${x} ${y - 4}Z`, "#fff3a8", "none"), 1, "#ffb347") + "</g>");
       // The crown: a band with seven rays, lit one after another.
       const x = k.hx + k.side * 3,
         y = k.ht + 12;
@@ -616,7 +759,7 @@ export const DESIGNS: Partial<Record<ModernTheme, Partial<Record<CharacterId, De
     terradon(k) {
       const vest = "#8a5a2c",
         shirt = "#e8dcc4";
-      if (k.back) backPanel(k, vest, [0, 1, 2, 3, 4, 5].map((i) => k.line(`M${k.C - k.W + i * k.W * 0.4} ${k.B}v5`, "#6a4220", 1.2)).join(""));
+      if (k.back) backUnder(k, vest, [0, 1, 2, 3, 4, 5].map((i) => k.line(`M${k.C - k.W + i * k.W * 0.4} ${k.B}v5`, "#6a4220", 1.2)).join(""));
       else {
         const c = k.C + k.side * 3;
         k.put("body", torso(k, shirt, k.path(`M${k.L - 2} ${k.T - 2}H${c - 6}L${c - 4} ${k.B + 4}H${k.L - 2}Z M${k.R + 2} ${k.T - 2}H${c + 6}L${c + 4} ${k.B + 4}H${k.R + 2}Z`, vest, k.ink, 0.8) +
@@ -633,7 +776,7 @@ export const DESIGNS: Partial<Record<ModernTheme, Partial<Record<CharacterId, De
     tidefin(k) {
       const tank = "#ffb347",
         neon = "#ff4fd8";
-      if (k.back) backPanel(k, tank);
+      if (k.back) backUnder(k, tank);
       else {
         const c = k.C + k.side * 3;
         k.put("body", torso(k, tank, k.line(`M${k.L} ${k.T + 14}q5 -5 10 0t10 0t10 0t10 0t10 0`, "#ffffff", 1.6) + k.line(`M${k.L} ${k.T + 22}q5 -5 10 0t10 0t10 0t10 0t10 0`, "#2f8fb0", 1.6) +
@@ -658,7 +801,7 @@ export const DESIGNS: Partial<Record<ModernTheme, Partial<Record<CharacterId, De
     sunbara(k) {
       const vest = "#1f2f5c",
         red = "#c8323a";
-      if (k.back) backPanel(k, vest, [0, 1, 2].map((i) => k.path(k.star(k.C - 10 + i * 10, k.T + 14, 2.4, 5), "#ffffff", "none")).join(""));
+      if (k.back) backUnder(k, vest, [0, 1, 2].map((i) => k.path(k.star(k.C - 10 + i * 10, k.T + 14, 2.4, 5), "#ffffff", "none")).join(""));
       else {
         const c = k.C + k.side * 3;
         k.put("body", torso(k, "#f7f1e1", [0, 1, 2, 3, 4].map((i) => k.line(`M${k.L} ${k.T + 4 + i * 7}H${k.R}`, red, 2.4)).join("") +
@@ -694,6 +837,6 @@ export const DESIGNS: Partial<Record<ModernTheme, Partial<Record<CharacterId, De
  * (Hồn Việt), and Cindrake's and Pyranda's flames stay where no design is drawn.
  */
 export function modernReplaces(theme: ModernTheme, id: CharacterId): CreaturePart[] {
-  const keepCrest = (id === "sunbara" && (theme === "hero" || theme === "viet")) || (id === "cindrake" && (theme === "viet" || theme === "vietlegend" || theme === "hero" || theme === "campus" || theme === "stars")) || (!DESIGNS[theme]?.[id] && ["cindrake", "pyranda", "sunbara"].includes(id));
+  const keepCrest = (id === "sunbara" && (theme === "hero" || theme === "viet")) || (id === "cindrake" && (theme === "viet" || theme === "vietlegend" || theme === "hero" || theme === "campus" || theme === "stars" || theme === "idol" || theme === "rain" || theme === "racing" || theme === "sun")) || (!DESIGNS[theme]?.[id] && ["cindrake", "pyranda", "sunbara"].includes(id));
   return keepCrest ? ["scarf"] : ["scarf", "flame"];
 }

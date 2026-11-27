@@ -1,15 +1,27 @@
 import { confirmAge, saidUnderAge } from "./age-gate";
-import { isNativeApp, PRIVACY_URL, signInWithAppleNatively } from "./native";
+import {
+  isNativeApp,
+  nativePlatform,
+  PRIVACY_URL,
+  signInWithAppleNatively,
+} from "./native";
+import {
+  browserDeviceHints,
+  rememberAppleChoice,
+  showAppleSignInAtOnce,
+} from "../../../packages/shared/src/apple-device";
+import "./apple-sign-in.css";
+import {
+  confirmedRead,
+  sessionCookieStorage,
+  sharesSession,
+} from "../../../packages/shared/src/session-cookie";
 import {
   nameAllowed,
   NAME_NOT_ALLOWED,
 } from "../../../packages/shared/src/name-filter";
 import { identityPortrait } from "./portraits";
-import {
-  AVATAR_BY_ID,
-  isAvatar,
-  photoIdOf,
-} from "../../../packages/shared/src/avatars";
+import { AVATAR_BY_ID, isAvatar } from "../../../packages/shared/src/avatars";
 import { preparePhoto } from "./avatar-photo";
 import { idle } from "./svg-raster";
 import type { FittingRoom } from "./screens/fitting-room";
@@ -41,21 +53,25 @@ import {
   type RaidProgress,
   type RaidSlot,
 } from "../../../packages/shared/src/raid";
-import { TITLE_PRESETS, sortTitles } from "./player-nameplate";
 import { isQuietRefresh } from "./session-refresh";
-import { waitForServer } from "./server-connection";
-import { createClient, type Session } from "@supabase/supabase-js";
+import { curtainCovers, waitForServer } from "./server-connection";
+import {
+  forgetProfileCopy,
+  keepProfileCopy,
+  readProfileCopy,
+  type ProfileCopy,
+} from "./profile-copy";
+import type { Session } from "@supabase/supabase-js";
+import { supabaseAuth } from "./supabase-auth";
 import {
   accountSchema,
   REPORT_CATEGORIES,
   type Account,
   type Title,
-  type PlayerDirectory,
-  type ReportList,
-  type OnlineList,
   leaderboardSchema,
   friendsBoardSchema,
   recentPlayersSchema,
+  matchHistorySchema,
   nameStatusSchema,
   type RecentPlayer,
   progressSchema,
@@ -67,9 +83,15 @@ import {
   type BlockedPlayer,
 } from "../../../packages/shared/src/accounts";
 import { askConfirm } from "./ui/hub-panel";
+import { guestWarning } from "./guest-warning";
 import { CHARACTERS, type CharacterId } from "@arena/shared";
-import { renderOnline } from "./admin-online";
+// The Admin panel's code loads when an admin opens it (showAdmin): no one
+// else runs it. Its stylesheet stays in the startup one, at this place.
+import type { AdminPanel, AdminView } from "./admin-panel";
+import "./admin-panel.css";
 import { openProfile, type ProfileScreen } from "./screens/profile";
+import { openFriendCard, type FriendCardScreen } from "./screens/friend-card";
+import type { HistoryQuery } from "./screens/match-history";
 import type { ProfileData } from "./screens/profile-view";
 import { openRanks, type RanksScreen } from "./screens/ranks";
 import type { RanksData } from "./screens/ranks-view";
@@ -123,8 +145,20 @@ export const COPY_MAX_AGE_MS = 30_000;
 export const FRIENDS_MAX_AGE_MS = 10_000;
 /** Between screens' code loaded ahead (preloadScreens), and before the first. */
 const PRELOAD_GAP_MS = 4000;
+/**
+ * How long a login waits for the saved fighter and avatar before showing the
+ * hub anyway (they then arrive a moment later, as before).
+ */
+const PROFILE_EXTRAS_MS = 4000;
 const storageKey = "parena-auth";
-const storage = {
+/**
+ * On elementarenausa.com the session lives in a cookie for the whole domain,
+ * shared with the website's account area and its Play button
+ * (packages/shared/src/session-cookie.ts, docs/website-accounts.md). Anywhere
+ * else (other hosts, local dev, the iPhone app) it stays in this origin's
+ * storage as before.
+ */
+const ownStorage = {
   getItem: (key: string) =>
     localStorage.getItem(key) ?? sessionStorage.getItem(key),
   setItem: (key: string, value: string) => {
@@ -138,11 +172,22 @@ const storage = {
     sessionStorage.removeItem(key);
   },
 };
+/** A session too big to share (MAX_SHARED) stays in ownStorage, unshared. */
+const sharedCookie =
+  typeof document !== "undefined" &&
+  !isNativeApp() &&
+  sharesSession(location.hostname)
+    ? sessionCookieStorage(document, ownStorage)
+    : null;
+sharedCookie?.adopt(storageKey);
+const storage = sharedCookie ?? ownStorage;
+
 function remember(value: boolean) {
-  const token = storage.getItem(storageKey);
-  storage.removeItem(storageKey);
   if (value) localStorage.setItem("parena-remember", "yes");
   else localStorage.removeItem("parena-remember");
+  if (sharedCookie) return sharedCookie.remember(value, storageKey);
+  const token = storage.getItem(storageKey);
+  storage.removeItem(storageKey);
   if (token) storage.setItem(storageKey, token);
 }
 type Hooks = {
@@ -159,6 +204,8 @@ type Hooks = {
   /** Friends closed (a room puts its picker back). */
   onFriendsClosed?: () => void;
   notify: (message: string) => void;
+  /** Running announcements from the admins, fetched at sign-in (announcements.ts). */
+  announce?: (list: unknown) => void;
   onChange: () => void;
   onSession: (token: string | null, accountId?: string) => void;
   /** Same player, fresh token (background refresh): keep it for reconnects only. */
@@ -169,10 +216,18 @@ type Hooks = {
   reportPhoto?: (photo: string, name: string) => Promise<void>;
   /** Make a fighter your Lobby fighter. */
   chooseFighter?: (id: CharacterId) => void;
+  /** Start a match against a bot of that level (match history). */
+  playBot?: (level: "easy" | "normal" | "hard") => void;
   /** The fighter saved with the account (picked on another device). */
   restoreFighter?: (id: CharacterId) => void;
   /** Show the Lobby (the Shop and Wardrobe open inside it). */
   toLobby?: () => void;
+  /**
+   * Where your card (the header's avatar) opens instead of the Lobby: the
+   * Plaza while you are on it, so looking at your card doesn't send you
+   * back to the Lobby (owner, 24 Nov). None: it opens in the Lobby.
+   */
+  profileHost?: () => HTMLElement | undefined;
   /** Create a raid room for a boss (today's challenge, or straight in solo). */
   startAdventure?: (mode: string) => void;
   startRaid?: (
@@ -196,20 +251,139 @@ type Hooks = {
   invitedFriends?: () => ReadonlySet<string>;
 };
 export class AccountUI {
-  account: Account | null = null;
-  /** The saved session has been checked (and the profile loaded, or failed). */
+  /*
+   * What the first screen shows is kept on this device as it changes
+   * (profile-copy.ts): the setters below note each change, and the next
+   * start draws the hub from that copy while the server's loads.
+   */
+  #account: Account | null = null;
+  get account() {
+    return this.#account;
+  }
+  set account(value: Account | null) {
+    this.#account = value;
+    this.rememberSoon();
+  }
+  /**
+   * The saved session has been checked: the profile loaded (or failed), or
+   * this device's copy of it is shown while the fresh one loads
+   * (`fromCopy`).
+   */
   checked = false;
+  /**
+   * The profile on screen is this device's saved copy; the server's fresh
+   * copy is still on its way (it replaces it, or is dropped on failure).
+   */
+  fromCopy = false;
+  #raidLook: RaidLoadout | undefined = undefined;
   /** Equipped raid look (undefined until loaded). */
-  raidLook: RaidLoadout | undefined = undefined;
+  get raidLook() {
+    return this.#raidLook;
+  }
+  set raidLook(value: RaidLoadout | undefined) {
+    this.#raidLook = value;
+    this.rememberSoon();
+  }
+  #raidClears: Partial<Record<RaidBossId, number>> = {};
   /** Saved clears per boss: stars on your boss frame. */
-  raidClears: Partial<Record<RaidBossId, number>> = {};
+  get raidClears() {
+    return this.#raidClears;
+  }
+  set raidClears(value: Partial<Record<RaidBossId, number>>) {
+    this.#raidClears = value;
+    this.rememberSoon();
+  }
+  #economy: Economy | undefined = undefined;
   /** Coins, owned items, missions (undefined until loaded or before migration 010). */
-  economy: Economy | undefined = undefined;
+  get economy() {
+    return this.#economy;
+  }
+  set economy(value: Economy | undefined) {
+    this.#economy = value;
+    this.rememberSoon();
+  }
   session: Session | null = null;
+  #avatar: string | null = null;
   /** Your library avatar (avatars.ts); null: none chosen (the default). */
-  avatar: string | null = null;
+  get avatar() {
+    return this.#avatar;
+  }
+  set avatar(value: string | null) {
+    this.#avatar = value;
+    this.rememberSoon();
+  }
+  #savedFighter: string | null | undefined = undefined;
   /** The fighter the account has saved (undefined until asked, null: none). */
-  private savedFighter: string | null | undefined = undefined;
+  private get savedFighter() {
+    return this.#savedFighter;
+  }
+  private set savedFighter(value: string | null | undefined) {
+    this.#savedFighter = value;
+    this.rememberSoon();
+  }
+  private rememberTimer: ReturnType<typeof setTimeout> | undefined;
+  /**
+   * Keep the first screen's data on this device, shortly after it changes
+   * (several fields change together). Never mid-load: a half-loaded profile
+   * (a new account with the last one's coins, say) is not a copy.
+   */
+  private rememberSoon() {
+    clearTimeout(this.rememberTimer);
+    this.rememberTimer = setTimeout(() => this.rememberProfile(), 300);
+  }
+  private rememberProfile() {
+    clearTimeout(this.rememberTimer);
+    this.rememberTimer = undefined;
+    const account = this.#account;
+    if (
+      !account ||
+      this.sessionLoad ||
+      this.fromCopy ||
+      this.session?.user.id !== account.id
+    )
+      return;
+    keepProfileCopy({
+      account,
+      economy: this.#economy,
+      raidLook: this.#raidLook,
+      raidClears: this.#raidClears,
+      spire: this.spireProgress,
+      avatar: this.#avatar,
+      fighter:
+        this.#savedFighter === undefined
+          ? undefined
+          : this.#savedFighter && Object.hasOwn(CHARACTERS, this.#savedFighter)
+            ? (this.#savedFighter as CharacterId)
+            : null,
+    });
+  }
+  /** Show this device's copy of the profile while the fresh one loads. */
+  private showCopy(copy: ProfileCopy) {
+    this.fromCopy = true;
+    this.#account = copy.account;
+    this.#economy = copy.economy;
+    this.#raidLook = copy.raidLook;
+    this.#raidClears = copy.raidClears;
+    this.spireProgress = copy.spire;
+    this.#avatar = copy.avatar;
+    this.#savedFighter = copy.fighter;
+    this.checked = true;
+    this.renderNav();
+    this.syncAvatar();
+    if (copy.fighter) this.hooks.restoreFighter?.(copy.fighter);
+  }
+  /** The fresh profile couldn't load: nothing from the copy stays. */
+  private dropCopy() {
+    if (!this.fromCopy) return;
+    this.fromCopy = false;
+    this.#account = null;
+    this.#economy = undefined;
+    this.#raidLook = undefined;
+    this.#raidClears = {};
+    this.spireProgress = null;
+    this.#avatar = null;
+    this.#savedFighter = undefined;
+  }
   /** Counts this device's picks, so a slow answer never undoes a new one. */
   private fighterPicks = 0;
   private fighterTimer: ReturnType<typeof setTimeout> | undefined;
@@ -217,22 +391,12 @@ export class AccountUI {
   generation = 0;
   private sessionLoad:
     { accountId: string | null; promise: Promise<void> } | undefined;
-  client =
-    import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY
-      ? createClient(
-          import.meta.env.VITE_SUPABASE_URL,
-          import.meta.env.VITE_SUPABASE_ANON_KEY,
-          {
-            auth: {
-              storage,
-              storageKey,
-              persistSession: true,
-              autoRefreshToken: true,
-              detectSessionInUrl: true,
-            },
-          },
-        )
-      : null;
+  client = supabaseAuth(
+    import.meta.env.VITE_SUPABASE_URL,
+    import.meta.env.VITE_SUPABASE_ANON_KEY,
+    storage,
+    storageKey,
+  );
   constructor(private hooks: Hooks) {
     this.renderNav();
     if (!this.client) {
@@ -240,6 +404,9 @@ export class AccountUI {
       hooks.onSession(null);
       return;
     }
+    // The website shares this session (syncSharedSession): look every 30 s.
+    if (sharedCookie)
+      setInterval(() => void this.syncSharedSession().catch(() => {}), 30_000);
     this.client.auth.onAuthStateChange((event, session) => {
       setTimeout(() => {
         void this.setSession(session).then(() => {
@@ -305,8 +472,13 @@ export class AccountUI {
     // Reloading the same player (after a purchase, an equip, a title change…)
     // keeps what's on screen until the fresh copy arrives. Clearing it first
     // made an open Shop say "Log in" and ask a signed-in player to sign in.
+    // (A profile shown from this device's copy is not loaded yet: it loads
+    // in full, as a new login does.)
     const samePlayer =
-      !!session && !!this.account && session.user?.id === this.account.id;
+      !!session &&
+      !!this.account &&
+      !this.fromCopy &&
+      session.user?.id === this.account.id;
     this.session = session;
     if (!samePlayer) {
       // A previous signed-out check says nothing about this new profile load.
@@ -331,54 +503,93 @@ export class AccountUI {
       this.savedFighter = undefined;
       this.avatar = null;
       this.blocked = [];
+      this.fromCopy = false;
       clearTimeout(this.fighterTimer);
+      // Signed out: this device keeps no one's profile.
+      if (!session) forgetProfileCopy();
+      // Signed in: draw the hub from this device's copy at once (the fresh
+      // profile below replaces it as it arrives).
+      const copy = session ? readProfileCopy(session.user.id) : null;
+      if (copy) this.showCopy(copy);
     }
     this.hooks.onSession(session?.access_token ?? null, session?.user.id);
     if (session && !samePlayer) this.hooks.onChange();
+    let freshAccount = false;
     if (session) {
       try {
         if (!samePlayer) await waitForServer();
         if (version !== this.generation) return;
         const account = accountSchema.parse(await this.api("/api/account"));
         if (version !== this.generation) return;
+        freshAccount = true;
         this.account = account;
+        // Announcements still running (migration 20261122120000); none
+        // before it, and never in the way of signing in.
+        void this.api("/api/announcements").then(
+          (list) => this.hooks.announce?.(list),
+          () => {},
+        );
         // A new login: start on the fighter this account last picked, on
-        // whatever device (not awaited: the rest of the profile goes on).
-        if (!samePlayer) void this.loadSavedFighter(version);
-        if (!samePlayer) void this.loadAvatar(version);
-        if (!samePlayer) void this.loadBlocked(version);
-        try {
-          const progress = (await this.fetchCopy("/api/raids")) as RaidProgress;
-          if (version !== this.generation) return;
-          // Raids open with it at once (and ask again only once it's old).
-          this.raidProgress = progress;
-          this.raidLook = raidLookOf(progress);
-          noteSeenRewards(account.id, progress);
-          this.raidClears = bossClears(progress);
-        } catch {
-          /* Raid storage is optional until migration 007 is installed. */
+        // whatever device, wearing their avatar. Both are part of the first
+        // screen (waited for below, briefly), so it never opens on the
+        // default fighter and swaps a moment later.
+        const extras = samePlayer
+          ? []
+          : [
+              this.loadSavedFighter(version),
+              this.loadAvatar(version),
+              this.loadBlocked(version),
+            ];
+        // Raids, the Spire and the Shop are separate records: asked for
+        // together, the profile (and the skins it wears) arrives in one
+        // round trip instead of three in a row.
+        const [raids, spire, economy] = await Promise.allSettled([
+          this.fetchCopy("/api/raids"),
+          this.fetchCopy("/api/spire"),
+          this.fetchCopy("/api/economy"),
+        ]);
+        if (version !== this.generation) return;
+        // Raid storage is optional until migration 007 is installed.
+        if (raids.status === "fulfilled") {
+          try {
+            const progress = raids.value as RaidProgress;
+            // Raids open with it at once (and ask again only once it's old).
+            this.raidProgress = progress;
+            this.raidLook = raidLookOf(progress);
+            noteSeenRewards(account.id, progress);
+            this.raidClears = bossClears(progress);
+          } catch {
+            /* An older server's record: no raid look. */
+          }
         }
         // The Spire's climb, for the Lobby's Spire card (spire-nudge.ts).
-        try {
-          const climb = (await this.fetchCopy("/api/spire")) as SpireProgress;
-          if (version !== this.generation) return;
-          if (climb) this.spireProgress = climb;
-        } catch {
-          /* Before the Spire's migration: no climb, no card. */
-        }
-        try {
-          const economy = (await this.fetchCopy("/api/economy")) as Economy;
-          if (version !== this.generation) return;
-          this.economy = economy;
-        } catch {
-          /* The Shop needs migration 010. */
-        }
+        // Before the Spire's migration: no climb, no card.
+        if (spire.status === "fulfilled" && spire.value)
+          this.spireProgress = spire.value as SpireProgress;
+        // The Shop needs migration 010.
+        if (economy.status === "fulfilled")
+          this.economy = economy.value as Economy;
+        if (extras.length)
+          await Promise.race([
+            Promise.allSettled(extras),
+            new Promise((resolve) => setTimeout(resolve, PROFILE_EXTRAS_MS)),
+          ]);
+        if (version !== this.generation) return;
         // An open Shop or Missions screen shows the fresh copy.
         this.fittingRoom?.refresh();
         this.missionsScreen?.refresh();
         this.journeyScreen?.refresh();
       } catch (error) {
         if (version !== this.generation) return;
+        // Without the fresh account the saved copy goes too: the front door
+        // offers to try again, as it always has. A refused login also
+        // forgets it on this device.
+        if (!freshAccount) {
+          this.dropCopy();
+          const status = (error as { status?: number } | null)?.status;
+          if (status === 401 || status === 403 || status === 404)
+            forgetProfileCopy();
+        }
         this.hooks.notify(
           error instanceof Error
             ? error.message
@@ -386,6 +597,7 @@ export class AccountUI {
         );
       }
     }
+    this.fromCopy = false;
     this.checked = true;
     if (this.account) {
       try {
@@ -396,6 +608,7 @@ export class AccountUI {
     }
     this.renderNav();
     this.hooks.onChange();
+    this.rememberSoon();
     if (this.account) this.preloadScreens();
   }
   private preloaded = false;
@@ -403,14 +616,16 @@ export class AccountUI {
    * The Raids, Shop and Journey code and styles load on demand, not with the
    * game (it starts sooner). Loaded in quiet moments after sign-in, the
    * first open of each is as quick as the next: on a 4× slowed CPU the first
-   * Raids open took about twice as long as the next (Nov 2026).
+   * Raids open took about twice as long as the next (Nov 2026). Raids and
+   * the Shop keep what loaded, so their first open is in the tap's moment
+   * too (see loadShop).
    */
   private preloadScreens() {
     if (this.preloaded) return;
     this.preloaded = true;
     const loads: (() => Promise<unknown>)[] = [
-      () => import("./screens/raid-hall"),
-      () => import("./screens/fitting-room"),
+      () => this.loadRaids(),
+      () => this.loadShop(),
       () => import("./screens/journey"),
     ];
     const next = () => {
@@ -459,7 +674,31 @@ export class AccountUI {
   forgetCopies() {
     this.copies.clear();
   }
+  /**
+   * With the shared cookie (elementarenausa.com), the website may refresh
+   * the token or sign out while this tab is open: Supabase announces neither
+   * to this origin. Take whatever the cookie holds now: a fresh token
+   * quietly, another player (or none) as a real change.
+   */
+  async syncSharedSession() {
+    if (!sharedCookie || !this.client || !this.checked) return;
+    const client = this.client;
+    const read = async () => (await client.auth.getSession()).data.session;
+    const who = (s: Session | null) => s?.user.id ?? null;
+    const now = await read();
+    if (who(now) !== who(this.session)) {
+      // Signed out, or someone else: only if a second look agrees.
+      const sure = await confirmedRead(read, (a, b) => who(a) === who(b));
+      if (sure === undefined || who(sure) === who(this.session)) return;
+      return this.setSession(sure);
+    }
+    if (now && now.access_token !== this.session?.access_token) {
+      this.session = now;
+      this.hooks.onToken(now.access_token);
+    }
+  }
   async api(path: string, body?: unknown): Promise<unknown> {
+    await this.syncSharedSession();
     // Something changes on the server: every copy may be old now.
     if (body !== undefined) this.forgetCopies();
     const origin = import.meta.env.VITE_SERVER_URL || location.origin;
@@ -573,6 +812,7 @@ export class AccountUI {
     if (!this.canUsePhoto())
       throw new Error("Make an account to use your own picture.");
     const blob = await preparePhoto(file);
+    await this.syncSharedSession();
     const origin = import.meta.env.VITE_SERVER_URL || location.origin;
     const response = await fetch(new URL("/api/account/avatar-photo", origin), {
       method: "POST",
@@ -686,28 +926,55 @@ export class AccountUI {
     if (this.account) {
       element("account-profile").onclick = () => void this.showProfile();
       element("account-coins").onclick = () => void this.showShop();
-      element("account-logout").onclick = async () => {
-        if (this.account?.guest && !this.confirmedGuestLogout) {
-          this.hooks.openDialog(
-            `<div class="eyebrow">Guest account</div><h2>Log out of your guest pass?</h2><p>Guest accounts can't be recovered after logging out: your records and titles would be lost. Save your account with an email first to keep them.</p><div class="dialog-actions"><button class="primary" id="guest-save">${iconLabel("save", "Save my account")}</button><button class="secondary" id="guest-leave">${iconLabel("leave", "Log out anyway")}</button></div>`,
-          );
-          element("guest-save").onclick = () => void this.showProfile();
-          element("guest-leave").onclick = () => {
-            this.confirmedGuestLogout = true;
-            element<HTMLDialogElement>("dialog").close();
-            element("account-logout")?.click();
-          };
-          return;
-        }
-        this.confirmedGuestLogout = false;
-        await this.signOutHere();
-      };
+      element("account-logout").onclick = () => void this.logOut();
       if (this.account.isAdmin)
         element("account-admin").onclick = () => void this.showAdmin();
     } else {
       element("account-login").onclick = () => this.showAuth("login");
       element("account-signup").onclick = () => this.showAuth("signup");
     }
+  }
+  /**
+   * Log out on this device (the header's button, the title screen's Switch
+   * account). A guest is warned first: their pass can't be recovered.
+   */
+  async logOut() {
+    if (this.account?.guest && !this.confirmedGuestLogout) {
+      this.hooks.openDialog(
+        `<div class="eyebrow">Guest account</div><h2>Log out of your guest pass?</h2><p>Guest accounts can't be recovered after logging out: your records and titles would be lost. Save your account with an email first to keep them.</p><div class="dialog-actions"><button class="primary" id="guest-save">${iconLabel("save", "Save my account")}</button><button class="secondary" id="guest-leave">${iconLabel("leave", "Log out anyway")}</button></div>`,
+      );
+      element("guest-save").onclick = () => void this.showProfile();
+      element("guest-leave").onclick = () => {
+        this.confirmedGuestLogout = true;
+        element<HTMLDialogElement>("dialog").close();
+        void this.logOut();
+      };
+      return;
+    }
+    this.confirmedGuestLogout = false;
+    await this.signOutHere();
+  }
+  /** Your avatar in your frame, as the header shows it (title screen). */
+  identityPicture() {
+    return identityPortrait({
+      avatar: this.avatar,
+      raidLook: this.raidLook,
+      raidClears: this.raidClears,
+    });
+  }
+  /** Your level, once the profile is in. */
+  get level() {
+    return this.economy?.journey
+      ? playerLevel(this.economy.journey.xp).level
+      : null;
+  }
+  /** How this account signs in: "apple", "google", "email" or "guest". */
+  get signInMethod() {
+    if (this.account?.guest) return "guest";
+    const provider = (
+      this.session?.user?.app_metadata as { provider?: unknown } | undefined
+    )?.provider;
+    return typeof provider === "string" ? provider : "email";
   }
   /**
    * Sign in with Apple in the iPhone app: Apple's own sheet, then Supabase
@@ -785,27 +1052,27 @@ export class AccountUI {
       mode === "signup"
         ? field(
             "Display name",
-            '<input name="displayName" maxlength="20" required autocomplete="nickname" placeholder="Your player name">',
+            '<input name="displayName" maxlength="20" required autocomplete="nickname" placeholder="Your name">',
           )
         : "",
       mode !== "reset"
         ? field(
             "Email",
-            '<input name="email" type="email" required autocomplete="email" placeholder="you@example.com">',
+            '<input name="email" type="email" required autocomplete="email" placeholder="Your email">',
           )
         : "",
       mode !== "forgot"
         ? passwordField(
             mode === "reset" ? "New password" : "Password",
             "password",
-            `${mode === "login" ? "" : 'minlength="8"'} maxlength="128" required autocomplete="${mode === "login" ? "current-password" : "new-password"}" placeholder="${mode === "login" ? "Your password" : "8+ characters"}"`,
+            `${mode === "login" ? "" : 'minlength="8"'} maxlength="128" required autocomplete="${mode === "login" ? "current-password" : "new-password"}" placeholder="${mode === "login" ? "" : "Min. 8"}"`,
           )
         : "",
       mode === "signup" || mode === "reset"
         ? passwordField(
             "Confirm password",
             "confirmPassword",
-            'minlength="8" maxlength="128" required autocomplete="new-password" placeholder="Type it again"',
+            'minlength="8" maxlength="128" required autocomplete="new-password" placeholder="Again"',
           )
         : "",
     ].join("");
@@ -821,13 +1088,24 @@ export class AccountUI {
     }[mode];
     const guest =
       (mode === "login" || mode === "signup") && this.client
-        ? `<div class="auth-divider"><span>or</span></div><form id="guest-form" class="auth-guest"><input name="nickname" maxlength="20" placeholder="Nickname (optional)" autocomplete="nickname" aria-label="Guest nickname"><button class="auth-secondary" type="submit">${iconLabel("user", "Play as a guest")}</button></form><p class="auth-note">No email needed. Save your account later from your profile to keep your progress.</p>`
+        ? `<div class="auth-divider"><span>or</span></div><form id="guest-form" class="auth-guest"><input name="nickname" maxlength="20" placeholder="Nickname" autocomplete="nickname" aria-label="Guest nickname (optional)"><button class="auth-secondary" type="submit">Play as a guest</button></form><p class="auth-note">No email needed. Save your account later from your profile to keep your progress.</p>`
         : "";
     const back =
       mode === "forgot" || mode === "reset"
         ? '<button type="button" class="auth-link auth-back" id="auth-switch">← Back to log in</button>'
         : "";
-    const html = `<section class="auth-panel" data-mode="${mode}"><div class="auth-head"><span class="auth-crest" aria-hidden="true"><svg viewBox="0 0 64 64"><path fill="currentColor" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span><div class="auth-title">${copy[0]}</div><p>${copy[1]}</p></div>${tabs}${!this.client ? '<p class="auth-warning">Sign-in isn\'t available right now. Please try again later.</p>' : ""}<form id="auth-form" class="auth-form">${fields}${extras}<button class="auth-submit" type="submit" ${!this.client ? "disabled" : ""}>${submitLabel}</button>${APPLE_SIGN_IN && (mode === "login" || mode === "signup") ? `<button id="auth-apple" class="auth-secondary auth-apple" type="button" ${!this.client ? "disabled" : ""}>${APPLE_LOGO}<span>Continue with Apple</span></button>` : ""}<p id="auth-message" class="auth-message" role="status"></p></form>${guest}${back}<p class="auth-legal"><a href="${PRIVACY_URL}" target="_blank" rel="noopener">Privacy policy</a></p></section>`;
+    // Apple devices show the Apple button; others keep it behind a small
+    // link (packages/shared/src/apple-device.ts), for players who made their
+    // account on an iPhone.
+    const appleOffered =
+      APPLE_SIGN_IN && (mode === "login" || mode === "signup");
+    const appleAtOnce =
+      appleOffered &&
+      showAppleSignInAtOnce(browserDeviceHints(nativePlatform()));
+    const appleMarkup = appleOffered
+      ? `${appleAtOnce ? "" : '<button id="auth-apple-reveal" class="auth-link auth-apple-reveal" type="button" aria-controls="auth-apple" aria-expanded="false">Signed up with Apple?</button>'}<button id="auth-apple" class="auth-secondary auth-apple" type="button" ${appleAtOnce ? "" : "hidden"} ${!this.client ? "disabled" : ""}>${APPLE_LOGO}<span>Continue with Apple</span></button>`
+      : "";
+    const html = `<section class="auth-panel" data-mode="${mode}"><div class="auth-head"><span class="auth-crest" aria-hidden="true"><svg viewBox="0 0 64 64"><path fill="currentColor" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span><div class="auth-title">${copy[0]}</div><p>${copy[1]}</p></div>${tabs}${!this.client ? '<p class="auth-warning">Sign-in isn\'t available right now. Please try again later.</p>' : ""}<form id="auth-form" class="auth-form">${fields}${extras}<button class="auth-submit" type="submit" ${!this.client ? "disabled" : ""}>${submitLabel}</button>${appleMarkup}<p id="auth-message" class="auth-message" role="status"></p></form>${guest}${back}<p class="auth-legal"><a href="${PRIVACY_URL}" target="_blank" rel="noopener">Privacy policy</a></p></section>`;
     // On the welcome screen the panel sits in the page; elsewhere in a dialog.
     const host = document.getElementById("gate-auth");
     if (host) host.innerHTML = html;
@@ -843,8 +1121,9 @@ export class AccountUI {
       ?.addEventListener("click", () => this.showAuth("login"));
     if (mode === "login") {
       element("auth-forgot").onclick = () => this.showAuth("forgot");
-      element<HTMLInputElement>("auth-remember").checked =
-        localStorage.getItem("parena-remember") === "yes";
+      element<HTMLInputElement>("auth-remember").checked = sharedCookie
+        ? sharedCookie.remembered()
+        : localStorage.getItem("parena-remember") === "yes";
     }
     const form = element<HTMLFormElement>("auth-form");
     const message = element("auth-message");
@@ -883,11 +1162,21 @@ export class AccountUI {
       });
       if (error) message.textContent = error.message;
     };
-    if (APPLE_SIGN_IN && (mode === "login" || mode === "signup"))
-      element("auth-apple").onclick = () =>
+    if (appleOffered) {
+      const appleButton = element<HTMLButtonElement>("auth-apple");
+      appleButton.onclick = () =>
         void (isNativeApp()
           ? this.signInWithAppleApp(message)
           : signInWithApple());
+      const reveal = document.getElementById("auth-apple-reveal");
+      if (reveal)
+        reveal.onclick = () => {
+          rememberAppleChoice();
+          appleButton.hidden = false;
+          reveal.remove();
+          appleButton.focus();
+        };
+    }
     const guestForm = element<HTMLFormElement>("guest-form");
     if (guestForm)
       guestForm.onsubmit = async (event) => {
@@ -918,9 +1207,7 @@ export class AccountUI {
         }
         await this.setSession(data.session);
         element<HTMLDialogElement>("dialog").close();
-        this.hooks.notify(
-          "You're playing as a guest. Save your account from your profile any time to keep your progress.",
-        );
+        await this.warnNewGuest();
       };
     form.onsubmit = async (event) => {
       event.preventDefault();
@@ -1021,13 +1308,31 @@ export class AccountUI {
    * opens at once with what is known, then shows the server's fresh copy of
    * your raid records and your friends.
    */
-  async showRaids(boss?: RaidBossId, tab?: RaidTab, spire?: SpireTab) {
+  private raidHall?: typeof import("./screens/raid-hall");
+  /** The Raids screen's code, loaded ahead (leaving a raid room). */
+  loadRaids() {
+    return import("./screens/raid-hall").then((module) => {
+      this.raidHall = module;
+      return module;
+    });
+  }
+  /**
+   * `instant`: back from a fight to the screen it started from; it is drawn
+   * in place, with the Lobby, rather than sliding in over it.
+   */
+  async showRaids(
+    boss?: RaidBossId,
+    tab?: RaidTab,
+    spire?: SpireTab,
+    instant = false,
+  ) {
     if (!this.ensurePlayer()) return;
     this.toLobbyScreen();
     const accountId = this.account?.id;
     // The raid screens' code and styles load the first time they open, not
-    // with the game (a phone starts faster).
-    const { openRaids } = await import("./screens/raid-hall");
+    // with the game (a phone starts faster). Once loaded (or loaded ahead by
+    // loadRaids), the screen opens in this same moment.
+    const { openRaids } = this.raidHall ?? (await this.loadRaids());
     if (this.account?.id !== accountId) return;
     if (this.raidScreen?.isOpen) {
       if (spire) this.raidScreen.showSpire(spire);
@@ -1071,7 +1376,7 @@ export class AccountUI {
           onSpire: () => this.noteSpireSeen(),
           onClose: () => (this.raidScreen = undefined),
         },
-        { boss, tab, spire },
+        { boss, tab, spire, instant },
       );
     }
     const screen = this.raidScreen;
@@ -1187,6 +1492,20 @@ export class AccountUI {
     this.fittingRoom?.close();
   }
   /**
+   * The Shop's code, once loaded (ahead, or by its first open). Awaiting
+   * `import()` of code already loaded still waited several tasks: 330-380 ms
+   * in the visual harness, 1.5-1.75 s at 4× CPU, so the Shop opened that
+   * long after the tap (Nov 2026, #582). As Raids does, an open with it
+   * here runs in the tap's own moment.
+   */
+  private shopCode?: typeof import("./screens/fitting-room");
+  private loadShop() {
+    return import("./screens/fitting-room").then((module) => {
+      this.shopCode = module;
+      return module;
+    });
+  }
+  /**
    * The fitting room opens inside the Lobby at once with what is known, then
    * shows the server's fresh copy of your coins, items and raid rewards.
    */
@@ -1200,7 +1519,7 @@ export class AccountUI {
     this.toLobbyScreen();
     // Its code and styles load the first time it opens, not with the game.
     const accountId = this.account?.id;
-    const { openFittingRoom } = await import("./screens/fitting-room");
+    const { openFittingRoom } = this.shopCode ?? (await this.loadShop());
     if (this.account?.id !== accountId) return;
     if (this.fittingRoom?.isOpen) this.fittingRoom.show(mode, section);
     else {
@@ -1274,6 +1593,7 @@ export class AccountUI {
         economy: this.economy ?? null,
         progress: this.fitProgress,
         look: this.raidLook ?? {},
+        avatar: this.avatar,
         problem: this.fitProblem,
         loading: this.fitLoading,
       }),
@@ -1409,6 +1729,10 @@ export class AccountUI {
   /** Leave for the Lobby (a hub screen lives there) and close any old dialog. */
   private toLobbyScreen() {
     this.hooks.toLobby?.();
+    this.closeDialog();
+  }
+  /** Close any old dialog (a hub screen is opening). */
+  private closeDialog() {
     const dialog = document.getElementById(
       "dialog",
     ) as HTMLDialogElement | null;
@@ -1471,6 +1795,8 @@ export class AccountUI {
   }
   /** The open player card, if any (UI remodel step 7). */
   private profileScreen?: ProfileScreen;
+  /** Where the card is open (the Plaza's layer), or none (the Lobby). */
+  private profileHost?: HTMLElement;
   private profileData: Pick<
     ProfileData,
     "progress" | "progressProblem" | "raids" | "nameStatus"
@@ -1481,7 +1807,13 @@ export class AccountUI {
    */
   async showProfile() {
     if (!this.account) return;
-    this.toLobbyScreen();
+    const host = this.hooks.profileHost?.();
+    if (host) this.closeDialog();
+    else this.toLobbyScreen();
+    // Open where you are now: one left open in the other scene goes.
+    if (this.profileScreen?.isOpen && this.profileHost !== host)
+      this.profileScreen.close();
+    this.profileHost = host;
     const accountId = this.account.id;
     if (!this.profileScreen?.isOpen) {
       // It opens on the records it showed last (another player's are
@@ -1491,6 +1823,7 @@ export class AccountUI {
         raids: this.profileData.raids ?? this.raidProgress ?? null,
       };
       this.profileScreen = openProfile({
+        host,
         data: () => {
           const a = this.account!;
           return {
@@ -1576,8 +1909,17 @@ export class AccountUI {
         journey: () => void this.showJourney(),
         raids: (boss) =>
           void this.showRaids(boss, boss ? "rewards" : undefined),
+        history: (q) => this.matchHistory(q),
+        playBot: this.hooks.playBot,
+        isFriend: (id) => this.isFriend(id),
+        friendCard: (id) => this.showFriendCard(id, false),
         onClose: () => (this.profileScreen = undefined),
       });
+      // Which players in your matches are friends (their names open cards).
+      // (Guests can have friends too.)
+      void this.loadFriendList(accountId, FRIENDS_MAX_AGE_MS).then(() =>
+        this.profileScreen?.refresh(),
+      );
     }
     await this.loadProfile(accountId);
   }
@@ -1664,6 +2006,7 @@ export class AccountUI {
           ...this.friendsData,
           blocked: this.blocked,
           canMessage: !!this.hooks.messageFriend,
+          canCard: !host,
           invited: this.hooks.invitedFriends?.(),
           room,
           party: {
@@ -1737,6 +2080,7 @@ export class AccountUI {
       },
       unblock: (id) => this.unblock(id),
       message: (id, name) => this.hooks.messageFriend?.(id, name),
+      card: (id) => this.showFriendCard(id, true),
       inviteToParty: async (id) => ok(await this.hooks.inviteToParty?.(id)),
       inviteToRoom: async (id) => ok(await this.hooks.inviteFriend?.(id)),
       join: (code) => this.hooks.joinRoom?.(code),
@@ -1752,6 +2096,93 @@ export class AccountUI {
     await this.loadFriendList(accountId, FRIENDS_MAX_AGE_MS);
     // The list it opened with was still fresh: nothing to redraw.
     if (this.friendsData !== shown && screen.isOpen) screen.refresh();
+  }
+  /** A page of match history: yours, or a friend's (docs/match-history.md). */
+  private async matchHistory(q: HistoryQuery & { player?: string }) {
+    const params = new URLSearchParams({ kind: q.kind });
+    if (q.player) params.set("player", q.player);
+    if (q.at) params.set("at", q.at);
+    if (q.id) params.set("id", q.id);
+    const path = `/api/matches/history?${params}`;
+    // The first page is kept like the card's other records, so the card
+    // opened again shows it at once without asking (until records change).
+    return matchHistorySchema.parse(
+      await (q.at ? this.api(path) : this.fetchCopy(path)),
+    );
+  }
+  private isFriend(id: string) {
+    return !!this.friendsData.list?.friends.some((f) => f.id === id);
+  }
+  private friendCard?: FriendCardScreen;
+  /**
+   * A friend's player card and matches. From Friends it has a way back
+   * there; from a match board it opens on its own.
+   */
+  async showFriendCard(id: string, fromFriends: boolean) {
+    if (!this.ensurePlayer()) return;
+    const accountId = this.account!.id;
+    if (!this.friendsData.list) await this.loadFriendList(accountId);
+    const person = this.friendsData.list?.friends.find((f) => f.id === id);
+    if (this.account?.id !== accountId) return;
+    if (!person) {
+      this.hooks.notify("Only friends can see each other's matches.");
+      return;
+    }
+    this.toLobbyScreen();
+    this.friendCard = openFriendCard({
+      person,
+      history: (q) => {
+        if (this.account?.id !== accountId)
+          return Promise.reject(
+            new Error("Your session changed. Reopen the card."),
+          );
+        return this.matchHistory(q);
+      },
+      back: fromFriends ? () => void this.showFriends() : undefined,
+      isFriend: (other) => this.isFriend(other),
+      open: (other) => void this.showFriendCard(other, fromFriends),
+      onClose: () => (this.friendCard = undefined),
+    });
+  }
+  /**
+   * A new guest pass, said plainly once, when it's made: everything plays,
+   * but it lives on this device only and can't be recovered once lost
+   * (logging out, clearing the app's data, a new phone). Save my account
+   * opens the player card, whose first block saves it with an email.
+   */
+  /**
+   * A new guest's warning is due or showing: the Lobby tour waits for it
+   * (main.ts startTour), then starts once it is answered ("guest-warning-done").
+   */
+  guestWarningPending = false;
+  private async warnNewGuest() {
+    if (!this.account?.guest) return;
+    this.guestWarningPending = true;
+    try {
+      await this.showGuestWarning();
+    } finally {
+      this.guestWarningPending = false;
+      window.dispatchEvent(new Event("guest-warning-done"));
+    }
+  }
+  private async showGuestWarning() {
+    // Over the Lobby, once the log-in's loading curtain has come and gone
+    // (not under it, nor beside it while it fades). It starts a moment after
+    // the log-in, so wait for the Lobby itself; never more than 20 s.
+    const end = performance.now() + 20_000;
+    while (
+      performance.now() < end &&
+      (!document.body.classList.contains("hub-active") || curtainCovers())
+    )
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    if (!this.account?.guest) return;
+    const save = await askConfirm(guestWarning());
+    if (!save || !this.account?.guest) return;
+    await this.showProfile();
+    // Straight to the email box (its form is the card's first block).
+    document
+      .querySelector<HTMLInputElement>("[data-profile-save] input")
+      ?.focus({ preventScroll: false });
   }
   /** The server's answer `friendsData.list` was read from. */
   private friendsListRaw: unknown;
@@ -1868,6 +2299,8 @@ export class AccountUI {
           me: {
             name: this.account?.displayName ?? "You",
             avatar: this.avatar,
+            // A tier reached once stays ticked on the road.
+            titles: (this.account?.ownedTitles ?? []).map((t) => t.name),
           },
         }),
         load: (scope) => this.loadRanks(scope, accountId),
@@ -1971,468 +2404,25 @@ export class AccountUI {
       }
     };
   }
-  private adminView: {
-    tab: "players" | "reports" | "online";
-    search: string;
-    offset: number;
-    status: "open" | "resolved" | "all";
-    reportOffset: number;
-    message: string;
-  } = {
-    tab: "players",
-    search: "",
-    offset: 0,
-    status: "open",
-    reportOffset: 0,
-    message: "",
-  };
-  private onlineTimer?: ReturnType<typeof setTimeout>;
-  /** `refresh` re-renders in place without the "Loading…" flash (online auto-refresh). */
-  async showAdmin(
-    changes: Partial<typeof this.adminView> = {},
-    refresh = false,
-  ) {
+  private adminPanel?: AdminPanel;
+  /** The Admin panel (admin-panel.ts). `changes` open it on a section. */
+  async showAdmin(changes: Partial<AdminView> = {}) {
     if (!this.account?.isAdmin) return;
-    clearTimeout(this.onlineTimer);
-    const view = Object.assign(this.adminView, { message: "" }, changes);
-    const tab = (id: typeof view.tab, label: string, count?: number | string) =>
-      `<button role="tab" class="admin-tab ${view.tab === id ? "active" : ""}" data-tab="${id}" aria-selected="${view.tab === id}">${label}${count ? ` <b class="admin-count${id === "online" ? " live" : ""}">${count}</b>` : ""}</button>`;
-    const header = (open: number | string, online: number | string = "") =>
-      `<div class="eyebrow">Administration</div><h2>Admin</h2><div class="admin-tabs" role="tablist">${tab("players", "Players")}${tab("online", "Online", online)}${tab("reports", "Reports", open)}</div>`;
-    if (!refresh) this.hooks.openDialog(`${header("")}<p>Loading…</p>`);
-    try {
-      // Who's online comes from the game server's memory; it never blocks the rest.
-      let onlineError = "";
-      const onlineRequest = (
-        this.api("/api/admin/online") as Promise<OnlineList>
-      ).catch((error: unknown) => {
-        onlineError =
-          error instanceof Error ? error.message : "Online list unavailable.";
-        return { players: [], guests: 0, at: new Date().toISOString() };
-      });
-      // Reports are optional: if they can't load, the player tools still work.
-      let reportsError = "";
-      const reports = (await this.api(
-        `/api/admin/reports?status=${view.tab === "reports" ? view.status : "open"}&offset=${view.tab === "reports" ? view.reportOffset : 0}`,
-      ).catch((error: unknown) => {
-        reportsError =
-          error instanceof Error ? error.message : "Reports are unavailable.";
-        return { reports: [], total: 0, open: 0 };
-      })) as ReportList;
-      const online = await onlineRequest;
-      let body = "";
-      let titles: Title[] = [];
-      let players: PlayerDirectory["players"] = [];
-      if (view.tab === "players") {
-        const [directory, catalog] = await Promise.all([
-          this.api(
-            `/api/admin/players?search=${encodeURIComponent(view.search)}&offset=${view.offset}`,
-          ),
-          this.api("/api/admin/titles"),
-        ]);
-        ({ players } = directory as PlayerDirectory);
-        const total = (directory as PlayerDirectory).total;
-        titles = catalog as Title[];
-        const sorted = sortTitles(titles);
-        body = `<div class="admin-title-tools"><select id="delete-title-select" aria-label="Title to delete"><option value="">Delete a title…</option>${sorted.map((t) => `<option value="${t.id}">${escape(t.name)}</option>`).join("")}</select><div class="admin-confirm" id="delete-title-confirm" hidden></div></div><form id="admin-search" class="admin-search"><input name="search" placeholder="Search name or player ID" value="${escape(view.search)}" aria-label="Search players"><button class="secondary">Search</button></form><div class="admin-list">${
-          players
-            .map((p) => {
-              const owned = sortTitles(
-                titles.filter((t) => p.titleIds.includes(t.id)),
-              );
-              const grantable = sortTitles(
-                titles.filter((t) => t.active && !p.titleIds.includes(t.id)),
-              );
-              return `<div class="admin-row" data-player="${p.id}" data-name="${escape(p.displayName)}"><div class="admin-row-head"><strong>${escape(p.displayName)}</strong>${p.isAdmin ? '<span class="admin-badge">ADMIN</span>' : ""}${p.suspended ? '<span class="admin-badge danger">SUSPENDED</span>' : ""}<small>Joined ${new Date(p.createdAt).toLocaleDateString()}</small></div><div class="admin-titles-row">${owned
-                .map(
-                  (t) =>
-                    `<span class="title-chip" style="--chip:${t.color}">${escape(t.name)}<button type="button" data-revoke="${t.id}" aria-label="Remove ${escape(t.name)}" title="Remove title">×</button></span>`,
-                )
-                .join(
-                  "",
-                )}<select class="grant-select" aria-label="Grant a title to ${escape(p.displayName)}"><option value="">+ Grant title…</option>${grantable.map((t) => `<option value="${t.id}">${escape(t.name)}</option>`).join("")}<option value="__new">Create new title…</option></select></div>${
-                p.isAdmin
-                  ? ""
-                  : `<div class="admin-actions"><button type="button" class="secondary" data-action="suspend">${p.suspended ? "Unsuspend" : "Suspend"}</button><button type="button" class="danger-button" data-action="delete">Delete</button></div>`
-              }<div class="admin-confirm" hidden></div></div>`;
-            })
-            .join("") || "<p>No players found.</p>"
-        }</div><div class="admin-pagination"><button id="admin-prev" class="quiet" ${view.offset === 0 ? "disabled" : ""}>Previous</button><span>${total ? `${view.offset + 1}–${Math.min(view.offset + 50, total)} of ${total}` : "0 players"}</span><button id="admin-next" class="quiet" ${view.offset + 50 >= total ? "disabled" : ""}>Next</button></div>`;
-      } else if (view.tab === "online") {
-        body = onlineError
-          ? `<p class="admin-notice">${escape(onlineError)}</p>`
-          : renderOnline(
-              online,
-              (id) => CHARACTERS[id as CharacterId]?.name ?? id,
-            );
-      } else {
-        body = `<div class="report-filter" role="group" aria-label="Report status">${(["open", "resolved", "all"] as const).map((s) => `<button class="${view.status === s ? "active" : ""}" data-status="${s}">${s[0].toUpperCase() + s.slice(1)}</button>`).join("")}</div><div class="admin-list">${
-          reports.reports
-            .map(
-              (r) =>
-                `<article class="report-card ${r.status}" data-report="${r.id}"><div class="admin-row-head"><span class="report-category ${r.category}">${REPORT_CATEGORIES[r.category] ?? r.category}</span><strong>${escape(r.reporterName || "Deleted player")}</strong><small>${new Date(r.createdAt).toLocaleString()}</small></div><p class="report-text">${escape(r.message)}</p>${
-                  Object.keys(r.context ?? {}).length
-                    ? `<small class="report-context">${Object.entries(r.context)
-                        .map(([k, v]) => `${escape(k)}: ${escape(String(v))}`)
-                        .join(" · ")}</small>`
-                    : ""
-                }${chatTarget(r.context) ? `<button type="button" class="secondary" data-chat-stop="${chatTarget(r.context)}">Stop their chat for 24 h</button>` : ""}${
-                  photoTarget(r.context)
-                    ? `<div class="admin-photo" data-admin-photo="${photoTarget(r.context)}"><span class="admin-photo-pic" aria-label="The reported picture">Loading…</span><button type="button" class="secondary" data-photo-keep="true">Keep picture</button><button type="button" class="danger-button" data-photo-keep="false">Remove picture</button></div>`
-                    : ""
-                }<button type="button" class="${r.status === "open" ? "secondary" : "quiet"}" data-resolve="${r.status === "open"}">${r.status === "open" ? "Mark resolved" : "Reopen"}</button></article>`,
-            )
-            .join("") ||
-          `<p>No ${view.status === "all" ? "" : view.status + " "}reports.</p>`
-        }</div><div class="admin-pagination"><button id="report-prev" class="quiet" ${view.reportOffset === 0 ? "disabled" : ""}>Previous</button><span>${reports.total ? `${view.reportOffset + 1}–${Math.min(view.reportOffset + 50, reports.total)} of ${reports.total}` : ""}</span><button id="report-next" class="quiet" ${view.reportOffset + 50 >= reports.total ? "disabled" : ""}>Next</button></div>`;
-      }
-      this.hooks.openDialog(
-        `${header(reports.open, onlineError ? "" : online.players.length)}${reportsError ? `<p class="admin-notice">${escape(reportsError)}</p>` : ""}${view.tab === "reports" && reportsError ? "" : body}<p id="admin-message" role="status">${escape(view.message)}</p>`,
-      );
-      const say = (text: string) =>
-        (element("admin-message").textContent = text);
-      const fail = (error: unknown) =>
-        say(error instanceof Error ? error.message : "Request failed.");
-      document.querySelectorAll<HTMLButtonElement>(".admin-tab").forEach(
-        (tab) =>
-          (tab.onclick = () =>
-            void this.showAdmin({
-              tab: tab.dataset.tab as typeof view.tab,
-            })),
-      );
-      if (view.tab === "online") {
-        if (onlineError) return;
-        element("online-refresh").onclick = () => void this.showAdmin({}, true);
-        document.querySelectorAll<HTMLButtonElement>("[data-manage]").forEach(
-          (button) =>
-            (button.onclick = () =>
-              void this.showAdmin({
-                tab: "players",
-                search:
-                  button.closest<HTMLElement>("[data-online]")!.dataset
-                    .online ?? "",
-                offset: 0,
-              })),
-        );
-        this.onlineTimer = setTimeout(() => {
-          const dialog = document.getElementById(
-            "dialog",
-          ) as HTMLDialogElement | null;
-          if (
-            dialog?.open &&
-            this.adminView.tab === "online" &&
-            document.getElementById("online-refresh")
-          )
-            void this.showAdmin({}, true);
-        }, 10000);
+    if (!this.adminPanel) {
+      let panel: typeof import("./admin-panel");
+      try {
+        panel = await import("./admin-panel");
+      } catch {
+        // Offline, or a new version was deployed since this page loaded.
+        this.hooks.notify("Could not open Admin. Check your connection.");
         return;
       }
-      if (view.tab === "reports") {
-        if (reportsError) return;
-        document.querySelectorAll<HTMLButtonElement>("[data-status]").forEach(
-          (b) =>
-            (b.onclick = () =>
-              void this.showAdmin({
-                status: b.dataset.status as "open" | "resolved" | "all",
-                reportOffset: 0,
-              })),
-        );
-        element("report-prev").onclick = () =>
-          void this.showAdmin({
-            reportOffset: Math.max(0, view.reportOffset - 50),
-          });
-        element("report-next").onclick = () =>
-          void this.showAdmin({ reportOffset: view.reportOffset + 50 });
-        // A picture report: the picture itself, then keep it or remove it.
-        document
-          .querySelectorAll<HTMLElement>("[data-admin-photo]")
-          .forEach((box) => {
-            const photo = box.dataset.adminPhoto!;
-            const pic = box.querySelector<HTMLElement>(".admin-photo-pic")!;
-            void (
-              this.api(`/api/admin/avatar-photo/${photo}`) as Promise<{
-                src: string | null;
-                hidden: boolean;
-              }>
-            ).then(
-              ({ src, hidden }) => {
-                if (!src) {
-                  pic.textContent = "Already removed.";
-                  return;
-                }
-                const img = document.createElement("img");
-                img.src = src;
-                img.alt = "The reported picture";
-                pic.replaceChildren(img);
-                if (hidden) pic.dataset.hidden = "Hidden (3 reports)";
-              },
-              () => (pic.textContent = "Couldn't load it."),
-            );
-            box
-              .querySelectorAll<HTMLButtonElement>("[data-photo-keep]")
-              .forEach((button) => {
-                button.onclick = async () => {
-                  button.disabled = true;
-                  const keep = button.dataset.photoKeep === "true";
-                  try {
-                    await this.api("/api/admin/avatar-photo", { photo, keep });
-                    await this.showAdmin({
-                      message: keep
-                        ? "Picture kept and shown again."
-                        : "Picture removed. They can add one again in 7 days.",
-                    });
-                  } catch (error) {
-                    fail(error);
-                    button.disabled = false;
-                  }
-                };
-              });
-          });
-        // A chat report: stop the reported player typing for a day.
-        document
-          .querySelectorAll<HTMLButtonElement>("[data-chat-stop]")
-          .forEach((button) => {
-            button.onclick = async () => {
-              button.disabled = true;
-              try {
-                await this.api("/api/admin/chat-ban", {
-                  playerId: button.dataset.chatStop,
-                  hours: 24,
-                  reason: "From a chat report",
-                });
-                await this.showAdmin({
-                  message: "Their chat is stopped for 24 hours.",
-                });
-              } catch (error) {
-                fail(error);
-                button.disabled = false;
-              }
-            };
-          });
-        document
-          .querySelectorAll<HTMLButtonElement>("[data-resolve]")
-          .forEach((button) => {
-            button.onclick = async () => {
-              button.disabled = true;
-              const id = Number(
-                button.closest<HTMLElement>("[data-report]")!.dataset.report,
-              );
-              try {
-                await this.api("/api/admin/reports/resolve", {
-                  id,
-                  resolved: button.dataset.resolve === "true",
-                });
-                await this.showAdmin({
-                  message:
-                    button.dataset.resolve === "true"
-                      ? "Report marked resolved."
-                      : "Report reopened.",
-                });
-              } catch (error) {
-                fail(error);
-                button.disabled = false;
-              }
-            };
-          });
-        return;
-      }
-      element<HTMLFormElement>("admin-search").onsubmit = (e) => {
-        e.preventDefault();
-        void this.showAdmin({
-          search: String(
-            new FormData(e.currentTarget as HTMLFormElement).get("search") ??
-              "",
-          ),
-          offset: 0,
-        });
-      };
-      element("admin-prev").onclick = () =>
-        void this.showAdmin({ offset: Math.max(0, view.offset - 50) });
-      element("admin-next").onclick = () =>
-        void this.showAdmin({ offset: view.offset + 50 });
-      const deleteSelect = element<HTMLSelectElement>("delete-title-select");
-      const deleteBox = element("delete-title-confirm");
-      deleteSelect.onchange = () => {
-        const title = titles.find((t) => t.id === deleteSelect.value);
-        if (!title) {
-          deleteBox.hidden = true;
-          return;
-        }
-        deleteBox.hidden = false;
-        deleteBox.innerHTML = `<p><b>Delete the title "${escape(title.name)}"?</b> It is removed from every player who has it. This cannot be undone.</p><div class="admin-actions"><button type="button" class="danger-button" data-confirm>Delete title</button><button type="button" class="quiet" data-cancel>Cancel</button></div>`;
-        deleteBox.querySelector<HTMLButtonElement>("[data-cancel]")!.onclick =
-          () => {
-            deleteSelect.value = "";
-            deleteBox.hidden = true;
-          };
-        const confirm =
-          deleteBox.querySelector<HTMLButtonElement>("[data-confirm]")!;
-        confirm.focus();
-        confirm.onclick = async () => {
-          confirm.disabled = true;
-          try {
-            await this.api("/api/admin/titles/delete", {
-              id: title.id,
-              confirm: true,
-            });
-            await this.showAdmin({
-              message: `Title "${title.name}" was deleted.`,
-            });
-          } catch (error) {
-            fail(error);
-            confirm.disabled = false;
-          }
-        };
-      };
-      const grant = async (playerId: string, titleId: string, on: boolean) => {
-        await this.api("/api/admin/grants", {
-          playerId,
-          titleId,
-          grant: on,
-        });
-      };
-      document.querySelectorAll<HTMLElement>(".admin-row").forEach((row) => {
-        const id = row.dataset.player!,
-          name = row.dataset.name!;
-        const confirmBox = row.querySelector<HTMLElement>(".admin-confirm")!;
-        row
-          .querySelectorAll<HTMLButtonElement>("[data-revoke]")
-          .forEach((button) => {
-            button.onclick = async () => {
-              button.disabled = true;
-              try {
-                await grant(id, button.dataset.revoke!, false);
-                await this.showAdmin({
-                  message: `Title removed from ${name}.`,
-                });
-              } catch (error) {
-                fail(error);
-                button.disabled = false;
-              }
-            };
-          });
-        const select = row.querySelector<HTMLSelectElement>(".grant-select")!;
-        select.onchange = async () => {
-          if (!select.value) return;
-          if (select.value === "__new") {
-            select.value = "";
-            const preset =
-              TITLE_PRESETS.find(
-                (p) =>
-                  !titles.some(
-                    (t) => t.name.toLowerCase() === p.name.toLowerCase(),
-                  ),
-              ) ?? TITLE_PRESETS[0];
-            confirmBox.hidden = false;
-            confirmBox.innerHTML = `<form class="new-title-form"><input name="name" maxlength="40" required placeholder="Title name" value="${escape(preset.name)}" aria-label="New title name"><input name="color" type="color" value="${preset.color}" aria-label="Title color"><button class="primary">Create &amp; grant</button><button type="button" class="quiet" data-cancel>Cancel</button></form>`;
-            const form = confirmBox.querySelector("form")!;
-            confirmBox.querySelector<HTMLButtonElement>(
-              "[data-cancel]",
-            )!.onclick = () => {
-              confirmBox.hidden = true;
-              confirmBox.innerHTML = "";
-            };
-            form.onsubmit = async (event) => {
-              event.preventDefault();
-              const fields = new FormData(form);
-              try {
-                const titleId = (await this.api("/api/admin/titles", {
-                  id: null,
-                  name: String(fields.get("name")),
-                  description: "An arena honor awarded by an administrator.",
-                  color: String(fields.get("color")),
-                  active: true,
-                })) as string;
-                await grant(id, titleId, true);
-                await this.showAdmin({
-                  message: `Created "${String(fields.get("name"))}" and granted it to ${name}.`,
-                });
-              } catch (error) {
-                fail(error);
-              }
-            };
-            return;
-          }
-          select.disabled = true;
-          try {
-            await grant(id, select.value, true);
-            await this.showAdmin({ message: `Title granted to ${name}.` });
-          } catch (error) {
-            fail(error);
-            select.disabled = false;
-          }
-        };
-        row
-          .querySelectorAll<HTMLButtonElement>("[data-action]")
-          .forEach((button) => {
-            button.onclick = () => {
-              const deleting = button.dataset.action === "delete";
-              const suspended = button.textContent === "Unsuspend";
-              confirmBox.hidden = false;
-              confirmBox.innerHTML = deleting
-                ? `<p><b>Permanently delete ${escape(name)}?</b> Their login, profile and titles are removed for good. This cannot be undone.</p><label><span>Type <b>${escape(name)}</b> to confirm</span><input data-confirm-name autocomplete="off" aria-label="Type ${escape(name)} to confirm"></label><div class="admin-actions"><button type="button" class="danger-button" data-confirm disabled>Delete account</button><button type="button" class="quiet" data-cancel>Cancel</button></div>`
-                : `<p><b>${suspended ? "Unsuspend" : "Suspend"} ${escape(name)}?</b> ${suspended ? "They will be able to log in and play again." : "They are removed from any match and can't play until unsuspended."}</p><div class="admin-actions"><button type="button" class="${suspended ? "primary" : "danger-button"}" data-confirm>${suspended ? "Unsuspend" : "Suspend"}</button><button type="button" class="quiet" data-cancel>Cancel</button></div>`;
-              const confirm =
-                confirmBox.querySelector<HTMLButtonElement>("[data-confirm]")!;
-              const typed = confirmBox.querySelector<HTMLInputElement>(
-                "[data-confirm-name]",
-              );
-              if (typed) {
-                typed.oninput = () =>
-                  (confirm.disabled = typed.value.trim() !== name);
-                typed.focus();
-              } else confirm.focus();
-              confirmBox.querySelector<HTMLButtonElement>(
-                "[data-cancel]",
-              )!.onclick = () => {
-                confirmBox.hidden = true;
-                confirmBox.innerHTML = "";
-              };
-              confirm.onclick = async () => {
-                confirm.disabled = true;
-                try {
-                  if (deleting)
-                    await this.api("/api/admin/players/delete", {
-                      id,
-                      confirm: true,
-                    });
-                  else
-                    await this.api("/api/admin/players/suspend", {
-                      id,
-                      suspended: !suspended,
-                    });
-                  await this.showAdmin({
-                    message: deleting
-                      ? `${name} was deleted.`
-                      : `${name} is ${suspended ? "no longer suspended" : "suspended"}.`,
-                  });
-                } catch (error) {
-                  fail(error);
-                  confirm.disabled = false;
-                }
-              };
-            };
-          });
+      this.adminPanel ??= new panel.AdminPanel({
+        api: (path, body) => this.api(path, body),
+        openDialog: (html) => this.hooks.openDialog(html),
+        fighterName: (id) => CHARACTERS[id as CharacterId]?.name ?? id,
       });
-    } catch (error) {
-      this.hooks.openDialog(
-        `<h2>Admin tools unavailable</h2><p>${escape(error instanceof Error ? error.message : "Unable to load administration.")}</p>`,
-      );
     }
+    await this.adminPanel.show(changes);
   }
-}
-
-/** The reported player of a chat report ("Name (uuid)" in its context). */
-/** A picture report's photo id (a UUID, or nothing). */
-function photoTarget(context: Record<string, string> | undefined) {
-  const id = context?.avatarPhoto;
-  return typeof id === "string" && photoIdOf(`photo:${id}`) ? id : "";
-}
-function chatTarget(context: Record<string, string> | undefined) {
-  if (context?.source !== "chat") return null;
-  return (
-    /\(([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\)$/i.exec(
-      context.reported ?? "",
-    )?.[1] ?? null
-  );
 }

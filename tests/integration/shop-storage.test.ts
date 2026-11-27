@@ -741,6 +741,49 @@ it("sells Neon Campus as Epic at 3,500 and its full set at 80%", async () => {
   expect(await economy()).toEqual(bought);
 });
 
+it("sells Starlight Idol as Epic at 3,500 and its full set at 80%", async () => {
+  const sql = await readFile(
+    "supabase/migrations/20261125130000_starlight_idol.sql",
+    "utf8",
+  );
+  await db.exec("reset role");
+  // It refuses to run before the picks opt-in: its items would be picks.
+  await expect(db.exec(sql)).rejects.toThrow("shop_picks_opt_in");
+  await db.exec("rollback");
+  await db.exec(
+    await readFile(
+      "supabase/migrations/20261125120000_shop_picks_opt_in.sql",
+      "utf8",
+    ),
+  );
+  await db.exec(sql);
+  expect(
+    (
+      await db.query<{ n: number }>(
+        "select count(*)::int as n from public.arena_shop_items where collection = 'starlight-idol' and in_picks",
+      )
+    ).rows[0].n,
+  ).toBe(0);
+  const rows = await db.query<{ rarity: string; price: number; n: number }>(
+    "select rarity, price, count(*)::int as n from public.arena_shop_items where collection = 'starlight-idol' and kind = 'champion' group by rarity, price",
+  );
+  expect(rows.rows).toEqual([{ rarity: "epic", price: 3500, n: 18 }]);
+  await db.exec(
+    `update public.arena_wallets set balance = 100000 where player_id = '${player}'`,
+  );
+  await login();
+  await db.query("select public.arena_buy_item('starlight-idol-skins')");
+  const bought = await economy();
+  expect(100000 - bought.balance).toBe(18 * 3500 * 0.8);
+  expect(
+    bought.owned.filter((id: string) => id.endsWith("-starlight-idol")),
+  ).toHaveLength(18);
+  // Running the migration again changes nothing.
+  await db.exec("reset role");
+  await db.exec(sql);
+  expect(await economy()).toEqual(bought);
+});
+
 it("sells Stars & Stripes as Legendary at 5,500 and its full set at 80%", async () => {
   const sql = await readFile(
     "supabase/migrations/20261118190000_stars_stripes.sql",
@@ -761,6 +804,154 @@ it("sells Stars & Stripes as Legendary at 5,500 and its full set at 80%", async 
   expect(120000 - bought.balance).toBe(18 * 5500 * 0.8);
   expect(
     bought.owned.filter((id: string) => id.endsWith("-stars-stripes")),
+  ).toHaveLength(18);
+  // Running the migration again changes nothing.
+  await db.exec("reset role");
+  await db.exec(sql);
+  expect(await economy()).toEqual(bought);
+});
+
+it("sells the Seaside, Steamworks and Borealis Look sets at their tier's prices, and equips their pieces", async () => {
+  const sql = await readFile(
+    "supabase/migrations/20261125140000_seaside_steamworks_borealis.sql",
+    "utf8",
+  );
+  await db.exec("reset role");
+  await db.exec(sql);
+  const rows = await db.query<{ collection: string; total: number; n: number }>(
+    "select collection, sum(price)::int as total, count(*)::int as n from public.arena_shop_items where collection in ('seaside', 'steamworks', 'borealis') and kind = 'look' and not in_picks group by collection order by collection",
+  );
+  expect(rows.rows).toEqual([
+    { collection: "borealis", total: 12000, n: 5 },
+    { collection: "seaside", total: 4800, n: 5 },
+    { collection: "steamworks", total: 7680, n: 5 },
+  ]);
+  await db.exec(
+    `update public.arena_wallets set balance = 100000 where player_id = '${player}'`,
+  );
+  await login();
+  // One piece on its own, then the rest of its set at 80%.
+  await db.query("select public.arena_buy_item('seaside-aura')");
+  await db.query("select public.arena_buy_item('seaside-set')");
+  await db.query("select public.arena_buy_item('borealis-set')");
+  const bought = await economy();
+  expect(100000 - bought.balance).toBe(900 + (4800 - 900) * 0.8 + 12000 * 0.8);
+  for (const c of ["seaside", "borealis"])
+    expect(
+      bought.owned.filter((id: string) => id.startsWith(c + "-")).sort(),
+    ).toEqual(
+      ["aura", "colours", "entrance", "frame", "victory"].map(
+        (p) => `${c}-${p}`,
+      ),
+    );
+  expect(bought.owned).not.toContain("steamworks-aura");
+  // Running the migration again changes nothing.
+  await db.exec("reset role");
+  await db.exec(sql);
+  expect(await economy()).toEqual(bought);
+});
+
+it("sells Birthstone as Common at 500 and its full set at 80%", async () => {
+  const sql = await readFile(
+    "supabase/migrations/20261125150000_birthstone.sql",
+    "utf8",
+  );
+  await db.exec("reset role");
+  await db.exec(sql);
+  const rows = await db.query<{ rarity: string; price: number; n: number }>(
+    "select rarity, price, count(*)::int as n from public.arena_shop_items where collection = 'birthstone' and kind = 'champion' and not in_picks group by rarity, price",
+  );
+  expect(rows.rows).toEqual([{ rarity: "common", price: 500, n: 18 }]);
+  await db.exec(
+    `update public.arena_wallets set balance = 100000 where player_id = '${player}'`,
+  );
+  await login();
+  await db.query("select public.arena_buy_item('birthstone-skins')");
+  const bought = await economy();
+  expect(100000 - bought.balance).toBe(18 * 500 * 0.8);
+  expect(
+    bought.owned.filter((id: string) => id.endsWith("-birthstone")),
+  ).toHaveLength(18);
+  // Running the migration again changes nothing.
+  await db.exec("reset role");
+  await db.exec(sql);
+  expect(await economy()).toEqual(bought);
+});
+
+it("sells Rainy Day as Rare at 1,500 and its full set at 80%", async () => {
+  const sql = await readFile(
+    "supabase/migrations/20261125160000_rainy_day.sql",
+    "utf8",
+  );
+  await db.exec("reset role");
+  await db.exec(sql);
+  const rows = await db.query<{ rarity: string; price: number; n: number }>(
+    "select rarity, price, count(*)::int as n from public.arena_shop_items where collection = 'rainy-day' and kind = 'champion' and not in_picks group by rarity, price",
+  );
+  expect(rows.rows).toEqual([{ rarity: "rare", price: 1500, n: 18 }]);
+  await db.exec(
+    `update public.arena_wallets set balance = 100000 where player_id = '${player}'`,
+  );
+  await login();
+  await db.query("select public.arena_buy_item('rainy-day-skins')");
+  const bought = await economy();
+  expect(100000 - bought.balance).toBe(18 * 1500 * 0.8);
+  expect(
+    bought.owned.filter((id: string) => id.endsWith("-rainy-day")),
+  ).toHaveLength(18);
+  // Running the migration again changes nothing.
+  await db.exec("reset role");
+  await db.exec(sql);
+  expect(await economy()).toEqual(bought);
+});
+
+it("sells Sun Dynasty as Legendary at 5,500 and its full set at 80%", async () => {
+  const sql = await readFile(
+    "supabase/migrations/20261125180000_sun_dynasty.sql",
+    "utf8",
+  );
+  await db.exec("reset role");
+  await db.exec(sql);
+  const rows = await db.query<{ rarity: string; price: number; n: number }>(
+    "select rarity, price, count(*)::int as n from public.arena_shop_items where collection = 'sun-dynasty' and kind = 'champion' and not in_picks group by rarity, price",
+  );
+  expect(rows.rows).toEqual([{ rarity: "legendary", price: 5500, n: 18 }]);
+  await db.exec(
+    `update public.arena_wallets set balance = 100000 where player_id = '${player}'`,
+  );
+  await login();
+  await db.query("select public.arena_buy_item('sun-dynasty-skins')");
+  const bought = await economy();
+  expect(100000 - bought.balance).toBe(18 * 5500 * 0.8);
+  expect(
+    bought.owned.filter((id: string) => id.endsWith("-sun-dynasty")),
+  ).toHaveLength(18);
+  // Running the migration again changes nothing.
+  await db.exec("reset role");
+  await db.exec(sql);
+  expect(await economy()).toEqual(bought);
+});
+
+it("sells Grand Prix as Epic at 3,500 and its full set at 80%", async () => {
+  const sql = await readFile(
+    "supabase/migrations/20261125170000_grand_prix.sql",
+    "utf8",
+  );
+  await db.exec("reset role");
+  await db.exec(sql);
+  const rows = await db.query<{ rarity: string; price: number; n: number }>(
+    "select rarity, price, count(*)::int as n from public.arena_shop_items where collection = 'grand-prix' and kind = 'champion' and not in_picks group by rarity, price",
+  );
+  expect(rows.rows).toEqual([{ rarity: "epic", price: 3500, n: 18 }]);
+  await db.exec(
+    `update public.arena_wallets set balance = 100000 where player_id = '${player}'`,
+  );
+  await login();
+  await db.query("select public.arena_buy_item('grand-prix-skins')");
+  const bought = await economy();
+  expect(100000 - bought.balance).toBe(18 * 3500 * 0.8);
+  expect(
+    bought.owned.filter((id: string) => id.endsWith("-grand-prix")),
   ).toHaveLength(18);
   // Running the migration again changes nothing.
   await db.exec("reset role");

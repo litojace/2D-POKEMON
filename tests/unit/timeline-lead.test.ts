@@ -7,10 +7,12 @@ import {
   type Projectile,
 } from "@arena/shared";
 import {
+  ImpactPrediction,
   LEAD,
   LocalTimeline,
   ShotTimeline,
   leadProjectile,
+  zoneClock,
 } from "../../apps/client/src/networking/timeline-lead";
 
 const shot = (over: Partial<Projectile> = {}): Projectile => ({
@@ -70,6 +72,75 @@ describe("shots on your timeline", () => {
     );
     const edge = leadProjectile(shot({ x: RULES.width - 40 }), 0.2, []);
     expect(edge.x).toBeCloseTo(RULES.width - r, 6);
+  });
+
+  it("stops on the first fighter it strikes, where the server's impact goes off", () => {
+    // Player report (22 Nov 2026): your shot, drawn ahead of the server,
+    // flew on through its target and the blast then went off behind it.
+    const arena = new Arena("LEAD");
+    arena.add("one", "One", "voltkit");
+    arena.add("two", "Two", "voltkit");
+    arena.start();
+    arena.phase = "playing";
+    arena.deadline = 999;
+    const [p, q] = arena.players;
+    arena.walls();
+    Object.assign(p, { x: 120, y: 60, angle: 0 });
+    Object.assign(q, { x: 420, y: 60 });
+    arena.cast(p, CHARACTERS.voltkit.basic);
+    const snapshot = structuredClone(arena.projectiles[0]);
+    // Where it stood when struck (the hit knocks it back).
+    const target = [{ x: q.x, y: q.y, r: RULES.radius }];
+    let impact: { x: number; y: number } | undefined;
+    for (let n = 0; n < 30 && !impact; n++) {
+      arena.tick();
+      impact = arena.events.find(
+        (e) => e.kind === "impact" && e.owner === "one",
+      );
+    }
+    expect(impact).toBeDefined();
+    // Drawn well past the moment it struck: it waits on the target's edge.
+    const drawn = leadProjectile(snapshot, 0.3, currentObstacles(), 1, target);
+    expect(Math.abs(drawn.x - impact!.x)).toBeLessThan(10.5);
+    expect(drawn.x).toBeLessThan(420 - RULES.radius);
+    expect(drawn.y).toBeCloseTo(snapshot.y, 6);
+    // Without targets it is drawn past the target's centre (the bug).
+    expect(leadProjectile(snapshot, 0.3, currentObstacles()).x).toBeGreaterThan(
+      420,
+    );
+  });
+
+  it("strikes the nearest target first, and ignores them when it flies through", () => {
+    const r = CHARACTERS.voltkit.basic.radius;
+    const targets = [
+      { x: 470, y: 300, r: 24 },
+      { x: 420, y: 310, r: 24 },
+      { x: 380, y: 500, r: 24 },
+    ];
+    const near = leadProjectile(shot(), 0.3, [], 1, targets);
+    const reach = 24 + r;
+    expect(Math.hypot(near.x - 420, near.y - 310)).toBeCloseTo(reach, 6);
+    expect(near.remaining).toBeCloseTo(600 - (near.x - 300), 6);
+    // Ball Lightning's aura shots fly through fighters.
+    const aura = shot({ ability: { ...CHARACTERS.voltkit.basic, aura: true } });
+    expect(leadProjectile(aura, 0.3, [], 1, targets).x).toBeCloseTo(570, 6);
+    // Already touching one: it stays where the snapshot had it.
+    expect(
+      leadProjectile(shot(), 0.3, [], 1, [{ x: 310, y: 300, r: 24 }]).x,
+    ).toBe(300);
+    // A target off its line is no obstacle.
+    expect(leadProjectile(shot(), 0.1, [], 1, [targets[2]]).x).toBeCloseTo(
+      390,
+      6,
+    );
+  });
+
+  it("says which target it stopped on, so a steady one's blast can play at once", () => {
+    const still = { x: 420, y: 300, r: 24, steady: true };
+    const drawn = leadProjectile(shot(), 0.3, [], 1, [still]);
+    expect(drawn.struck).toBe(still);
+    expect(leadProjectile(shot(), 0.05, [], 1, [still]).struck).toBeUndefined();
+    expect(leadProjectile(shot(), 0.3, []).struck).toBeUndefined();
   });
 
   it("draws a boomerang where the snapshot had it, and slows in a bubble", () => {
@@ -160,5 +231,98 @@ describe("LocalTimeline", () => {
     expect(t.age(2000)).toBe(LEAD.max);
     t.clear();
     expect(t.lead(3000)).toBe(0);
+  });
+});
+
+describe("ImpactPrediction", () => {
+  it("plays a shot's blast once, hides the shot a moment, and skips the server's echo", () => {
+    const p = new ImpactPrediction();
+    expect(p.predict(5, "spark-dart", 400, 300, 1000)).toBe(true);
+    // Every later frame of the same shot: no second blast.
+    expect(p.predict(5, "spark-dart", 401, 300, 1016)).toBe(false);
+    expect(p.hidden(5, 1100)).toBe(true);
+    expect(p.hidden(5, 1000 + ImpactPrediction.hold + 1)).toBe(false);
+    // Another move's impact, or one far away, is not this blast.
+    expect(p.confirm("glint", 400, 300, 1150)).toBe(false);
+    expect(
+      p.confirm("spark-dart", 400 + ImpactPrediction.reach + 5, 300, 1150),
+    ).toBe(false);
+    // The server's impact a round trip later: already played, skipped once.
+    expect(p.confirm("spark-dart", 390, 305, 1180)).toBe(true);
+    expect(p.confirm("spark-dart", 390, 305, 1190)).toBe(false);
+  });
+
+  it("forgets a blast the server never confirms (the shot missed after all)", () => {
+    const p = new ImpactPrediction();
+    p.predict(9, "glint", 200, 200, 0);
+    expect(p.confirm("glint", 200, 200, ImpactPrediction.window + 10)).toBe(
+      false,
+    );
+  });
+});
+
+describe("zoneClock", () => {
+  it("counts an opponent's zone down on your timeline and any other on the snapshot's", () => {
+    // Player report (23 Nov 2026): your own delayed blast went off about a
+    // round trip before the damage it dealt showed up.
+    expect(zoneClock(10, true, 0.18, 0.04)).toBeCloseTo(10.18, 9);
+    expect(zoneClock(10, false, 0.18, 0.04)).toBeCloseTo(10.04, 9);
+  });
+
+  it("puts your zone's strike on the tick the server strikes", () => {
+    // A real bolt-style zone from the server: it strikes once, `tickDelay`
+    // after it is placed. Drawn on the snapshot's clock its ring runs out
+    // at that same server time, so the blast and the server's hit (sent in
+    // that tick's snapshot) arrive together.
+    const arena = new Arena("ZONE");
+    arena.add("one", "One", "voltkit");
+    arena.add("two", "Two", "voltkit");
+    arena.start();
+    arena.phase = "playing";
+    arena.deadline = 999;
+    const [p, q] = arena.players;
+    Object.assign(p, { x: 300, y: 300 });
+    Object.assign(q, { x: 500, y: 300 });
+    const delay = 0.3;
+    const born = arena.time;
+    arena.zones.push({
+      id: ++arena.serial,
+      owner: p.id,
+      x: q.x,
+      y: q.y,
+      radius: 60,
+      until: born + delay + 0.05,
+      nextTick: born + delay,
+      ability: {
+        ...CHARACTERS.voltkit.basic,
+        kind: "zone",
+        damage: 5,
+        duration: delay + 0.05,
+        tickDelay: delay,
+        tickInterval: 9,
+      },
+      color: 0xffffff,
+      born,
+    } as (typeof arena.zones)[number]);
+    let struckAt: number | undefined;
+    for (let n = 0; n < 30 && struckAt === undefined; n++) {
+      arena.tick();
+      if (arena.events.some((e) => e.kind === "hit" && e.target === q.id))
+        struckAt = arena.time;
+    }
+    expect(struckAt).toBeDefined();
+    // The server strikes on the first tick at or past the strike time.
+    expect(struckAt! - (born + delay)).toBeGreaterThanOrEqual(-1e-9);
+    expect(struckAt! - (born + delay)).toBeLessThan(1 / RULES.tick + 1e-9);
+    // That tick's snapshot (time = struckAt) arrives with age 0: your zone's
+    // clock reads struckAt, past the strike, the moment its hit arrives...
+    expect(zoneClock(struckAt!, false, 0.2, 0)).toBeGreaterThanOrEqual(
+      born + delay,
+    );
+    // ...while on your timeline its ring had run out `lead` earlier.
+    const previousSnapshot = struckAt! - 2 / RULES.tick;
+    expect(zoneClock(previousSnapshot, true, 0.2, 0)).toBeGreaterThan(
+      born + delay,
+    );
   });
 });

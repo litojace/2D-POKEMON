@@ -1,5 +1,6 @@
 import { battleCurves } from "./battle-curves";
 import { addCanvasTexture } from "./canvas-texture";
+import { reducedMotion } from "./reduced-motion";
 import type Phaser from "phaser";
 // Phaser constants as literals, so this module loads without Phaser (tests).
 const ADD = 1; // ADD
@@ -26,6 +27,8 @@ interface Particle {
   vy: number;
   vz: number;
   age: number;
+  /** Keep the first visible frame, including a burst received during a hitch. */
+  fresh: boolean;
   life: number;
   size: number;
   color: number;
@@ -33,6 +36,10 @@ interface Particle {
   grav: number;
   bounce: number;
   spin: number;
+  /** Flames: radius factor of the gold glow (0: none, see shareGlow). */
+  glow: number;
+  /** Flames: white-hot core as dots on the additive layer (see dotCore). */
+  dotCore: boolean;
 }
 interface Decal {
   kind: "scorch" | "crack" | "wet" | "glyph" | "molten";
@@ -41,6 +48,7 @@ interface Decal {
   r: number;
   color: number;
   age: number;
+  fresh: boolean;
   life: number;
   seed: number;
 }
@@ -63,6 +71,19 @@ export interface BurstOptions {
   grav?: number;
   drag?: number;
   bounce?: number;
+  /**
+   * Flames: draw the white-hot core as a few additive dots instead of a
+   * second glow sprite. The same small bright centre, one glow a flame
+   * instead of two (glow sprites are what a phone's GPU pays for).
+   */
+  dotCore?: boolean;
+  /**
+   * Flames: one gold glow shared by every `shareGlow` flames of a dense
+   * burst, √shareGlow times wider so the light covers the same area. The
+   * flame bodies (soft sprites) and their cores stay one a flame, so the
+   * burst keeps its shape; only the glow sprites are fewer.
+   */
+  shareGlow?: number;
 }
 const MAX_PARTICLES = 700;
 const TAU = Math.PI * 2;
@@ -71,9 +92,6 @@ const hash = (n: number) => {
   const x = Math.sin(n * 12.9898) * 43758.5453;
   return x - Math.floor(x);
 };
-const reducedMotion = () =>
-  typeof matchMedia !== "undefined" &&
-  matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 function makeTextures(scene: Phaser.Scene) {
   if (scene.textures.exists("fx-glow")) return;
@@ -137,7 +155,7 @@ const emptyStats = (): FxFrameStats => ({
   softCover: 0,
   shrink: 1,
 });
-/** Longest step effects take in one frame (s): Phaser's 5 fps floor. */
+/** Longest motion integration step (s); expiry uses the full elapsed time. */
 export const FX_MAX_STEP = 0.2;
 /** Decorative glows never shrink below this radius factor. */
 const MIN_SHRINK = 0.5;
@@ -219,6 +237,8 @@ export class Fx {
   private wash?: Phaser.GameObjects.Image;
   private ult = { start: 0, until: 0, color: 0xffffff, dark: false };
   private frame = 0;
+  /** Seconds between rendered frames, before Phaser smooths/clamps delta. */
+  private elapsed = 0;
   private used = 0;
   time = 0;
 
@@ -247,6 +267,9 @@ export class Fx {
   }
 
   private begin(time: number) {
+    const gap = time - this.time;
+    this.elapsed =
+      this.frame > 0 && Number.isFinite(gap) && gap > 0 ? gap / 1000 : 0;
     this.time = time;
     this.frame++;
     this.used = 0;
@@ -308,16 +331,15 @@ export class Fx {
     this.current = band;
   }
 
-  private end(_time: number, delta: number) {
-    // Effects age in real time down to 5 fps (Phaser's own floor). Capped at
-    // 50 ms once, they outlived their design on a phone at 5–20 fps (twice
-    // as long at 10 fps) while new casts kept coming: more on screen, slower
-    // frames, longer lives again.
-    const dt = Math.min(FX_MAX_STEP, delta / 1000);
-    this.step(dt);
+  private end() {
+    // Births/trails follow wall time, so lifetimes must too. Phaser clamps
+    // delta to 16.7 ms during warm-up/blur and replaces >200 ms stalls with
+    // an older delta: using it lets particles pile up even at Low. Only
+    // motion integration is capped; expiry includes the whole elapsed gap.
+    this.step(this.elapsed);
     this.drawParticles();
     this.at(null);
-    this.drawDecals(dt);
+    this.drawDecals(this.elapsed);
     this.drawUltimate();
     for (let i = this.used; i < this.glows.length; i++)
       this.glows[i].setVisible(false);
@@ -325,7 +347,7 @@ export class Fx {
       this.floorGlows[i].setVisible(false);
     for (let i = this.usedSoft; i < this.softs.length; i++)
       this.softs[i].setVisible(false);
-    this.publishStats(delta / 1000);
+    this.publishStats(this.elapsed);
   }
 
   /** Areas so far are world px²: turn them into screens, and set the
@@ -475,6 +497,9 @@ export class Fx {
     const count = Math.round(
       o.count * Math.min(this.reduced ? 0.35 : 1, this.density),
     );
+    // Each shared glow as wide as the light of the flames it stands for.
+    const share = Math.max(1, Math.round(o.shareGlow ?? 1)),
+      shared = count ? Math.sqrt(count / Math.ceil(count / share)) : 1;
     for (let i = 0; i < count && this.particles.length < MAX_PARTICLES; i++) {
       const a =
         o.angle === undefined
@@ -491,6 +516,7 @@ export class Fx {
         vy: Math.sin(a) * s,
         vz: o.up ? rand(o.up[0], o.up[1]) : 0,
         age: 0,
+        fresh: true,
         life: rand(o.life[0], o.life[1]),
         size: rand(o.size[0], o.size[1]),
         color: colors[(Math.random() * colors.length) | 0],
@@ -498,6 +524,8 @@ export class Fx {
         grav: o.grav ?? 0,
         bounce: o.bounce ?? 0.35,
         spin: rand(-8, 8),
+        glow: i % share ? 0 : shared,
+        dotCore: !!o.dotCore,
       });
     }
   }
@@ -512,11 +540,18 @@ export class Fx {
     emit();
   }
 
-  private step(dt: number) {
+  private step(elapsed: number) {
+    const dt = Math.min(FX_MAX_STEP, elapsed);
     const ps = this.particles;
     for (let i = ps.length - 1; i >= 0; i--) {
       const p = ps[i];
-      p.age += dt;
+      // An event can arrive just before this frame. Do not charge a new
+      // burst for the preceding hitch and erase it before it is drawn.
+      if (p.fresh) {
+        p.fresh = false;
+        continue;
+      }
+      p.age += elapsed;
       if (p.age >= p.life) {
         ps[i] = ps[ps.length - 1];
         ps.pop();
@@ -599,8 +634,24 @@ export class Fx {
             k < 0.35 ? 0xffa53a : p.color,
             0.85 * fade,
           );
-          this.glow(sx, sy, s * 1.1, 0xffc65a, 0.5 * fade * (0.3 + hot));
-          if (hot > 0) this.glow(sx, sy, s * 0.5, 0xfff4c8, 0.7 * hot);
+          if (p.glow)
+            this.glow(
+              sx,
+              sy,
+              s * 1.1 * p.glow,
+              0xffc65a,
+              0.5 * fade * (0.3 + hot),
+            );
+          if (hot <= 0) break;
+          if (!p.dotCore) {
+            this.glow(sx, sy, s * 0.5, 0xfff4c8, 0.7 * hot);
+            break;
+          }
+          // The glow sprite's falloff in three steps: 0.7 at the centre,
+          // gone by half its radius (about what the sprite shows).
+          g.fillStyle(0xfff4c8, 0.12 * hot).fillCircle(sx, sy, s * 0.36);
+          g.fillStyle(0xfff4c8, 0.22 * hot).fillCircle(sx, sy, s * 0.2);
+          g.fillStyle(0xffffff, 0.36 * hot).fillCircle(sx, sy, s * 0.09);
           break;
         }
         case "drop":
@@ -647,9 +698,9 @@ export class Fx {
   }
 
   // ─────────────── Ground marks ───────────────
-  decal(d: Omit<Decal, "age" | "seed">) {
+  decal(d: Omit<Decal, "age" | "seed" | "fresh">) {
     if (this.decals.length > 24) this.decals.shift();
-    this.decals.push({ ...d, age: 0, seed: Math.random() * 1000 });
+    this.decals.push({ ...d, age: 0, fresh: true, seed: Math.random() * 1000 });
   }
 
   private drawDecals(dt: number) {
@@ -657,7 +708,8 @@ export class Fx {
     g.clear();
     for (let i = this.decals.length - 1; i >= 0; i--) {
       const d = this.decals[i];
-      d.age += dt;
+      if (d.fresh) d.fresh = false;
+      else d.age += dt;
       if (d.age >= d.life) {
         this.decals.splice(i, 1);
         continue;

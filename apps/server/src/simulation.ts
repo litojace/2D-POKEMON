@@ -35,6 +35,7 @@ import {
   ELEMENT_GIFTS,
   MUTATOR_RULES,
   roundsNeeded,
+  introRounds,
   type MutatorId,
   RING,
   ringRadius,
@@ -64,6 +65,7 @@ import {
   type Input,
   type MatchMode,
   type Orb,
+  type Vec,
   type Phase,
   type Team,
   type Projectile,
@@ -78,6 +80,7 @@ import {
 } from "../../../packages/shared/src/index.js";
 import { chooseRite, type BotBrain } from "./bot.js";
 import { projectileContact } from "./projectile-collision.js";
+import { segmentClear } from "../../../packages/shared/src/raid-volley.js";
 /** Free-for-all starting corners (seat order), opposite corners first. */
 const FFA_SPAWNS = [
   { x: 260, y: 250 },
@@ -246,6 +249,12 @@ export class Arena {
   private leaps = new Map<string, { until: number; ability: Ability }>();
   /** Riptide Wave: when each enemy a wave reached stops being carried (`zone:fighter`). */
   private carried = new Map<string, number>();
+  /** Riptide Wave: waves that have sent their second wall (and second walls). */
+  private waveFollowed = new Set<number>();
+  /** Frost Breath: ticks in a row each enemy has spent in a caster's breath (`caster:enemy`). */
+  private coneStreak = new Map<string, number>();
+  /** Shell Up: when each fighter's shell bursts open. */
+  private restBursts = new Map<string, { at: number; ability: Ability }>();
   protected clearBufferedSkills(id?: string) {
     if (id === undefined) this.bufferedSkills.clear();
     else this.bufferedSkills.delete(id);
@@ -367,9 +376,27 @@ export class Arena {
   rule(m: MutatorId) {
     return this.mutators.has(m);
   }
-  /** Round wins needed (best of five, or best of three with Quick match). */
+  /**
+   * A new player's short match against a bot (INTRO_ROUNDS): the matches
+   * their account had finished when this one started, or undefined in every
+   * other room. A rematch counts on from it (nextIntro).
+   */
+  introPlayed?: number;
+  get introRounds() {
+    return introRounds(this.introPlayed);
+  }
+  /** A rematch in this room: the next match is the next step, or full length. */
+  nextIntro() {
+    if (this.introPlayed === undefined) return;
+    this.introPlayed++;
+    if (this.introRounds === undefined) this.introPlayed = undefined;
+  }
+  /**
+   * Round wins needed: best of five, best of three with Quick match, or a
+   * new player's short match.
+   */
   get roundsToWin() {
-    return roundsNeeded([...this.mutators]);
+    return roundsNeeded([...this.mutators], this.introRounds);
   }
   /** Seconds between orbs (Orb rain halves it). */
   get orbInterval() {
@@ -496,6 +523,7 @@ export class Arena {
   ) {
     this.events.push({
       id: ++this.serial,
+      ...(kind === "hit" ? { at: Math.round(this.time * 1000) / 1000 } : {}),
       kind,
       x: p.x,
       y: p.y,
@@ -585,6 +613,9 @@ export class Arena {
     this.surfs.clear();
     this.leaps.clear();
     this.carried.clear();
+    this.waveFollowed.clear();
+    this.coneStreak.clear();
+    this.restBursts.clear();
     // Fighter roulette: a fresh random fighter for everyone each round.
     if (this.rule("random") && !this.practice)
       for (const p of this.players) {
@@ -1564,6 +1595,8 @@ export class Arena {
       const skill = CHARACTERS[p.character].skills.findIndex(
         (k) => k.id === a.id,
       );
+      for (const key of [...this.coneStreak.keys()])
+        if (key.startsWith(`${p.id}:`)) this.coneStreak.delete(key);
       p.channel = {
         until: this.time + a.duration,
         nextTick: this.time + (a.tickDelay ?? 0.1),
@@ -1610,9 +1643,15 @@ export class Arena {
     if (a.kind === "shrapnel") {
       // Every plate becomes blades: `count`, plus `count` per plate.
       const plated = CHARACTERS[p.character].passive === "plates";
-      const n = Math.max(1, (a.count ?? 3) * (1 + (plated ? platesOf(p) : 0)));
+      const plates = plated ? platesOf(p) : 0;
+      const n = Math.max(
+        1,
+        a.perPlate !== undefined
+          ? (a.count ?? 3) + a.perPlate * plates
+          : (a.count ?? 3) * (1 + plates),
+      );
       if (plated) {
-        p.plates = 0;
+        p.plates = Math.max(0, plates - (a.platesSpent ?? plates));
         p.plateAt = this.time + PLATES.regrowDelay;
       }
       const fan = a.fan ?? 1.5;
@@ -2313,6 +2352,8 @@ export class Arena {
       // Ticks land at 0.4s, 0.9s … so a full Rest always heals duration / interval times.
       sleep.nextTick = this.time + STATUS_RULES.restInterval - 0.1;
       p.channel = undefined;
+      if (a.burst)
+        this.restBursts.set(p.id, { at: this.time + a.duration, ability: a });
     }
     if (a.kind === "clone") {
       p.clone = { x: p.x, y: p.y, until: this.time + a.duration };
@@ -2643,6 +2684,26 @@ export class Arena {
           knockback: 60,
         });
   }
+  /**
+   * Crystal Cage closing in: the ring and every fighter's hold on it shrink
+   * together (holdInCage then squeezes those inside toward the middle).
+   */
+  private stepCage(zone: Zone) {
+    const shrink = zone.ability.cage?.shrinkTo;
+    if (shrink === undefined || zone.until <= this.time) return;
+    const born = zone.born ?? this.time,
+      k = Math.min(1, (this.time - born) / Math.max(0.01, zone.until - born));
+    zone.radius = zone.ability.radius - (zone.ability.radius - shrink) * k;
+    for (const q of this.players)
+      for (const s of q.statuses)
+        if (
+          s.kind === "cage" &&
+          s.until === zone.until &&
+          s.tx === zone.x &&
+          s.ty === zone.y
+        )
+          s.amount = zone.radius;
+  }
   /** Does a crystal cage stand between where this shot is and where it is going? */
   private caged(pr: Projectile, dt: number) {
     for (const z of this.zones) {
@@ -2782,6 +2843,24 @@ export class Arena {
     }
   }
   /** How far a wave's front has rolled from where it started (px). */
+  /** Shell Up: the shell bursts open, shoving and hurting everyone close. */
+  private shellBurst(p: Fighter, a: Ability) {
+    const b = a.burst!;
+    this.event("burst", p, CHARACTERS[p.character].color, b.radius, p.id, a.id);
+    for (const enemy of this.enemiesOf(p))
+      if (
+        enemy.hp > 0 &&
+        Math.hypot(enemy.x - p.x, enemy.y - p.y) <
+          b.radius + this.hitRadius(enemy) &&
+        this.lineClear(p, enemy)
+      )
+        this.damage(enemy, b.damage, p.id, {
+          ...a,
+          damage: b.damage,
+          knockback: b.knockback,
+          status: undefined,
+        });
+  }
   waveFront(zone: Zone) {
     return Math.min(
       zone.ability.range,
@@ -2794,6 +2873,27 @@ export class Arena {
    * runs out; a wall in the way slams it.
    */
   private stepWave(zone: Zone) {
+    const second = zone.ability.wave?.second;
+    if (
+      second &&
+      !this.waveFollowed.has(zone.id) &&
+      this.time >= (zone.born ?? this.time) + second
+    ) {
+      // The second wall rolls out from where the first one started.
+      this.waveFollowed.add(zone.id);
+      if (this.zones.length < RULES.maxZones) {
+        const id = ++this.serial;
+        this.waveFollowed.add(id);
+        this.zones.push({
+          ...zone,
+          id,
+          born: this.time,
+          nextTick: this.time,
+          until:
+            this.time + zone.ability.range / Math.max(1, zone.ability.speed),
+        });
+      }
+    }
     const a = zone.ability,
       ux = Math.cos(zone.angle ?? 0),
       uy = Math.sin(zone.angle ?? 0),
@@ -3265,17 +3365,8 @@ export class Arena {
   }
   lineClear(a: { x: number; y: number }, b: { x: number; y: number }) {
     this.walls();
-    const steps = Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / 10);
-    for (let i = 1; i < steps; i++)
-      if (
-        blocked(
-          a.x + ((b.x - a.x) * i) / steps,
-          a.y + ((b.y - a.y) * i) / steps,
-          2,
-        )
-      )
-        return false;
-    return true;
+    // Shared with the phone's prediction (raid-volley.ts).
+    return segmentClear(a, b);
   }
   tick(dt = 1 / RULES.tick) {
     if (this.phase !== "playing") this.clearBufferedSkills();
@@ -3580,18 +3671,42 @@ export class Arena {
       input.skill = -1;
       input.ex = false;
       if (p.clone && p.clone.until <= this.time) p.clone = undefined;
+      const shell = this.restBursts.get(p.id);
+      if (shell && this.time >= shell.at) {
+        this.restBursts.delete(p.id);
+        if (p.hp > 0 && !p.out) this.shellBurst(p, shell.ability);
+      }
       if (p.channel) {
         const a = this.kit(p).skills[p.channel.skill];
         if (a && this.time >= p.channel.nextTick) {
           p.channel.nextTick += a.tickInterval ?? 0.2;
-          for (const enemy of this.enemiesOf(p))
-            if (enemy.hp > 0 && this.inArc(p, enemy, a.range, a.arc ?? 0.7))
+          // Crest Flare: the flame reaches further as the breath goes on.
+          const grown =
+            (a.cone?.grow ?? 0) *
+            Math.min(1, 1 - (p.channel.until - this.time) / a.duration);
+          for (const enemy of this.enemiesOf(p)) {
+            const key = `${p.id}:${enemy.id}`;
+            if (
+              enemy.hp > 0 &&
+              this.inArc(p, enemy, a.range + grown, a.arc ?? 0.7)
+            ) {
               this.damage(
                 enemy,
                 a.damage * (p.channel.ex ? EX.damage : 1),
                 p.id,
                 a,
               );
+              // Frost Breath: long enough in the breath and it freezes solid.
+              const freeze = a.cone?.freeze;
+              if (freeze) {
+                const n = (this.coneStreak.get(key) ?? 0) + 1;
+                this.coneStreak.set(key, n);
+                if (n === freeze && enemy.hp > 0)
+                  this.status(enemy, "freeze", a.cone?.freezeFor ?? 0.6, p.id);
+              }
+            } else if ((this.coneStreak.get(key) ?? 0) > 0)
+              this.coneStreak.delete(key);
+          }
         }
         if (!a || this.time >= p.channel.until) p.channel = undefined;
       }
@@ -3698,7 +3813,10 @@ export class Arena {
       return true;
     });
     for (const zone of this.zones) {
-      if (zone.ability.kind === "cage") continue;
+      if (zone.ability.kind === "cage") {
+        this.stepCage(zone);
+        continue;
+      }
       if (zone.ability.kind === "wave") {
         this.stepWave(zone);
         continue;
@@ -3987,15 +4105,18 @@ export class Arena {
     }
     p.gems = (p.gems ?? 0) - n;
   }
+  /** Where orbs appear (a court with its own cover may move them off it). */
+  orbSpots(): readonly Vec[] {
+    return ORB_SPOTS;
+  }
   /** Spawn healing orbs on schedule; the first fighter to touch one heals. */
   stepOrbs() {
     if (this.time >= this.nextOrb) {
       this.nextOrb += this.orbInterval;
       // Duel: one orb, alternating spots. 2v2: one at each spot.
+      const all = this.orbSpots();
       const spots =
-        this.mode !== "duel"
-          ? ORB_SPOTS
-          : [ORB_SPOTS[this.orbTurn++ % ORB_SPOTS.length]];
+        this.mode !== "duel" ? all : [all[this.orbTurn++ % all.length]];
       // Healing and energy orbs take turns (first one heals).
       const kind = this.orbWave++ % 2 === 0 ? "heal" : "energy";
       for (const spot of spots)
@@ -4119,6 +4240,7 @@ export class Arena {
       pauseRemaining,
       overtime: this.overtime,
       mutators: [...this.mutators],
+      introRounds: this.introRounds,
       crown: this.rule("crown") ? this.crown : undefined,
       gems: this.rule("rush") ? this.gems : undefined,
       banked: this.rule("rush") ? this.banked : undefined,

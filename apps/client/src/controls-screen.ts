@@ -1,4 +1,4 @@
-import { iconLabel } from "./menu-icons";
+import { iconLabel, menuIcon } from "./menu-icons";
 import {
   ACTIONS,
   DEFAULT_PREFS,
@@ -23,9 +23,8 @@ export interface ControlsScreenOptions {
   box: HTMLDialogElement;
   onBack(): void;
   padConnected: boolean;
-  /** Phones: the touch controls' sliders (joystick, buttons, opacity), shown
-   * first here, and the function that wires them up. */
-  touch?: { html: string; bind(): void };
+  /** A touch screen: its own setting first, keys and controller folded away. */
+  touch?: boolean;
 }
 type Capture = { action: Action; slot: 0 | 1; button: HTMLButtonElement };
 let capturing: Capture | undefined;
@@ -51,7 +50,7 @@ const CAST_CHOICES: [CastMode, string, string][] = [
   ["instant", "Instant", "Cast the moment you press the key."],
 ];
 
-export function controlsScreenHTML(padConnected: boolean, touchHTML = "") {
+export function controlsScreenHTML(padConnected: boolean, touch = false) {
   const prefs = controlPrefs();
   const groups = [...new Set(ACTIONS.map((a) => a.group))];
   const rows = groups
@@ -82,14 +81,28 @@ export function controlsScreenHTML(padConnected: boolean, touchHTML = "") {
         `<span><kbd>${button}</kbd>${action === "menu" ? "Menu" : actionName(action)}</span>`,
     )
     .join("");
-  return (
-    `<div class="eyebrow">Controls</div><h2>Make it yours.</h2>` +
-    `<div class="controls-layout"><div class="controls-preferences">${touchHTML ? `<section class="prefs-card prefs-touch" aria-labelledby="prefs-touch">${touchHTML}</section>` : ""}<fieldset class="cast-mode"><legend>Skill casting</legend>${cast}</fieldset>` +
+  const keys =
+    `<div class="controls-layout"><div class="controls-preferences"><fieldset class="cast-mode"><legend>Skill casting</legend>${cast}</fieldset>` +
     `<label class="choice assist"><input type="checkbox" id="aim-assist"${prefs.aimAssist ? " checked" : ""}><span><b>Aim assist (mouse)</b><small>Basic attacks snap to an opponent close to your cursor. Skills always go exactly where you aim.</small></span></label>` +
     `</div><div class="controls-bindings"><div class="bindings" role="group" aria-label="Key bindings">${rows}</div>` +
     `<p class="binding-note" id="binding-note" role="status">Click a box, then press a key or click it with the mouse button you want. Delete clears it, Esc cancels.</p>` +
     `<button type="button" id="controls-reset" class="quiet">${iconLabel("again", "Reset to defaults")}</button>` +
-    `</div><div class="pad-map"><b>Controller</b> <small id="pad-status">${padConnected ? "Connected" : "Plug in or pair a controller and press any button."}</small><div class="controls-list">${pad}<span><kbd>L-STICK</kbd>Move</span><span><kbd>R-STICK</kbd>Aim (centred: aims at the nearest opponent)</span></div></div></div>` +
+    `</div><div class="pad-map"><b>Controller</b> <small id="pad-status">${padConnected ? "Connected" : "Plug in or pair a controller and press any button."}</small><div class="controls-list">${pad}<span><kbd>L-STICK</kbd>Move</span><span><kbd>R-STICK</kbd>Aim (centred: aims at the nearest opponent)</span></div></div></div>`;
+  // A touch screen: what changes play there first; keys, mouse and
+  // controller fold away (an iPad with a keyboard still finds them). The
+  // joystick and buttons have one layout, sized to the screen: their size
+  // and opacity sliders were taken out (owner, 22 Nov 2026).
+  const body = touch
+    ? `<section class="prefs-card controls-touch" aria-labelledby="controls-touch-h"><h3 id="controls-touch-h">${menuIcon("swipe")}Touch</h3>` +
+      `<label class="choice assist"><input type="checkbox" id="raid-court"${prefs.raidCourt ? " checked" : ""}><span><b>Whole court in raids</b><small>Boss fights show the entire court instead of following your champion. Fighters look smaller.</small></span></label>` +
+      `<p class="controls-touch-note">The joystick and buttons fit your screen on their own. Aim follows the nearest opponent; the crosshair button picks another.</p></section>` +
+      `<details class="controls-more"${padConnected ? " open" : ""}><summary>Keyboard, mouse and controller</summary>${keys}</details>`
+    : keys;
+  return (
+    (touch
+      ? `<h2>Controls</h2>`
+      : `<div class="eyebrow">Controls</div><h2>Make it yours.</h2>`) +
+    body +
     `<button type="button" id="controls-back" class="secondary">${iconLabel("back", "Back to settings")}</button>`
   );
 }
@@ -97,8 +110,7 @@ export function controlsScreenHTML(padConnected: boolean, touchHTML = "") {
 export function showControlsScreen(options: ControlsScreenOptions) {
   cleanupScreen?.();
   const { box } = options;
-  options.open(controlsScreenHTML(options.padConnected, options.touch?.html));
-  options.touch?.bind();
+  options.open(controlsScreenHTML(options.padConnected, options.touch));
   const note = box.querySelector<HTMLElement>("#binding-note")!;
   const buttons = () =>
     box.querySelectorAll<HTMLButtonElement>("button.binding");
@@ -187,6 +199,10 @@ export function showControlsScreen(options: ControlsScreenOptions) {
       ...controlPrefs(),
       aimAssist: (e.target as HTMLInputElement).checked,
     });
+  const raidCourt = box.querySelector<HTMLInputElement>("#raid-court");
+  if (raidCourt)
+    raidCourt.onchange = () =>
+      setControlPrefs({ ...controlPrefs(), raidCourt: raidCourt.checked });
   box.querySelector<HTMLButtonElement>("#controls-reset")!.onclick = () => {
     setControlPrefs({ ...DEFAULT_PREFS });
     showControlsScreen(options); // Re-renders and replaces this screen's listeners.

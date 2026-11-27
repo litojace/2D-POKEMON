@@ -179,6 +179,30 @@ async function go(page: Page, scene: string) {
  */
 const GROUND_RELEASE_MS = 3200;
 
+/**
+ * Loops running behind this screen: callbacks per page frame, over three
+ * 1.5 s windows, each window's highest or lowest (`pick`). A loop left
+ * running shows in every window. A slow CI runner sometimes read one
+ * window wrong (#422, #429): 0 "before" (the Lobby's two loops not running
+ * that moment, or no frame drawn) against a normal 2 after, or a few
+ * one-shot callbacks over one or two frames read as 5. Locally the Lobby
+ * reads 2 in every window (Phaser's step, home-navigation's poll).
+ */
+async function loops(page: Page, pick: "most" | "least") {
+  const reads: number[] = [];
+  for (let i = 0; i < 3; i++) {
+    await page.evaluate(() => (window as any).__held.start());
+    await page.waitForTimeout(1500);
+    reads.push(
+      await page.evaluate(() => (window as any).__held.read().perFrame),
+    );
+  }
+  return {
+    value: pick === "most" ? Math.max(...reads) : Math.min(...reads),
+    reads,
+  };
+}
+
 /** What the page holds after a full garbage collection, over `ms` on this screen. */
 async function held(page: Page, ms = 1500): Promise<Held> {
   const cdp = await page.context().newCDPSession(page);
@@ -204,6 +228,8 @@ test("switching Lobby and Plaza many times piles nothing up", async ({
   await round();
   await page.waitForTimeout(GROUND_RELEASE_MS);
   const before = await held(page);
+  // The Lobby's own loops: the most any window saw.
+  const beforeLoops = await loops(page, "most");
   // Standing on the Plaza (seen before) makes no pictures frame after frame.
   await go(page, "plaza");
   // Each townsfolk look is baked into a sprite (two canvases, full and
@@ -231,9 +257,16 @@ test("switching Lobby and Plaza many times piles nothing up", async ({
   for (let i = 0; i < 8; i++) await round();
   await page.waitForTimeout(GROUND_RELEASE_MS);
   const after = await held(page);
+  // Loops that never stop: the fewest any window saw.
+  const afterLoops = await loops(page, "least");
   info.annotations.push({
     type: "held",
-    description: JSON.stringify({ before, plaza, after }),
+    description: JSON.stringify({
+      before,
+      plaza,
+      after,
+      loops: { before: beforeLoops.reads, after: afterLoops.reads },
+    }),
   });
   expect(
     plaza.made,
@@ -243,11 +276,12 @@ test("switching Lobby and Plaza many times piles nothing up", async ({
   // left running adds a whole callback to every frame; a one-shot callback
   // (a fade, a row's edge mark) adds a fraction, the more so where frames
   // are slow: CI's 1.5 s window holds a few frames, and read 2 before and
-  // 2.3 after with no loop left over. So whole loops are compared.
+  // 2.3 after with no loop left over. So whole loops are compared, and a
+  // leaked one must show in every window after (loops()).
   expect(
-    Math.floor(after.perFrame),
-    `loops per frame behind the Lobby (before ${before.perFrame}, after ${after.perFrame})`,
-  ).toBeLessThanOrEqual(Math.floor(before.perFrame));
+    Math.floor(afterLoops.value),
+    `loops per frame behind the Lobby (before ${beforeLoops.reads.join(", ")}; after ${afterLoops.reads.join(", ")})`,
+  ).toBeLessThanOrEqual(Math.floor(beforeLoops.value));
   expect(after.intervals).toBe(before.intervals);
   expect(after.listeners).toBe(before.listeners);
   expect(after.contexts).toBe(before.contexts);

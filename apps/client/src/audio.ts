@@ -6,23 +6,66 @@ import {
   RESULT_MUSIC_STEPS,
   type MusicTheme,
 } from "./music-score";
-import { MusicSynth } from "./music-synth";
-import { MusicSampleBank } from "./music-samples";
+import { ProSynth } from "./pro-synth";
 import { CourtAmbience } from "./court-ambience";
 import type { CourtId } from "./arena-courts";
-export { noteHz } from "./music-synth";
-// Original adaptive lobby, PvP and raid scores plus synthesized combat effects.
-const MIX = 0.5;
+import type { GameEvent } from "@arena/shared";
+import { playRecipe } from "./sfx";
+import type { CueId } from "./sfx-recipes";
+import {
+  cueCall,
+  eventSound,
+  ownCastCall,
+  type SoundCall,
+  type SoundView,
+} from "./battle-sounds";
+export { hz as noteHz } from "./pro-synth";
+// A synthesized soundtrack (pro-score.ts) and combat effects
+// (sfx-recipes.ts): no audio files.
+/**
+ * The music bus: the slider's level times this. It was 0.5 with a 12%
+ * default, which put the music near -53 dB, too quiet on a phone even at
+ * full slider (owner, 26 Nov 2026). A limiter now keeps a full slider clean.
+ */
+const MIX = 1;
+/** The effects bus: a recipe peaking near 1 plays at this times the volume. */
+const SFX_GAIN = 0.52;
+/**
+ * Raid boss cues go through the effects bus (its level and limiter): this
+ * makes them 2.5 times what they were, as the other effects (26 Nov).
+ */
+const RAID_CUE = 2.5 / SFX_GAIN;
+/**
+ * A safety limiter at `threshold` dB: a full slider or many sounds at once
+ * stay clean. Absent where a browser (or a test) has no compressor.
+ */
+function limiter(ctx: AudioContext, threshold: number) {
+  const node = ctx.createDynamicsCompressor?.();
+  if (!node) return undefined;
+  node.threshold.value = threshold;
+  node.knee.value = 6;
+  node.ratio.value = 12;
+  node.attack.value = 0.001;
+  node.release.value = 0.2;
+  node.connect(ctx.destination);
+  return node;
+}
+/** Sounds at once: yours always up to the first, others' up to the second. */
+const SFX_VOICES = 14;
+const SFX_VOICES_OTHERS = 9;
 export class AudioManager {
   private lastRaidSound = new Map<string, number>();
   context?: AudioContext;
-  music = Number(localStorage.getItem("arena-music") ?? 0.12);
-  effects = Number(localStorage.getItem("arena-effects") ?? 0.3);
+  /** Defaults for a player who never moved the sliders (Settings, Sound). */
+  music = Number(localStorage.getItem("arena-music") ?? 0.35);
+  effects = Number(localStorage.getItem("arena-effects") ?? 0.6);
   timer?: ReturnType<typeof setInterval>;
   private musicBus?: GainNode;
   private scoreBus?: GainNode;
-  private synth?: MusicSynth;
-  private samples?: MusicSampleBank;
+  private synth?: ProSynth;
+  private themeSynth(theme: MusicTheme, bus: GainNode) {
+    return new ProSynth(this.context!, bus, this.noise!, MUSIC_BPM[theme]);
+  }
   private theme: MusicTheme = "lobby";
   private phase = 1;
   private autoStarted = false;
@@ -96,13 +139,7 @@ export class AudioManager {
       t + (isResultTheme(theme) ? 0.12 : 1.1),
     );
     this.scoreBus.connect(this.musicBus);
-    this.synth = new MusicSynth(
-      this.context,
-      this.scoreBus,
-      this.noise!,
-      MUSIC_BPM[theme],
-      this.samples,
-    );
+    this.synth = this.themeSynth(theme, this.scoreBus);
     if (previous) {
       previous.gain.cancelScheduledValues(t);
       previous.gain.setTargetAtTime(0, t, isResultTheme(theme) ? 0.08 : 0.25);
@@ -132,7 +169,9 @@ export class AudioManager {
     if (!this.musicBus) {
       this.musicBus = this.context.createGain();
       this.musicBus.gain.value = this.music * MIX;
-      this.musicBus.connect(this.context.destination);
+      this.musicBus.connect(
+        limiter(this.context, -14) ?? this.context.destination,
+      );
       this.scoreBus = this.context.createGain();
       this.scoreBus.connect(this.musicBus);
       const length = Math.floor(this.context.sampleRate);
@@ -143,19 +182,7 @@ export class AudioManager {
       );
       const data = this.noise.getChannelData(0);
       for (let i = 0; i < length; i++) data[i] = Math.random() * 2 - 1;
-      if (typeof window.fetch === "function") {
-        this.samples = new MusicSampleBank(this.context);
-        void this.samples
-          .load(window.fetch.bind(window))
-          .then(() => this.schedule());
-      }
-      this.synth = new MusicSynth(
-        this.context,
-        this.scoreBus,
-        this.noise,
-        MUSIC_BPM[this.theme],
-        this.samples,
-      );
+      this.synth = this.themeSynth(this.theme, this.scoreBus);
     }
     this.updateMusicGain();
     if (this.wantAmbience && this.ambience?.id !== this.wantAmbience)
@@ -167,8 +194,6 @@ export class AudioManager {
   private schedule() {
     const ctx = this.context;
     if (!ctx || ctx.state !== "running" || !this.musicBus) return;
-    if (!isResultTheme(this.theme) && this.samples && !this.samples.complete)
-      return;
     if (document.hidden || this.music <= 0) {
       this.nextTime = ctx.currentTime + 0.05;
       return;
@@ -191,50 +216,74 @@ export class AudioManager {
     for (const note of scoreStep(this.theme, step, this.phase))
       this.synth?.play(note, t);
   }
-  tone(
-    hz: number,
-    duration: number,
-    volume: number,
-    type: OscillatorType = "triangle",
-  ) {
-    if (!this.context || this.context.state !== "running" || !volume) return;
-    const o = this.context.createOscillator(),
-      g = this.context.createGain();
-    o.type = type;
-    o.frequency.setValueAtTime(hz, this.context.currentTime);
-    o.frequency.exponentialRampToValueAtTime(
-      hz * 0.55,
-      this.context.currentTime + duration,
-    );
-    g.gain.setValueAtTime(volume, this.context.currentTime);
-    g.gain.exponentialRampToValueAtTime(
-      0.001,
-      this.context.currentTime + duration,
-    );
-    o.connect(g).connect(this.context.destination);
-    o.start();
-    o.stop(this.context.currentTime + duration);
+  /** Sound effects: one bus on the effects volume, with a limiter. */
+  private sfxBus?: GainNode;
+  private sfxVoices = 0;
+  private sfxLast = new Map<string, number>();
+  private effectsBus() {
+    const ctx = this.context;
+    if (!ctx) return undefined;
+    if (!this.sfxBus) {
+      this.sfxBus = ctx.createGain();
+      this.sfxBus.gain.value = this.effects * SFX_GAIN;
+      // Many sounds at once (a free-for-all) stay clear of clipping.
+      this.sfxBus.connect(limiter(ctx, -10) ?? ctx.destination);
+    }
+    return this.sfxBus;
   }
-  play(kind: string) {
-    const hz: Record<string, number> = {
-      cast: 660,
-      hit: 160,
-      dash: 360,
-      jump: 480,
-      land: 140,
-      round: 880,
-      ui: 520,
-      victory: 1040,
-      heal: 760,
-      orb: 620,
-      defeat: 180,
-    };
-    this.tone(
-      hz[kind] ?? 440,
-      kind === "round" ? 0.5 : 0.12,
-      this.effects * 0.15,
-      kind === "hit" ? "sawtooth" : "triangle",
+  /** Play one sound effect (battle-sounds.ts decides which, how loud, where). */
+  sfx(call: SoundCall | null) {
+    const ctx = this.context;
+    if (!call || !ctx || ctx.state !== "running") return;
+    if (this.effects <= 0 || document.hidden) return;
+    const t = ctx.currentTime;
+    if (t - (this.sfxLast.get(call.key) ?? -10) < call.gap) return;
+    // Past a few at once, other players' sounds give way to yours.
+    if (
+      this.sfxVoices >= (call.priority === 2 ? SFX_VOICES : SFX_VOICES_OTHERS)
+    )
+      return;
+    const bus = this.effectsBus();
+    if (!bus) return;
+    this.sfxLast.set(call.key, t);
+    const end = playRecipe(
+      ctx,
+      bus,
+      this.noise,
+      call.recipe,
+      t + 0.005,
+      {
+        volume: call.volume,
+        pan: call.pan,
+        pitch: call.vary ? 0.97 + Math.random() * 0.06 : 1,
+      },
+      () => this.sfxVoices--,
     );
+    if (end) this.sfxVoices++;
+  }
+  /** A sound that is not a skill or a hit (dash, ult ready, a button). */
+  cue(id: CueId) {
+    this.sfx(cueCall(id));
+  }
+  /** Your own cast, on the key press. */
+  cast(abilityId: string, me: string) {
+    this.sfx(ownCastCall(abilityId, me));
+  }
+  /** A battle event's sound (cast, hit, knockout, orb, hazard...). */
+  event(event: GameEvent, view: SoundView) {
+    this.sfx(eventSound(event, view));
+  }
+  private countdownSecond = 0;
+  /** A tick on each second of the countdown, and "Fight" when it ends. */
+  countdown(phase: string, remaining: number) {
+    if (phase === "countdown") {
+      const second = Math.max(1, Math.ceil(remaining));
+      if (second !== this.countdownSecond) this.cue("count");
+      this.countdownSecond = second;
+      return;
+    }
+    if (this.countdownSecond !== 0 && phase === "playing") this.cue("go");
+    this.countdownSecond = 0;
   }
   /** Original low, filtered rock/roar cues routed through the effects volume. */
   playRaid(kind: import("./raid-boss-motion").RaidBossCue) {
@@ -283,9 +332,10 @@ export class AudioManager {
       t + duration,
     );
     gain.gain.setValueAtTime(0.001, t);
-    gain.gain.linearRampToValueAtTime(this.effects * volume, t + 0.025);
+    gain.gain.linearRampToValueAtTime(volume * RAID_CUE, t + 0.025);
     gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
-    osc.connect(filter).connect(gain).connect(ctx.destination);
+    const bus = this.effectsBus()!;
+    osc.connect(filter).connect(gain).connect(bus);
     osc.start(t);
     osc.stop(t + duration + 0.02);
     osc.onended = () => {
@@ -303,9 +353,9 @@ export class AudioManager {
       grit.frequency.setValueAtTime(cutoff, t);
       grit.Q.value = 0.7;
       mix.gain.setValueAtTime(0.001, t);
-      mix.gain.linearRampToValueAtTime(this.effects * texture, t + 0.02);
+      mix.gain.linearRampToValueAtTime(texture * RAID_CUE, t + 0.02);
       mix.gain.exponentialRampToValueAtTime(0.001, t + duration);
-      src.connect(grit).connect(mix).connect(ctx.destination);
+      src.connect(grit).connect(mix).connect(bus);
       src.start(t);
       src.stop(t + duration + 0.02);
       src.onended = () => {
@@ -319,6 +369,14 @@ export class AudioManager {
     this[kind] = value;
     localStorage.setItem(`arena-${kind}`, String(value));
     if (kind === "music") this.updateMusicGain();
-    else this.ambience?.setLevel(this.ambienceLevel());
+    else {
+      this.ambience?.setLevel(this.ambienceLevel());
+      if (this.sfxBus && this.context)
+        this.sfxBus.gain.setTargetAtTime(
+          value * SFX_GAIN,
+          this.context.currentTime,
+          0.02,
+        );
+    }
   }
 }

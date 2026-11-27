@@ -1,5 +1,6 @@
 import type { CharacterId } from "@arena/shared";
 import {
+  ANIMATED_CRESTS,
   creatureSvgRenderer,
   creatureParts,
   proportioned,
@@ -19,6 +20,15 @@ import {
 import type { Facing } from "./controller";
 export type Part = CreaturePart;
 export const parts = creatureParts;
+/**
+ * The parts a champion's rig draws: the hat layer only exists for the
+ * champions whose crest animates on its own (ANIMATED_CRESTS), so the rest
+ * load no extra textures.
+ */
+export const partsFor = (id: CharacterId): Part[] =>
+  ANIMATED_CRESTS.has(id)
+    ? creatureParts
+    : creatureParts.filter((p) => p !== "hat");
 export interface RigAsset {
   key: string;
   url: string;
@@ -66,6 +76,8 @@ const definitions: Record<Part, { bounds: number[]; pivot: number[] }> = {
   eyes: { bounds: [52, 68, 96, 44], pivot: [100, 93] },
   scarf: { bounds: [35, 90, 150, 84], pivot: [100, 118] },
   flame: { bounds: [30, -2, 140, 110], pivot: [100, 65] },
+  // Headwear riding the head over an animated crest: the crest's own box.
+  hat: { bounds: [30, -2, 140, 110], pivot: [100, 65] },
 };
 /**
  * Costumes reach past the champion's own outline (a surfboard on the back,
@@ -77,6 +89,7 @@ const COSTUME_BOUNDS: Partial<Record<Part, number[]>> = {
   scarf: [0, -20, 200, 210],
   wings: [0, -60, 200, 250],
   flame: [0, -14, 200, 204],
+  hat: [0, -14, 200, 204],
   armR: [0, 50, 200, 140],
 };
 const COSTUMES = /^(modern-|vanguard$|sky-pirates$)/;
@@ -88,7 +101,9 @@ function box(id: CharacterId, part: Part, dir: Facing, costume = false) {
   const profile = dir === "left" || dir === "right";
   // Side headbands trail behind the gills; keep their ribbons in the crop.
   const [sourceX, y, w, h] =
-    profile && part === "flame" ? [10, -2, 180, 110] : definitions[part].bounds;
+    profile && (part === "flame" || part === "hat")
+      ? [10, -2, 180, 110]
+      : definitions[part].bounds;
   // Tidefin's blade projects forward in profile; its crop follows the turn.
   const x = dir === "left" && part === "armR" ? 200 - sourceX - w : sourceX;
   const [x0, y0] = proportioned(part, x, y),
@@ -262,14 +277,39 @@ function lumeAssets(base: RigAsset, svg: string): RigAsset[] {
 }
 const DIRS: Facing[] = ["up", "down", "left", "right"];
 /**
+ * Each look's whole set of layers (every facing), while anything still holds
+ * it: the battle asks for the sets the menus and the room already made for
+ * their rasterizing (fighter-prepaint.ts), and every battle asked again.
+ * One set takes 10–35 ms to make at 4× CPU, so a raid of four fighters in
+ * Shop skins spent about 260 ms of its load making sets it had (26 Nov
+ * 2026). Weak, so a set nobody holds is still given back.
+ */
+const sets = new Map<string, WeakRef<RigAsset[]>>();
+/**
  * Every texture a fighter's rig uses: each part for each facing, plus the
  * expression eyes (happy, hurt, dizzy, focus) for the facings that show a face.
  * Combat uses all facings; fixed-angle previews can request a subset.
+ * Callers share the layers: never change them.
  */
 export function rigAssets(
   id: CharacterId,
   look: SkinLook | null = null,
   directions: readonly Facing[] = DIRS,
+): RigAsset[] {
+  const name =
+    directions === DIRS && typeof WeakRef === "function"
+      ? id + skinSuffix(id, look)
+      : undefined;
+  const known = name ? sets.get(name)?.deref() : undefined;
+  if (known) return known;
+  const made = makeRigAssets(id, look, directions);
+  if (name) sets.set(name, new WeakRef(made));
+  return made;
+}
+function makeRigAssets(
+  id: CharacterId,
+  look: SkinLook | null,
+  directions: readonly Facing[],
 ): RigAsset[] {
   // Each normal facing supplies thirteen crops. Building its patterns, masks
   // and Awakening accessories for every crop stalls the animation thread.
@@ -281,7 +321,7 @@ export function rigAssets(
   );
   return [
     ...directions.flatMap((dir) =>
-      parts.flatMap((part) => {
+      partsFor(id).flatMap((part) => {
         const a = asset(id, dir, part, "normal", look, drawings.get(dir)!);
         return [a, ...lumeAssets(a, lastSvg)];
       }),

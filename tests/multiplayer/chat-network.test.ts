@@ -199,6 +199,44 @@ it("room chat: typing before the battle reaches everyone in the room", async () 
   ).toEqual({ ok: false, error: "Calls are for battles." });
 });
 
+it("a watcher chats with the room it watches, and stops when they stop watching", async () => {
+  const f = await setup();
+  const host = await request(f.a.s, "create", { name: "One" });
+  const code = (host as { code?: string }).code!;
+  expect((await request(f.b.s, "join", { name: "Two", code })).ok).toBe(true);
+  // Not watching yet: no room to talk to.
+  expect(
+    (await request(f.x.s, "chat-send", { channel: "room", text: "hi" })).ok,
+  ).toBe(false);
+  expect((await request(f.x.s, "watch", { code })).ok).toBe(true);
+  expect(
+    await request(f.x.s, "chat-send", { channel: "room", text: "good luck!" }),
+  ).toEqual({ ok: true });
+  // A player's line reaches the watcher too.
+  expect(
+    await request(f.a.s, "chat-send", { channel: "room", text: "thanks" }),
+  ).toEqual({ ok: true });
+  await settle();
+  for (const who of [f.a, f.b, f.x])
+    expect(who.heard.map((l) => [l.text, !!l.watcher, !!l.fighter])).toEqual([
+      ["good luck!", true, false],
+      ["thanks", false, true],
+    ]);
+  // The room's history is theirs to read; calls are the players'.
+  expect(
+    (await request(f.x.s, "chat-history", { channel: "room" })).lines?.map(
+      (l) => l.text,
+    ),
+  ).toEqual(["good luck!", "thanks"]);
+  expect((await request(f.x.s, "unwatch")).ok).toBe(true);
+  expect(
+    (await request(f.x.s, "chat-send", { channel: "room", text: "bye" })).ok,
+  ).toBe(false);
+  await request(f.a.s, "chat-send", { channel: "room", text: "gone?" });
+  await settle();
+  expect(f.x.heard.map((l) => l.text)).toEqual(["good luck!", "thanks"]);
+});
+
 it("Nearby on the Plaza: quick chat only, to everyone in the copy, with the Plaza's emote", async () => {
   const f = await setup();
   for (const who of [f.a, f.b])
@@ -488,6 +526,7 @@ it("before the friends' messages migration runs, friends still message live", as
 
 it("a friend who is away gets a notification of who messaged (never the words)", async () => {
   const devices = new Map<string, PushDevice[]>();
+  const news = new Map<string, boolean>();
   const sent: { endpoint: string; payload: any }[] = [];
   const f = await setup(
     true,
@@ -506,6 +545,13 @@ it("a friend who is away gets a notification of who messaged (never the words)",
         },
         async list(player) {
           return devices.get(player) ?? [];
+        },
+        async setNews(player, endpoint, on) {
+          const mine = (devices.get(player) ?? []).some(
+            (d) => d.endpoint === endpoint,
+          );
+          if (mine) news.set(endpoint, on);
+          return mine;
         },
       };
       return {
@@ -542,6 +588,19 @@ it("a friend who is away gets a notification of who messaged (never the words)",
   expect(await request(f.b.s, "push-subscribe", { endpoint, keys })).toEqual({
     ok: true,
   });
+  // Game news off for this device (migration 20261122140000); never for a
+  // device that isn't theirs.
+  expect(await request(f.b.s, "push-news", { endpoint, on: false })).toEqual({
+    ok: true,
+  });
+  expect(news.get(endpoint)).toBe(false);
+  expect((await request(f.a.s, "push-news", { endpoint, on: true })).ok).toBe(
+    false,
+  );
+  expect(news.get(endpoint)).toBe(false);
+  expect((await request(f.b.s, "push-news", { endpoint, on: "yes" })).ok).toBe(
+    false,
+  );
   // Online: the line arrives in the game, no notification.
   await request(f.a.s, "chat-send", {
     channel: "friend",

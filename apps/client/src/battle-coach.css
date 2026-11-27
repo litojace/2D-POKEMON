@@ -30,9 +30,7 @@
   border-radius: 7px;
   background: #ffd65b;
   color: #2a1a00;
-  font:
-    800 calc(12px * var(--text-scale, 1)) / 1.2 "Barlow Condensed",
-    sans-serif;
+  font: 800 calc(12px * var(--text-scale, 1)) / 1.2 var(--font-display);
   letter-spacing: 0.06em;
 }
 .battle-coach > span:not(.coach-dots) {
@@ -69,8 +67,6 @@
     transform: translate(-50%, -6px);
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .battle-coach {
-    animation: none;
-  }
+:where(:root[data-motion="reduced"]) .battle-coach {
+  animation: none;
 }

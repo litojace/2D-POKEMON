@@ -14,6 +14,7 @@ import {
   BOT_PROFILES,
   BotBrain,
   EXPERT_FLAGS,
+  RAID_BOT_PROFILES,
   chooseRite,
 } from "../../apps/server/src/bot";
 
@@ -63,15 +64,15 @@ describe("expert bot", () => {
     ]);
     expect(Object.keys(BOT_LABELS).sort()).toEqual(["easy", "hard", "normal"]);
     // The player levels carry some of the expert's counterplay (PvP only,
-    // docs/smarter-bots.md): Hard all of it, Normal the seedlings and the
-    // marks, Easy the marks. The expert has everything.
+    // docs/smarter-bots.md): Hard and Normal all but the look-ahead, Easy
+    // the marks. The expert has everything.
     expect(BOT_PROFILES.hard.expert).toEqual({
       lookAway: true,
       jumpSeeds: true,
       dodgeMarks: true,
     });
     expect(BOT_PROFILES.normal.expert).toEqual({
-      lookAway: false,
+      lookAway: true,
       jumpSeeds: true,
       dodgeMarks: true,
     });
@@ -100,7 +101,8 @@ describe("expert bot", () => {
 
   it("is at least as sharp as Hard in every setting", () => {
     const { expert, ...rest } = BALANCE_PROFILES.expert;
-    const hard = BOT_PROFILES.hard;
+    // Built on the Hard it was tuned against, which raids still play.
+    const hard = RAID_BOT_PROFILES.hard;
     expect(rest.reaction).toBeLessThan(hard.reaction);
     expect(rest.aimError).toBeLessThan(hard.aimError);
     expect(rest.dodge).toBeGreaterThan(hard.dodge);
@@ -117,15 +119,26 @@ describe("expert bot", () => {
     ] as const)
       expect(rest[k]).toBe(hard[k]);
     expect(Object.keys(expert!).sort()).toEqual([...EXPERT_FLAGS].sort());
+    // Today's Hard has the expert's reaction, aim, decisions and no rests,
+    // but dodges less, reads marks later and has no look-ahead or styles.
+    const { expert: flags, ...now } = BOT_PROFILES.hard;
+    for (const k of ["reaction", "aimError", "think", "rest"] as const)
+      expect(now[k], k).toBe(rest[k]);
+    expect(now.dodge).toBeLessThan(rest.dodge);
+    expect(now.dodge).toBeGreaterThan(hard.dodge);
+    expect(now.markReaction).toBe(hard.markReaction);
+    expect(now.style).toBeUndefined();
+    expect(flags?.lookAhead).toBeFalsy();
   });
   it("looks away from a ready Eyespot Flash between attacks", () => {
     const { a, me, foe } = duel("cindrake", "lumoth", 600, 760);
     busy(me, a.time);
     me.basicAt = a.time + 1;
     expect(aimOff(think(a, "expert"), me, foe)).toBeGreaterThan(0.6);
-    // Hard looks away too; Normal (without lookAway) stares at it.
+    // Hard and Normal look away too; Easy (without lookAway) stares at it.
     expect(aimOff(think(a, "hard"), me, foe)).toBeGreaterThan(0.6);
-    expect(aimOff(think(a, "normal"), me, foe)).toBeLessThan(0.3);
+    expect(aimOff(think(a, "normal"), me, foe)).toBeGreaterThan(0.6);
+    expect(aimOff(think(a, "easy"), me, foe)).toBeLessThan(0.3);
     // Raids (stand-ins, Spire Echoes) play as tuned: Hard stares there.
     a.mode = "raid";
     expect(aimOff(think(a, "hard"), me, foe)).toBeLessThan(0.3);
@@ -164,8 +177,9 @@ describe("expert bot", () => {
     mark(a.time - 0.3);
     const input = think(a, "expert");
     expect(input.dash).toBe(true);
-    // Hard walks out (too slowly).
+    // Hard and Normal walk out (too slowly).
     expect(think(a, "hard").dash).toBe(false);
+    expect(think(a, "normal").dash).toBe(false);
   });
 
   it("does not walk onto an enemy seedling in its way", () => {

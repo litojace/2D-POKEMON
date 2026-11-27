@@ -4,11 +4,14 @@ import {
   BATTLE_QUALITY,
   BattleQualityGovernor,
   autoStartLevel,
+  forgetOlderLearning,
+  LEARNED_GENERATION,
   isAndroid,
   type BattleCeiling,
   type BattleQuality,
 } from "../../apps/client/src/battle-quality";
 import type { GraphicsSetting } from "../../apps/client/src/graphics-quality";
+import { rendererDensity } from "../../apps/client/src/render-budget";
 
 /** What the device remembers between battles (localStorage in the game). */
 function device() {
@@ -257,10 +260,14 @@ it("only trims decoration, and at Low draws fewer pixels", () => {
     expect(knobs.particles).toBeGreaterThan(0.3);
   }
   // High and Medium keep the screen's density (at most 2); Low draws at
-  // most 1.5, as iPhones always do.
+  // most 1.25: below the 1.5 iPhones get at every level, so Low lightens
+  // an iPhone's battle too (at 1.5 it drew exactly as at High).
   expect(BATTLE_QUALITY.high.density).toBe(2);
   expect(BATTLE_QUALITY.medium.density).toBe(2);
-  expect(BATTLE_QUALITY.low.density).toBe(1.5);
+  expect(BATTLE_QUALITY.low.density).toBe(1.25);
+  expect(BATTLE_QUALITY.low.density).toBeLessThan(
+    rendererDensity(3, true, false),
+  );
   // Only Low limits decorative glow light (warnings never shrink).
   expect(BATTLE_QUALITY.high.glowBudget).toBe(Infinity);
   expect(BATTLE_QUALITY.medium.glowBudget).toBe(Infinity);
@@ -268,4 +275,41 @@ it("only trims decoration, and at Low draws fewer pixels", () => {
   // never shrinks; below crowded fights' typical 0.66 screens.
   expect(BATTLE_QUALITY.low.glowBudget).toBeGreaterThan(0.45);
   expect(BATTLE_QUALITY.low.glowBudget).toBeLessThan(1);
+});
+
+it("forgets once what Auto learned under an older build", () => {
+  // A phone the old HUD's style work pushed down to Low on 24 Nov: held
+  // there for a week though its graphics chip was not the cause.
+  const data = new Map<string, string>([
+    ["ea-battle-quality", "low"],
+    ["ea-battle-ceiling", JSON.stringify({ level: "low", at: 1 })],
+    ["ea-graphics", "auto"],
+  ]);
+  const store = {
+    getItem: (k: string) => data.get(k) ?? null,
+    setItem: (k: string, v: string) => void data.set(k, v),
+    removeItem: (k: string) => void data.delete(k),
+  };
+  expect(forgetOlderLearning(store)).toBe(true);
+  expect(data.has("ea-battle-quality")).toBe(false);
+  expect(data.has("ea-battle-ceiling")).toBe(false);
+  // The player's own Graphics choice is not Auto's to forget.
+  expect(data.get("ea-graphics")).toBe("auto");
+  expect(data.get("ea-battle-learned")).toBe(LEARNED_GENERATION);
+  // What this build learns afterwards stays.
+  data.set("ea-battle-quality", "medium");
+  data.set("ea-battle-ceiling", JSON.stringify({ level: "medium", at: 2 }));
+  expect(forgetOlderLearning(store)).toBe(false);
+  expect(data.get("ea-battle-quality")).toBe("medium");
+  expect(data.has("ea-battle-ceiling")).toBe(true);
+  // No storage (private mode, a blocked site): nothing to do, no error.
+  expect(forgetOlderLearning(undefined)).toBe(false);
+  expect(
+    forgetOlderLearning({
+      ...store,
+      getItem: () => {
+        throw new Error("blocked");
+      },
+    }),
+  ).toBe(false);
 });

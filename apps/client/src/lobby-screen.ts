@@ -1,3 +1,4 @@
+import { rankChipKey, rankChipMarkup, type RankChip } from "./rank-chip";
 import { CHARACTERS, type CharacterId } from "@arena/shared";
 import {
   JOURNEY_ITEM_BY_ID,
@@ -19,7 +20,7 @@ import { QUIP_MOVE_MS, pickQuip } from "./lobby-quips";
 import { elementIcon } from "./element-icons";
 import { picksCountdown } from "./shop-ui";
 import "./lobby.css";
-import { fadeIn } from "./ui/motion";
+import { fadeIn, uiMotion } from "./ui/motion";
 import { setInner } from "./ui/patch";
 import { avatarImage } from "./portraits";
 import { openHubPanelNow } from "./ui/hub-panel";
@@ -27,6 +28,14 @@ import { guideCard, type GuideView } from "./getting-started";
 import { spireLobbyIcon } from "./spire-art";
 import type { SpireLobbyCard } from "./spire-nudge";
 import { setPerfSource } from "./perf-hud";
+import { setUiElementColour, UI_THEME_EVENT } from "./ui-theme";
+import {
+  featureLocked,
+  lockBadge,
+  lockedLabel,
+  unlockOf,
+  type Feature,
+} from "./feature-unlocks";
 
 /**
  * The Lobby: the one-screen hub after login (hub redesign phase 2). Your
@@ -129,6 +138,16 @@ export const LOBBY_MODES: readonly {
   },
 ];
 const MODE_KEY = "arena-lobby-mode";
+/**
+ * The longest your fighter waits hidden for its live rig before the still
+ * artwork shows (lobby-screen.ts arrive()). Measured 0.3 s back from a
+ * battle on a desktop; a slow phone takes longer.
+ */
+export const ARRIVE_MS = 1200;
+/** Your fighter's fade-in once it arrives (lobby-screen.ts reveal()): this
+ *  long on a quick device, and never fewer than REVEAL_FRAMES frames. */
+export const REVEAL_MS = 360;
+export const REVEAL_FRAMES = 8;
 /** The mode this device picked last, or null if it never picked one. */
 export function chosenLobbyMode(): LobbyMode | null {
   try {
@@ -179,8 +198,10 @@ export function modeListed(
 ): boolean {
   if (mode === current) return true;
   const size = Math.max(1, partySize);
-  if (mode === "teams") return size >= 4;
-  if (mode === "ffa") return size >= 3;
+  // Alone, 2v2 and Free-for-all are searches bots fill (docs/pvp-plan.md,
+  // "Bots fill in"); a party needs its own full room.
+  if (mode === "teams") return size < 2 || size >= 4;
+  if (mode === "ffa") return size < 2 || size >= 3;
   if (mode === "quick") return size < 2;
   return true;
 }
@@ -212,6 +233,33 @@ const RAIL: [LobbyAction, string, Parameters<typeof menuIcon>[0]][] = [
   ["ranks", "Ranks", "leaderboard"],
   ["friends", "Friends", "friends"],
 ];
+
+/** The rail buttons, cards and modes that open by level (feature-unlocks.ts). */
+export const ACTION_FEATURE: Partial<Record<LobbyAction, Feature>> = {
+  raids: "raids",
+  missions: "missions",
+  shop: "shop",
+  ranks: "ranks",
+};
+const MODE_FEATURE: Partial<Record<LobbyMode, Feature>> = { raid: "raids" };
+/**
+ * A bot mode's hint for a new player's short first matches (INTRO_ROUNDS):
+ * "one round", then "best of three", in "best of five"'s place.
+ */
+export function modeHint(
+  m: (typeof LOBBY_MODES)[number],
+  introRounds?: number,
+  partySize = 0,
+) {
+  // Alone, 2v2 and Free-for-all search for players and bots fill the rest.
+  if (partySize < 2 && m.id === "teams") return "Bots fill in · best of five";
+  if (partySize < 2 && m.id === "ffa") return "Bots fill in · 4 fighters";
+  if (!m.ai || !introRounds) return m.hint;
+  return m.hint.replace(
+    "best of five",
+    introRounds === 1 ? "one round" : `best of ${introRounds * 2 - 1}`,
+  );
+}
 
 /** Another party member, as they stand on your Lobby stage. */
 export interface LobbyPartyMember {
@@ -259,6 +307,15 @@ export interface LobbyView {
   guide?: GuideView;
   /** The Spire's card once it is open, and a dot on Raids while it's new (spire-nudge.ts). */
   spire?: SpireLobbyCard | null;
+  /**
+   * Your level, for the features that open by level (feature-unlocks.ts);
+   * undefined while the account loads: nothing shows locked meanwhile.
+   */
+  level?: number;
+  /** A new player's next bot match is this short (INTRO_ROUNDS), if it is. */
+  introRounds?: number;
+  /** Your rank, beside the element pill (rank-chip.ts); null: none yet. */
+  rank?: RankChip | null;
 }
 export interface LobbyOptions {
   onAction(action: LobbyAction): void;
@@ -267,13 +324,32 @@ export interface LobbyOptions {
   onStep(direction: -1 | 1): void;
   /** The leader confirmed Kick on a member's seat. */
   onKick?(id: string): void;
+  /** A tap on something still locked at your level: say when it opens. */
+  onLocked?(feature: Feature): void;
   reduced: boolean;
   /** The coached first bot match is done: PLAY defaults to Quick Match. */
   firstMatchDone?: boolean;
 }
 export interface LobbyHandle {
   update(view: LobbyView): void;
-  close(): void;
+  /** `park`: keep your fighter's live rig for the next Lobby (off to the
+   *  Plaza, where the hub stays up), instead of letting it go. */
+  close(options?: { park?: boolean }): void;
+}
+
+/**
+ * Your fighter's live rig, kept asleep while the Lobby is closed for the
+ * Plaza, with the look it shows. The Lobby is built again on the way back;
+ * booting the renderer and painting the fighter's parts again took about
+ * 0.2 s on a desktop and 1 s at a phone's speed, with the fighter hidden
+ * meanwhile (owner, 24 Nov 2026). Adopted, it is on screen in the Lobby's
+ * first frame, already moving, and fades in with the Lobby.
+ */
+let parked: { rig: ShopPreviewHandle; key: string } | undefined;
+/** Let the parked rig go (out of the hub: a battle needs the memory). */
+export function releaseParkedLobbyRig() {
+  parked?.rig();
+  parked = undefined;
 }
 
 const escape = (s: string) =>
@@ -290,9 +366,9 @@ const hex = (color: number) => `#${color.toString(16).padStart(6, "0")}`;
 const modeLabel = (m: (typeof LOBBY_MODES)[number]) =>
   m.ai ? `Vs AI · ${aiLevelMark(m.ai)}` : m.label;
 
-function modeButton(mode: LobbyMode) {
+function modeButton(mode: LobbyMode, introRounds?: number, partySize = 0) {
   const m = LOBBY_MODES.find((x) => x.id === mode)!;
-  return `<span class="lobby-mode-icon">${menuIcon(m.icon)}</span><span class="lobby-mode-text"><b>${modeLabel(m)}</b><small>${m.hint}</small></span><span class="lobby-mode-caret" aria-hidden="true">▴</span>`;
+  return `<span class="lobby-mode-icon">${menuIcon(m.icon)}</span><span class="lobby-mode-text"><b>${modeLabel(m)}</b><small>${modeHint(m, introRounds, partySize)}</small></span><span class="lobby-mode-caret" aria-hidden="true">▴</span>`;
 }
 
 const lookData = (look: RaidLoadout | undefined) =>
@@ -330,19 +406,22 @@ export function journeyCard(j: Journey | undefined) {
     next = rules.itemTiers.find((t) => t > tier),
     item = next ? seasonReward(next, sid, rules).item : null,
     spark = sparkLeft(j);
-  return `<span class="lobby-card-kicker">Journey · ${escape(theme.name)}</span><span class="lobby-card-row"><b>Tier ${tier} / ${rules.tiers}</b><small>Lv ${playerLevel(j.xp).level}</small></span><progress max="${rules.tierXp}" value="${into}" aria-label="Season tier progress"></progress><small>${item ? `Next: ${escape(JOURNEY_ITEM_BY_ID[item]?.name ?? "reward")} at tier ${next}` : "Every season cosmetic earned"}</small>${j.spark ? `<small class="lobby-spark${spark ? "" : " is-spent"}">Daily Spark · ${spark ? `${spark} XP left at ×2` : "used up today"}</small>` : ""}`;
+  return `<span class="lobby-card-kicker">Journey<span class="lobby-kicker-more"> · ${escape(theme.name)}</span></span><span class="lobby-card-row"><b>Tier ${tier} / ${rules.tiers}</b><small>Lv ${playerLevel(j.xp).level}</small></span><progress max="${rules.tierXp}" value="${into}" aria-label="Season tier progress"></progress><small>${item ? `Next: ${escape(JOURNEY_ITEM_BY_ID[item]?.name ?? "reward")} at tier ${next}` : "Every season cosmetic earned"}</small>${j.spark ? `<small class="lobby-spark${spark ? "" : " is-spent"}">Daily Spark · ${spark ? `${spark} XP left at ×2` : "used up today"}</small>` : ""}`;
 }
 /** The Spire card's words (its tower art stays as it is). */
 export function spireCard(n: Pick<SpireLobbyCard, "title" | "note">) {
   return `<span class="lobby-card-kicker">The Spire</span><b>${escape(n.title)}</b><small>${escape(n.note)}</small>`;
 }
 /** The Missions card: how many are done and when new ones arrive. */
-export function missionsCard(e: Economy | undefined) {
+export function missionsCard(e: Economy | undefined, level?: number) {
+  // Still locked at this level: when it opens, in the card's own place.
+  if (featureLocked("missions", level))
+    return `<span class="lobby-card-kicker"><span class="lobby-kicker-more">Daily </span>missions</span><b>${menuIcon("lock")}Opens at Lv ${unlockOf("missions").level}</b><small>Play matches to level up</small>`;
   if (!e || !e.missions.length)
-    return `<span class="lobby-card-kicker">Daily missions</span><b>Six a day</b><small>Open to see today's missions</small>`;
+    return `<span class="lobby-card-kicker"><span class="lobby-kicker-more">Daily </span>missions</span><b>Six a day</b><small>Open to see today's missions</small>`;
   const done = e.missions.filter((m) => m.done).length,
     total = e.missions.length;
-  return `<span class="lobby-card-kicker">Daily missions</span><span class="lobby-card-row"><b>${done} / ${total} done</b><small>New in ${picksCountdown()}</small></span><progress max="${Math.max(1, total)}" value="${done}" aria-label="Missions done today"></progress>`;
+  return `<span class="lobby-card-kicker"><span class="lobby-kicker-more">Daily </span>missions</span><span class="lobby-card-row"><b>${done} / ${total} done</b><small>New in ${picksCountdown()}</small></span><progress max="${Math.max(1, total)}" value="${done}" aria-label="Missions done today"></progress>`;
 }
 
 export function openLobby(options: LobbyOptions): LobbyHandle {
@@ -361,6 +440,17 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
   );
   let mode = savedLobbyMode(options.firstMatchDone);
   let partySize = 0;
+  /** Your level and short first matches, as the last update had them. */
+  let level: number | undefined;
+  let introRounds: number | undefined;
+  const lockedAction = (action: LobbyAction | undefined) => {
+    const feature = action && ACTION_FEATURE[action];
+    return feature && featureLocked(feature, level) ? feature : undefined;
+  };
+  const lockedMode = (m: LobbyMode | undefined) => {
+    const feature = m && MODE_FEATURE[m];
+    return feature && featureLocked(feature, level) ? feature : undefined;
+  };
   /** Show only the modes this party can play (modeListed). */
   const listModes = () =>
     layer
@@ -374,6 +464,8 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       });
   /** Fighter + worn skin + stage now drawn on the stage. */
   let artKey: string | undefined;
+  /** The rank chip as drawn (rankChipKey). */
+  let rankKey = "";
   // The selected fighter moves with the same live rig as the Fighters roster
   // (shop-preview.ts, "selection" framing) over its still artwork. Low
   // graphics keeps the still artwork, as in the Plaza.
@@ -383,10 +475,10 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
   /** Each seat's live rig, and what it shows. */
   const seatRigs: (ShopPreviewHandle | undefined)[] = [];
   const seatKeys: (string | undefined)[] = [];
-  layer.innerHTML = `<div class="lobby-backdrop" aria-hidden="true"></div>
+  layer.innerHTML = `<div class="lobby-backdrop" aria-hidden="true"><div class="lobby-bigname" id="lobby-bigname"></div></div>
 <nav class="lobby-rail" aria-label="Main menu">${RAIL.map(
     ([id, label, icon]) =>
-      `<button type="button" data-lobby-action="${id}" title="${label}" aria-label="${label}">${menuIcon(icon)}<span>${label}</span><i class="lobby-badge" data-badge-for="${id}" hidden></i></button>`,
+      `<button type="button" data-lobby-action="${id}" title="${label}" aria-label="${label}"><i class="lobby-rail-icon">${menuIcon(icon)}<i class="lobby-badge" data-badge-for="${id}" hidden></i></i><span>${label}</span></button>`,
   ).join("")}</nav>
 <section class="lobby-stage" aria-label="Your fighter">
   <div class="lobby-party-bar" id="lobby-party-bar" hidden><span class="lobby-party-faces" id="lobby-party-faces"></span><span id="lobby-party-size"></span><button type="button" class="lobby-rejoin" id="lobby-rejoin" data-lobby-action="party-room" hidden>${iconLabel("enter", "Rejoin room")}</button><button type="button" data-lobby-action="leave-party">${iconLabel("leave", "Leave party")}</button></div>
@@ -398,7 +490,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
   </div>
   <div class="lobby-nameplate">
     <button type="button" class="lobby-step" data-lobby-step="-1" aria-label="Previous fighter">‹</button>
-    <div class="lobby-name"><h2 id="lobby-fighter-name"></h2><span class="element-pill" id="lobby-fighter-element"></span><small class="lobby-host-name" id="lobby-host-name"></small></div>
+    <div class="lobby-name"><h2 id="lobby-fighter-name"></h2><span class="lobby-name-tags"><span class="element-pill" id="lobby-fighter-element"></span><small class="lobby-host-name" id="lobby-host-name"></small><span class="lobby-rank-chip" id="lobby-rank-chip" role="img" hidden></span></span></div>
     <button type="button" class="lobby-step" data-lobby-step="1" aria-label="Next fighter">›</button>
   </div>
 </section>
@@ -454,11 +546,12 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
     bubble.textContent = text;
     bubble.classList.add("is-line");
     bubble.hidden = false;
+    // Measured at its full size: a pop still playing scales it down.
+    bubble.classList.remove("is-popping");
     const spot = linePlace(bubble);
     bubble.style.top = `${spot.top}px`;
     bubble.style.left = `${spot.left}px`;
     bubble.style.setProperty("--tail", `${spot.tail}px`);
-    bubble.classList.remove("is-popping");
     void bubble.offsetWidth;
     bubble.classList.add("is-popping");
     clearTimeout(bubbleTimer);
@@ -478,13 +571,21 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
     const row = layer.querySelector(".lobby-party")!.getBoundingClientRect();
     const tail = 8;
     const head = rig?.inkTop() ?? figure.top;
-    const width = bubble.offsetWidth,
+    // Its exact width, not offsetWidth's whole pixels, and the left edge it
+    // gets from the rounded `left` below: a bubble a fraction of a pixel
+    // into the column of a top-bar box goes under that box, as it shows
+    // (#584: 0.2 px over the profile's edge, it sat 2 px under it, not 6).
+    const { width } = bubble.getBoundingClientRect(),
       height = bubble.offsetHeight;
     const middle = figure.left + figure.width / 2;
-    const centre = Math.min(
-      Math.max(middle, row.left + width / 2 + 4),
-      row.right - width / 2 - 4,
-    );
+    const centre =
+      figure.left +
+      Math.round(
+        Math.min(
+          Math.max(middle, row.left + width / 2 + 4),
+          row.right - width / 2 - 4,
+        ) - figure.left,
+      );
     const left = centre - width / 2;
     let limit =
       (parseFloat(
@@ -555,9 +656,15 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
     // watch", which opens the play drawer over it.
     if (!target.closest("#lobby-mode-menu") || action) setMenu(false);
     if (pick) {
+      // A mode still locked at your level stays unpicked: when it opens.
+      const locked = lockedMode(pick);
+      if (locked) {
+        setMenu(false);
+        return options.onLocked?.(locked);
+      }
       mode = pick;
       saveLobbyMode(mode);
-      modeToggle.innerHTML = modeButton(mode);
+      modeToggle.innerHTML = modeButton(mode, introRounds, partySize);
       menu
         .querySelectorAll<HTMLElement>("[data-lobby-mode]")
         .forEach((b) =>
@@ -589,7 +696,12 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
     disarm();
     if (target.closest("#lobby-fighter-tap")) return poke();
     if (step) return options.onStep(step === "-1" ? -1 : 1);
-    if (target.closest("#lobby-play")) return options.onPlay(mode);
+    if (target.closest("#lobby-play")) {
+      const locked = lockedMode(mode);
+      return locked ? options.onLocked?.(locked) : options.onPlay(mode);
+    }
+    const lockedBy = lockedAction(action);
+    if (lockedBy) return options.onLocked?.(lockedBy);
     // The rail button of the screen that is open (lit, aria-current) closes
     // it: a second tap on the same icon. Only the rail: a card that opens a
     // screen never closes one.
@@ -639,20 +751,100 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
         // The still artwork stays when the renderer can't load.
       });
   };
+  /**
+   * Your fighter appears once, already moving: while the live rig is on its
+   * way (back from a battle, the Lobby is built again) the still artwork
+   * stays hidden instead of showing and then being swapped for the rig in
+   * a slightly different pose (docs/loading-screens.md). Never for long:
+   * past ARRIVE_MS the still artwork shows, as on Low graphics.
+   */
+  let arriveTimer: ReturnType<typeof setTimeout> | undefined;
+  let arriveWatch: MutationObserver | undefined;
+  let revealFrame = 0;
+  const arrived = () => {
+    clearTimeout(arriveTimer);
+    arriveWatch?.disconnect();
+    arriveWatch = undefined;
+    const art = layer.querySelector<HTMLElement>("#lobby-fighter-art");
+    if (!art?.classList.contains("is-arriving")) return;
+    art.classList.remove("is-arriving");
+    if (closed || !uiMotion()) return;
+    reveal(art);
+  };
+  /**
+   * The fade-in, paced by frames drawn rather than by the clock: the live
+   * rig is ready in the Lobby's busiest moment (the renderer booting, its
+   * first poses painted), and a phone then draws a frame every 100–250 ms,
+   * so a 0.22 s CSS transition was over in one or two frames and the
+   * fighter seemed to blink in (owner, back from the Plaza, 24 Nov 2026).
+   * Each frame moves at most 1/REVEAL_FRAMES of the way, so the fade always
+   * shows; on a quick device it takes REVEAL_MS. Opacity only (the
+   * compositor's work), no layout read.
+   */
+  const reveal = (art: HTMLElement) => {
+    cancelAnimationFrame(revealFrame);
+    let shown = 0;
+    let last: number | undefined;
+    art.style.opacity = "0";
+    const step = (now: number) => {
+      if (closed || !art.isConnected) return;
+      // The first frame only starts the clock: it is often the long one.
+      if (last !== undefined)
+        shown = Math.min(
+          1,
+          shown + Math.min((now - last) / REVEAL_MS, 1 / REVEAL_FRAMES),
+        );
+      last = now;
+      if (shown >= 1) {
+        art.style.removeProperty("opacity");
+        return;
+      }
+      // Ease out: quick to show, soft to land.
+      art.style.opacity = (1 - (1 - shown) ** 3).toFixed(3);
+      revealFrame = requestAnimationFrame(step);
+    };
+    revealFrame = requestAnimationFrame(step);
+  };
+  const arrive = () => {
+    const art = $("lobby-fighter-art");
+    if (art.classList.contains("is-ready")) return;
+    art.classList.add("is-arriving");
+    clearTimeout(arriveTimer);
+    arriveTimer = setTimeout(arrived, ARRIVE_MS);
+    arriveWatch?.disconnect();
+    arriveWatch = new MutationObserver(() => {
+      if (art.classList.contains("is-ready")) arrived();
+    });
+    arriveWatch.observe(art, { attributes: true, attributeFilter: ["class"] });
+  };
   /** Why your fighter is still artwork, for the frame-rate read-out. */
   let stillWhy = "";
   const mountRig = () => {
     if (rig || rigLoading || closed) return;
     if (lowGraphics()) {
+      releaseParkedLobbyRig();
       stillWhy = "Low graphics";
+      return;
+    }
+    if (parked) {
+      // Back from the Plaza: the rig from the last Lobby, on screen at once
+      // when it shows the same look (else posed afresh, as a new look is).
+      const kept = parked;
+      parked = undefined;
+      rig = kept.rig;
+      stillWhy = "";
+      rig.update($("lobby-fighter"), "selection", kept.key === artKey);
+      rig.suspend(layer.classList.contains("is-covered"));
+      arrive();
       return;
     }
     rigLoading = true;
     stillWhy = "loading";
+    arrive();
     void import("./shop-preview")
       .then(({ mountShopPreview }) => {
         rigLoading = false;
-        if (closed || rig || lowGraphics()) return;
+        if (closed || rig || lowGraphics()) return arrived();
         rig = mountShopPreview($("lobby-fighter"), "selection");
         rig.suspend(layer.classList.contains("is-covered"));
       })
@@ -661,6 +853,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
         // read-out says why).
         rigLoading = false;
         stillWhy = `failed: ${error instanceof Error ? error.message : String(error)}`;
+        arrived();
       });
   };
   /**
@@ -694,6 +887,9 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
    * counts them). Where only one card fits, a new zone keeps the Spire card
    * over the Journey or guide card; otherwise the Journey stays (the Spire
    * is still a tap away on Raids).
+   * On a narrow phone the cards' lines and the mode's hint take two lines
+   * (lobby.css); before any card steps aside they go back to one, cut
+   * with "…" (lobby-cards-tight): a whole line is worth less than Missions.
    * Measured once after an update or a resize, never per frame.
    */
   let fitFrame = 0;
@@ -718,7 +914,9 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       spireCardEl,
     ])
       card.classList.remove("is-squeezed");
-    const limit =
+    layer.classList.remove("lobby-cards-tight");
+    // The mode button's height moves PLAY's block, so read it each time.
+    const limit = () =>
       layer.querySelector(".lobby-play")!.getBoundingClientRect().top - 8;
     const bottom = () =>
       Math.max(
@@ -728,8 +926,9 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
           (c) => c.getBoundingClientRect().bottom,
         ),
       );
+    if (bottom() > limit()) layer.classList.add("lobby-cards-tight");
     for (const card of order) {
-      if (bottom() <= limit) break;
+      if (bottom() <= limit()) break;
       card.classList.add("is-squeezed");
     }
   };
@@ -737,6 +936,8 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
     if (!fitFrame) fitFrame = requestAnimationFrame(fitCards);
   };
   addEventListener("resize", fitSoon);
+  // A look may show or hide cards (the Raid card) and change their heights.
+  document.addEventListener(UI_THEME_EVENT, fitSoon);
   void document.fonts?.ready.then(fitSoon);
   const coverWatch = new MutationObserver(syncCovered);
   coverWatch.observe(document.body, {
@@ -760,6 +961,66 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
     );
   };
   setPerfSource("lobby", perfSource);
+  /**
+   * The padlocks (feature-unlocks.ts): a rail button or a mode still locked
+   * at your level wears a pill with the level that opens it, and says so to
+   * a screen reader. Written only when the level (or the short first
+   * matches) changed: the Lobby updates often.
+   */
+  let lockKey = "";
+  const syncLocks = (view: LobbyView) => {
+    const key = `${view.level}|${view.introRounds}|${view.partySize}`;
+    if (key === lockKey) return;
+    lockKey = key;
+    level = view.level;
+    introRounds = view.introRounds;
+    const mark = (
+      b: HTMLElement,
+      feature: Feature,
+      label: string,
+      pillHost: HTMLElement,
+    ) => {
+      const locked = featureLocked(feature, level);
+      b.classList.toggle("is-locked", locked);
+      const name = locked ? lockedLabel(label, feature) : label;
+      b.setAttribute("aria-label", name);
+      if (b.title) b.title = name;
+      const pill = pillHost.querySelector(":scope > .feature-lock");
+      if (locked && !pill)
+        pillHost.insertAdjacentHTML("beforeend", lockBadge(feature));
+      else if (!locked) pill?.remove();
+    };
+    for (const [id, label] of RAIL) {
+      const feature = ACTION_FEATURE[id];
+      const b = layer.querySelector<HTMLElement>(
+        `.lobby-rail [data-lobby-action="${id}"]`,
+      );
+      if (feature && b)
+        mark(
+          b,
+          feature,
+          label,
+          b.querySelector<HTMLElement>(".lobby-rail-icon")!,
+        );
+    }
+    for (const m of LOBBY_MODES) {
+      const b = menu.querySelector<HTMLElement>(`[data-lobby-mode="${m.id}"]`);
+      if (!b) continue;
+      const small = b.querySelector("small");
+      const hint = modeHint(m, introRounds, partySize);
+      if (small && small.textContent !== hint) small.textContent = hint;
+      const feature = MODE_FEATURE[m.id];
+      // Under the mode's name, where its hint was: the row keeps its height.
+      if (feature)
+        mark(
+          b,
+          feature,
+          m.label,
+          b.querySelector<HTMLElement>(":scope > span")!,
+        );
+    }
+    modeToggle.innerHTML = modeButton(mode, introRounds, partySize);
+  };
   return {
     update(view) {
       partySize = view.partySize;
@@ -787,6 +1048,18 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       // You lead: the same crown under your own fighter, "♛ You".
       const crown = host ? host.name : view.leading ? "You" : "";
       $("lobby-host-name").textContent = crown ? `♛ ${crown}` : "";
+      // Your rank: not under a leader's fighter, where it would read as theirs.
+      const rank = host ? null : (view.rank ?? null);
+      const chipKey = rankChipKey(rank);
+      if (chipKey !== rankKey) {
+        rankKey = chipKey;
+        const chip = $("lobby-rank-chip");
+        chip.hidden = !rank;
+        chip.innerHTML = rank ? rankChipMarkup(rank) : "";
+        chip.style.setProperty("--rank", rank?.color ?? "");
+        if (rank) chip.setAttribute("aria-label", rank.label);
+        else chip.removeAttribute("aria-label");
+      }
       layer.querySelector(".lobby-name")!.classList.toggle("is-host", !!crown);
       $("lobby-fighter").classList.toggle("is-host", !!host);
       $("lobby-fighter").classList.toggle("is-away", !!host?.away);
@@ -804,6 +1077,10 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
         const fighter = CHARACTERS[character];
         const art = $("lobby-fighter-art");
         $("lobby-fighter").style.setProperty("--element", hex(fighter.color));
+        // Both looks draw with it, on every screen (ui-theme.ts).
+        setUiElementColour(hex(fighter.color));
+        // The name behind the fighter, for a look that shows it (Poster).
+        $("lobby-bigname").textContent = fighter.name;
         art.innerHTML = fighterStageArt(
           character,
           "lobby",
@@ -865,7 +1142,15 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
         first,
         guide ? guideCard(guide) : journeyCard(view.economy?.journey),
       );
-      setInner($("lobby-missions-card"), missionsCard(view.economy));
+      setInner(
+        $("lobby-missions-card"),
+        missionsCard(view.economy, view.level),
+      );
+      $("lobby-missions-card").classList.toggle(
+        "is-locked",
+        featureLocked("missions", view.level),
+      );
+      syncLocks(view);
       $("lobby-friends-online").textContent =
         view.friendsOnline === null
           ? "Friends online"
@@ -880,9 +1165,11 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       const missionBadge = layer.querySelector<HTMLElement>(
         '[data-badge-for="missions"]',
       )!;
-      missionBadge.hidden = !missions.length || !left;
-      missionBadge.textContent = String(left);
-      missionBadge.classList.add("is-count");
+      // A plain red dot, no count: missions come back every day, so a
+      // number would sit there all day and teach players to skip red.
+      missionBadge.hidden =
+        !missions.length || !left || featureLocked("missions", view.level);
+      missionBadge.classList.add("is-dot");
       // The Spire, once open: its card above Missions (a shortcut past the
       // Raid Hub), glowing with a dot on Raids while something is new.
       const spire = view.spire ?? null;
@@ -895,12 +1182,26 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       const raidBadge = layer.querySelector<HTMLElement>(
         '[data-badge-for="raids"]',
       )!;
-      raidBadge.hidden = !spire?.fresh;
+      raidBadge.hidden = !spire?.fresh || featureLocked("raids", view.level);
       raidBadge.classList.add("is-new");
     },
-    close() {
+    close(options = {}) {
       closed = true;
-      rig?.();
+      arrived();
+      cancelAnimationFrame(revealFrame);
+      releaseParkedLobbyRig();
+      // Only a rig already drawn: one still loading would go on painting
+      // the fighter's parts while the Plaza starts, for nothing.
+      if (
+        rig &&
+        options.park &&
+        artKey &&
+        !lowGraphics() &&
+        $("lobby-fighter-art").classList.contains("is-ready")
+      ) {
+        rig.suspend(true);
+        parked = { rig, key: artKey };
+      } else rig?.();
       rig = undefined;
       for (const seat of seatRigs.splice(0)) seat?.();
       clearTimeout(bubbleTimer);
@@ -909,6 +1210,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       coverWatch.disconnect();
       setPerfSource("lobby", undefined);
       document.removeEventListener("ea-graphics-change", syncGraphics);
+      document.removeEventListener(UI_THEME_EVENT, fitSoon);
       cancelAnimationFrame(fitFrame);
       removeEventListener("resize", fitSoon);
       layer.removeEventListener("keydown", onKey);

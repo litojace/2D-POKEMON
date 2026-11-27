@@ -64,6 +64,12 @@ export type RecordState =
 export function recordsMarkup(
   record: RecordState | undefined,
   friendIds?: Set<string>,
+  /**
+   * What the result sheet already shows elsewhere and leaves out here: the
+   * rating (its rank tile, result-rewards.ts) and Add friend (the button
+   * beside Rematch, for a single opponent).
+   */
+  show: { rating?: boolean; addFriend?: boolean } = {},
 ) {
   if (!record) return "";
   if (record.status === "pending")
@@ -78,14 +84,14 @@ export function recordsMarkup(
   });
   // Your rating change from this match (once it's confirmed).
   const rating = reply.rating;
-  if (rating && rating.before !== undefined) {
+  if (show.rating !== false && rating && rating.before !== undefined) {
     const delta = rating.rating - rating.before;
     lines.unshift(
       `<span class="rating-change">Rating <b>${rating.rating}</b> <em class="${delta >= 0 ? "up" : "down"}">${delta >= 0 ? "+" : "−"}${Math.abs(delta)}</em> · <i style="color:${rankColor(rating.rank)}">${escape(rating.rank)}</i>${rating.placementLeft ? ` · ${rating.placementLeft} placement left` : ""}</span>`,
     );
   }
   // Add the people you just played as friends (it's fine if you already are).
-  const add = reply.records
+  const add = (show.addFriend === false ? [] : reply.records)
     .filter((r) => !friendIds?.has(r.id))
     .map(
       (r) =>
@@ -109,10 +115,13 @@ export function standingsMarkup(state: Snapshot, myId: string) {
       (state.scores[b.id] ?? 0) - (state.scores[a.id] ?? 0) ||
       Number(b.id === state.winner) - Number(a.id === state.winner),
   );
-  return `<ol class="standings">${order
+  // The name in its own <bdi>, so on the results card (match-sheet.css) a
+  // long one gives way before "you" does; place-N gives the top three
+  // their medal colours there.
+  return `<div class="standings-card"><p class="standings-head" aria-hidden="true"><span>Place</span><span>Round wins</span></p><ol class="standings" aria-label="Places by round wins">${order
     .map(
       (p, i) =>
-        `<li class="${p.id === myId ? "me" : ""}"><span>${places[i] ?? `${i + 1}th`}</span><b>${escape(p.name)}${p.id === myId ? " <small>you</small>" : ""}</b><em>${state.scores[p.id] ?? 0}</em></li>`,
+        `<li class="place-${i + 1}${p.id === myId ? " me" : ""}"><span>${places[i] ?? `${i + 1}th`}</span><b><bdi>${escape(p.name)}</bdi>${p.id === myId ? " <small>you</small>" : ""}</b><em>${state.scores[p.id] ?? 0}</em></li>`,
     )
-    .join("")}</ol>`;
+    .join("")}</ol></div>`;
 }

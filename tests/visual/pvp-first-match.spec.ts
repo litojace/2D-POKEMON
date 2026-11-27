@@ -5,7 +5,12 @@ import {
   pushUntilBattle,
   snap,
   startPractice,
+  skipTour,
 } from "./helpers";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // PvP audit (docs/pvp-plan.md §3): a new mobile player's path from the
 // sign-in screen to a bot match, on the owner's iPhone size (956x440
@@ -21,6 +26,7 @@ const PHONE = {
 };
 
 async function newPlayer(page: Page) {
+  await skipTour(page);
   await page.addInitScript(() => {
     const w = window as any;
     w.__economyPatch = {

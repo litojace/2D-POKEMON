@@ -484,7 +484,9 @@ function skinsTab(view: RosterView, d: RosterData) {
     have: boolean,
     on: boolean,
   ) =>
-    `<span class="roster-look${have ? "" : " is-unowned"}"><span class="roster-look-art">${art}</span><b>${esc(name)}</b><small class="${on ? "is-on" : ""}">${on ? "Wearing" : have ? "Owned" : "In the Shop"}</small></span>`;
+    // A word of 13 letters or more ("Chrysanthemum") is a size smaller on
+    // a phone (roster.css): no line break makes it fit there.
+    `<span class="roster-look${have ? "" : " is-unowned"}${/\S{13,}/.test(name) ? " has-long-word" : ""}"><span class="roster-look-art">${art}</span><b>${esc(name)}</b><small class="${on ? "is-on" : ""}">${on ? "Wearing" : have ? "Owned" : "In the Shop"}</small></span>`;
   return `<p class="ui-note">${looksOwned(c, d.owned).have} of ${skins.length + 1} looks owned. Try them all on in the Shop and Wardrobe.</p><div class="roster-looks">${tile("original", "Original look", originalLook(c, "roster-look-original"), true, !worn)}${skins.map((s) => tile(s.id, s.name, itemPicture(s.id, c, `roster-look-${s.id}`), d.owned.includes(s.id), worn === s.id)).join("")}</div>`;
 }
 function detailMarkup(view: RosterView, d: RosterData) {
@@ -519,6 +521,10 @@ function detailMarkup(view: RosterView, d: RosterData) {
           button("Try skins", {
             icon: "wardrobe",
             attrs: { "data-roster-skins": c },
+          }),
+          button("Test skills", {
+            icon: "target",
+            attrs: { "data-roster-try": c },
           }),
           button(lock ? "Lock in" : chosen ? "Playing" : "Select", {
             kind: "primary",

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { openLobby, snap } from "./helpers";
+import { openLobby, openPlaza, snap } from "./helpers";
 import {
   boxCentred,
   centred,
@@ -9,6 +9,10 @@ import {
   spills,
 } from "./ui-checks";
 import { ISLAND, closeSpot, layoutProblems, setInsets } from "./ui-measure";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // UI remodel step 7 (docs/ui-remodel/PLAN.md): the player card and profile,
 // a panel inside the Lobby. Measured at the five review sizes with the
@@ -51,7 +55,6 @@ const RAIDS = {
   bestSeconds: null,
   titles: [],
   cosmetics: [],
-  weekly: [],
   bosses: {
     grumblecrag: { clears: 4, highestPeril: 3, bestSeconds: 90, runs: 6 },
     emberwing: { clears: 1, highestPeril: 3, bestSeconds: 200, runs: 2 },
@@ -109,9 +112,9 @@ const PROGRESS = {
     rating: 1110,
     matches: 62,
     peak: 1140,
-    rank: "Expert",
+    rank: "Flare III",
     placementLeft: 0,
-    next: { name: "Candidate Master", at: 1150 },
+    next: { name: "Flare II", at: 1140 },
   },
 };
 const TITLES = [
@@ -266,10 +269,10 @@ for (const size of SIZES)
       if (size.phone)
         expect(fit.size, "the avatar's size").toBeGreaterThanOrEqual(85);
 
-      // A phone shows the card's column as tabs (Overview, Titles, Mastery,
-      // Trophies); a desktop shows it all in one column.
+      // Every screen shows the card's column as tabs (Overview, Matches,
+      // Avatar, Titles, Mastery, Trophies): one part at a time, so a desktop
+      // no longer scrolls through everything.
       const tab = async (t: string) => {
-        if (!size.phone) return;
         await panel.locator(`[data-ui-profile-tab="${t}"]`).click();
         await expect(
           panel.locator(`[data-profile-main][data-tab="${t}"]`),
@@ -290,9 +293,8 @@ for (const size of SIZES)
           )
           .toBe(0);
       };
-      if (size.phone)
-        await expect(panel.locator(".ui-panel-head .ui-tabs")).toBeVisible();
-      else await expect(panel.locator("[data-ui-profile-tab]")).toHaveCount(0);
+      await expect(panel.locator(".ui-panel-head .ui-tabs")).toBeVisible();
+      await expect(panel.locator("[data-ui-profile-tab]")).toHaveCount(6);
       // The card: you (your avatar, not a fighter), title, name, level,
       // rank, mastery.
       const card = panel.locator(".pf-card");
@@ -302,7 +304,7 @@ for (const size of SIZES)
       await expect(card.locator(".pf-card-name")).toHaveText("tester");
       await expect(card.locator(".pf-card-tags")).toContainText("Lv 12");
       await expect(card.locator(".pf-card-tags")).toContainText(
-        "Expert · 1,110",
+        "Flare III · 1,110",
       );
       await expect(card.locator(".pf-card-tags")).toContainText(
         "Crystal Voltkit",
@@ -361,19 +363,57 @@ for (const size of SIZES)
         }),
       ).toEqual([]);
       expect(await spills(page, ".profile-panel")).toEqual([]);
+      // The card stands still and centred whichever tab is open: its
+      // avatar and words never move when the column beside it changes.
+      const cardPlace = () =>
+        panel.evaluate((p) => {
+          const c = p.querySelector(".pf-card")!.getBoundingClientRect();
+          const mid = (s: string) => {
+            const r = p.querySelector(s)!.getBoundingClientRect();
+            return (
+              Math.round((r.left + r.width / 2 - (c.left + c.width / 2)) * 2) /
+              2
+            );
+          };
+          return {
+            card: [c.left, c.top, c.width, c.height].map(Math.round),
+            avatar: mid(".pf-card-avatar > *"),
+            name: mid(".pf-card-name"),
+            tags: mid(".pf-card-tags"),
+          };
+        });
+      const places: Record<string, unknown> = {};
+      for (const t of [
+        "overview",
+        "matches",
+        "avatar",
+        "titles",
+        "mastery",
+        "trophies",
+      ]) {
+        await tab(t);
+        places[t] = await cardPlace();
+      }
+      const first = places.overview as Awaited<ReturnType<typeof cardPlace>>;
+      for (const off of [first.avatar, first.name, first.tags])
+        expect(
+          Math.abs(off),
+          "the card's contents are centred",
+        ).toBeLessThanOrEqual(1);
+      for (const [t, p] of Object.entries(places))
+        expect(p, `the card on the ${t} tab`).toEqual(first);
       // Every tab fits its column, nothing cut off or spilling.
-      if (size.phone)
-        for (const t of ["overview", "titles", "mastery"]) {
-          await tab(t);
-          expect(
-            await layoutProblems(page, {
-              inset: size.island ? ISLAND : undefined,
-              phone: size.phone,
-            }),
-            t,
-          ).toEqual([]);
-          expect(await spills(page, ".profile-panel"), t).toEqual([]);
-        }
+      for (const t of ["overview", "matches", "titles", "mastery"]) {
+        await tab(t);
+        expect(
+          await layoutProblems(page, {
+            inset: size.island ? ISLAND : undefined,
+            phone: size.phone,
+          }),
+          t,
+        ).toEqual([]);
+        expect(await spills(page, ".profile-panel"), t).toEqual([]);
+      }
       await tab("overview");
 
       // Centred: the card's words in the card, each number and label in its
@@ -509,6 +549,8 @@ test("titles wear on a tap, a refusal says why; a guest can save their account",
   try {
     const page = await context.newPage();
     const { errors, panel } = await open(page, SIZES[1]);
+    // Titles have their own tab on a desktop too.
+    await panel.locator('[data-ui-profile-tab="titles"]').click();
     const expert = panel.locator(".pf-title-chip", { hasText: "Expert" });
     await expert.click();
     await expect(panel.locator(".pf-title-chip.is-on")).toHaveText("Expert");
@@ -539,16 +581,18 @@ test("titles wear on a tap, a refusal says why; a guest can save their account",
     await panel.locator('.pf-title-chip[data-profile-title=""]').focus();
     await page.keyboard.press("ArrowRight");
     await expect(panel.locator(".pf-title-chip").nth(1)).toBeFocused();
-    // Share card: no share sheet here, so the picture downloads.
-    const download = page.waitForEvent("download");
+    // Share card opens the picture (share-card.spec.ts has the rest); no
+    // share sheet here, so Save image downloads it.
     await panel.locator("[data-profile-share]").click();
+    const download = page.waitForEvent("download");
+    await page.locator("[data-sp-save]").click();
     expect((await download).suggestedFilename()).toBe(
       "element-arena-player-card.png",
     );
-    await expect(panel.locator(".pf-status")).toHaveText(
-      "Card saved as a picture; the message is copied.",
-    );
+    await page.locator("[data-sp-close]").click();
+    await expect(page.locator("[data-share-preview]")).toHaveCount(0);
     // A trophy opens that boss's rewards in Raids.
+    await panel.locator('[data-ui-profile-tab="trophies"]').click();
     await panel.locator('[data-profile-boss="emberwing"]').click();
     await expect(page.locator(".profile-panel")).toHaveCount(0);
     await expect(page.locator(".rh-room")).toBeVisible();
@@ -764,7 +808,8 @@ test("a locked name says when; a refusal says why", async ({ browser }) => {
     ).toContainText(/You can change it again in (10 d 0 h|9 d 23 h)/);
     expect(await layoutProblems(page, { phone: true })).toEqual([]);
     expect(errors).toEqual([]);
-    // If the server refuses anyway (another device changed it), its reason
+    // Once the lock has run out (by the server's clock) the button is back;
+    // if the server refuses anyway (another device changed it), its reason
     // shows. A fresh page: opened again within 30 s, the Profile shows the
     // copy it had (COPY_MAX_AGE_MS), and only a POST forgets that copy. (This
     // used to reopen the same page and pass only when the Lobby's fighter
@@ -774,7 +819,13 @@ test("a locked name says when; a refusal says why", async ({ browser }) => {
     await again.addInitScript((now) => {
       const w = window as any;
       w.__serverTime = now;
-      w.__nameStatus = null;
+      // Changed 14 days and an hour ago: the lock ran out an hour ago.
+      w.__nameStatus = {
+        changedAt: new Date(now - 14 * 86400e3 - 3600e3).toISOString(),
+        nextAt: new Date(now - 3600e3).toISOString(),
+        now: new Date(now).toISOString(),
+        days: 14,
+      };
       w.__refuseName = true;
     }, serverTime);
     const refused = await open(again, SIZES[3]);
@@ -900,3 +951,179 @@ for (const size of SIZES.filter((s) => s.phone))
     ).toBeLessThanOrEqual(1);
     expect(sizes[0], "the avatar's size").toBeGreaterThanOrEqual(85);
   });
+
+// The card is one screen wherever it opens: on the Plaza it sits inside the
+// Plaza's layer, and the Plaza's own rules (`.plaza-layer button { font:
+// inherit; color: inherit }`) once restyled its tabs, buttons and title
+// chips there (owner, 24 Nov). Every part's type and colours match the
+// Lobby's, tab by tab; only sizes may differ (no Lobby rail on the Plaza).
+test("the card on the Plaza looks as it does in the Lobby", async ({
+  browser,
+}) => {
+  test.setTimeout(150_000);
+  const TABS = [
+    "overview",
+    "matches",
+    "avatar",
+    "titles",
+    "mastery",
+    "trophies",
+  ];
+  const look = async (scene: "lobby" | "plaza") => {
+    const context = await browser.newContext({
+      viewport: { width: 844, height: 390 },
+      isMobile: true,
+      hasTouch: true,
+    });
+    try {
+      const page = await context.newPage();
+      await page.addInitScript(
+        ({ raids, progress, titles }) => {
+          const w = window as any;
+          w.__raids = raids;
+          w.__progress = progress;
+          w.__accountPatch = {
+            title: "Cragbreaker",
+            titleColor: "#d9b98a",
+            ownedTitles: titles,
+          };
+        },
+        { raids: RAIDS, progress: PROGRESS, titles: TITLES },
+      );
+      const errors =
+        scene === "lobby" ? await openLobby(page) : await openPlaza(page);
+      await page.click("#account-profile");
+      const panel = page.locator(".profile-panel");
+      await expect(panel).toBeVisible();
+      await expect(panel.locator(".pf-tile b").first()).toHaveText("9,999");
+      const out: Record<string, string[]> = {};
+      for (const t of TABS) {
+        await panel.locator(`[data-ui-profile-tab="${t}"]`).click();
+        await expect(
+          panel.locator(`[data-profile-main][data-tab="${t}"]`),
+        ).toBeVisible();
+        // The tab slides in and its colours fade: read them once settled.
+        await expect
+          .poll(() =>
+            panel.evaluate(
+              (el) =>
+                el
+                  .getAnimations({ subtree: true })
+                  .filter(
+                    (a) =>
+                      a.playState === "running" &&
+                      a.effect?.getTiming().iterations !== Infinity,
+                  ).length,
+            ),
+          )
+          .toBe(0);
+        out[t] = await panel.evaluate((p) =>
+          [p, ...p.querySelectorAll("*")].map((el) => {
+            const s = getComputedStyle(el);
+            const name = `${el.tagName.toLowerCase()}.${[...el.classList].join(".")}`;
+            return [
+              name,
+              s.fontFamily,
+              s.fontWeight,
+              s.fontSize,
+              s.letterSpacing,
+              s.textTransform,
+              s.color,
+              s.borderTopColor,
+              s.backgroundColor,
+            ].join(" | ");
+          }),
+        );
+      }
+      if (scene === "plaza")
+        expect(
+          await panel.evaluate((p) => !!p.closest(".plaza-layer")),
+          "the card opens over the Plaza",
+        ).toBe(true);
+      expect(errors).toEqual([]);
+      return out;
+    } finally {
+      await context.close();
+    }
+  };
+  const lobby = await look("lobby");
+  const plaza = await look("plaza");
+  for (const t of TABS)
+    expect(plaza[t], `the ${t} tab on the Plaza`).toEqual(lobby[t]);
+});
+
+// A small phone held sideways (iPhone SE, 667 x 375), narrower than the
+// review sizes: the name's rule ended in "…" ("You can change it once
+// ever…") and so did your rating ("Unranked · 1,…") (25 Nov 2026).
+test("the overview reads in full on a 667 px phone: no cut-off words", async ({
+  browser,
+}, info) => {
+  const context = await browser.newContext({
+    viewport: { width: 667, height: 375 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    await openLobby(page);
+    await page.click("#account-profile");
+    const panel = page.locator(".profile-panel");
+    await expect(panel).toBeVisible();
+    await expect(panel.locator(".pf-mini-row > b").nth(1)).toContainText("·");
+    await panel.evaluate((el) =>
+      Promise.all(el.getAnimations().map((a) => a.finished)),
+    );
+    const cut = await page.evaluate(() =>
+      Array.from(
+        document.querySelectorAll<HTMLElement>(
+          ".profile-panel :is(.pf-name-note, .pf-name-now, .pf-mini-row > *, .pf-tile > *)",
+        ),
+      )
+        .filter(
+          (el) =>
+            el.offsetParent &&
+            // Width for all of them; height too for the rule, which may
+            // wrap (a display font's line box is shorter than its glyphs).
+            (el.scrollWidth > el.clientWidth + 1 ||
+              (el.matches(".pf-name-note") &&
+                el.scrollHeight > el.clientHeight + 1)),
+        )
+        .map((el) => `${el.className}: ${el.textContent}`),
+    );
+    expect(cut).toEqual([]);
+    // The rule and the button still sit inside the name's row.
+    const row = (await panel.locator(".pf-name-row").boundingBox())!;
+    for (const part of [".pf-name-note", ".pf-name-row > .ui-btn"]) {
+      const b = (await panel.locator(part).boundingBox())!;
+      expect(b.y, part).toBeGreaterThanOrEqual(row.y);
+      expect(b.y + b.height, part).toBeLessThanOrEqual(row.y + row.height);
+    }
+    await snap(page, info, "profile-overview-667x375");
+    // Raid trophies: every boss's name whole ("Crag…", "Storm Twi…" before),
+    // and clear of the count beside it. Here and on a wider phone.
+    await page.click('[data-ui-profile-tab="trophies"]');
+    for (const width of [667, 852]) {
+      await page.setViewportSize({ width, height: width === 667 ? 375 : 393 });
+      // The wider phone with its Dynamic Island: the insets narrow the panel.
+      if (width === 852) await setInsets(page, ISLAND);
+      await expect(panel.locator(".pf-trophy")).toHaveCount(7);
+      const names = await panel.locator(".pf-trophy").evaluateAll((tiles) =>
+        tiles
+          .map((t) => {
+            const name = t.querySelector<HTMLElement>(".pf-trophy-name")!;
+            const count = t.querySelector("b")!.getBoundingClientRect();
+            return {
+              name: name.textContent,
+              cut: name.scrollWidth > name.clientWidth,
+              gap: Math.round(count.left - name.getBoundingClientRect().right),
+            };
+          })
+          .filter((t) => t.cut || t.gap < 0),
+      );
+      expect(names, `${width} px`).toEqual([]);
+    }
+    await snap(page, info, "profile-trophies-852x393");
+  } finally {
+    await context.close();
+  }
+});

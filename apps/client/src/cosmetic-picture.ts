@@ -6,7 +6,13 @@ import { colourPreview, hasColourPalette } from "./colour-preview";
 import { fighterAvatar } from "./fighter-art";
 import { cosmeticTier } from "../../../packages/shared/src/cosmetic-tier";
 
-/** Only Colors need a model. Other cosmetics show their own artwork/effect. */
+/**
+ * Colors are shown on the fighter. An aura, entrance or victory shows its
+ * own effect alone, filling the picture (cosmetic-fx-preview.ts): the Shop's
+ * tiles drew a dim figure of the fighter inside it, and the owner asked for
+ * the effect on its own (25 Nov 2026); the try-on stage shows it on your
+ * fighter.
+ */
 export function cosmeticPicture(
   id: string,
   champion: CharacterId,

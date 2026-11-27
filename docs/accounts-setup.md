@@ -27,7 +27,7 @@ VITE_SUPABASE_ANON_KEY=YOUR_GAME_PUBLIC_ANON_KEY
 In Render Environment, set **all four** settings above, plus:
 
 ```dotenv
-VITE_SITE_URL=https://parena.litojace.com
+VITE_SITE_URL=https://play.elementarenausa.com
 ```
 
 Restart local development after changing env files. Redeploy Render after changing public settings because `VITE_` values are bundled at build time. The Blueprint prompts for these values without committing them. The app uses the public key and a user's token; **no service-role key is required or permitted in browser settings**. Missing configuration keeps gameplay locked rather than creating fake accounts.
@@ -38,9 +38,9 @@ Enable email/password in Supabase Authentication and keep email confirmation ena
 
 Supabase's default email sender only delivers to addresses belonging to your project's team. Use your Supabase team email for the first administrator test. Before inviting other players, configure a custom SMTP provider under Authentication's email/SMTP settings. See [Supabase SMTP setup](https://supabase.com/docs/guides/auth/auth-smtp).
 
-Under Authentication → URL Configuration, set Site URL to `https://parena.litojace.com`.
+Under Authentication → URL Configuration, set Site URL to `https://play.elementarenausa.com`.
 
-Email confirmation, password recovery and Sign in with Apple on the website all return to the **site root** with a marker, for example `https://parena.litojace.com/?auth=email-confirmed` (also `?auth=reset-password` and `?auth=auth-callback`). The root is served by both the Web Service and the Static Site, so a missing rewrite rule can never turn an email link into a "Not Found" page. Supabase always accepts a redirect on the same scheme, host and port as the Site URL, so production needs no extra entry. For local development, allow:
+Email confirmation, password recovery and Sign in with Apple on the website all return to the **site root** with a marker, for example `https://play.elementarenausa.com/?auth=email-confirmed` (also `?auth=reset-password` and `?auth=auth-callback`). The root is served by both the Web Service and the Static Site, so a missing rewrite rule can never turn an email link into a "Not Found" page. Supabase always accepts a redirect on the same scheme, host and port as the Site URL, so production needs no extra entry. For local development, allow:
 
 ```text
 http://localhost:5173/**
@@ -178,7 +178,7 @@ Their profiles and match history rows are removed with them.
 
 ## Ratings and ranks
 
-After migration 006 every player has a skill rating starting at 1000. Only confirmed player-vs-player matches move it (bot matches and quit matches don't). The first 5 rated matches are placement (bigger swings; shown as Unranked). The rank ladder reuses the title names: Newbie (under 950), Pupil 950, Specialist 1000, Expert 1075, Candidate Master 1150, Master 1225, International Master 1300, Grandmaster 1375, International Grandmaster 1450 and Legendary Grandmaster (1550 **and** #1 on the leaderboard). Reaching a rank adds its title to the player's owned titles for good; titles are never taken away, including ones an admin granted by hand. On the first rated match of each month, ratings move 25% of the way back towards 1000. The thresholds live in `arena_rank_ladder` and must match `RANKS` in `packages/shared/src/accounts.ts` (a test checks this).
+After migration 006 every player has a skill rating starting at 1000. Only confirmed player-vs-player matches move it (bot matches and quit matches don't). The first 5 rated matches are placement (bigger swings; shown as Unranked). The first rank ladder reused the title names (Newbie … Legendary Grandmaster). Since migration `20261127090000_rank_road.sql` the ranks are the rank road: seven tiers (Sprout, Spark, Flare, Tempest, Prism, Nova, Legend) of three steps each, with a title and coins at each tier and a shield after a promotion ([rank-road.md](rank-road.md) has the table). Reaching a tier adds its title to the player's owned titles for good; titles are never taken away, including the old ladder's and ones an admin granted by hand. On the first rated match of each month, ratings move 25% of the way back towards 1000. The thresholds live in `arena_rank_ladder` and must match `RANKS` in `packages/shared/src/accounts.ts` (a test checks this).
 
 Run [065_ratings_safe_updates.sql](../supabase/migrations/065_ratings_safe_updates.sql) after 064. Supabase refuses an `UPDATE` or `DELETE` with no `WHERE` clause from API sessions, and two of 006's rating functions had one: the monthly softening (so from the first new month the leaderboard and rating card failed with "UPDATE requires a WHERE clause") and the rating update after a match (so a confirmed player-vs-player match report was refused). 065 adds the `WHERE` clauses and changes nothing else.
 

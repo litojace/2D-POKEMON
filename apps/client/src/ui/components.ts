@@ -237,7 +237,7 @@ export interface TileOptions {
 /** One card for every item: fixed rows, so a long name never moves the art. */
 export function itemTile(o: TileOptions) {
   const mythic = o.rarity === "mythical" || o.rarity === "mythic";
-  return `<button type="button" class="ui-tile${mythic ? " is-mythic" : ""}${o.dim ? " is-unowned" : ""}"${o.rarity ? ` data-rarity="${o.rarity}"` : ""} aria-pressed="${!!o.pressed}" data-ui-item="${esc(o.id)}"${attrs(o.attrs)}>${o.corner ?? ""}<span class="ui-tile-art">${o.art}</span>${o.rarity ? rarityTag(o.rarity) : "<span></span>"}<b class="ui-tile-name">${esc(o.name)}</b><small class="ui-tile-sub">${esc(o.sub ?? "")}</small><span class="ui-tile-foot${o.footKind && o.footKind !== "default" ? ` is-${o.footKind}` : ""}">${o.foot ?? ""}</span></button>`;
+  return `<button type="button" class="ui-tile${mythic ? " is-mythic" : ""}${o.dim ? " is-unowned" : ""}"${o.rarity ? ` data-rarity="${o.rarity}"` : ""} aria-pressed="${!!o.pressed}" data-ui-item="${esc(o.id)}"${attrs(o.attrs)}>${o.corner ?? ""}<span class="ui-tile-art">${o.art}</span>${o.rarity ? rarityTag(o.rarity) : '<span class="ui-rarity is-none"></span>'}<b class="ui-tile-name">${esc(o.name)}</b><small class="ui-tile-sub">${esc(o.sub ?? "")}</small><span class="ui-tile-foot${o.footKind && o.footKind !== "default" ? ` is-${o.footKind}` : ""}">${o.foot ?? ""}</span></button>`;
 }
 
 /* ------------------------------------------------------- empty, confirm */
@@ -260,6 +260,8 @@ export interface ConfirmOptions {
   /** Extra markup under the lines (a checkbox). */
   extra?: string;
   cancel?: string;
+  /** The cancel button's icon (default: a cross). */
+  cancelIcon?: IconName;
   confirm: string;
   /** The confirm button's icon (Buy: a coin, Block: a struck circle…). */
   confirmIcon?: IconName;
@@ -278,5 +280,5 @@ export function confirmModal(o: ConfirmOptions) {
         `<dt${o.total && i === o.lines.length ? ' class="is-total"' : ""}>${esc(k)}</dt><dd${o.total && i === o.lines.length ? ' class="is-total"' : ""}>${v}</dd>`,
     )
     .join("");
-  return `<div class="ui-scrim" data-ui-confirm><div class="ui-modal${o.art ? " has-art" : ""}" role="alertdialog" aria-modal="true" aria-label="${esc(o.title)}">${o.art ? `<div class="ui-modal-art">${o.art}</div>` : ""}<div class="ui-modal-body"><span class="ui-kicker">${esc(o.kicker)}</span><b class="ui-title">${esc(o.title)}</b>${o.sub ? `<span class="ui-modal-sub">${o.sub}</span>` : ""}<dl class="ui-ledger">${lines}</dl>${o.extra ?? ""}</div>${actions(button(o.cancel ?? "Cancel", { icon: "cancel", attrs: { "data-ui-cancel": true } }), button(o.confirm, { kind: "primary", icon: o.confirmIcon, after: o.confirmAfter, attrs: { "data-ui-confirm-ok": true } }))}</div></div>`;
+  return `<div class="ui-scrim" data-ui-confirm><div class="ui-modal${o.art ? " has-art" : ""}" role="alertdialog" aria-modal="true" aria-label="${esc(o.title)}">${o.art ? `<div class="ui-modal-art">${o.art}</div>` : ""}<div class="ui-modal-body"><span class="ui-kicker">${esc(o.kicker)}</span><b class="ui-title">${esc(o.title)}</b>${o.sub ? `<span class="ui-modal-sub">${o.sub}</span>` : ""}<dl class="ui-ledger">${lines}</dl>${o.extra ?? ""}</div>${actions(button(o.cancel ?? "Cancel", { icon: o.cancelIcon ?? "cancel", attrs: { "data-ui-cancel": true } }), button(o.confirm, { kind: "primary", icon: o.confirmIcon, after: o.confirmAfter, attrs: { "data-ui-confirm-ok": true } }))}</div></div>`;
 }

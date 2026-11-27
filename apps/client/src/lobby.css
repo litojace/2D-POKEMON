@@ -52,6 +52,11 @@
     center 42% / cover no-repeat;
   transform: scale(1.04);
 }
+/* The fighter's name behind the stage: only a look that shows it draws it
+   (themes/poster). */
+.lobby-bigname {
+  display: none;
+}
 .lobby-layer::after {
   content: "";
   position: absolute;
@@ -124,33 +129,64 @@
   color: var(--ui-accent-hi);
 }
 .lobby-rail span {
-  font:
-    700 calc(10px * var(--text-scale, 1))/1 "DM Sans",
-    sans-serif;
+  font: 700 calc(10px * var(--text-scale, 1))/1 var(--font-body);
   letter-spacing: 0.02em;
   color: #c9d6ee;
 }
+/* The badge sits on the icon's top-right corner, not the button's: the
+   button is the rail's whole width, so its corner left a count floating
+   far from the icon it belongs to (owner, 20 Nov). */
+.lobby-rail-icon {
+  position: relative;
+  display: block;
+  line-height: 0;
+  font-style: normal;
+}
 .lobby-badge {
   position: absolute;
-  top: -6px;
-  right: -6px;
+  top: -10px;
+  left: calc(100% - 6px);
   display: grid;
   place-items: center;
   min-width: 20px;
   height: 20px;
   padding: 0 5px;
   border-radius: 999px;
-  background: var(--ui-danger);
+  /* Glossy like the rail's glass: a light top, a thin dark ring that
+     parts it from the icon (owner, 20 Nov: the flat blue looked unstyled
+     and the 2 px ring heavy). Red still means someone waits on you. */
+  background: linear-gradient(180deg, #ff7486, var(--ui-danger) 55%, #d33a4e);
   color: #fff;
-  font:
-    800 calc(11px * var(--text-scale, 1))/1 "DM Sans",
-    sans-serif;
+  font: 800 calc(11px * var(--text-scale, 1))/1 var(--font-body);
   font-style: normal;
   font-variant-numeric: tabular-nums;
-  box-shadow: 0 0 0 2px #0b1020;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
+  box-shadow:
+    0 0 0 1.5px rgba(11, 16, 32, 0.9),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 1px 3px rgba(0, 0, 0, 0.35);
 }
-.lobby-badge.is-count {
-  background: #3f6fd0;
+/* Something waits but there is nothing to count (today's missions): the
+   same red as a dot, so one colour means "for you" (owner, 23 Nov). */
+.lobby-badge.is-dot {
+  min-width: 10px;
+  width: 10px;
+  height: 10px;
+  padding: 0;
+  top: -3px;
+  left: calc(100% - 3px); /* centred where the Spire dot is */
+}
+/* When a badge appears, a halo pings out three times, then it rests.
+   Transform and opacity only (no repaint). */
+.lobby-badge::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  border: 2px solid rgba(255, 140, 155, 0.95);
+  opacity: 0;
+  pointer-events: none;
+  animation: lobby-badge-ping 1.4s ease-out 0.3s 3;
 }
 .lobby-badge[hidden] {
   display: none;
@@ -292,6 +328,13 @@
 .lobby-fighter-art.is-still {
   animation: none;
 }
+/* Waiting for its live rig (lobby-screen.ts arrive()): hidden, then it
+   fades in once, already moving (reveal(), paced by frames so a slow phone
+   still sees the fade), instead of showing the still artwork and swapping
+   it for the rig. */
+.lobby-fighter-art.is-arriving {
+  opacity: 0;
+}
 .lobby-fighter-art > img,
 .lobby-member-art > img {
   position: absolute;
@@ -398,9 +441,7 @@
   border-radius: 18px;
   background: #fff;
   color: #1a2547;
-  font:
-    800 calc(26px * var(--text-scale, 1))/1 "Barlow Condensed",
-    sans-serif;
+  font: 800 calc(26px * var(--text-scale, 1))/1 var(--font-display);
   transform: translateX(-50%);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
 }
@@ -430,9 +471,7 @@
   -webkit-backdrop-filter: blur(10px) saturate(1.3);
   backdrop-filter: blur(10px) saturate(1.3);
   color: #f4f7ff;
-  font:
-    700 calc(15px * var(--text-scale, 1))/1.2 "DM Sans",
-    sans-serif;
+  font: 700 calc(15px * var(--text-scale, 1))/1.2 var(--font-body);
   text-align: center;
   text-wrap: balance;
   overflow-wrap: anywhere;
@@ -537,18 +576,16 @@
   color: var(--ui-accent);
 }
 .lobby-slot span {
-  font:
-    400 clamp(18px, calc(var(--seat) * 0.2), 34px) / 1 "DM Sans",
-    sans-serif;
+  font: 400 clamp(18px, calc(var(--seat) * 0.2), 34px) / 1 var(--font-body);
 }
 .lobby-slot small {
-  font:
-    700 clamp(9px, calc(var(--seat) * 0.075), 14px) / 1 "DM Sans",
-    sans-serif;
+  font: 700 clamp(9px, calc(var(--seat) * 0.075), 14px) / 1 var(--font-body);
 }
+/* The middle holds the element pill and the rank chip side by side
+   ("Electric" and "Tempest III", the widest of each). */
 .lobby-nameplate {
   display: grid;
-  grid-template-columns: 44px 220px 44px;
+  grid-template-columns: 44px 252px 44px;
   align-items: center;
   gap: 10px;
 }
@@ -561,9 +598,7 @@
   border: 1px solid var(--lobby-line);
   border-radius: 50%;
   background: var(--lobby-glass);
-  font:
-    700 calc(24px * var(--text-scale, 1))/1 "DM Sans",
-    sans-serif;
+  font: 700 calc(24px * var(--text-scale, 1))/1 var(--font-body);
 }
 .lobby-name {
   display: grid;
@@ -577,9 +612,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font:
-    800 calc(34px * var(--text-scale, 1))/1 "Barlow Condensed",
-    sans-serif;
+  font: 800 calc(34px * var(--text-scale, 1))/1 var(--font-display);
   letter-spacing: 0.04em;
   text-transform: uppercase;
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
@@ -593,15 +626,53 @@
   border-radius: 999px;
   background: var(--lobby-glass);
   color: var(--element, var(--ui-accent));
-  font:
-    800 calc(11px * var(--text-scale, 1))/1 "DM Sans",
-    sans-serif;
+  font: 800 calc(11px * var(--text-scale, 1))/1 var(--font-body);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 .lobby-name .element-pill svg {
   width: 13px;
   height: 13px;
+}
+/* The element pill and your rank chip share a row under the name. */
+.lobby-name-tags {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: max-content;
+}
+/* Your rank (rank-chip.ts): the pill's size and glass, in the tier's
+   colour, a gem (or your shield) before it. */
+.lobby-rank-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--lobby-glass);
+  color: var(--rank, var(--ui-dim));
+  font: 800 calc(11px * var(--text-scale, 1))/1 var(--font-body);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.lobby-rank-chip[hidden] {
+  display: none;
+}
+.rank-chip-gem {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 1px;
+  background: currentColor;
+  transform: rotate(45deg);
+}
+.rank-chip-shield {
+  flex: none;
+  width: 12px;
+  height: 12px;
 }
 
 /* Party: members stand beside you; the bar above says how many. */
@@ -649,9 +720,7 @@
   overflow: hidden;
   border-radius: 999px;
   background: var(--lobby-glass);
-  font:
-    700 clamp(9px, calc(var(--seat) * 0.06), 12px) / 1.3 "DM Sans",
-    sans-serif;
+  font: 700 clamp(9px, calc(var(--seat) * 0.06), 12px) / 1.3 var(--font-body);
   text-overflow: ellipsis;
   white-space: nowrap;
   transform: translateX(-50%);
@@ -676,9 +745,7 @@
   border: 1px solid var(--lobby-line);
   border-radius: 999px;
   background: var(--lobby-glass);
-  font:
-    700 calc(12px * var(--text-scale, 1))/1 "DM Sans",
-    sans-serif;
+  font: 700 calc(12px * var(--text-scale, 1))/1 var(--font-body);
   pointer-events: auto;
 }
 .lobby-party-bar[hidden] {
@@ -691,9 +758,7 @@
   border-radius: 999px;
   background: color-mix(in srgb, var(--ui-danger) 20%, transparent);
   color: #ffb3bb;
-  font:
-    700 calc(11px * var(--text-scale, 1))/1 "DM Sans",
-    sans-serif;
+  font: 700 calc(11px * var(--text-scale, 1))/1 var(--font-body);
 }
 
 /* In someone else's party the leader stands in the middle (lobby-screen.ts):
@@ -719,9 +784,7 @@
   border-radius: 999px;
   background: var(--lobby-glass);
   color: var(--ui-accent);
-  font:
-    700 calc(12px * var(--text-scale, 1)) / 1.2 "DM Sans",
-    sans-serif;
+  font: 700 calc(12px * var(--text-scale, 1)) / 1.2 var(--font-body);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -757,9 +820,7 @@
   border-radius: 999px;
   background: var(--ui-danger, #e5484d);
   color: #fff;
-  font:
-    700 calc(11px * var(--text-scale, 1)) / 1 "DM Sans",
-    sans-serif;
+  font: 700 calc(11px * var(--text-scale, 1)) / 1 var(--font-body);
   transform: translateX(-50%);
   pointer-events: auto;
 }
@@ -836,16 +897,12 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--ui-accent);
-  font:
-    800 calc(11px * var(--text-scale, 1))/1.1 "Barlow Condensed",
-    sans-serif;
+  font: 800 calc(11px * var(--text-scale, 1))/1.1 var(--font-display);
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 .lobby-card b {
-  font:
-    800 calc(19px * var(--text-scale, 1))/1.1 "Barlow Condensed",
-    sans-serif;
+  font: 800 calc(19px * var(--text-scale, 1))/1.1 var(--font-display);
   letter-spacing: 0.02em;
 }
 .lobby-card small {
@@ -990,9 +1047,31 @@
   width: 12px;
   height: 12px;
   padding: 0;
-  top: -3px;
-  right: -3px;
-  background: #a78bff;
+  top: -4px;
+  left: calc(100% - 4px);
+  background: radial-gradient(circle at 35% 30%, #efe8ff, #b69cff 45%, #8a63f5);
+  box-shadow:
+    0 0 0 1.5px rgba(11, 16, 32, 0.9),
+    0 0 10px 3px rgba(185, 135, 255, 0.95);
+}
+/* Something new in the Spire: its halo is violet and glows, and the dot
+   rests with its glow. */
+.lobby-badge.is-new::after {
+  border-color: rgba(214, 192, 255, 0.95);
+  box-shadow: 0 0 8px 3px rgba(180, 130, 255, 0.9);
+}
+@keyframes lobby-badge-ping {
+  0% {
+    opacity: 1;
+    transform: scale(0.8);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.4);
+  }
+}
+:where(:root[data-motion="reduced"]) .lobby-badge::after {
+  animation: none;
 }
 .lobby-spark {
   color: #ffe39d !important;
@@ -1044,9 +1123,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font:
-    800 calc(18px * var(--text-scale, 1))/1 "Barlow Condensed",
-    sans-serif;
+  font: 800 calc(18px * var(--text-scale, 1))/1 var(--font-display);
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -1083,9 +1160,7 @@
     0 6px 0 #b8781a,
     0 14px 26px rgba(0, 0, 0, 0.4);
   color: var(--ui-accent-ink) !important;
-  font:
-    800 calc(40px * var(--text-scale, 1))/1 "Barlow Condensed",
-    sans-serif !important;
+  font: 800 calc(40px * var(--text-scale, 1))/1 var(--font-display) !important;
   letter-spacing: 0.1em;
 }
 /* PLAY stands out: a soft golden glow breathes behind it and a band of
@@ -1196,6 +1271,7 @@
   max-height: calc(
     100dvh - var(--lobby-top) - var(--lobby-bottom) - var(--lobby-play-h) - 8px
   );
+  overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 6px;
@@ -1235,9 +1311,7 @@
   gap: 2px;
 }
 .lobby-mode-menu b {
-  font:
-    800 calc(15px * var(--text-scale, 1))/1 "Barlow Condensed",
-    sans-serif;
+  font: 800 calc(15px * var(--text-scale, 1))/1 var(--font-display);
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -1263,8 +1337,6 @@
 /* Medium heights (small laptops, tablets): tighter rail, fewer cards. */
 @media (max-height: 760px) {
   .lobby-layer {
-    /* Mode 42px, gap 6px, PLAY 50px. */
-    --lobby-play-h: 98px;
     --lobby-rail-btn: 48px;
   }
 }
@@ -1279,6 +1351,12 @@
 /* Phones in landscape (and short windows): compact everything. */
 @media (max-height: 500px) {
   .lobby-layer {
+    /* Mode 42px, gap 6px, PLAY 50px: only here, where PLAY is 50px (below).
+       This was set from 760px down, where the block is still 140px, so
+       the mode menu's most height was 42px too much and a long list rose
+       over the header at 501-760px (found with ten modes listed, 26 Nov
+       2026). */
+    --lobby-play-h: 98px;
     /* 12px under the player card (42px from max(10px, safe area)), clear
        of a frame's star row hanging below it. */
     --lobby-top: calc(var(--hub-card-h) + 22px + var(--hub-drop, 0px));
@@ -1307,8 +1385,8 @@
     white-space: nowrap;
   }
   .lobby-badge {
-    top: -5px;
-    right: -5px;
+    top: -9px;
+    left: calc(100% - 5px);
     min-width: 16px;
     height: 16px;
     font-size: calc(9px * var(--text-scale, 1));
@@ -1320,7 +1398,7 @@
     --lobby-bar-room: 40px;
   }
   .lobby-nameplate {
-    grid-template-columns: 32px 150px 32px;
+    grid-template-columns: 32px 196px 32px;
     gap: 6px;
   }
   .lobby-step {
@@ -1335,6 +1413,28 @@
   .lobby-name .element-pill {
     height: 18px;
     font-size: calc(9px * var(--text-scale, 1));
+  }
+  .lobby-name-tags {
+    gap: 4px;
+  }
+  .lobby-rank-chip {
+    gap: 4px;
+    height: 18px;
+    padding: 0 8px;
+    font-size: calc(9px * var(--text-scale, 1));
+  }
+  .rank-chip-gem {
+    width: 6px;
+    height: 6px;
+  }
+  .rank-chip-shield {
+    width: 10px;
+    height: 10px;
+  }
+  /* Beside an open sheet the name stands alone in 150 px
+     (ui/components.css): the chip comes back when the sheet closes. */
+  .lobby-layer[data-ui-sheet] .lobby-rank-chip {
+    display: none;
   }
   .lobby-party {
     row-gap: 4px;
@@ -1415,6 +1515,31 @@
     gap: 2px;
     border-radius: 20px;
   }
+  /* Two buttons a row leave no room right of the icon: the badge rides
+     just above it and grows to the left, so it ends at its own button's
+     edge (inside the capsule, clear of the neighbour's icon). */
+  .lobby-rail .lobby-badge {
+    top: -10px;
+    left: auto;
+    right: -7px;
+    min-width: 15px;
+    height: 15px;
+    padding: 0 3px;
+  }
+  .lobby-rail .lobby-badge.is-new {
+    top: -4px;
+    right: -5px;
+    min-width: 12px;
+    height: 12px;
+    padding: 0;
+  }
+  .lobby-rail .lobby-badge.is-dot {
+    top: -3px;
+    right: -4px;
+    min-width: 10px;
+    height: 10px;
+    padding: 0;
+  }
 }
 /* Narrow phones: the stage needs the room the side cards take. */
 @media (max-width: 760px) {
@@ -1422,22 +1547,43 @@
     --lobby-cards: 178px;
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .lobby-play-button::after {
-    animation: none;
-    opacity: 0;
+/* That 178 px column on a phone held sideways (667 px): the chosen mode's
+   hint ("1v1 · a player, or a bot") and a card's own line ("Next: Ember
+   Festival frame at tier 5") were cut to "…". They take up to two lines
+   here instead. The mode button grows from 42 to 46 px to hold two lines
+   of the 11 px floor (ui/phone-fit.css), a finger tall as well. Where that
+   would cost a card (the Spire card shown, a shorter phone), fitCards in
+   lobby-screen.ts sets .lobby-cards-tight and they keep one line. */
+@media (max-width: 760px) and (max-height: 500px) {
+  .lobby-layer:not(.lobby-cards-tight)
+    :is(.lobby-mode-text small, .lobby-card > small) {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    white-space: normal;
+    line-height: 1.15;
+    /* Two even lines, not "… at tier" over a lone "5". */
+    text-wrap: balance;
   }
-  .lobby-play::before {
-    animation: none;
+  .lobby-layer:not(.lobby-cards-tight) .lobby-mode {
+    height: 46px;
   }
-  .lobby-fighter-art,
-  .lobby-member-art {
-    animation: none;
-  }
-  .lobby-emote-bubble.is-popping,
-  .lobby-fighter-art.is-hopping {
-    animation: none;
-  }
+}
+:where(:root[data-motion="reduced"]) .lobby-play-button::after {
+  animation: none;
+  opacity: 0;
+}
+:where(:root[data-motion="reduced"]) .lobby-play::before {
+  animation: none;
+}
+:where(:root[data-motion="reduced"]) .lobby-fighter-art,
+:where(:root[data-motion="reduced"]) .lobby-member-art {
+  animation: none;
+}
+:where(:root[data-motion="reduced"]) .lobby-emote-bubble.is-popping,
+:where(:root[data-motion="reduced"]) .lobby-fighter-art.is-hopping {
+  animation: none;
 }
 
 /* ── Hub top bar: the scene switch and fixed-size boxes ─────────────────── */
@@ -1471,9 +1617,7 @@
   border-radius: 999px;
   background: none;
   color: var(--ui-dim);
-  font:
-    800 calc(16px * var(--text-scale, 1))/1 "Barlow Condensed",
-    sans-serif;
+  font: 800 calc(16px * var(--text-scale, 1))/1 var(--font-display);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   cursor: pointer;
@@ -1540,9 +1684,7 @@
   display: block;
   grid-area: title;
   height: var(--hub-card-title);
-  font:
-    700 var(--hub-card-title) / 1 "DM Sans",
-    sans-serif;
+  font: 700 var(--hub-card-title) / 1 var(--font-body);
   letter-spacing: 0.02em;
 }
 :root body.hub-active #account-profile .account-avatar {
@@ -1572,9 +1714,7 @@ body.hub-active #account-profile .nav-level {
   border-radius: 8px;
   background: color-mix(in srgb, var(--ui-accent) 14%, transparent);
   color: var(--ui-accent);
-  font:
-    800 calc(13px * var(--text-scale, 1))/1 "Barlow Condensed",
-    sans-serif;
+  font: 800 calc(13px * var(--text-scale, 1))/1 var(--font-display);
   font-variant-numeric: tabular-nums;
 }
 body.hub-active .nav-xp {
@@ -1658,20 +1798,7 @@ body.hub-active #account-coins > * {
   }
 }
 
-/* Settings → Display. */
-.prefs-toggle-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-.prefs-toggle-row span {
-  display: grid;
-  gap: 3px;
-}
-.prefs-toggle-row small {
-  color: var(--ui-dim);
-}
+/* Settings: the full-screen switch (settings-screen.css lays out its row). */
 .prefs-switch {
   display: grid;
   place-items: center;
@@ -1694,30 +1821,8 @@ body.hub-active #account-coins > * {
   opacity: 0.5;
 }
 
-/* Short landscape screens: Settings shows everything without scrolling, so
-   Display is one line like Motion and Graphics, and Sound spans the column. */
-@media (orientation: landscape) and (max-height: 500px) {
-  .prefs-grid.has-display > :first-child {
-    grid-row: span 3;
-  }
-  .prefs-card.prefs-display {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-  }
-  .framed-dialog .prefs-card.prefs-display > h3 {
-    margin: 0;
-  }
-  .prefs-display .prefs-toggle-row small {
-    display: none;
-  }
-  .prefs-display .prefs-switch {
-    height: 28px;
-  }
-}
-
-/* Party invitation picker (Lobby → Invite). */
+/* Party invitation picker (Lobby → Invite): the Friends list's rows
+   (ui-row, friends.css' portrait) in a plain list. */
 .party-invite-list {
   display: grid;
   gap: 8px;
@@ -1725,35 +1830,34 @@ body.hub-active #account-coins > * {
   padding: 0;
   list-style: none;
 }
-.party-invite-list li {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 8px 10px 8px 14px;
-  border: 1px solid rgba(139, 174, 229, 0.25);
-  border-radius: 12px;
-  background: rgba(14, 26, 49, 0.6);
-}
-.party-invite-list li > span {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-}
-.party-invite-list b {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.party-invite-list small {
-  color: var(--ui-ok);
+/* One width for Invite, Invited and In party: the buttons end in one
+   column, and a button doesn't change size when you tap it. */
+.party-invite-list .ui-row-acts > .ui-btn {
+  min-width: 96px;
+  justify-content: center;
 }
 
 /* Behind a dialog, a full-screen drawer or a hub panel the Lobby holds
-   still; the screen open on top (ui/hub-panel.ts) keeps moving. */
-.lobby-layer.is-covered,
-.lobby-layer.is-covered > :not(.ui-panel-host),
-.lobby-layer.is-covered > :not(.ui-panel-host) * {
+   still; the screen open on top (ui/hub-panel.ts) keeps moving.
+   - Under a full panel, the parts it covers (data-ui-covered, hidden by
+     ui/components.css) pause whatever moves in them, a cosmetic's too. Set
+     with their visibility, the pause costs no restyle of its own.
+   - Behind a dialog or the drawer (is-covered, lobby-screen.ts), the
+     Lobby's own animations pause by name.
+   (A rule on `.lobby-layer.is-covered > :not(.ui-panel-host) *` restyled
+   every Lobby element, 900-1,500 of them, a second time on every open and
+   close, and missed pseudo-elements: PLAY's glow and sweep ran on under a
+   screen. Nov 2026.) */
+.lobby-layer [data-ui-covered],
+.lobby-layer [data-ui-covered] *,
+.lobby-layer [data-ui-covered]::before,
+.lobby-layer [data-ui-covered]::after,
+.lobby-layer [data-ui-covered] *::before,
+.lobby-layer [data-ui-covered] *::after,
+.lobby-layer.is-covered
+  :is(.lobby-fighter-art, .lobby-member-art, .lobby-emote-bubble),
+.lobby-layer.is-covered :is(.lobby-badge, .lobby-play-button)::after,
+.lobby-layer.is-covered .lobby-play::before {
   animation-play-state: paused !important;
 }
 

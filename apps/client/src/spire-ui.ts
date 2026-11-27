@@ -4,6 +4,7 @@
  * raid rite flow and its "rite" message), the countdown, and the results.
  */
 import { CHARACTERS, type Fighter, type Snapshot } from "@arena/shared";
+import { readyButton, type ArenaLoad } from "./briefing-ready";
 import { RAID_ATTACKS } from "../../../packages/shared/src/raid";
 import {
   SPIRE_BLESSINGS,
@@ -13,7 +14,10 @@ import {
   SPIRE_ROLES,
   SPIRE_ZONES,
   spireBlessingText,
+  spireCatchUpPicks,
+  spireEliteFloor,
   spireStartCheckpoint,
+  spireZoneStart,
   type SpireBlessingId,
   type SpireFloor,
   spireBorrowed,
@@ -23,7 +27,7 @@ import {
 import { menuIcon } from "./menu-icons";
 import { raidBriefingGuide } from "./raid-briefing";
 import { soloRevives } from "./raid-solo";
-import { LIVE_SECONDS } from "./overlay";
+import { LIVE_COUNTDOWN, LIVE_NUMBER, LIVE_SECONDS } from "./overlay";
 import { spireBlessingIcon } from "./spire-art";
 import { actions, button } from "./ui/components";
 import "./spire-battle.css";
@@ -50,6 +54,23 @@ const zoneOf = (f: SpireFloor) => SPIRE_ZONES[f.zone] ?? SPIRE_ZONES[1];
 const ascendantOf = (f: SpireFloor) => zoneOf(f).ascendant;
 /** What the Ascendant brings that its raid didn't (the boss floor's briefing). */
 const ascendantNew = (f: SpireFloor) => zoneOf(f).ascendantMoves;
+
+/**
+ * Where this party's next climb starts (the server's count, past the elite
+ * once everyone has beaten it); an older server's zone start otherwise.
+ */
+const nextClimb = (s: NonNullable<NonNullable<Snapshot["raid"]>["spire"]>) =>
+  s.checkpoint ??
+  spireStartCheckpoint(Math.max(s.startFloor, s.best + 1), s.ceiling);
+/** The briefing's line on the checkpoint after the zone's elite. */
+function eliteCheckpointLine(
+  s: NonNullable<NonNullable<Snapshot["raid"]>["spire"]>,
+) {
+  const elite = spireEliteFloor(s.zone);
+  if (elite === undefined || s.startFloor > elite || elite >= s.ceiling)
+    return "";
+  return ` Beat the elite on floor ${elite} and, until you conquer the zone, your climbs start from floor ${elite + 1}.`;
+}
 
 /** Who a floor sends: each wave's Echoes and their roles. */
 export function spireFloorPlan(f: SpireFloor | undefined) {
@@ -130,14 +151,18 @@ let offered: {
  * The overlay for a climb in this phase: its title, body and actions (the
  * same ids and data attributes as a raid's, so raid-ui.ts binds them).
  */
-export function spireOverlay(state: Snapshot, me: Fighter) {
+export function spireOverlay(state: Snapshot, me: Fighter, arena?: ArenaLoad) {
   const r = state.raid!,
     s = r.spire!;
   const floor = SPIRE_FLOORS[s.floor];
   const heroes = state.players.filter((p) => !p.raidBoss && !p.echo && !p.out);
   let title = "",
     body = "",
-    acts = "";
+    acts = "",
+    // The blessing choice: the raid's rites screen, the whole screen like
+    // the countdown (screens/raid-rites.css); raid-ui.ts shows it instead of
+    // the card.
+    screen: string | undefined;
   if (state.phase === "briefing" && floor?.kind === "boss") {
     // The top of the zone: the Ascendant, what is new, then ready (on a clock).
     const waiting = state.instructionsReady.includes(me.id);
@@ -149,18 +174,21 @@ export function spireOverlay(state: Snapshot, me: Fighter) {
       : "Stand beside a fallen ally to revive them.";
     title = `Floor ${s.floor} · ${escape(ascendantOf(floor))}`;
     body = `<div class="rc-body spire-briefing spire-boss-briefing" tabindex="0" role="region" aria-label="Boss floor briefing"><p class="spire-lead">The top of ${escape(zoneOf(floor).name)}: ${escape(zoneOf(floor).bossLead)}</p>${ascendantNew(floor).length ? `<span class="ui-kicker">New attacks</span>${spireFloorPlan(floor)}` : ""}<ul class="spire-rules"><li>${menuIcon("motion")}<span><b>It reads you.</b> ${escape(zoneOf(floor).bossReads)}</span></li><li>${menuIcon("sparkle")}<span>Your <b>blessings</b> fight with you. You pick one more before the fight.</span></li><li>${menuIcon("again")}<span>${revive} A defeat ends the climb.</span></li></ul><details class="rc-extra" id="raid-briefing-extra"><summary>${escape(spirePossessive(sentence(zoneOf(floor).bossName)))} raid, step by step</summary>${raidBriefingGuide(r.boss, me.character, solo)}</details></div>`;
-    acts = `<p class="ui-note rc-meta">Boss floor · starts in <span class="spire-briefing-timer">${LIVE_SECONDS}</span> · ${solo ? "Solo" : `${r.partySize} climbers`}</p>${actions(button(waiting ? "Waiting for the team…" : "I’m ready", { kind: "primary", icon: waiting ? undefined : "battle", disabled: waiting, attrs: { id: "raid-instructions", "aria-label": waiting ? "Waiting for the team" : `I’m ready — fight ${ascendantOf(floor)}` } }))}`;
+    acts = `<p class="ui-note rc-meta">Boss floor · starts in <span class="spire-briefing-timer">${LIVE_SECONDS}</span> · ${solo ? "Solo" : `${r.partySize} climbers`}</p>${actions(readyButton(waiting, arena, "I’m ready", `I’m ready — fight ${ascendantOf(floor)}`))}`;
   } else if (state.phase === "briefing") {
     const waiting = state.instructionsReady.includes(me.id);
     title = `Floor ${s.floor} · ${escape(floor?.name ?? "The Spire")}`;
-    body = `<div class="rc-body spire-briefing" tabindex="0" role="region" aria-label="Floor briefing"><p class="spire-lead">Echoes are shadow copies of the champions, with their whole kits. Read their wind-ups as you would in a match, and beat every wave to open the stairs.</p>${spireFloorPlan(floor)}<ul class="spire-rules"><li>${menuIcon("sparkle")}<span>After each floor you pick a <b>blessing</b>. They stack until the climb ends.</span></li><li>${menuIcon("save")}<span>Every floor you clear is <b>saved at once</b>, with its first-clear reward.</span></li><li>${menuIcon("again")}<span>${r.partySize > 1 ? "Stand beside a fallen ally to revive them." : "One self-revive on each floor."} A defeat ends the climb; you start again from floor ${spireStartCheckpoint(s.startFloor, s.ceiling)}.</span></li></ul></div>`;
-    acts = `<p class="ui-note rc-meta">Climbing from floor ${s.startFloor} · ${r.partySize === 1 ? "Solo" : `${r.partySize} climbers`}</p>${actions(button(waiting ? "Waiting for the team…" : "I’m ready", { kind: "primary", icon: waiting ? undefined : "battle", disabled: waiting, attrs: { id: "raid-instructions", "aria-label": waiting ? "Waiting for the team" : "I’m ready — start the climb" } }))}`;
+    body = `<div class="rc-body spire-briefing" tabindex="0" role="region" aria-label="Floor briefing"><p class="spire-lead">Echoes are shadow copies of the champions, with their whole kits. Read their wind-ups as you would in a match, and beat every wave to open the stairs.</p>${spireFloorPlan(floor)}<ul class="spire-rules"><li>${menuIcon("sparkle")}<span>${s.catchUp ? `You start at your checkpoint, past the elite: first pick the <b>${s.catchUp.of} blessings</b> of the floors before it, then one more after each floor. They stack until the climb ends.` : "After each floor you pick a <b>blessing</b>. They stack until the climb ends."}</span></li><li>${menuIcon("save")}<span>Every floor you clear is <b>saved at once</b>, with its first-clear reward.</span></li><li>${menuIcon("again")}<span>${r.partySize > 1 ? "Stand beside a fallen ally to revive them." : "One self-revive on each floor."} A defeat ends the climb; you start again from floor ${nextClimb(s)}.${eliteCheckpointLine(s)}</span></li></ul></div>`;
+    acts = `<p class="ui-note rc-meta">Climbing from floor ${s.startFloor} · ${r.partySize === 1 ? "Solo" : `${r.partySize} climbers`}</p>${actions(readyButton(waiting, arena, "I’m ready", "I’m ready — start the climb"))}`;
   } else if (state.phase === "intermission") {
     const offers = s.offers[me.id] ?? [];
     const mine = s.blessings[me.id] ?? {};
     // The server drops the offer once one is picked: the cards stay put,
     // the picked one checked (like rites), from what was first offered.
-    const key = `${s.floor}:${me.id}`;
+    // A climb resumed past the elite deals several choices before one
+    // floor: each is its own (the same three cards may come twice).
+    const catchUp = s.catchUp && s.catchUp.round > 0 ? s.catchUp : undefined;
+    const key = `${s.floor}:${catchUp?.round ?? 0}:${me.id}`;
     if (
       offers.length &&
       (offered.key !== key || offers.join() !== offered.ids.join())
@@ -171,10 +199,6 @@ export function spireOverlay(state: Snapshot, me: Fighter) {
       (id) => (mine[id] ?? 0) > (offered.before[id] ?? 0),
     );
     const locked = !offers.length;
-    title = locked
-      ? `Blessing chosen · Floor ${s.floor} next`
-      : `Choose a blessing · Floor ${s.floor} next`;
-    body = `<p class="raid-phase-objective"><b>${escape(floor?.name ?? "")}</b> · ${floor?.kind === "boss" ? "Boss floor" : floor?.kind === "elite" ? "Elite floor" : `${s.waves} waves`}</p><p class="spire-plan-line">${escape(spireFloorLine(floor))}</p><details class="raid-team-summary"><summary>Your blessings</summary><div class="spire-team" aria-label="Team blessings">${heroes.map((p) => `<div><b>${escape(p.name)}</b><span>${escape(held(state, p.id))}${s.offers[p.id]?.length ? " · Choosing…" : ""}</span></div>`).join("")}</div></details>`;
     const cards = offered.ids
       .map((id) =>
         spireBlessingCard(id, offered.before[id] ?? 0, {
@@ -183,10 +207,29 @@ export function spireOverlay(state: Snapshot, me: Fighter) {
         }),
       )
       .join("");
-    acts = `<div class="raid-rite-intro">${locked ? '<span class="raid-rite-locked">Blessing locked in · waiting for the team</span>' : "<span>One of three · they stack</span>"}<span class="raid-choice-timer" role="timer" aria-label="Time left to choose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg><span>Choose in</span><strong>${LIVE_SECONDS}</strong></span></div><div class="raid-rite-options spire-blessings">${cards || "<p>Blessing locked in · waiting for the team.</p>"}</div>`;
+    const kind =
+      floor?.kind === "boss"
+        ? "Boss floor"
+        : floor?.kind === "elite"
+          ? "Elite floor"
+          : `${s.waves} waves`;
+    const heading = locked ? "Blessing chosen" : "Choose a blessing";
+    const done = picked || locked;
+    // Catching up: one pip per skipped floor, filled as they are chosen.
+    const pips = catchUp
+      ? Array.from(
+          { length: catchUp.of },
+          (_, i) =>
+            `<i${i < catchUp.round - 1 || (i === catchUp.round - 1 && done) ? ' class="on"' : ""}></i>`,
+        ).join("")
+      : `<i${done ? ' class="on"' : ""}></i>`;
+    const kicker = catchUp
+      ? `Checkpoint · blessing ${catchUp.round} of ${catchUp.of}`
+      : `Floor ${s.floor} next`;
+    screen = `<div class="rites-screen is-spire" role="dialog" aria-label="${heading}, ${catchUp ? `checkpoint blessing ${catchUp.round} of ${catchUp.of}, ` : ""}floor ${s.floor} next"><header class="rites-head"><div class="rites-lead"><span class="rites-kicker">The Spire · ${kicker}</span><h2 class="rites-title">${heading} <span class="rites-pips" aria-hidden="true">${pips}</span></h2><p class="rites-objective"><b>${escape(floor?.name ?? "")}</b> · ${kind} · ${escape(spireFloorLine(floor))}</p></div><span class="raid-choice-timer" role="timer" aria-label="Time left to choose">${LIVE_NUMBER}</span></header><div class="raid-rite-options spire-blessings">${cards || "<p>Blessing locked in · waiting for the team.</p>"}</div><footer class="rites-foot">${locked ? '<span class="raid-rite-locked">Blessing locked in · waiting for the team</span>' : catchUp ? `<span>One of three · for floor ${spireZoneStart(s.zone) + catchUp.round}, which you skipped</span>` : "<span>One of three · they stack</span>"}<details class="raid-team-summary"><summary>Your blessings</summary><div class="spire-team" aria-label="Team blessings">${heroes.map((p) => `<div><b>${escape(p.name)}</b><span>${escape(held(state, p.id))}${s.offers[p.id]?.length ? " · Choosing…" : ""}</span></div>`).join("")}</div></details></footer></div>`;
   } else if (state.phase === "countdown") {
-    // raid-ui.ts shows it as every mode's countdown (countdownCard).
-    body = `Floor ${s.floor} · ${escape(floor?.name ?? "")}`;
+    title = LIVE_COUNTDOWN;
+    body = `<p>Floor ${s.floor} · ${escape(floor?.name ?? "")}</p>`;
   } else if (state.phase === "paused") {
     title = "A teammate disconnected";
     body = "<p>The climb is paused while they reconnect.</p>";
@@ -227,18 +270,17 @@ export function spireOverlay(state: Snapshot, me: Fighter) {
         : "";
     // This room climbs its zone again from its start; the account's
     // checkpoint moves on to the next zone once this one is conquered.
-    const next = spireStartCheckpoint(
-      Math.max(s.startFloor, s.best + 1),
-      s.ceiling,
-    );
+    // (Past the elite, the checkpoint stays there until the zone falls.)
+    const next = nextClimb(s);
     const checkpoint = conquered ? spireStartCheckpoint(s.best + 1) : next;
+    const owed = spireCatchUpPicks(s.zone, next);
     const banner = conquered
       ? `<p class="spire-conquered" role="status">${menuIcon("leaderboard")}<span><b>${escape(ascendantOf(top))} defeated.</b> ${escape(zoneOf(top).name)} is yours. ${nextZone ? (nextZone.floor <= SPIRE_BUILT_TOP ? `Zone ${nextZone.zone} opens at floor ${nextZone.floor}: pick it in the Spire to climb on.` : "More floors are coming.") : `You stand on the summit: all ${zoneOf(top).id} zones of the Spire are conquered. Climb any of them again from the Spire.`}</span></p>`
       : "";
     body = `${banner}<div class="rc-summary spire-summary"><div class="rc-stats"><span class="rc-stat"><b class="ui-num">${s.best || "—"}</b><small>Best floor</small></span><span class="rc-stat"><b class="ui-num">${checkpoint}</b><small>Checkpoint</small></span><span class="rc-stat"><b class="ui-num">${clock(s.climbSeconds)}</b><small>Climb time</small></span><span class="rc-stat"><b class="ui-num">${r.downs}</b><small>Downs</small></span></div></div>${rewards}<p class="spire-held"><span class="ui-kicker">Blessings</span>${escape(held(state, me.id))}</p>${saved ? `<p class="rc-save${!saving && !failed ? " is-saved" : failed ? " is-error" : ""}" role="status">${saved}</p>` : ""}${conquered ? "" : `<p class="rc-tip">${escape(r.message)}</p>`}`;
     const readyCount = heroes.filter((p) => p.ready).length;
     const retryWait = me.ready || !heroes.every((p) => p.connected);
-    acts = `<p class="ui-note rc-meta">${heroes.length === 1 ? `A new climb from floor ${next} · no blessings` : `${readyCount}/${heroes.length} ready · everyone confirms to climb again`}</p>${actions(
+    acts = `<p class="ui-note rc-meta">${heroes.length === 1 ? `A new climb from floor ${next} · ${owed ? `${owed} blessings to pick first` : "no blessings"}` : `${readyCount}/${heroes.length} ready · everyone confirms to climb again`}</p>${actions(
       button("Return to menu", {
         kind: "danger",
         icon: "home",
@@ -259,5 +301,11 @@ export function spireOverlay(state: Snapshot, me: Fighter) {
       }),
     )}`;
   }
-  return { title, body, actions: acts, kicker: `The Spire · Floor ${s.floor}` };
+  return {
+    title,
+    body,
+    actions: acts,
+    screen,
+    kicker: `The Spire · Floor ${s.floor}`,
+  };
 }

@@ -35,6 +35,13 @@ const PALETTE: Record<string, [number, number]> = {
   "festival-aura": [0xff4f4f, 0xffd65b],
   "garden-aura": [0xffb3cf, 0x8fe06a],
   "winter-aura": [0xbfe8ff, 0xffffff],
+  "seaside-aura": [0xff9a76, 0x7fe0d8],
+  "steamworks-aura": [0xe0a23a, 0xffe6a6],
+  "music-aura": [0xff6fa8, 0x6fd6ff],
+  "rune-aura": [0xffd36b, 0xb48cff],
+  "borealis-aura": [0x4dffb8, 0xb48cff],
+  "firefly-aura": [0xd8ff7a, 0xfff3a0],
+  "crystal-aura": [0xb48cff, 0x8ff0ff],
   "spark-aura": [0x8edfff, 0xffe18b],
   "ember-aura": [0xff8765, 0xffd28b],
   "halo-aura": [0xffe5a0, 0xa5adff],
@@ -48,6 +55,13 @@ const PALETTE: Record<string, [number, number]> = {
   "festival-entrance": [0xff4f4f, 0xffd65b],
   "garden-entrance": [0xff6fa0, 0x8fe06a],
   "winter-entrance": [0xbfe8ff, 0xffffff],
+  "seaside-entrance": [0xf2c98a, 0x7fe0d8],
+  "steamworks-entrance": [0xe0a23a, 0xf4f1e6],
+  "smoke-entrance": [0x8a93a6, 0x9be07a],
+  "rainbow-entrance": [0xff4f5a, 0x4fb6ff],
+  "borealis-entrance": [0x4dffb8, 0xb48cff],
+  "bubble-entrance": [0xcff6ff, 0xffc8f0],
+  "portal-entrance": [0x9a5cff, 0x4de8d8],
   "lightning-strike": [0x8edfff, 0xffe18b],
   firefall: [0xff8765, 0xffd28b],
   sunburst: [0xffd778, 0xffffff],
@@ -61,6 +75,13 @@ const PALETTE: Record<string, [number, number]> = {
   "festival-victory": [0xff4f4f, 0xffd65b],
   "garden-victory": [0xff6fa0, 0xfff0f5],
   "winter-victory": [0xbfe8ff, 0xffffff],
+  "seaside-victory": [0xff8a4c, 0xffd36b],
+  "steamworks-victory": [0xe0a23a, 0xffe6a6],
+  "balloon-victory": [0xff4f6a, 0xffd65b],
+  "disco-victory": [0xff4fd8, 0x4fb6ff],
+  "borealis-victory": [0x4dffb8, 0xb48cff],
+  "trophy-victory": [0xf2c14e, 0xfff3c4],
+  "meteor-victory": [0xffd36b, 0x9fd8ff],
   splashdown: [0x7fe9ff, 0xe6fbff],
   "twin-spark": [0xffe18b, 0x8edfff],
   "feather-fall": [0xffd28b, 0xe77f5c],
@@ -205,21 +226,30 @@ export function victoryFlourish(
   if (chance(12, dt))
     emit({ x: x + (Math.random() - 0.5) * 140 * sc, y: y - (40 + Math.random() * 90) * sc, vx: 0, vy: 20, life: 0.9, size: 2.6 * sc, color: Math.random() < 0.5 ? main : 0xffffff, shape: "star", behind: true });
   if (!at(tier, "legendary")) return;
-  // Rays of light turn slowly behind the fighter.
+  // A ring of light pulses out once, and a few slender rays, long and
+  // short, turn slowly behind the fighter. (Until 26 Nov, twelve broad
+  // wedges: a striped fan behind every raid finale that looked dated and
+  // painted five times the fill.)
   const cy = y - 40 * sc;
-  for (let i = 0; i < 12; i++) {
-    const a = (i / 12) * TAU + t * 0.5;
-    const w = 0.09;
-    under.fillStyle(i % 2 ? main : accent, 0.16 * fade).fillTriangle(
+  const pulse = Math.max(0, Math.min(1, (t - 0.05) / 0.55));
+  if (pulse > 0 && pulse < 1)
+    under
+      .lineStyle(3 * sc * (1 - pulse) + 0.5 * sc, main, 0.6 * (1 - pulse))
+      .strokeCircle(x, cy, (24 + 72 * (1 - (1 - pulse) ** 2)) * sc);
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * TAU + t * 0.3,
+      r = (i % 2 ? 78 : 112) * sc,
+      w = 0.045;
+    under.fillStyle(i % 2 ? accent : main, 0.14 * fade).fillTriangle(
       x,
       cy,
-      x + Math.cos(a - w) * 120 * sc,
-      cy + Math.sin(a - w) * 120 * sc,
-      x + Math.cos(a + w) * 120 * sc,
-      cy + Math.sin(a + w) * 120 * sc,
+      x + Math.cos(a - w) * r,
+      cy + Math.sin(a - w) * r,
+      x + Math.cos(a + w) * r,
+      cy + Math.sin(a + w) * r,
     );
   }
-  under.fillStyle(0xffffff, 0.12 * fade).fillCircle(x, cy, 30 * sc);
+  under.fillStyle(0xffffff, 0.1 * fade).fillCircle(x, cy, 26 * sc);
   if (!at(tier, "mythic")) return;
   // A crown of prismatic light above the head.
   const hy = y - 112 * sc;

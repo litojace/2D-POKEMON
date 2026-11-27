@@ -3,14 +3,22 @@ import { JOURNEY_ITEM_BY_ID } from "../../../packages/shared/src/journey";
 import { RAID_COSMETICS } from "../../../packages/shared/src/raid";
 import { LOOK_ITEM_BY_ID } from "../../../packages/shared/src/shop";
 import {
+  DRAWN_ENTRANCES,
   drawCollectionAura,
+  drawCollectionEntrance,
   drawCollectionVictory,
   playCollectionEntrance,
 } from "./skins/collection-fx";
 import { canvasGraphics } from "./skins/fx-canvas";
+import { reducedMotionQuery } from "./reduced-motion";
 import { drawColorsFx, isColors } from "./skins/colors-fx";
 import "./cosmetic-fx.css";
-import { drawAnyParticle, stepParticle, type FxParticle } from "./skins/skin-fx";
+import {
+  drawAnyParticle,
+  stepParticle,
+  type FxParticle,
+} from "./skins/skin-fx";
+import { rigEntrance, rigVictory } from "./skins/rig-piece-fx";
 
 /**
  * Every item thumbnail (Shop, Wardrobe, Raid Hub, Journey, rewards) shows
@@ -85,55 +93,10 @@ const slotOf = (id: string) =>
 
 const lives = new Map<HTMLElement, Live>();
 const visible = new Set<Live>();
-const reduced = matchMedia("(prefers-reduced-motion: reduce)");
+// Settings → Reduce motion (reduced-motion.ts), not the device's setting.
+const reduced = reducedMotionQuery;
 let frame = 0;
 let lastTick = 0;
-
-/**
- * Entrance pieces drawn by the rig itself in play get a matching stand-in.
- * Mountainborn: the rig's burst of pebbles from the feet (animation/rig.ts),
- * nothing more; a Rare entrance has no flourish.
- */
-function entranceFallback(emit: (p: FxParticle) => void, id: string) {
-  if (id !== "mountainborn") return false;
-  for (let i = 0; i < 22; i++) {
-    const a = -Math.PI * (0.1 + Math.random() * 0.8);
-    const speed = 90 + Math.random() * 150;
-    emit({
-      x: (Math.random() - 0.5) * 30,
-      y: 0,
-      vx: Math.cos(a) * speed,
-      vy: Math.sin(a) * speed - 60,
-      life: 0.8 + Math.random() * 0.4,
-      size: 2.5 + Math.random() * 2.5,
-      color: [0x8a7a68, 0xa99782, 0x6f6152, 0xffc46b][i % 4],
-      shape: "pebble",
-    });
-  }
-  return true;
-}
-function victoryFallback(
-  g: ReturnType<typeof canvasGraphics>,
-  id: string,
-  t: number,
-) {
-  if (id !== "rockslide-flex") return false;
-  // A pile of rocks rises under the fighter.
-  const rise = Math.min(1, t / 0.35);
-  for (let i = 0; i < 7; i++) {
-    const x = (i - 3) * 16,
-      h = (18 + (3 - Math.abs(i - 3)) * 9) * rise;
-    g.fillStyle(i % 2 ? 0x8a7458 : 0x6f5c45, 1).fillTriangle(
-      x - 14,
-      0,
-      x + 14,
-      0,
-      x,
-      -h,
-    );
-  }
-  return true;
-}
 
 /**
  * The thumbnail's size in canvas pixels. A still is drawn once, so it reads
@@ -175,17 +138,33 @@ function draw(live: Live, now: number, paint = true) {
     front.setTransform(1, 0, 0, 1, 0, 0);
     back.clearRect(0, 0, w, h);
     front.clearRect(0, 0, w, h);
-    // World units around the fighter's feet, fitted to the thumbnail.
+    // World units around the fighter's feet, fitted to the thumbnail: an
+    // effect alone fills it (the Shop's tiles drew it round a figure of the
+    // fighter at the fighter's scale until 25 Nov 2026).
+    // An entrance that draws (Rainbow's arch) says how much room it takes.
+    const reach = (live.kind === "entrance" &&
+      DRAWN_ENTRANCES[live.id]?.reach) || {
+      w: 104,
+      h: 92,
+      feet: 0.82,
+    };
     const scale =
       live.kind === "aura"
         ? Math.min((w * 0.86) / 128, h / 110)
         : live.kind === "entrance"
-          ? Math.min(w / 104, h / 92)
+          ? Math.min(w / reach.w, h / reach.h)
           : live.kind === "skin"
             ? h / 100
             : Math.min(w / 165, h / 118);
     const feetY =
-      h * (live.kind === "aura" ? 0.65 : live.kind === "skin" ? 0.98 : 0.82);
+      h *
+      (live.kind === "aura"
+        ? 0.65
+        : live.kind === "skin"
+          ? 0.98
+          : live.kind === "entrance"
+            ? reach.feet
+            : 0.82);
     for (const c of [back, front])
       c.setTransform(scale, 0, 0, scale, w / 2, feetY);
     gb = canvasGraphics(back);
@@ -233,9 +212,19 @@ function draw(live: Live, now: number, paint = true) {
       live.cycle = cycle;
       live.particles = [];
       if (!playCollectionEntrance(emit, live.id, 0, 0, 1))
-        entranceFallback(emit, live.id);
+        rigEntrance(emit, live.id, 0, 0);
       if (still) for (let s = 0; s < 7; s++) step(live, 0.05);
     }
+    const drawn = DRAWN_ENTRANCES[live.id];
+    if (drawn)
+      drawCollectionEntrance(
+        gb,
+        live.id,
+        0,
+        0,
+        1,
+        still ? drawn.still : ((now - live.start) / 1000) % period,
+      );
   } else {
     const period = 3.6;
     const t = still ? 1 : ((now - live.start) / 1000) % period;
@@ -261,7 +250,7 @@ function draw(live: Live, now: number, paint = true) {
         first,
       )
     )
-      victoryFallback(gb, live.id, t);
+      rigVictory(gb, live.id, 0, 0, 1, t);
   }
   if (!still) step(live, dt);
   // Particles a finale emits behind the fighter stay on the back canvas.
@@ -279,7 +268,9 @@ function drawFrozen(live: Live) {
   live.cycle = -1;
   live.start = live.last = 0;
   if (!reduced.matches) {
-    const end = FROZEN_AT[live.kind];
+    const end =
+      (live.kind === "entrance" && DRAWN_ENTRANCES[live.id]?.still) ||
+      FROZEN_AT[live.kind];
     for (let t = 0; t < end - 1e-6; t += FROZEN_STEP)
       draw(live, t * 1000, false);
     draw(live, end * 1000);

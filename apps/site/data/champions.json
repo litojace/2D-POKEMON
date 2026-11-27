@@ -1,0 +1,1328 @@
+[
+  {
+    "id": "voltkit",
+    "name": "Voltkit",
+    "element": "Electric",
+    "role": "Ranged speedster",
+    "description": "A sugar-glider kit that stores static in its antennae. Glides over trouble and stays deadly at range.",
+    "color": "#ffd65b",
+    "health": 135,
+    "speed": 270,
+    "reach": 680,
+    "basic": {
+      "name": "Spark Dart",
+      "description": "A fast electric projectile.",
+      "kind": "projectile",
+      "damage": 6,
+      "interval": 0.27
+    },
+    "skills": [
+      {
+        "name": "Static Lance",
+        "description": "A powerful electric bolt toward your aim. Briefly paralyzes.",
+        "kind": "projectile",
+        "damage": 20,
+        "cooldown": 8,
+        "status": "paralysis"
+      },
+      {
+        "name": "Ball Lightning",
+        "description": "A slow electric orb that flies through enemies, zapping the nearest one within 3 m for 3 every 0.3 seconds, then bursts at the end of its flight for 8. Every zap and the burst slow for a moment, and it deals 30% more to enemies already slowed, stunned or otherwise hindered: stay near it and each zap hurts more.",
+        "kind": "projectile",
+        "damage": 8,
+        "cooldown": 10,
+        "status": "slow"
+      },
+      {
+        "name": "Static Glide",
+        "description": "Take off with a static pop that shoves nearby enemies away and slows them, then glide: airborne (ground attacks miss) and 30% faster. Gliding builds static (Charged).",
+        "kind": "buff",
+        "damage": 0,
+        "cooldown": 12,
+        "status": "haste"
+      }
+    ],
+    "ultimate": {
+      "name": "Thunderstorm",
+      "description": "Call a storm over the whole court: four bolts fall on the enemy nearest your aim, wherever it is, 0.65 seconds apart. Each marks the ground where it is heading and strikes 0.55 seconds later: 14 damage and 0.8 seconds of paralysis to anyone in its 2.4 m, so a bolt that lands holds them for the next.",
+      "kind": "storm",
+      "damage": 14,
+      "cooldown": 20,
+      "status": "paralysis"
+    },
+    "skins": [
+      {
+        "id": "voltkit-stormcrown",
+        "name": "Storm Revenant",
+        "rarity": "mythical"
+      },
+      {
+        "id": "voltkit-nova-vanguard",
+        "name": "Pulse Courier",
+        "rarity": "legendary"
+      },
+      {
+        "id": "voltkit-sky-pirates",
+        "name": "Storm Corsair",
+        "rarity": "legendary"
+      },
+      {
+        "id": "voltkit-hon-viet",
+        "name": "Đèn Ông Sao",
+        "rarity": "legendary"
+      }
+    ],
+    "skinCount": 23
+  },
+  {
+    "id": "coilemur",
+    "name": "Coilemur",
+    "element": "Electric",
+    "role": "Grappler",
+    "description": "A ring-tailed lemur whose striped tail is a living electromagnet. Yanks runners in, then won't let go.",
+    "color": "#f2c94c",
+    "health": 150,
+    "speed": 250,
+    "reach": 140,
+    "basic": {
+      "name": "Coil Swipe",
+      "description": "A quick crackling swipe in front of Coilemur.",
+      "kind": "melee",
+      "damage": 12,
+      "interval": 0.36
+    },
+    "skills": [
+      {
+        "name": "Magnet Lash",
+        "description": "Wind up for a quarter second, then crack your magnet tail toward the aim. The first enemy hit is dragged right up to you.",
+        "kind": "projectile",
+        "damage": 14,
+        "cooldown": 11
+      },
+      {
+        "name": "Static Clamp",
+        "description": "Clamp a charge onto whoever is in front of you. 0.9 seconds later it goes off: 28 damage and paralysis, and it arcs to every enemy within 4 m of it for half.",
+        "kind": "clamp",
+        "damage": 28,
+        "cooldown": 12,
+        "status": "paralysis"
+      },
+      {
+        "name": "Live Wire",
+        "description": "After a quarter-second wind-up, Coilemur runs 30% faster for 3.5 seconds and lashes a live wire onto the enemy nearest your aim (7.6 m). While it holds (2.5 seconds), the enemy takes 3 every half second, and if it gets more than 5 m away the wire yanks it back toward Coilemur: 6 damage and paralysed for half a second, and the wire snaps. Walls cut the wire. No more running away.",
+        "kind": "tether",
+        "damage": 3,
+        "cooldown": 11
+      }
+    ],
+    "ultimate": {
+      "name": "Electromagnet",
+      "description": "Become a living magnet for 2 seconds: every enemy nearby is dragged toward you and shocked.",
+      "kind": "zone",
+      "damage": 7,
+      "cooldown": 20,
+      "status": "paralysis"
+    },
+    "skins": [
+      {
+        "id": "coilemur-cometcaller",
+        "name": "Volt Executioner",
+        "rarity": "mythical"
+      },
+      {
+        "id": "coilemur-nova-vanguard",
+        "name": "Flux Runner",
+        "rarity": "legendary"
+      },
+      {
+        "id": "coilemur-sky-pirates",
+        "name": "Rigging Runner",
+        "rarity": "legendary"
+      },
+      {
+        "id": "coilemur-hon-viet",
+        "name": "Nghệ Nhân Đàn Bầu",
+        "rarity": "legendary"
+      }
+    ],
+    "skinCount": 23
+  },
+  {
+    "id": "cindrake",
+    "name": "Cindrake",
+    "element": "Fire",
+    "role": "Burst damage fighter",
+    "description": "A stout magma newt with a living flame crest. Layers burns and hits hardest up close.",
+    "color": "#ff7a4f",
+    "health": 158,
+    "speed": 240,
+    "reach": 170,
+    "basic": {
+      "name": "Cinder Snap",
+      "description": "A short-range burst of fire in front of Cindrake.",
+      "kind": "melee",
+      "damage": 14,
+      "interval": 0.5
+    },
+    "skills": [
+      {
+        "name": "Crest Flare",
+        "description": "The flame crest flares into a short, fierce cone of fire for half a second: 3 damage every 0.1 seconds, reaching from 4.6 m out to 6 m as it burns. Burns.",
+        "kind": "cone",
+        "damage": 3,
+        "cooldown": 8,
+        "status": "burn"
+      },
+      {
+        "name": "Magma Leap",
+        "description": "Leap up to 6.4 m toward your aim, over ground attacks, and land in an eruption: 16 damage and a burn to every enemy within 2.2 m.",
+        "kind": "leap",
+        "damage": 16,
+        "cooldown": 13,
+        "status": "burn"
+      },
+      {
+        "name": "Heat Cracks",
+        "description": "Cindrake's glowing cracks split open for 2.5 seconds, scorching everyone close by.",
+        "kind": "zone",
+        "damage": 6,
+        "cooldown": 15
+      }
+    ],
+    "ultimate": {
+      "name": "Sunfire Pillar",
+      "description": "A pillar of fire erupts at the aim point and follows your aim for 3 seconds (4 m a second), hitting for 6 every half second and burning. Steer it onto them.",
+      "kind": "steer",
+      "damage": 6,
+      "cooldown": 20,
+      "status": "burn"
+    },
+    "skins": [
+      {
+        "id": "cindrake-sunforged",
+        "name": "Hellforge",
+        "rarity": "mythical"
+      },
+      {
+        "id": "cindrake-nova-vanguard",
+        "name": "Solar Forger",
+        "rarity": "legendary"
+      },
+      {
+        "id": "cindrake-sky-pirates",
+        "name": "Cinder Buccaneer",
+        "rarity": "legendary"
+      },
+      {
+        "id": "cindrake-hon-viet",
+        "name": "Thánh Gióng",
+        "rarity": "legendary"
+      }
+    ],
+    "skinCount": 23
+  },
+  {
+    "id": "pyranda",
+    "name": "Pyranda",
+    "element": "Fire",
+    "role": "Artillery",
+    "description": "A shy red panda, the \"fire fox\", with a flame at the tip of its tail. Lobs burning chestnuts from the back line and curls up in its tail when caught.",
+    "color": "#ff8a3d",
+    "health": 152,
+    "speed": 235,
+    "reach": 760,
+    "basic": {
+      "name": "Ember Lob",
+      "description": "A long-range ember flicked from its tail. It knocks back enemies within 5.2 m, keeping brawlers off Pyranda.",
+      "kind": "projectile",
+      "damage": 10,
+      "interval": 0.44
+    },
+    "skills": [
+      {
+        "name": "Chestnut Mortar",
+        "description": "Lob a burning chestnut over walls to the aim point. It lands 0.6 seconds later and burns.",
+        "kind": "zone",
+        "damage": 22,
+        "cooldown": 8,
+        "status": "burn"
+      },
+      {
+        "name": "Hot Coals",
+        "description": "Scatter a patch of hot coals for 4 seconds. Burns anyone standing in it.",
+        "kind": "zone",
+        "damage": 6,
+        "cooldown": 12,
+        "status": "burn"
+      },
+      {
+        "name": "Ember Curtain",
+        "description": "Sweep up a curtain of embers 4.8 m wide across your aim for 3 seconds: enemy shots (and grappling tongues) that touch it burn up, and enemies on it take 7 damage every half second, catch fire and are knocked back.",
+        "kind": "screen",
+        "damage": 7,
+        "cooldown": 10,
+        "status": "burn"
+      }
+    ],
+    "ultimate": {
+      "name": "Chestnut Storm",
+      "description": "A storm of burning chestnuts creeps along your aim, over any wall: five blasts 2.3 m wide, from 3.2 m out to 15.2 m, 0.15 seconds apart. Each is marked 0.6 seconds before it lands: 26 damage, a burn and a shove.",
+      "kind": "creep",
+      "damage": 26,
+      "cooldown": 20,
+      "status": "burn"
+    },
+    "skins": [
+      {
+        "id": "pyranda-harvest-moon",
+        "name": "Ashen Warlord",
+        "rarity": "mythical"
+      },
+      {
+        "id": "pyranda-nova-vanguard",
+        "name": "Cinder Medic",
+        "rarity": "legendary"
+      },
+      {
+        "id": "pyranda-sky-pirates",
+        "name": "Spice Raider",
+        "rarity": "legendary"
+      },
+      {
+        "id": "pyranda-hon-viet",
+        "name": "Hạt Dẻ Phố Cổ",
+        "rarity": "legendary"
+      }
+    ],
+    "skinCount": 23
+  },
+  {
+    "id": "tidefin",
+    "name": "Tidefin",
+    "element": "Water",
+    "role": "Agile assassin",
+    "description": "An axolotl duelist in a river sash. The quickest fighter; pokes, slips away, regrows, then finishes.",
+    "color": "#4fd6e6",
+    "health": 136,
+    "speed": 285,
+    "reach": 640,
+    "basic": {
+      "name": "Tide Needle",
+      "description": "A fast water projectile.",
+      "kind": "projectile",
+      "damage": 5,
+      "interval": 0.24
+    },
+    "skills": [
+      {
+        "name": "Gill Siphon",
+        "description": "Lock a stream of water onto the enemy nearest your aim (7.6 m). For up to 2.1 seconds it takes 3 damage every 0.3 seconds and Tidefin drinks half of it back, until it gets 8.6 m away or out of sight.",
+        "kind": "tether",
+        "damage": 3,
+        "cooldown": 10
+      },
+      {
+        "name": "River Dash",
+        "description": "Shoot 6 m along your aim on a jet of water, straight through enemies: each one you pass takes 20 and is Soaked. Pass through anyone and the cooldown drops to 3 seconds: dash in, then dash out.",
+        "kind": "surf",
+        "damage": 20,
+        "cooldown": 9
+      },
+      {
+        "name": "Tide Double",
+        "description": "Leave a water double that soaks up one projectile, then dart away faster while regrowing 4 HP.",
+        "kind": "clone",
+        "damage": 0,
+        "cooldown": 15,
+        "status": "haste"
+      }
+    ],
+    "ultimate": {
+      "name": "Riptide Wave",
+      "description": "After a short charge, two walls of water 7.6 m wide roll from Tidefin along your aim, 0.9 seconds apart, across the whole court and over any wall. Each wall that reaches an enemy deals 18 and carries it along for up to half a second; carried into a wall, it takes 9 more and is stunned. One jump can't clear both.",
+      "kind": "wave",
+      "damage": 18,
+      "cooldown": 20,
+      "status": "stun"
+    },
+    "skins": [
+      {
+        "id": "tidefin-moontide",
+        "name": "Abyssal Reaver",
+        "rarity": "mythical"
+      },
+      {
+        "id": "tidefin-nova-vanguard",
+        "name": "Riptide Ranger",
+        "rarity": "legendary"
+      },
+      {
+        "id": "tidefin-sky-pirates",
+        "name": "Tide Admiral",
+        "rarity": "legendary"
+      },
+      {
+        "id": "tidefin-hon-viet",
+        "name": "Hoa Đăng",
+        "rarity": "legendary"
+      }
+    ],
+    "skinCount": 23
+  },
+  {
+    "id": "glacelle",
+    "name": "Glacelle",
+    "element": "Water",
+    "role": "Frost controller",
+    "description": "A floating sea angel from the ice shelf. Slows, then freezes you solid; the only champion with true Freeze.",
+    "color": "#9fe8ff",
+    "health": 158,
+    "speed": 255,
+    "reach": 660,
+    "basic": {
+      "name": "Rime Shard",
+      "description": "A small shard of ice.",
+      "kind": "projectile",
+      "damage": 8,
+      "interval": 0.325
+    },
+    "skills": [
+      {
+        "name": "Black Ice",
+        "description": "Glaze the ground at the aim (up to 12 m, 2.4 m wide) with black ice for 2 seconds: enemies on it slide about with almost no grip, and take 3 every half second.",
+        "kind": "zone",
+        "damage": 3,
+        "cooldown": 13,
+        "status": "float"
+      },
+      {
+        "name": "Frost Bloom",
+        "description": "Frost blooms at the aim point and, after a moment, freezes everyone inside in place.",
+        "kind": "zone",
+        "damage": 14,
+        "cooldown": 12,
+        "status": "freeze"
+      },
+      {
+        "name": "Frost Breath",
+        "description": "Breathe a freezing cone for 1 second: 4 damage every 0.2 seconds and a slow. An enemy caught by four breaths in a row is frozen solid for half a second.",
+        "kind": "cone",
+        "damage": 4,
+        "cooldown": 12,
+        "status": "slow"
+      }
+    ],
+    "ultimate": {
+      "name": "Whiteout",
+      "description": "A blizzard at the aim point for 2.6 seconds: the first gust freezes, the rest keep stinging.",
+      "kind": "zone",
+      "damage": 6,
+      "cooldown": 20,
+      "status": "freeze"
+    },
+    "skins": [
+      {
+        "id": "glacelle-polaris",
+        "name": "Rimebane",
+        "rarity": "mythical"
+      },
+      {
+        "id": "glacelle-nova-vanguard",
+        "name": "Frost Weaver",
+        "rarity": "legendary"
+      },
+      {
+        "id": "glacelle-sky-pirates",
+        "name": "Frost Privateer",
+        "rarity": "legendary"
+      },
+      {
+        "id": "glacelle-hon-viet",
+        "name": "Sương Sa Pa",
+        "rarity": "legendary"
+      }
+    ],
+    "skinCount": 23
+  },
+  {
+    "id": "auralynx",
+    "name": "Auralynx",
+    "element": "Aura",
+    "role": "Counter specialist",
+    "description": "A crystal-fisted lynx monk. Durable, patient and brutal against careless attacks.",
+    "color": "#7f9cff",
+    "health": 170,
+    "speed": 235,
+    "reach": 130,
+    "basic": {
+      "name": "Prism Jab",
+      "description": "A close-range energy punch.",
+      "kind": "melee",
+      "damage": 12,
+      "interval": 0.345
+    },
+    "skills": [
+      {
+        "name": "Prism Shot",
+        "description": "Fling one of the orbiting crystal shards. It slows for a second, so you can close in.",
+        "kind": "projectile",
+        "damage": 22,
+        "cooldown": 6,
+        "status": "slow"
+      },
+      {
+        "name": "Shatter Paw",
+        "description": "A crystal-gauntleted paw smash: big knockback and a brief stun.",
+        "kind": "melee",
+        "damage": 28,
+        "cooldown": 12,
+        "status": "stun"
+      },
+      {
+        "name": "Facet Guard",
+        "description": "Raise the faceted gauntlets and vault up to 4.8 m toward your aim. For 1.6 seconds they take half the damage and refract 20% of shots, beams and blasts back to the attacker (strikes up close are only halved).",
+        "kind": "counter",
+        "damage": 0,
+        "cooldown": 15
+      }
+    ],
+    "ultimate": {
+      "name": "Crystal Cage",
+      "description": "After a short charge, crystal spires rise in a 3.6 m ring round Auralynx for 2.5 seconds: nobody can cross it and no shot gets through. Enemies caught inside take 20, and the ring closes in to 1.2 m, squeezing them toward Auralynx.",
+      "kind": "cage",
+      "damage": 20,
+      "cooldown": 20
+    },
+    "skins": [
+      {
+        "id": "auralynx-celestial-sage",
+        "name": "Spectral Warden",
+        "rarity": "mythical"
+      },
+      {
+        "id": "auralynx-nova-vanguard",
+        "name": "Prism Sentinel",
+        "rarity": "legendary"
+      },
+      {
+        "id": "auralynx-sky-pirates",
+        "name": "Prism Navigator",
+        "rarity": "legendary"
+      },
+      {
+        "id": "auralynx-hon-viet",
+        "name": "Võ Sư Vovinam",
+        "rarity": "legendary"
+      }
+    ],
+    "skinCount": 23
+  },
+  {
+    "id": "halcyra",
+    "name": "Halcyra",
+    "element": "Aura",
+    "role": "Marksman",
+    "description": "A kingfisher who focuses aura through a crystal beak. The longest reach in the arena, and the frailest body.",
+    "color": "#6f8dff",
+    "health": 141,
+    "speed": 260,
+    "reach": 760,
+    "basic": {
+      "name": "Aura Quill",
+      "description": "A fast, long-range feather of aura. Up to 50% more damage the farther it flies.",
+      "kind": "projectile",
+      "damage": 8,
+      "interval": 0.37
+    },
+    "skills": [
+      {
+        "name": "Pinning Quill",
+        "description": "A heavy quill that pins its target on a leash for 1.4 seconds: it can't go more than 2.2 m from where it was hit.",
+        "kind": "projectile",
+        "damage": 12,
+        "cooldown": 8,
+        "status": "leash"
+      },
+      {
+        "name": "Focus Shot",
+        "description": "Take aim for 0.4 seconds, then fire an instant beam across the court. Up to 50% more damage at long range. Walls block it.",
+        "kind": "beam",
+        "damage": 25,
+        "cooldown": 12
+      },
+      {
+        "name": "Halcyon Rewind",
+        "description": "Dive back to where you were 2 seconds ago and win back 40% of the health you lost since (at most 18).",
+        "kind": "rewind",
+        "damage": 0,
+        "cooldown": 17
+      }
+    ],
+    "ultimate": {
+      "name": "Skyline Lance",
+      "description": "A long charge, then a lance of aura the width of the court. Decoys and walls stop it.",
+      "kind": "beam",
+      "damage": 40,
+      "cooldown": 20
+    },
+    "skins": [
+      {
+        "id": "halcyra-starfletch",
+        "name": "Nightfeather",
+        "rarity": "mythical"
+      },
+      {
+        "id": "halcyra-nova-vanguard",
+        "name": "Gale Captain",
+        "rarity": "legendary"
+      },
+      {
+        "id": "halcyra-sky-pirates",
+        "name": "Crow's Nest Ace",
+        "rarity": "legendary"
+      },
+      {
+        "id": "halcyra-hon-viet",
+        "name": "Chim Lạc Đông Sơn",
+        "rarity": "legendary"
+      }
+    ],
+    "skinCount": 23
+  },
+  {
+    "id": "lumoth",
+    "name": "Lumoth",
+    "element": "Light",
+    "role": "Versatile fighter",
+    "description": "A fluffy moth that sheds glowing dust. Balanced at every range; Kindle turns pressure into a race.",
+    "color": "#86f0c0",
+    "health": 141,
+    "speed": 265,
+    "reach": 700,
+    "basic": {
+      "name": "Glint",
+      "description": "A glowing star projectile.",
+      "kind": "projectile",
+      "damage": 6,
+      "interval": 0.31
+    },
+    "skills": [
+      {
+        "name": "Wing Dust",
+        "description": "Beat your wings: five glittering motes of wing dust fly out in a spread.",
+        "kind": "barrage",
+        "damage": 8,
+        "cooldown": 8
+      },
+      {
+        "name": "Eyespot Flash",
+        "description": "Flash the big eyespots on your wings: enemies within 4.4 m take 8, and those looking at Lumoth (aiming at it) are stunned for 0.5 seconds.",
+        "kind": "gaze",
+        "damage": 8,
+        "cooldown": 12,
+        "status": "stun"
+      },
+      {
+        "name": "Kindle",
+        "description": "For 5 seconds, deal 25% more damage and basic attack 30% faster.",
+        "kind": "buff",
+        "damage": 0,
+        "cooldown": 13
+      }
+    ],
+    "ultimate": {
+      "name": "Radiant Flare",
+      "description": "Shoot a flare up to 13 m away. It hangs like a little sun for 2 seconds and draws every enemy within 4 m toward it (3.8 m a second), then bursts: 24 damage and stunned for 0.6 seconds within 3 m.",
+      "kind": "lure",
+      "damage": 24,
+      "cooldown": 20,
+      "status": "stun"
+    },
+    "skins": [
+      {
+        "id": "lumoth-starweaver",
+        "name": "Fallen Lightbringer",
+        "rarity": "mythical"
+      },
+      {
+        "id": "lumoth-nova-vanguard",
+        "name": "Lumen Warden",
+        "rarity": "legendary"
+      },
+      {
+        "id": "lumoth-sky-pirates",
+        "name": "Lantern Lookout",
+        "rarity": "legendary"
+      },
+      {
+        "id": "lumoth-hon-viet",
+        "name": "Đèn Lồng Hội An",
+        "rarity": "legendary"
+      }
+    ],
+    "skinCount": 23
+  },
+  {
+    "id": "sunbara",
+    "name": "Sunbara",
+    "element": "Light",
+    "role": "Support",
+    "description": "A capybara who bathes in sunlight with a glowing yuzu on its head. Everyone's friend; heals the whole team.",
+    "color": "#ffc26b",
+    "health": 190,
+    "speed": 240,
+    "reach": 620,
+    "basic": {
+      "name": "Sunseed",
+      "description": "A warm seed of light.",
+      "kind": "projectile",
+      "damage": 7,
+      "interval": 0.335
+    },
+    "skills": [
+      {
+        "name": "Yuzu Toss",
+        "description": "Toss a glowing yuzu that bursts on impact; Sunbara soaks up a fifth of the damage it deals as health.",
+        "kind": "projectile",
+        "damage": 14,
+        "cooldown": 7
+      },
+      {
+        "name": "Warm Spring",
+        "description": "Open a warm spring at your feet for 3.5 seconds. Allies inside heal 4 HP every half second; Sunbara heals half that.",
+        "kind": "zone",
+        "damage": 0,
+        "cooldown": 12
+      },
+      {
+        "name": "Daybreak",
+        "description": "A flash of morning light around Sunbara that stuns briefly.",
+        "kind": "nova",
+        "damage": 10,
+        "cooldown": 15,
+        "status": "stun"
+      }
+    ],
+    "ultimate": {
+      "name": "Sanctuary",
+      "description": "For 4 seconds a sunny glade follows you: allies inside heal 7 HP every half second (Sunbara half that), enemies inside are slowed.",
+      "kind": "zone",
+      "damage": 0,
+      "cooldown": 20,
+      "status": "slow"
+    },
+    "skins": [
+      {
+        "id": "sunbara-daybreak",
+        "name": "Eclipse Templar",
+        "rarity": "mythical"
+      },
+      {
+        "id": "sunbara-nova-vanguard",
+        "name": "Dawn Defender",
+        "rarity": "legendary"
+      },
+      {
+        "id": "sunbara-sky-pirates",
+        "name": "Sunset Skipper",
+        "rarity": "legendary"
+      },
+      {
+        "id": "sunbara-hon-viet",
+        "name": "Xuân Hoa Mai",
+        "rarity": "legendary"
+      }
+    ],
+    "skinCount": 23
+  },
+  {
+    "id": "mystowl",
+    "name": "Mystowl",
+    "element": "Psychic",
+    "role": "High-power duelist",
+    "description": "A floating three-eyed owl. Slow, heavy attacks; controls space with its third-eye ray, a silencing hush and its wing cloak.",
+    "color": "#ff79d2",
+    "health": 138,
+    "speed": 255,
+    "reach": 700,
+    "basic": {
+      "name": "Mind Dart",
+      "description": "A psychic energy projectile.",
+      "kind": "projectile",
+      "damage": 8,
+      "interval": 0.39
+    },
+    "skills": [
+      {
+        "name": "Third-Eye Ray",
+        "description": "An instant beam from the third-eye gem toward your aim. Walls block it. Slows.",
+        "kind": "beam",
+        "damage": 15,
+        "cooldown": 8,
+        "status": "slow"
+      },
+      {
+        "name": "Hush",
+        "description": "A silent wingbeat: enemies within 4 m take 10, are pushed back and are Silenced for 1.2 seconds: no skills (they can still move, dash and attack).",
+        "kind": "nova",
+        "damage": 10,
+        "cooldown": 12,
+        "status": "silence"
+      },
+      {
+        "name": "Wing Cloak",
+        "description": "Wrap up in your wing cloak: block 60% of damage for 3 seconds.",
+        "kind": "barrier",
+        "damage": 0,
+        "cooldown": 15
+      }
+    ],
+    "ultimate": {
+      "name": "Mind Maze",
+      "description": "A psychic maze closes over the aim point (3 m): enemies caught take 24 and are Confused for 2 seconds, their movement reversed.",
+      "kind": "zone",
+      "damage": 24,
+      "cooldown": 20,
+      "status": "confuse"
+    },
+    "skins": [
+      {
+        "id": "mystowl-oracle",
+        "name": "Void Inquisitor",
+        "rarity": "mythical"
+      },
+      {
+        "id": "mystowl-nova-vanguard",
+        "name": "Night Cartographer",
+        "rarity": "legendary"
+      },
+      {
+        "id": "mystowl-sky-pirates",
+        "name": "Chart Quartermaster",
+        "rarity": "legendary"
+      },
+      {
+        "id": "mystowl-hon-viet",
+        "name": "Liền Chị Quan Họ",
+        "rarity": "legendary"
+      }
+    ],
+    "skinCount": 23
+  },
+  {
+    "id": "astrabun",
+    "name": "Astrabun",
+    "element": "Psychic",
+    "role": "Blink duelist",
+    "description": "A moon rabbit with a mochi mallet. Hops through space to land right on top of you.",
+    "color": "#d78bff",
+    "health": 132,
+    "speed": 262,
+    "reach": 145,
+    "basic": {
+      "name": "Mallet Bop",
+      "description": "A bonk with the mochi mallet.",
+      "kind": "melee",
+      "damage": 14,
+      "interval": 0.41
+    },
+    "skills": [
+      {
+        "name": "Moon Hop",
+        "description": "Teleport up to 6 m toward the aim (not through walls). A small burst where you land.",
+        "kind": "blink",
+        "damage": 12,
+        "cooldown": 7
+      },
+      {
+        "name": "Mochi Pound",
+        "description": "Three pounds of the mallet: cast it again within 1.4 seconds for the next. 10, then 13, then 20 that stuns and knocks back. The cooldown starts after the last.",
+        "kind": "pound",
+        "damage": 10,
+        "cooldown": 12,
+        "status": "stun"
+      },
+      {
+        "name": "Sticky Mochi",
+        "description": "Fling a ball of sticky mochi: the first enemy hit takes 8 and is Grounded for 0.9 seconds: it can't dash or jump. Nowhere to hop away to.",
+        "kind": "projectile",
+        "damage": 8,
+        "cooldown": 13,
+        "status": "grounded"
+      }
+    ],
+    "ultimate": {
+      "name": "Full Moon",
+      "description": "Rise for a moment, then crash down up to 9 m away in a big shockwave.",
+      "kind": "blink",
+      "damage": 36,
+      "cooldown": 20
+    },
+    "skins": [
+      {
+        "id": "astrabun-full-moon",
+        "name": "Rift Duelist",
+        "rarity": "mythical"
+      },
+      {
+        "id": "astrabun-nova-vanguard",
+        "name": "Comet Strider",
+        "rarity": "legendary"
+      },
+      {
+        "id": "astrabun-sky-pirates",
+        "name": "Moonsail Bosun",
+        "rarity": "legendary"
+      },
+      {
+        "id": "astrabun-hon-viet",
+        "name": "Thỏ Ngọc Cung Trăng",
+        "rarity": "legendary"
+      }
+    ],
+    "skinCount": 23
+  },
+  {
+    "id": "terradon",
+    "name": "Terradon",
+    "element": "Earth",
+    "role": "Defensive tank",
+    "description": "A sleepy boulder tortoise. Huge health pool, crushing swings and a shell to hide in; make them come to you.",
+    "color": "#c79a5b",
+    "health": 196,
+    "speed": 222,
+    "reach": 150,
+    "basic": {
+      "name": "Boulder Swipe",
+      "description": "A wide melee swing in front of Terradon.",
+      "kind": "melee",
+      "damage": 15,
+      "interval": 0.6
+    },
+    "skills": [
+      {
+        "name": "Shell Bash",
+        "description": "Ram with the front of the shell: big knockback and a brief stun. No dash.",
+        "kind": "melee",
+        "damage": 30,
+        "cooldown": 8,
+        "status": "stun"
+      },
+      {
+        "name": "Shell Up",
+        "description": "Pull into your shell for 1.5 seconds: you can't move or act, but take 45% less damage and regrow 21 HP. Then the shell bursts open, shoving away everyone within 2.8 m.",
+        "kind": "rest",
+        "damage": 0,
+        "cooldown": 16,
+        "status": "shell"
+      },
+      {
+        "name": "Mud Mire",
+        "description": "Stomp a patch of sticky mud that heavily slows enemies in it. Too sticky to jump out of.",
+        "kind": "zone",
+        "damage": 0,
+        "cooldown": 15,
+        "status": "slow"
+      }
+    ],
+    "ultimate": {
+      "name": "Tremor",
+      "description": "Slam the ground for a large shockwave.",
+      "kind": "nova",
+      "damage": 36,
+      "cooldown": 20
+    },
+    "skins": [
+      {
+        "id": "terradon-world-shell",
+        "name": "Obsidian Bulwark",
+        "rarity": "mythical"
+      },
+      {
+        "id": "terradon-nova-vanguard",
+        "name": "Bulwark Grove",
+        "rarity": "legendary"
+      },
+      {
+        "id": "terradon-sky-pirates",
+        "name": "Ironhull Captain",
+        "rarity": "legendary"
+      },
+      {
+        "id": "terradon-hon-viet",
+        "name": "Kim Quy",
+        "rarity": "legendary"
+      }
+    ],
+    "skinCount": 23
+  },
+  {
+    "id": "wombolder",
+    "name": "Wombolder",
+    "element": "Earth",
+    "role": "Charger",
+    "description": "A wombat with a rump like a boulder. Bulldozes in, blocks with its back end, and never stops digging.",
+    "color": "#b08a62",
+    "health": 173,
+    "speed": 232,
+    "reach": 140,
+    "basic": {
+      "name": "Rump Bump",
+      "description": "A wide shove with the rump.",
+      "kind": "melee",
+      "damage": 16,
+      "interval": 0.535
+    },
+    "skills": [
+      {
+        "name": "Burrow Rush",
+        "description": "Charge up to 7.6 m toward the aim. The first enemy you hit is knocked back and stunned. Drive them into a wall for a slam: 50% more damage and a longer stun.",
+        "kind": "rush",
+        "damage": 16,
+        "cooldown": 9,
+        "status": "stun"
+      },
+      {
+        "name": "Bush Boomerang",
+        "description": "Throw a boomerang 9.2 m: it comes back to you, hitting each enemy on the way out and again on the way back.",
+        "kind": "projectile",
+        "damage": 11,
+        "cooldown": 8
+      },
+      {
+        "name": "Grudge Thump",
+        "description": "Thump the ground and glare: enemies within 4.8 m take 8 and are Taunted for 1.1 seconds (they must walk at you, but can still fight back). You're Braced for 1.5 seconds: nothing knocks you back or pulls you.",
+        "kind": "taunt",
+        "damage": 8,
+        "cooldown": 14,
+        "status": "taunt"
+      }
+    ],
+    "ultimate": {
+      "name": "Landslide",
+      "description": "A long, unstoppable charge (12.4 m). On impact the ground erupts around the target; slamming them into a wall deals 30% more.",
+      "kind": "rush",
+      "damage": 30,
+      "cooldown": 20,
+      "status": "stun"
+    },
+    "skins": [
+      {
+        "id": "wombolder-saturnine",
+        "name": "Iron Juggernaut",
+        "rarity": "mythical"
+      },
+      {
+        "id": "wombolder-nova-vanguard",
+        "name": "Quake Marshal",
+        "rarity": "legendary"
+      },
+      {
+        "id": "wombolder-sky-pirates",
+        "name": "Anchor Warden",
+        "rarity": "legendary"
+      },
+      {
+        "id": "wombolder-hon-viet",
+        "name": "Mùa Lúa Chín",
+        "rarity": "legendary"
+      }
+    ],
+    "skinCount": 23
+  },
+  {
+    "id": "duskveil",
+    "name": "Duskveil",
+    "element": "Shadow",
+    "role": "Trickster / area control",
+    "description": "A hooded lantern wisp. Hangs its haunted lantern to hold ground, and strikes from the shadows at anything its ghostfire lights up.",
+    "color": "#9c6bff",
+    "health": 148,
+    "speed": 260,
+    "reach": 700,
+    "basic": {
+      "name": "Lantern Wisp",
+      "description": "A ghostly projectile.",
+      "kind": "projectile",
+      "damage": 9,
+      "interval": 0.345
+    },
+    "skills": [
+      {
+        "name": "Shade Crawl",
+        "description": "Your shadow crawls out and binds the first enemy's shadow: 14 damage and Rooted for 0.4 seconds (it can still attack, but not move or dash).",
+        "kind": "projectile",
+        "damage": 14,
+        "cooldown": 8,
+        "status": "root"
+      },
+      {
+        "name": "Ghostfire",
+        "description": "Three ghost-lantern flames that burn for 3 seconds and light the target up (Lit).",
+        "kind": "barrage",
+        "damage": 6,
+        "cooldown": 12,
+        "status": "burn"
+      },
+      {
+        "name": "Haunted Lantern",
+        "description": "Hang your lantern at the aim point: for 4 seconds it shoots a wisp at the nearest enemy in its light every 1.3 seconds.",
+        "kind": "zone",
+        "damage": 0,
+        "cooldown": 15
+      }
+    ],
+    "ultimate": {
+      "name": "Wraith Hunt",
+      "description": "A wraith leaves your lantern and hunts the nearest enemy you can see for 3 seconds, through walls. Its touch deals 5 every half second, and reaps an enemy under 20% health: knocked out.",
+      "kind": "hunt",
+      "damage": 5,
+      "cooldown": 20
+    },
+    "skins": [
+      {
+        "id": "duskveil-eclipse",
+        "name": "Crimson Sovereign",
+        "rarity": "mythical"
+      },
+      {
+        "id": "duskveil-nova-vanguard",
+        "name": "Echo Beacon",
+        "rarity": "legendary"
+      },
+      {
+        "id": "duskveil-sky-pirates",
+        "name": "Ghost Ship Wisp",
+        "rarity": "legendary"
+      },
+      {
+        "id": "duskveil-hon-viet",
+        "name": "Đèn Kéo Quân",
+        "rarity": "legendary"
+      }
+    ],
+    "skinCount": 23
+  },
+  {
+    "id": "shadopus",
+    "name": "Shadopus",
+    "element": "Shadow",
+    "role": "Stealth assassin",
+    "description": "A midnight octopus that vanishes in its own ink. Fragile, fast, and gone before you turn around.",
+    "color": "#7b5cff",
+    "health": 132,
+    "speed": 278,
+    "reach": 150,
+    "basic": {
+      "name": "Tentacle Lash",
+      "description": "A quick lash of tentacles.",
+      "kind": "melee",
+      "damage": 11,
+      "interval": 0.305
+    },
+    "skills": [
+      {
+        "name": "Ink Jet",
+        "description": "Squirt a jet of ink in their eyes: Blinded for 0.7 seconds, their basic attacks miss.",
+        "kind": "projectile",
+        "damage": 9,
+        "cooldown": 11,
+        "status": "blind"
+      },
+      {
+        "name": "Ink Strike",
+        "description": "A sharp eight-armed strike in front of you.",
+        "kind": "melee",
+        "damage": 24,
+        "cooldown": 12
+      },
+      {
+        "name": "Ink Cloud",
+        "description": "Vanish in a cloud of ink: stealth for 2.5 seconds and a burst of speed. Enemies can't see or target you at all. Casting or taking damage reveals you, and your first hit out of stealth deals 30% more.",
+        "kind": "veil",
+        "damage": 0,
+        "cooldown": 15
+      }
+    ],
+    "ultimate": {
+      "name": "Kraken Grasp",
+      "description": "After a short wind-up, the tentacles seize the enemy in front (4 m), hold it for half a second, then hurl it 7.6 m toward your aim: 32 damage, half again into a wall. Enemies where it lands take half.",
+      "kind": "throw",
+      "damage": 32,
+      "cooldown": 20,
+      "status": "stun"
+    },
+    "skins": [
+      {
+        "id": "shadopus-nebula",
+        "name": "Abyss Stalker",
+        "rarity": "mythical"
+      },
+      {
+        "id": "shadopus-nova-vanguard",
+        "name": "Deepwatch Oracle",
+        "rarity": "legendary"
+      },
+      {
+        "id": "shadopus-sky-pirates",
+        "name": "Kraken Captain",
+        "rarity": "legendary"
+      },
+      {
+        "id": "shadopus-hon-viet",
+        "name": "Tướng Hát Bội",
+        "rarity": "legendary"
+      }
+    ],
+    "skinCount": 23
+  },
+  {
+    "id": "pangrove",
+    "name": "Pangrove",
+    "element": "Nature",
+    "role": "Armoured burrower",
+    "description": "A pangolin whose scales are living leaves. Three armour plates soak up hits; it grapples in with its tongue, tunnels under the court to burst up beneath you, sheds its plates as blades, and whips them into a storm.",
+    "color": "#7fcf6a",
+    "health": 140,
+    "speed": 245,
+    "reach": 150,
+    "passive": "Armour plates",
+    "basic": {
+      "name": "Scale Swipe",
+      "description": "A swipe of leafy scales in front of Pangrove.",
+      "kind": "melee",
+      "damage": 15,
+      "interval": 0.45
+    },
+    "skills": [
+      {
+        "name": "Tongue Grapple",
+        "description": "Shoot out a sticky tongue. The first enemy it reaches takes 14 damage and is slowed, and Pangrove zips to it; a wall pulls Pangrove to the wall.",
+        "kind": "grapple",
+        "damage": 14,
+        "cooldown": 8,
+        "status": "slow"
+      },
+      {
+        "name": "Scale Shrapnel",
+        "description": "Shed two armour plates as a fan of blades: 6 blades, plus 2 for each plate you have. The plates grow back later.",
+        "kind": "shrapnel",
+        "damage": 6,
+        "cooldown": 11
+      },
+      {
+        "name": "Tunnel",
+        "description": "Dig underground for up to 1 second (cast again to come up sooner). Nothing can hit you down there and you can't attack, but everyone sees your mound of dirt. Coming up deals 12 damage to enemies within 2.2 m and flings them away, and an armour plate grows back.",
+        "kind": "tunnel",
+        "damage": 12,
+        "cooldown": 14
+      }
+    ],
+    "ultimate": {
+      "name": "Leaf Storm",
+      "description": "Your leaf plates lift into a storm of 3 blades circling 3 m out for 2.5 seconds. You walk at full speed and can't be knocked back. Each blade sweeps from you out to its tip: an enemy it passes takes 4 damage, is slowed and shoved outward. At the end the storm bursts for 20 damage within 6 m.",
+      "kind": "cyclone",
+      "damage": 4,
+      "cooldown": 20,
+      "status": "slow"
+    },
+    "skins": [
+      {
+        "id": "pangrove-evergrove",
+        "name": "Thorn Warden",
+        "rarity": "mythical"
+      },
+      {
+        "id": "pangrove-nova-vanguard",
+        "name": "Briar Bastion",
+        "rarity": "legendary"
+      },
+      {
+        "id": "pangrove-sky-pirates",
+        "name": "Jungle Corsair",
+        "rarity": "legendary"
+      },
+      {
+        "id": "pangrove-hon-viet",
+        "name": "Đầm Sen Đồng Tháp",
+        "rarity": "legendary"
+      }
+    ],
+    "skinCount": 23
+  },
+  {
+    "id": "mossloth",
+    "name": "Mossloth",
+    "element": "Nature",
+    "role": "Time gardener",
+    "description": "A three-toed sloth with a moss garden on its back. Moss grows while it stands still; it plants seeds that grow, slows time itself, and lazily swaps places.",
+    "color": "#9bd36a",
+    "health": 148,
+    "speed": 240,
+    "reach": 640,
+    "passive": "Moss garden",
+    "basic": {
+      "name": "Seed Spit",
+      "description": "Spit a hard seed.",
+      "kind": "projectile",
+      "damage": 9,
+      "interval": 0.3
+    },
+    "skills": [
+      {
+        "name": "Seedling",
+        "description": "Plant a seed at the aim. It grows a stage every 1.5 seconds (sprout, bud, bloom); the first enemy to step on it sets it off for 10, 18 or 28 damage and a 0.4, 0.6 or 1 second root. Up to 3 at once.",
+        "kind": "seedling",
+        "damage": 28,
+        "cooldown": 5,
+        "status": "root"
+      },
+      {
+        "name": "Sloth Time",
+        "description": "Slow time in a bubble at the aim for 3 seconds: enemies inside, and their shots, move at a third of their speed.",
+        "kind": "timewarp",
+        "damage": 0,
+        "cooldown": 9
+      },
+      {
+        "name": "Lazy Swap",
+        "description": "Swap places with the enemy or your own seedling nearest the aim (up to 12 m away). A swapped enemy is slowed for a second.",
+        "kind": "swap",
+        "damage": 0,
+        "cooldown": 11,
+        "status": "slow"
+      }
+    ],
+    "ultimate": {
+      "name": "Overgrowth",
+      "description": "A wild garden bursts up at your aim (up to 11.2 m, 4.6 m wide) for 2.5 seconds: enemies on it take 5 every half second and are slowed, and whoever is still on it at the end takes 26 and is Rooted for 1.2 seconds. Every seedling you have blooms, and your moss grows full.",
+      "kind": "garden",
+      "damage": 5,
+      "cooldown": 20,
+      "status": "root"
+    },
+    "skins": [
+      {
+        "id": "mossloth-moonbloom",
+        "name": "Blight Sentinel",
+        "rarity": "mythical"
+      },
+      {
+        "id": "mossloth-nova-vanguard",
+        "name": "Cloud Keeper",
+        "rarity": "legendary"
+      },
+      {
+        "id": "mossloth-sky-pirates",
+        "name": "Hammock Pirate",
+        "rarity": "legendary"
+      },
+      {
+        "id": "mossloth-hon-viet",
+        "name": "Ông Đồ",
+        "rarity": "legendary"
+      }
+    ],
+    "skinCount": 23
+  }
+]

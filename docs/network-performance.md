@@ -6,9 +6,12 @@ are on screen. Everything below was measured before and after under the same
 conditions; the scripts that produced the numbers are in `scripts/perf/` and
 `tests/visual/battle-performance.spec.ts`, and can be re-run.
 
-The game's rules are unchanged: the server still simulates at 30 ticks a
-second, sends battle snapshots at 15 a second, and decides movement, damage,
-cooldowns and outcomes. Clients still send one input per tick.
+The first pass below used 30 simulation ticks and 15 battle snapshots a
+second. **The current game uses 30 ticks and 30 snapshots a second**
+(section 17), on Render's **1c-2g: 1 CPU / 2 GB in Oregon**. The older
+0.5 CPU / 512 MB results are historical measurements, not current capacity.
+The server decides movement, damage, cooldowns and outcomes; clients send
+one input per tick.
 
 ## What changed
 
@@ -108,15 +111,16 @@ leave it off unless they ask for it (`createArenaServer({ backpressure })`).
 | ------ | --------------- | ------------ | ---------------------- | ------------- | -------------- |
 | High   | all             | normal       | 2 fighters (you first) | animated      | screen, ≤ 2×   |
 | Medium | 60%             | 1.6× sparser | 1 (you)                | animated      | screen, ≤ 2×   |
-| Low    | 35%             | 2.5× sparser | none                   | still         | ≤ 1.5×         |
+| Low    | 35%             | 2.5× sparser | none                   | still         | ≤ 1.25×        |
 
 Fighters, portraits, text, HUD, telegraphs, danger zones, projectiles,
 status markers and every skill's shapes and colours are identical at every
 level. Low reuses the particle density reduced motion already uses, so it is
-an existing, reviewed look. Low also draws the battle at 1.5 canvas pixels
-per CSS pixel at most, as iPhones do at every level (`rendererDensity`):
-slightly softer, and it is what stops older Android phones lagging when
-skills go off (owner's decision, 10 Nov 2026). A level change mid-battle
+an existing, reviewed look. Low draws the battle at 1.25 canvas pixels per
+CSS pixel at most (owner's decision, 23 Nov 2026); High keeps the platform
+cap from `rendererDensity` (1.5× on iPhones, 2× elsewhere). The earlier
+1.5× Low cap helped older Android phones when skills went off (10 Nov).
+A level change mid-battle
 resizes the canvas on the next frame; the court keeps the density it was
 baked at.
 
@@ -182,7 +186,7 @@ are only an eighth of the frames, so Auto never stepped down for it.
 `ARENA_DIAGNOSTICS=60` on the server logs one JSON line a minute
 (`arena-diagnostics {...}`): rooms, sockets, combat tick and broadcast
 durations (p50/p95/p99/max), event-loop delay, CPU as a percentage of one
-core (Render's 0.5 CPU plan is 50), RSS/heap, outgoing bytes and messages per
+core (the current 1 CPU plan is 100), RSS/heap, outgoing bytes and messages per
 second, and congested-socket skips. When unset, every hook is a no-op.
 
 ## How to measure
@@ -193,7 +197,9 @@ npx tsx scripts/perf/net-sim.ts 120
 ```
 
 ```bash
-# Many concurrent rooms of real Socket.IO clients against a server child process
+# Linux Docker/cgroup v2; pull outside the measured window
+docker pull node:22.16.0-bookworm-slim
+# Default profile: only the server is limited to Render's 1 CPU / 2 GB
 npx tsx scripts/perf/server-load.ts --rooms 24 --mix pvp2,pvp4,raid4 --seconds 20
 ```
 
@@ -207,11 +213,33 @@ npx tsx scripts/perf/server-load.ts --rooms 8 --cycles 10 --seconds 12
 npx playwright test --config tests/visual/playwright.config.ts battle-performance
 ```
 
-To approximate Render's $7 instance (0.5 CPU, 512 MB) on Linux with cgroup
-v1, create a group with a 50 ms per 100 ms CPU quota and a 512 MB memory
-limit and pass its name as `CGROUP=<name>`; the load script moves only the
-server child into it. Results depend on the host CPU: Render's cores may be
-faster or slower than the machine used here.
+The default `render-1c-2g` profile runs the server alone in Linux Docker
+with `--cpus=1 --memory=2g --memory-swap=2g`, Node 22.16.0 (as in
+`render.yaml`), host networking and a read-only checkout mount. Install
+the checkout's dependencies first (`npm ci --include=dev`). The driver and
+its simulated players run outside that container, and the fake-account
+server listens only on a random loopback port. No production connection or
+credentials are needed. This requires local Linux Docker with cgroup v2;
+it does not configure Docker Desktop host networking on macOS/Windows.
+
+Before the driver connects, the child reads `cpu.max` and `memory.max`:
+they must mean exactly one core and 2,147,483,648 bytes (2 GiB, the plan's
+"2 GB"). A missing Docker daemon, an unapplied limit or an old `CGROUP`
+setting fails the run rather than printing a misleading capacity result.
+The JSON records `resources.profile`, `verified`, `cpu`, `memoryBytes` and
+`node`. Inputs use `TickClock` at 30 Hz so the generator's own
+`setInterval(1000 / 30)` drift does not manufacture extra input load.
+
+For an explicitly uncapped diagnostic run:
+
+```bash
+npx tsx scripts/perf/server-load.ts --profile host --rooms 6 --seconds 20
+```
+
+That prints `resources.profile: "host", verified: false`; it is not a
+Render capacity measurement. Neither mode simulates Oregon's network path,
+phone GPUs, Wi-Fi or Render's exact CPU speed. Keep browser performance
+tests and other CPU-heavy jobs out of the load measurement.
 
 ### 7. Closed battles no longer stay in memory
 
@@ -230,14 +258,17 @@ the scene afterwards. The soak test now fails if memory keeps growing.
 
 Three changes from this work also make every battle lighter now:
 
-- **Effects age in real time down to 5 fps.** The effects engine capped
-  each frame's step at 50 ms, so on a phone at 5–20 fps particles and
-  marks outlived their design (twice as long at 10 fps) while new casts
-  kept coming at the game's pace: more on screen, slower frames, longer
-  lives again. The cap is now 200 ms, Phaser's own floor (`FX_MAX_STEP`).
-  In a four-player fight most particles come from spammed basic attacks
-  (about 375 a second asked for here), so at 10 fps this halves what is on
-  screen; this container renders below 5 fps there, so it cannot show it.
+- **Effects expire by unsmoothed elapsed time.** Raising the old 50 ms
+  step cap to 200 ms was insufficient: Phaser's animation delta still
+  clamps during warm-up/blur and replaces frames over 200 ms with older
+  samples. Births follow real time, so particles and ground marks could
+  accumulate while their age clock fell behind. Expiry now uses rendered
+  timestamp gaps; only motion integration keeps the 200 ms cap
+  (`FX_MAX_STEP`). New bursts keep their first visible frame. In a
+  synthetic Low stream with 250 ms frames, the median fell from 700 to
+  140 particles, with a peak of 175; settled 60 Hz counts stayed the same.
+  See [session 2](battle-gpu-session-2.md) for controls, scene measurements
+  and the remaining need to validate on an older iPhone at Low.
 - **Circles cost less to draw.** Battles draw hundreds of filled and
   outlined circles a frame; each one had Phaser compute every outline point
   with cos/sin and make new objects. `circlePoints` (battle-curves.ts)
@@ -246,6 +277,20 @@ Three changes from this work also make every battle lighter now:
   about 100–114 ms to 36–38 ms per 10 s and `fillEllipse` from 129–169 to
   45 ms (what remains is code that draws ellipses directly).
 - **An older phone's first battle starts at Low** (see Auto in section 5).
+
+Fire kits draw fewer glow sprites (20 Nov 2026). Each flame particle drew
+a gold glow and, while young, a second white-hot core glow, so Pyranda's
+ultimate (about 130 flames landing at once) put some 200 glow sprites on
+screen, against at most 58 for any other kit. Two opt-in burst options in
+`fx-engine.ts` keep the flames and their shape and cut only the sprites:
+`dotCore` draws the white-hot core as three additive dots on the particle
+layer, and `shareGlow` gives one in every n flames of a dense burst a
+glow as wide as the light of the n it stands for. Pyranda and Cindrake use
+both. Measured with a fixed frame step (same frames before and after),
+peak glow sprites at High: Pyranda's ultimate 191–221 → 87–90, Chestnut
+Mortar 68 → 38, Ember Curtain 95–99 → 68–70, Cindrake's Magma Leap 77 → 25,
+Sunfire Pillar 63 → 37–39. Glow cover, smoke and particles are unchanged
+within run-to-run noise (a few percent).
 
 Three checks run in CI with the visual suite, and two numbers come back
 from players' phones:
@@ -257,7 +302,13 @@ from players' phones:
   particles. The limits are about twice the heaviest kit seen (glow 0.30
   screens, smoke 0.52, particles 218), because which frame a run catches
   moves a peak by up to about 40%. `EFFECT_BUDGET_MEASURE=1` prints every
-  champion's numbers.
+  champion's numbers. A second check, for free-for-all, has the four
+  heaviest kits (Pyranda, Cindrake, Mystowl, Sunbara on 20 Nov 2026) cast
+  each skill on the same tick, aimed across one another, spaced in effect
+  time like the first, and judges the heaviest frame against its own
+  limits: glow 2.6 screens and smoke 2.9 (about twice the 1.23 and 1.15
+  seen), particles 700, the engine's hard cap (583 seen at most). When a
+  kit measures heavier than one of the four, it takes its place.
 - **A real match** (`tests/visual/match-flow-budget.spec.ts`, at High and at
   Low): dressed fighters from the first snapshot, the briefing, then the
   fight. No fighter art may load mid-fight (512 textures before and after),
@@ -265,8 +316,7 @@ from players' phones:
   Phaser's own canvas size check, on a 500 ms timer, is counted apart), the
   page does not grow, nothing leaks (once the match is over and its effects
   have played out, the scene less its pooled effect sprites is back to its
-  size; judged then because under 5 fps Phaser slows game time and effects
-  pile up while the fight lasts), and at Low the glow budget holds
+  size; judged after transient effects finish), and at Low the glow budget holds
   decorative light to 0.75 screens (measured 0.74 at the 90th percentile,
   against about 1 at High).
 - **Effect rules** (`tests/unit/effect-rules.test.ts`): skill effect files
@@ -282,6 +332,11 @@ from players' phones:
 - **`?perf=1`** shows the same numbers over the battle (last second's fps,
   slowest frames, stutter, level and density, glow, smoke and particles),
   for a player to screenshot.
+
+The Plaza's wishing-fountain fireworks (20 Nov 2026) were taken out with
+the wishing fountain on 23 Nov 2026. Their own drawing had stayed small
+(0.3–0.9 ms a frame on CI, 0.2 ms here), but their frame-rate test kept
+failing on CI's slow software renderer.
 
 ### 9. Shots and wind-ups on your own timeline
 
@@ -324,6 +379,28 @@ Hits, damage and every rule stay the server's. The trade-off: a shot you
 fire at an opponent, who is drawn about 0.1 s in the past (section 2), now
 looks a little further along than that opponent when it lands.
 
+Follow-ups from a player report (22-23 Nov 2026: a basic flew past its
+target, then the ground blew up under it):
+
+- **A drawn shot stops on the fighter it strikes** (`leadProjectile`'s
+  `targets`, the server's own hit test against where fighters are drawn),
+  instead of flying on through until the snapshot with the impact.
+- **Your shot's blast plays when it reaches a fighter standing still**
+  (`ImpactPrediction`): drawn where the server last had it, so the server
+  hits it too. The server's impact for that shot then plays nothing. A
+  moving target is drawn in the past and may be missed on the server, so
+  its blast still waits for the server. Damage numbers always come from
+  the server.
+- **Zones count down on the clock that fits them** (`zoneClock`): an
+  opponent's on your timeline (the time you have to get out), yours and
+  your allies' on the snapshot's own clock, where the hits they deal
+  arrive. On your timeline your blast went off about a round trip before
+  its damage showed. Now they land within one snapshot interval.
+- Not done: sending a snapshot early on a hit. Snapshots go out every
+  second tick, so a hit waits at most one tick (33 ms, about 17 ms on
+  average), and an early snapshot per hit could double the traffic of a
+  busy fight.
+
 `tests/unit/timeline-lead.test.ts` checks a real shot from the server's
 `Arena` against the drawn position tick by tick;
 `tests/visual/shot-timeline.spec.ts` checks in the browser that shots run
@@ -359,6 +436,34 @@ you were drawn), `errors`, `build` (the commit, stamped at build time from
 and from the server: `opponents` (champions only), `botLevel`, and
 `match`, a random tag new at each match start so both players' rows read
 together.
+
+**Where a slow phone's time goes (22 Nov 2026).** A friend's iPhone 11
+lagged in long Gloomshade raids, and the reports could not say which phone
+it was, whether it was the app, whether the match got slower as it went, or
+what was on screen. Each report now also carries:
+
+- `shell`: `web`, `pwa` (home screen), `ios-app` or `android-app`. `app`
+  only means "home screen", so the Xcode-built app reported `false`.
+- `model` and `osVersion` from the app (`@capacitor/device`; an iPhone 11
+  is `iPhone12,1`), and `screen`, the screen's CSS size and pixel ratio
+  (`896x414@2`), which narrows a browser to a family of phones. An app
+  binary built before the plugin was added sends no model.
+- `sliceFps` and `sliceJank`: frame rate and stutter share for each 15 s of
+  live play, so heat building up (or a heavy late phase) shows as a falling
+  line instead of hiding in one average.
+- `workP50` and `workP95`: our own work per frame (Phaser's step through
+  rendering, in ms). Long frames with short work mean the graphics chip or
+  heat set the pace; long work means our code.
+- `glowP50`/`glowSlow`, `softP50`/`softSlow`, `particlesP50`/`particlesSlow`
+  and `objectsP50`/`objectsSlow`: the effects engine's cover and particles
+  and the scene's display-list size at the median frame and over the
+  slowest 5% of frames.
+- In raids, `phases` (seconds, frame rate and stutter per boss phase) and
+  `attacksSlow`, the boss attacks most often being warned of in the slowest
+  frames.
+
+All of them are technical numbers in `KEEP`; still no account, name or
+room code (`tests/unit/perf-reports.test.ts`, `tests/unit/battle-perf.test.ts`).
 
 ### 11. Why your own fighter jumps
 
@@ -514,6 +619,32 @@ every `:has()` rule would reach 5 elements; the rest are small. A new
 or whose anchor is `body` or a dialog can bring this back: check a battle
 trace (`UpdateLayoutTree` element counts) when adding one.
 
+**It came back (25 Nov 2026).** A Pixel 8a (Chrome) spent 22 ms of every
+battle frame in our own work (`workP50`) where an iPhone 17 Pro Max spent
+1–2 ms in the same matches, so it played at 23–29 fps. Chrome's counters
+over 20 s of a duel at Low (`Performance.getMetrics`, full-speed CPU in the
+cloud container): style recalculation 3.8 s (19% of the time, about 1,100
+recalculations), script 1.5 s, layout 0.07 s; with the CPU slowed 4×, 37%.
+Removing all 114 `:has()` rules cut it to 1.0 s. Bisected by stylesheet and
+then by rule, most of it was one Profile-screen rule, though that screen is
+closed in battle: `.pf-main:has(> .pf-account) > *`. It is
+`.pf-main.has-account` now, set by `profile-view.ts`: 3.8 s → 2.2–2.3 s in
+two runs. `tests/unit/css-has-rules.test.ts` fails on `:has(...) > *` or
+`:has(...) *` anywhere in the client CSS, and (26 Nov) on any new `:has()`
+whose subject is `body`, `html`, `:root` or a `dialog`; the 32 already in
+the CSS are listed in it and may only be removed. The other ~1.2 s is spread over
+many rules: removing any one stylesheet's `:has()` rules made no
+measurable difference, only removing all of them did.
+
+**Guarded in CI.** `tests/visual/battle-style-budget.spec.ts` traces 12 s
+of a seeded duel (Cindrake vs Voltkit, Low, 915×412) and counts the
+elements each style recalculation touched (`UpdateLayoutTree`
+`elementCount`): a count, the same on any machine. On 25 Nov 2026 it was a
+median of 55 and a p90 of 109 in all five runs; with the old
+Profile rule put back, 448 and 448. It fails above 120 and 220. Elements
+per second is printed but not judged, since it follows the frame rate
+(1,700–3,500 here).
+
 ### 15. The server's clock: exactly 30 ticks a second
 
 The 18 Nov 2026 reports (22 matches, mostly 3-player free-for-all, two
@@ -633,7 +764,543 @@ minute), `arena` (the court), and this player's queue over the match:
 running 15 ms late or more, a phone input clock off 30, 5 or more folded
 inputs, and 10 or more holds a minute.
 
-## Results
+### 17. Thirty snapshots a second
+
+Until 23 Nov 2026 the server sent a snapshot every second tick (15 a
+second). Every hit, blast and opponent move waited up to one tick (33 ms,
+about 17 ms on average) for its slot, and opponents were drawn at least
+80 ms behind the server to ride over the 67 ms gaps. Players are mostly in
+Southern California, about 50 ms from the Oregon server, so after that
+ping these waits were the larger share of what could still be cut.
+
+`RULES.snapshot` is now 30: one snapshot every tick. The client's
+interpolation follows (`INTERPOLATION` in `networking/interpolation.ts`):
+`min` 0.08 → 0.06 s, `initial` 0.1 → 0.08 s, `margin` 0.01 → 0.02 s, the
+lateness window 60 → 120 arrivals and the frame history 12 → 24 (both the
+same seconds as before).
+
+net-sim, 60 s per link, averaged over seeds 1-5 (opponent drawn behind the
+server, p50, and how often a moving opponent is drawn standing still):
+
+| Link         | 15 a second  | 30, old tuning   | 30, new tuning   |
+| ------------ | ------------ | ---------------- | ---------------- |
+| Good Wi-Fi   | 77 ms, 0.0%  | 63 ms, 0.7%      | **53 ms, 0.0%**  |
+| Mobile 4G    | 127 ms, 0.5% | 103 ms, **5.4%** | **111 ms, 0.8%** |
+| Congested    | 264 ms, 1.8% | 264 ms, 2.8%     | 267 ms, 2.3%     |
+| Wi-Fi stalls | 200 ms, 4.5% | 200 ms, 3.5%     | 200 ms, **3.3%** |
+
+The old tuning at 30 a second froze 4G opponents: with half the interval
+the buffer no longer covered the link's jitter, hence the larger margin.
+(A single seeded run is not enough to compare rates: the network's random
+draws follow the number of snapshots, so each rate sees another network.)
+
+The cost, `server-load.ts --rooms 24 --mix pvp2,pvp4,raid4 --seconds 20` on
+this host (80 players fighting non-stop):
+
+| Snapshots a second | Server CPU, % of one core | Tick p95 / p99      | Per player, downstream |
+| ------------------ | ------------------------- | ------------------- | ---------------------- |
+| 15                 | 25.7                      | 9.4 / 11.6 ms       | 78 KB/s                |
+| 30 (two runs)      | 29.0-32.4                 | 9.7-11.7 / 14-17 ms | 147 KB/s               |
+
+- CPU grows 13-26%, not 100%: inputs (30 a second per player) and the
+  simulation cost the same; only the outgoing messages double. Every tick
+  still ran on time. The capacity estimate below shrinks by about a fifth
+  (roughly 65-80 people in battles at once on 0.5 CPU).
+- Download doubles to about 150 KB/s per player in a battle (about 530 MB
+  per hour of non-stop fighting). The whole service sent 2.5 GB in the week
+  of 16-23 Nov 2026 (Render metrics), so this stays far inside the plan.
+- `correction-sim.test.ts` measures the drift carry (Radiant Flare's pull)
+  at 15 a second: at 30 a pull is corrected every tick and the carry barely
+  shows (9 lure corrections with or without it in that replay).
+- `SNAP_LATE` (a late snapshot in the match reports) stays 120 ms so the
+  "Late updates" column compares across builds.
+
+### 18. Raid frames on phones
+
+The match reports' slowest phone (an iPhone, in the installed app, Low
+graphics, 22 Nov 2026) ran Gloomshade raids at 30-45 fps with 10-50% of
+the time stuttering, other raids and duels at 45-59 fps, and the long
+Gloomshade raids (80-126 s) worst. In the same session Tidewyrm and
+Grumblecrag reached 58.8 fps with the screen measured at 59 Hz, so the app
+does not cap the frame rate: the phone runs out of time in the heaviest
+scene, and a frame just over 16.7 ms waits for the next refresh (33 ms).
+
+Counting the screen area every quad and triangle covers each frame (the
+harness at 844×390, iPhone density 1.5, Low), a Gloomshade raid drew 3.3
+screens of pixels, Tidewyrm 2.7, Grumblecrag and a duel 2.3. One of those
+screens in every battle is Phaser's camera background: Phaser clears the
+canvas, then paints the camera's background colour as a blended rectangle
+over the whole view, and the court's floor covers it at once. Drawing that
+colour as the clear instead (same pixels; 3.3 → 2.45 screens, median frame
+on the software renderer about 12% shorter) was tried in #388 and taken
+out again: with it, two visual specs failed on CI's runners every time
+(the Spire page's first row never painted; a blanked fighter's art never
+found) while passing locally. Bring it back only with those understood.
+
+Back in #394 (23 Nov 2026), unchanged from the version that failed: it
+restores the game's own clear colour after every frame, as it does the
+camera's (`tests/unit/camera-clear.test.ts`). This time all 30 shards
+passed, `spire.spec.ts` and `rig-art-health.spec.ts` included, so why they
+failed under #388 is still not known; the Spire page has no battle game at
+all (only the lobby fighter's hidden canvas), so camera-clear never runs
+there. If they fail again, read CI's report for them before suspecting it.
+Measured at Low 1.25×, 844×390 at 2×, 60 s raids, before and after
+interleaved: Inkpurr 67.0/70.8 → 55.6/58.0 ms a frame (−17%), Cragmuff
+61.4/60.8 → 53.4/53.8 ms (−12%), our code's own work per frame unchanged.
+Every battle (each raid boss, the Spire, duels) skips the same one screen
+of fill.
+
+Damage numbers and combo text (`battle-text.ts`) are made with less work:
+Phaser measured each label's font by drawing a test string and reading the
+canvas back (`getImageData`, which on an iPhone waits for the graphics
+chip), and `setResolution` drew and uploaded each label twice. The measure
+is now taken once per font and the resolution passed with the style: one
+draw and one upload a label, 40% less time making one (0.85 → 0.5 ms at
+4× CPU throttle), and the same pixels (compared canvas for canvas).
+
+Decided by the owner (23 Nov 2026):
+
+- **Low draws at 1.25×** (`BATTLE_QUALITY.low.density`, was 1.5). iPhones
+  are capped at 1.5 at every level, so Low used to give them no fill relief
+  at all; 1.25 fills 31% fewer pixels than 1.5 and stays sharper than 1×.
+  Android at Low goes from 1.5 to 1.25 as well. High and Medium unchanged.
+- **The battle canvas keeps its 4× multisampling.** Phone graphics chips
+  (Apple's, and most Android ones) draw in tiles and resolve multisampling
+  on the chip, so turning it off would save little and roughen every ring
+  and telegraph edge. Not measured on a phone: revisit only if the reports
+  still show slow frames after the Low change.
+- **Gloomshade's curse lands three times a second** (`GLOOMSHADE.curse
+.tickEvery`): its damage adds up and hits as one, the same damage a
+  second, instead of a hit every tick (30 a second per Haunted raider, each
+  a spark, a tone and a "0"). In a live raid in the harness, three seconds
+  Haunted played 90 hit sparks before and 8 after, and left the raider at
+  111.0 and 111.5 health. Each hit now shows its number (about 3).
+
+### 19. Input deadlines and local press timing
+
+Battle inputs now follow monotonic deadlines in `battle-input-clock.ts`,
+apart from Phaser's smoothed animation delta and the render frame cap. Each
+wake emits at most three inputs and yields before catching up more; short
+hitches retain their deadlines, while a suspension more than ten periods
+behind starts afresh. A timer still waits for a blocked main thread. Each
+emitted seq still adds one pending input and predicts one step; the server's
+held ticks, credit and catch-up limits are unchanged.
+
+The clock stops for a hidden page, pagehide, battle exit and disconnect.
+Reconnect waits for the resume identity and its fresh snapshot. Action
+latches and timestamps are cleared, and old queued callbacks cannot restart
+the previous lifecycle. Blur clears controls; the next neutral input uses
+the same clock rather than adding an extra seq outside its cadence.
+
+Reports now separate DOM action to local emit (`pressToSendP50/P95/P99`,
+`pressSamples`), event delivery (`eventToHandlerP95`), the subsequent wait
+(`handlerToSendP95`), local send gaps (`sendGapP50/P95/P99/Max`), and confirmed
+prediction waits (`confirmP50/P95/P99`). `confirmP50` retains its old starting
+point at prediction, rather than the physical press; RTT remains separate.
+Preview skills measure from commit on release, held Basic counts its first
+press once, and gamepad polling is not labelled as a physical DOM press.
+Raw timestamps remain local; only optional bounded aggregates enter the
+report and public export. `Input` and server authority are unchanged.
+
+The battle/profile fixtures use `RULES.tick/snapshot` and wall-time catch-up,
+so before/after browser profiles run at the current 30 Hz snapshot cadence.
+The TimeStep replay, real-socket and browser regressions, measurements and
+limits are recorded in [session 1](battle-input-clock-session-1.md). In the
+250 ms hitch replay input recovers from 26.52 to 29.98 Hz; the ~262 ms
+press-to-send tail still exposes the blocked main thread. This is not a
+claim about phone FPS or a measured improvement in production RTT.
+
+### 20. HUD writes that restyle one element, not the page
+
+Section 14 removed the CSS rule that made each HUD change restyle hundreds
+of elements. A duel still restyled about 55 elements per recalculation,
+almost 3,000 a second, and a Pixel 8a at Low still spent 6.6 ms of each
+frame on work other than drawing (p95 10.3). Traces with stacks (25 Nov
+2026; a duel, Cindrake against Voltkit, Low, 915×412 at 2×, a fixed seed,
+12 s; before and after run in turn) put it on how the code wrote to the
+HUD, not on the rules:
+
+1. **`innerWidth > innerHeight` read every frame** in `ArenaScene.update`.
+   On Chrome for phones the read forces styles and layout in the middle of
+   the frame: 340 of `update`'s 406 ms, and close to two recalculations a
+   frame. `viewport-size.ts` keeps the size and reads it again on `resize`
+   and at most every 250 ms. (`match-flow-budget` does not count this read.)
+2. **`textContent =` makes a new text node.** Chromium answers every node
+   going in or out by restyling everything a `:has()` rule could reach,
+   about 55 elements: for each cooldown number (ten a second a button), the
+   enemy arrow's name (every frame, the same word) and the chat badge (each
+   snapshot). `setHudText` (`hud-dom.ts`) changes the text node's `data` in
+   place and writes nothing when the text is the same. Taking out all 111
+   `:has()` rules instead gave about the same result (0.64 s), so the rules
+   stay and the writes changed.
+3. **`--skill-sweep`**, an inherited copy of `--cooldown`, restyled the
+   whole icon's SVG each time a cooldown ring moved (p90 109 elements). The
+   ring now reads `--cooldown: inherit` itself, moves in half-percent steps
+   (`sweepPercent`) and has no 70 ms transition on the main thread.
+4. **`syncHub()` ran at every snapshot** in battle (closing the Lobby and
+   Plaza, placing the chat button, timers). `syncHubInBattle` runs when
+   something it reads has changed, and once a second.
+5. **Writes of the same value**: `hidden` on the spectate banner, the chat
+   button, nameplates and arrows restyled one element each time
+   (`setHudHidden`); a button's `disabled` is guarded the same way
+   (`setHudDisabled`).
+6. **`dialog::backdrop` blurred the running battle** (5 px): no blur while
+   `body.battle-active`.
+7. **Down in a raid**, the revive card was rebuilt at every snapshot: its
+   markup was compared with `innerHTML`, which reads an icon's `<path/>`
+   back as `<path></path>` and never matched. And `main.ts` switched every
+   touch button off after `touch.update` had switched the ready ones on:
+   450 `disabled` writes a second. `setHudMarkup` remembers the markup;
+   `TouchControls.downed` makes the one write.
+
+| Scene (12 s)         | Style time, before → after   | Elements per recalculation (median / p90) | Elements per second |
+| -------------------- | ---------------------------- | ----------------------------------------- | ------------------- |
+| Duel                 | 1.34 → 0.41 s, 1.35 → 0.43 s | 55 / 109 → 4 / 16                         | 2,923 → 316         |
+| Duel, CPU slowed 4×  | 2.55 → 0.88 s                | 55 / 109 → 4 / 20                         | 1,128 → 186         |
+| Raid of four         | 0.21 → 0.16 s                | 5 / 85 → 7 / 23                           | 419 → 203           |
+| Free-for-all of four | 0.32 → 0.16 s                | 5 / 90 → 6 / 16                           | 771 → 177           |
+
+The software renderer here draws 6–30 frames a second, so the per-second
+numbers are lower than a phone's at 60; they compare before with after and
+say nothing about a phone's frame rate. The raid and free-for-all rows are
+one pair of runs each. The duel's count per recalculation is the same in
+every run (four out of four after: 4 / 16).
+
+Rules that follow:
+
+- **Write to the battle HUD through `hud-dom.ts`** (`setHudText`,
+  `setHudHidden`, `setHudAttribute`, `setHudStyle`, `setHudDisabled`,
+  `setHudMarkup`), never `textContent =` or `innerHTML =` at every
+  snapshot, and never compare with `innerHTML` to decide.
+- **Never read the window's or an element's size each frame**: use
+  `viewport-size.ts`, or measure once and cache (section 8).
+- `tests/visual/battle-style-budget.spec.ts` now allows a median of 20 and
+  a p90 of 60 elements per recalculation (it was 120 and 220): `main` before
+  this change fails it at 55 and 109.
+  `tests/visual/raid-downed-writes.spec.ts` counts the writes while down.
+
+**Auto forgets once what it learned before this.** Phones the old style
+work slowed had been stepped down, and a level Auto leaves is not tried
+again for a week (section 5): a Pixel 8a stepped down on 24 Nov would have
+stayed at Low until 1 Dec for stutter its graphics chip did not cause.
+`LEARNED_GENERATION` (`battle-quality.ts`) clears the remembered level and
+its ceiling once per device; Auto starts again where it starts a new device
+and steps down within about eleven seconds of play if the phone really
+cannot keep up. A player's own High or Low is untouched.
+
+Still to measure on a real phone: a Pixel 8a duel and raid at Auto after
+this reaches production (`arena-perf`'s `work`).
+
+### 21. Snapshots as changes: measured before designing (25 Nov 2026)
+
+The performance sweep (S7) read from the code that "75-80% of every
+snapshot does not change" and proposed a delta protocol. Before designing
+one, `scripts/perf/snapshot-delta-probe.ts` measured it: a real server with
+its own 30 Hz loop, real Socket.IO clients over WebSocket, 20 s of
+non-stop fighting per room, one client keeping every snapshot it is sent.
+
+```bash
+npx tsx scripts/perf/snapshot-delta-probe.ts --seconds 20
+```
+
+**Nothing compresses today.** The handshake agrees on no WebSocket
+extension (`Sec-WebSocket-Extensions` is empty: Socket.IO leaves
+`perMessageDeflate` off), so the JSON's size is the size on the wire.
+
+**What a player downloads, per room, and what three alternatives would
+send** (bytes a second for one player; snapshots only, about 330 B/s of
+pings and replies on top):
+
+| Room                     | Snapshot, mean / p95 | Today   | Field delta       | Deflate, 32 KB memory | Delta, then deflate |
+| ------------------------ | -------------------- | ------- | ----------------- | --------------------- | ------------------- |
+| Duel                     | 2,628 / 3,025 B      | 78,800  | 25,400 (**−68%**) | 8,600 (−89%)          | 6,800 (−91%)        |
+| Free-for-all, 4 players  | 4,639 / 5,451 B      | 139,200 | 44,300 (**−68%**) | 15,100 (−89%)         | 11,400 (−92%)       |
+| Raid, 4 heroes, Cragmuff | 6,320 / 7,367 B      | 189,900 | 49,300 (**−74%**) | 18,300 (−90%)         | 12,600 (−93%)       |
+| Raid, 4 heroes, Snoozaku | 7,561 / 9,084 B      | 227,200 | 50,000 (**−78%**) | 20,300 (−91%)         | 12,800 (−94%)       |
+| Spire, solo (floor 1)    | 3,250 / 3,586 B      | 97,500  | 23,500 (**−76%**) | 9,100 (−91%)          | 6,700 (−93%)        |
+
+"Field delta" is only what differs from the snapshot before: fighters,
+shots, zones and events matched by id, changed fields only. "Deflate, 32 KB
+memory" is WebSocket's per-message compression with its context kept
+between messages, at level 3.
+
+**Which parts repeat** (free-for-all; the others are alike). Fighters are
+66% of a snapshot and 76% of their bytes repeat the tick before: `statuses`
+(10% of a fighter, 98% unchanged), `stats` (10%, 98%), `cooldowns` (8%,
+98%), the dash and jump times (99%), `id`, `character`, `connected`,
+`team`, `rites` and the per-arena fields (100%). What does change every tick
+is small: `x`, `y`, `vx`, `vy`, `angle`, `ack`, `ult`, the aim. Shots (18%)
+change every tick, but only their position: each one's `owner`, `abilityId`,
+`angle`, `team` and size repeat. A raid's own block (20-31% of a raid or
+Spire snapshot) counted as "changed" whole, yet most of its fields repeat,
+which is why raids gain the most. Measured field by field, 47-62% of the
+bytes repeat; the delta saves more than that because a field that repeats
+also stops sending its name.
+
+**Compression saves more bytes and doubles the server's CPU.** Turning
+`perMessageDeflate` on needs no protocol and every client already speaks it,
+but it deflates each message once per connection.
+`server-load.ts --profile host --rooms 24 --mix pvp2,pvp4,raid4 --seconds 20`
+(80 players fighting), alternating runs on this host:
+
+|                                   | Server CPU, % of one core | Heap     | RSS        |
+| --------------------------------- | ------------------------- | -------- | ---------- |
+| Today (two runs)                  | 26.8-33.8                 | 43 MB    | 146-171 MB |
+| `perMessageDeflate` on (two runs) | **66.2-68.5**             | 60-67 MB | 209-212 MB |
+
+A delta is built once per room, whatever the number of connections: about
+0.03-0.08 ms per room and tick with the probe's unoptimised version (the
+whole snapshot costs 0.014-0.05 ms to stringify, the delta 0.005-0.01 ms).
+So the delta is the one to build, and compression stays off: the service
+runs on one core.
+
+**Decision: build it.** The benefit is smaller than the sweep's estimate in
+one way (half to two thirds of the bytes repeat, not 75-80%) and as large in
+the way that matters (68-78% fewer bytes: about 530 MB an hour of
+free-for-all becomes about 170 MB, a raid's 690-820 MB about 180 MB). The
+server's CPU is not expected to move much either way; the gain is the
+player's: mobile data, and fewer bytes queued behind a weak link (section
+4's backpressure sees it as congestion at 16 KB).
+
+The design these numbers lead to:
+
+- A client says in its handshake that it understands deltas. One that does
+  not (the iPhone app's bundled game, an installed PWA not yet updated) is
+  sent whole snapshots exactly as today.
+- Per room, not per connection: the server keeps the last snapshot it sent
+  the room and builds one delta from it each tick. A connection that has
+  the snapshot before gets the delta; any other (it just joined, resumed,
+  started watching, was held back by backpressure, or was sent a copy of
+  its own such as Snoozaku's dream or a hidden-pick lobby) gets the whole
+  snapshot, and deltas from the next tick.
+- WebSocket delivers in order and drops nothing on a live connection, so no
+  acknowledgements are needed. Snapshots are numbered all the same: a delta
+  that does not follow what the client holds is dropped with it, the client
+  asks for a whole snapshot and shows nothing until it arrives.
+- The client rebuilds the whole snapshot from the delta and hands the game
+  exactly what parsing it would have: nothing after that point changes
+  (prediction, interpolation, the event cursor, the appearance block).
+
+**What was built** (`packages/shared/src/snapshot-delta.ts`, `broadcast` in
+`apps/server/src/server.ts`):
+
+- **The switch.** On since 25 Nov 2026. `SNAPSHOT_DELTA=off` on the server
+  (or `createArenaServer({ snapshotDelta: false })`) turns it off without a
+  deploy of the client: nothing is numbered then and every client is sent
+  whole snapshots, as before. On, a connection whose handshake says
+  `auth.delta === 1` takes deltas; any other is sent whole snapshots.
+- **Messages.** A keyframe is the usual `state` message with the room's
+  count `n`. A delta is `state-delta`: `{ code, n, d }`, applying to the
+  room's snapshot `n - 1`. `state-full` (`{ code }`) is the client asking
+  for a keyframe; a quiet room (section 2 of the sweep, `quietRoom`) then
+  sends on its next tick instead of its next beat. `quietRoom` itself is
+  unchanged: a tick it skips sends nothing and counts nothing.
+- **The format follows the data**, with no list of field names to keep up
+  when a snapshot gains a field. An object's delta is `{ s, d, x }` (keys
+  set, keys changed inside, keys gone); a list of things with an `id`
+  (fighters, shots, zones, events) is matched by id, `{ o, a, u }` (the new
+  order when members came or went, the new members, `[index, delta]` for
+  each changed member); any other list is sent whole when it differs.
+  Values are compared as JSON writes them.
+- **Who holds what.** Per room, `synced` is the set of connections that
+  were sent exactly the room's last snapshot. They get the delta. Everyone
+  else gets the whole snapshot and, if they asked for deltas, joins the set.
+  A connection leaves the set when it is held back by backpressure, gets a
+  copy of its own (the catch-up after a hold, Snoozaku's dream for the
+  Dreamer, each side's lobby while picks are hidden: none of those is
+  numbered), joins or resumes, leaves the room, or asks for a keyframe.
+  When nobody is left to take a whole snapshot, none is encoded.
+- **One pass on the server.** The encoder walks the new snapshot against
+  its copy of the last one, writing the differences down and bringing the
+  copy up to date as it goes: 31-53 µs a room and tick where stringifying
+  the whole snapshot takes 47-89 µs, plus 6-12 µs to stringify the delta.
+- **The client's copy is its own.** The decoder applies the delta to a
+  snapshot only it holds and hands the game a fresh copy (prediction
+  changes what it is handed). A delta that does not follow, or does not
+  fit, discards that snapshot: it is never half applied.
+
+**The client** (`apps/client/src/networking/snapshot-stream.ts`): the
+socket's handshake carries `delta: 1` (`SNAPSHOT_AUTH`), and
+`followSnapshots` turns `state` and `state-delta` into the one stream of
+whole snapshots the game has always read. A snapshot without a number (an
+older server, or the switch off) passes straight through: nothing is kept
+or copied. A delta that does not follow asks for `state-full` once, and
+again each second it has not come. The connection dropping forgets what
+was held.
+
+To run any visual spec the way the server sends rooms with the switch on,
+set `VISUAL_DELTA=1` (the harness's `__push` then sends one whole numbered
+snapshot and deltas after it, through JSON, `tests/visual/harness/rooms.ts`).
+`tests/visual/snapshot-delta.spec.ts` does it in every run: each snapshot
+the game is handed is compared with the one the harness numbered, and a
+delta that never arrives shows nothing until the whole snapshot comes.
+
+Tests: `tests/unit/snapshot-delta.test.ts` rebuilds every snapshot of real
+fights (duel, free-for-all, teams, the seven raid bosses, the seven Spire
+zones, a whole match from lobby to results) and compares each with the
+parsed whole; `tests/multiplayer/snapshot-delta.test.ts` runs both kinds of
+client against the server over real connections: an older client beside a
+newer one, the switch off, watching mid-fight, reconnecting, a lost delta, a
+congested connection, Snoozaku's dream, changing rooms.
+
+**Measured with the switch on**
+(`server-load.ts --profile host --rooms 24 --mix pvp2,pvp4,raid4 --seconds 20`,
+80 players fighting; `--delta off` for the left column; six alternating
+pairs of runs):
+
+|                                 | Whole snapshots    | Deltas                 |
+| ------------------------------- | ------------------ | ---------------------- |
+| Download per player             | 147.0 KB/s         | **41.5 KB/s (−72%)**   |
+| Message, p50 / p95              | 4,880 / 7,050 B    | 1,270 / 2,660 B        |
+| Server CPU, % of one core       | 29.2 (26.9-30.3)   | 31.2 (28.3-33.8)       |
+| Tick, p50 / p95                 | 5.8 / 9.2 ms       | 6.2 / 10.2 ms          |
+| Deltas refused by a client      | -                  | 0 of 288,000           |
+| Client, rebuilding one snapshot | 0.01 ms (p95 0.02) | 0.04-0.05 ms (p95 0.1) |
+
+The download falls by 72%. The server's CPU does not fall: the pairs
+overlap, the average is 2 points higher, and the runs differ from each
+other by more than that. The client's work per snapshot (apply, copy,
+unpack) is a few hundredths of a millisecond, 30 times a second, and
+nothing per frame.
+
+**In production, the first day.** #460 went live at 10:27 AM PT on 25 Nov
+with `SNAPSHOT_DELTA` on. The numbers below come from the `arena-perf` lines
+in Render's log up to 10:30 AM PT on 26 Nov. Our own headless test runs
+(4 cores, 16 GB, density 1) are left out. The "before" set is the 41
+matches logged before #460.
+
+Few players played. On delta builds there were 10 matches: 9 duels against
+bots, on two Android phones, and 1 Tidelotl raid on an iPhone. Before #460
+there were 41 matches, 28 of them duels. Over the day `errors` was 0 in every
+match, and the log shows no server faults. The download per player is not
+in `arena-perf`; the −72% above comes from the load test.
+
+Duels only, medians (the raid is another load):
+
+|                            | Before, 28 duels | Deltas, 9 duels |
+| -------------------------- | ---------------- | --------------- |
+| Gap between snapshots, p95 | 56.5 ms          | 53.0 ms         |
+| Press to confirmed, p95    | 166.5 ms (n=16)  | 133.0 ms        |
+| Round trip, p50            | 60 ms            | 77 ms           |
+| Corrections per minute     | 26.1             | 28.4            |
+| … from movement            | 0                | 0               |
+| … from hits                | 19.5             | 25.8            |
+
+Read this as "nothing got worse", not as a gain from deltas. The two sets
+come from different phones and networks: before is mostly an iPhone (21 of
+the 28 duels), after only two Android phones. Hit corrections depend on the bot
+and the fight.
+
+A phone with the same profile (Android, 9 cores, 8 GB) played on both
+sides, 6 duels before and 6 after:
+
+- Gap between snapshots, p95: 66 → 53 ms.
+- Press to confirmed, p95: 176.5 → 139.5 ms.
+- Round trip: 118.5 → 78.5 ms.
+- Frame rate: 30.6 → 57.8 fps.
+
+The frame rate rose with other changes shipped in those days (a delta
+costs the phone a few hundredths of a millisecond a snapshot), and the
+round trip moved with the network. None of these four numbers can be
+put down to deltas.
+
+What the day does show is this. Snapshots arrive at least as evenly as
+before, and corrections from movement stay at zero. Movement is where a
+wrongly applied delta would show first.
+
+The one outlier was the iPhone's Tidelotl raid: 129 "other" corrections a
+minute. Deltas did not cause it. Replaying Tidelotl offline (normal and
+ascendant, 2 and 4 seats, all three chapters), every decoded delta equals
+its whole snapshot. The cause was a gap in the phone's prediction, closed in
+section 22 (#534). The switch stays on.
+
+### 22. Tidelotl moves you before your input does (26 Nov 2026)
+
+An iPhone's Tidelotl raid (26 Nov, 172 s, Lagoon) reported 142.5
+corrections a minute, 129.2 of them "other": the prediction disagreed with
+the server for no hit, status or movement skill of yours
+(`networking/correction-cause.ts`). Raids before it never passed 5.3
+"other" a minute. Deltas were ruled out first: a 9,000-tick Tidelotl run
+through all three chapters rebuilds every snapshot exactly
+(`toStrictEqual`), so the prediction is handed the same data either way.
+
+**Reproduced** with a raid mode in `scripts/perf/correction-sim.ts`
+(`RAID=tidewyrm HUMANS=2`, 180 s, 33 ms each way, a third of the run in
+each chapter): about 150 "other" corrections a minute, nearly all in
+chapters 2 and 3. Tagged by what was running (`DIAG=1`): the Undertow
+(about 300 in 180 s), a Bubble Prison (150 to 175) and, in chapter 1, a
+bubble's root (about 20). The server does all three to you every tick,
+before your input moves you (`RaidArena.tick` runs the boss's attacks
+before `Arena.tick`):
+
+- **Undertow**: pulls every raider toward its centre, `min(dist, pull·dt)`
+  a tick (140 px/s; Rip Current 160). Not a status, so the phone never knew.
+- **Bubble Prison**: puts its prisoner on the bubble each tick as it drifts
+  to the boss's mouth, and runs no input of theirs.
+- **Bubble root**: holds a raider still for 0.8 s; it lived in a private
+  map on the server, so the snapshot never showed it.
+
+**The fix**: `packages/shared/src/tidelotl-drift.ts` holds the server's own
+arithmetic (`undertowPull`, `pullIntoUndertow`, `driftPrison`,
+`heldInput`); the server calls it, and so does the phone's
+`stepRaidCarry` (predict-fighter.ts) before each predicted tick, in the
+server's order, from what the snapshot shows (`raid.undertow`,
+`raid.prisons`, `raid.trait`, and the root, now `raid.rooted`). A late
+input for a tick the server held only moves you: that tick's pull is in
+the snapshot already. The server plays exactly as before: four seeded
+raids (normal and ascendant, 2 and 4 raiders, about 24,000 ticks with
+1,300 Undertow and 1,600 prison ticks) hash to the same snapshots, apart
+from the new `rooted` field.
+
+**Measured** (`correction-sim`, 180 s, 33 ms each way;
+`NO_RAID_CARRY=1` for "before"):
+
+| Tidelotl             | Corrections a minute | "Other" a minute | "Other" per chapter (1 / 2 / 3) |
+| -------------------- | -------------------- | ---------------- | ------------------------------- |
+| Normal, 2 raiders    | 175 → 12             | 152.7 → **4.0**  | 10 / 205 / 243 → 0 / 5 / 7      |
+| Normal, 4 raiders    | 206 → 9.7            | 157.3 → **2.3**  | 5 / 192 / 275 → 0 / 2 / 5       |
+| Ascendant, 2 raiders | 176 → 10.3           | 156.3 → **2.0**  | 18 / 198 / 253 → 0 / 3 / 3      |
+| Ascendant, 4 raiders | 143 → 10.3           | 125.0 → **2.7**  | 41 / 116 / 218 → 0 / 5 / 3      |
+
+What is left is one correction as an Undertow or a prison starts, ends or
+is popped (the phone learns of it a round trip late), and the statuses and
+hits it cannot see coming. The other six bosses were already at 0 to 3
+"other" a minute and are unchanged (Lumiwick's few are large, 140 to 220
+px: see below). Sure Footing (15-25% further through water)
+is not predicted either; its error stays under the 4 px a correction
+needs, so it is left out.
+
+Tests: `tests/unit/tidelotl-prediction.test.ts` steps a real Tidelotl room
+and the phone's prediction from the same snapshot through the same inputs,
+for the Undertow, Rip Current's pull, a prison, a root and the ascendant
+Undertow: within 0.01 px for ten ticks, and over 15 px apart with the
+prediction left out.
+
+**Lumiwick's blows, the same way (26 Nov 2026).** Its Wing Gust blows
+everyone in its cone 220 px in the tick the warning lands, and the
+ascendant's Snuffing Gale everyone in its lane outside a brazier's ring
+140 px. Both are telegraphed (1.1 s and 1.9 s), and the snapshot carries
+the warning, its aim (fixed when it is warned) and its time (the telegraph
+floor is settled once, as it is made). The phone left them out, so the
+snapshot after the blow jumped you: 1 to 3 times a minute, each 140 to 220
+px. `packages/shared/src/raid-volley.ts` now holds the volley cone and line
+test (the server's `inVolley` and `lineClear`), Lumiwick's lane and ring
+tests and both blows; the server calls them, and `stepRaidCarry` lands each
+blow in the first tick that starts at or after its time, unless the boss is
+staggered, before Tidelotl's carry and the hold. Seeded raids for all seven
+bosses, normal and ascendant, hash to the same snapshots as before.
+
+| Lumiwick  | "Other" a minute, 2 raiders | 4 raiders   |
+| --------- | --------------------------- | ----------- |
+| Normal    | 0.7 → **0**                 | 1.7 → **0** |
+| Ascendant | 2.7 → **0**                 | 3.0 → **0** |
+
+Tests: `tests/unit/lumiwick-prediction.test.ts` (a gust down its cone, a
+dash into the wind, outside the cone, a staggered boss, a Gale down its
+lane, a brazier's shelter): within 0.01 px for ten ticks, and over 100 px
+apart with the prediction left out.
+
+## Historical results (0.5 CPU / 512 MB, 15 snapshots a second)
 
 All measurements were taken on one Linux container (Intel Xeon 2.8 GHz). The
 server child ran in a cgroup capped at 0.5 CPU and 512 MB to approximate
@@ -704,24 +1371,37 @@ battle → Town → Shop → Wardrobe cycles (heap after GC):
 | Before | 29.5 | 37.3 | 43.6 | 50.3 | 56.0 | 61.0 MB |
 | After  | 31.0 | 31.9 | 30.7 | 31.6 | 31.7 | 31.1 MB |
 
-## Capacity: the $7 instance versus a larger one
+## Current capacity: Render 1c-2g (1 CPU / 2 GB, Oregon)
 
-This recommendation is measured on this host only. Render's CPUs may be
-faster or slower, Town visitors were not part of the load, and the
-simulated players fight non-stop, which is harsher than real matches with
-menus and intermissions.
+**Since 23 Nov 2026 the server runs on the 1 CPU / 2 GB plan (`1c-2g`,
+$25/month, `render.yaml`)**, chosen ahead of the App Store launch. Read-only
+Render inspection on 23 Nov PT confirmed one instance in Oregon, a one-core
+CPU limit and 2,147,483,648 bytes of memory. Use the verified default
+`server-load.ts` profile above for all new capacity measurements. The
+half-core tables above are retained as history; doubling their player
+counts does not establish this plan's capacity, especially after moving
+from 15 to 30 snapshots a second.
 
-- **0.5 CPU / 512 MB is enough for roughly 80–100 people in battles at
-  once** with comfortable headroom. It starts to degrade around 150 and
-  fails around 240. Memory is far from its limit.
-- Start on the $7 instance with `ARENA_DIAGNOSTICS=60`. Move to a larger
-  (1+ CPU) instance when, at peak, `cpuPercent` stays above about 35, the
-  tick p99 exceeds about 33 ms, or the event-loop delay p99 exceeds about
-  20 ms. A full core roughly doubles headroom. More memory alone would not
-  help.
-- Bandwidth is now about 75 KB/s per player in battle (about 270 MB per
-  player-hour, down from about 465). Check this against the plan's included
-  outbound transfer.
+The current audit and measured 1c-2g baseline are in
+[battle performance audit](battle-performance-audit-2026-11-23.md).
+Treat any player-count estimate as specific to its workload: the current
+load script uses default fighters and one raid boss, and does not include
+Plaza visitors, spectators, player bot AI, all boss phases, real account refreshes
+or a real mobile network. Profile these before publishing a supported
+concurrent-player count.
+
+On the one-core plan, `cpuPercent=100` consumes the full quota. Track tick
+duration, tick lateness, event-loop delay and queueing, not only average
+CPU: a tick that exceeds 33.3 ms misses the combat budget even when a
+five-minute CPU average looks small. `ARENA_DIAGNOSTICS=60` enables the
+detailed server log; changing production settings still needs the owner's
+approval. Use the existing per-match `serverHz`, `tickLateP95` and
+`tickMsP95` alongside client reports. More RAM cannot fix input arriving
+late from a phone.
+
+At 30 snapshots a second, the earlier 24-room test measured roughly
+150 KB/s per player (section 17), about 530 MB per hour of continuous
+fighting. Use the new run's actual byte count for bandwidth planning.
 
 ## Remaining bottlenecks and limits
 
@@ -741,3 +1421,21 @@ menus and intermissions.
   logic is covered by unit tests (governor pauses, interpolation resync,
   server stale-input stop) and the existing Chromium touch-recovery and
   iOS-app checks.
+
+## Input và hit trace — 24 Nov 2026 (đợt 3)
+
+`GameEvent.at` là simulation time của hit (giây, làm tròn ms). Phép đo
+`hitsFar` nay tính cả tuổi hit trong snapshot và loại event `miss=true`.
+`hitTraceVersion=1` đánh dấu cơ sở đo mới; không so trực tiếp việc số mẫu
+giảm với bản cũ để kết luận hit-test đã tốt hơn. Server cũ thiếu `at` vẫn
+được hỗ trợ và được ghi `timed=false` trong trace.
+
+Report cuối trận có thể thêm `slowInputs` (tối đa tám action chậm nhất từ
+80 ms) và `farHits` (tối đa tám gap trên 24 world px). Input trace giữ cùng
+một thao tác: delivery, deadline, total ms, nguồn điều khiển và optional
+`frameGapMs`. Khoảng frame này không có nếu thiếu lịch sử hoặc qua pause
+trên 2 s; nó chưa phải phép đo GPU hoặc native event queue. Không xuất
+input timestamp tuyệt đối, người chơi hoặc room id. Nested schema strict
+và export whitelist áp dụng cho từng hàng. Xem
+[báo cáo đợt 3](battle-input-hit-session-3.md) cho reproducer, chi phí wire,
+negative control và giới hạn trước khi có trace thiết bị thật.

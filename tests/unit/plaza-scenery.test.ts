@@ -16,8 +16,7 @@ import {
 } from "../../apps/client/src/plaza/plaza-depth";
 import {
   BAKED,
-  COWS,
-  FIELDS,
+  KITES,
   LANDMARKS,
   LIVE,
   MOVER_BOX,
@@ -34,9 +33,11 @@ import {
   hidesLandmark,
   onWalkable,
   plazaCamClamp,
+  PLAZA_PHONE_ZOOM,
   plazaZoom,
   plazaZoomAt,
   plazaZoomRange,
+  plazaZoomable,
   propBox,
 } from "../../apps/client/src/plaza/plaza-surround";
 
@@ -162,15 +163,23 @@ describe("Plaza depth: footprints, not one number each", () => {
 });
 
 describe("Plaza surroundings", () => {
-  it("is all outside where anyone can walk", () => {
+  it("is all outside where anyone can walk, and the Farm's fields have gone", () => {
+    for (const p of SURROUND)
+      expect([
+        "barn",
+        "mill",
+        "scarecrow",
+        "well",
+        "hay",
+        "crates",
+      ]).not.toContain(p.kind);
     for (const p of SURROUND)
       expect(onWalkable(p.x, p.y, 40), `${p.kind} at ${p.x},${p.y}`).toBe(
         false,
       );
-    for (const c of COWS) {
-      expect(onWalkable(c.x, c.y, 40)).toBe(false);
-      expect(c.x).toBeGreaterThan(FIELDS.paddock.x0);
-      expect(c.x).toBeLessThan(FIELDS.paddock.x1);
+    for (const k of KITES) {
+      expect(onWalkable(k.x, k.y, 40)).toBe(false);
+      expect(onWalkable(k.at.x, k.at.y, 40)).toBe(false);
     }
     // Nothing the server collides with lies out there (the rules are unchanged).
     for (const o of PLAZA_OBSTACLES) expect(o.y).toBeLessThan(H);
@@ -192,9 +201,9 @@ describe("Plaza surroundings", () => {
     expect(
       coversMovers(propBox({ kind: "tree", x: -40, y: 900, s: 1, v: 0 })),
     ).toBe(true);
-    // A barn far into the fields never does; nor does the far bank.
+    // A bandstand far into the park never does; nor does the far bank.
     expect(
-      coversMovers(propBox({ kind: "barn", x: 700, y: 1935, s: 1, v: 0 })),
+      coversMovers(propBox({ kind: "gazebo", x: 700, y: 1935, s: 1, v: 0 })),
     ).toBe(false);
     expect(
       coversMovers(
@@ -211,18 +220,18 @@ describe("Plaza surroundings", () => {
     );
   });
 
-  it("nothing baked stands in front of a cow or the windmill's sails", () => {
+  it("nothing baked stands in front of a kite or the balloon", () => {
     const moving = movingBoxes();
-    expect(moving.length).toBe(COWS.length + 1);
+    expect(moving.length).toBe(KITES.length + 1);
     for (const m of moving) {
       const p = bakedInFront(m);
       expect(p ? `${p.kind} at ${p.x},${p.y}` : null, m.name).toBeNull();
     }
-    // The check itself: a tree just in front of the first cow is caught.
-    const c = COWS[0];
+    // The check itself: a tree in front of the first kite reaches over it.
+    const k = KITES[0];
     expect(
-      propBox({ kind: "tree", x: c.x, y: c.y + 120, s: 1, v: 0 }).top,
-    ).toBeLessThan(c.y);
+      propBox({ kind: "tree", x: k.x, y: k.y + 150, s: 1, v: 0 }).top,
+    ).toBeLessThan(k.y);
   });
 
   it("each baked picture lies outside the Plaza's own ground (never over its paths)", () => {
@@ -235,9 +244,9 @@ describe("Plaza surroundings", () => {
     }
   });
 
-  it("no tree stands in front of the barn, the windmill or the well", () => {
+  it("no tree stands in front of the bandstand or the balloon", () => {
     const marks = SURROUND.filter((p) => LANDMARKS.includes(p.kind));
-    expect(marks.length).toBe(3);
+    expect(marks.length).toBe(2);
     for (const a of SURROUND)
       for (const m of marks)
         if (a !== m)
@@ -269,7 +278,7 @@ describe("Plaza camera: never past what is built", () => {
     expect(Math.max(...Object.values(PLAZA_OUT))).toBeLessThan(PLAZA_MARGIN);
     for (const [nw, nh] of screens) {
       const z = plazaZoom(nw, nh);
-      expect(z).toBeGreaterThanOrEqual(0.66);
+      expect(z).toBeGreaterThanOrEqual(PLAZA_PHONE_ZOOM);
       for (const [x, y] of [
         [0, 0],
         [W, H],
@@ -311,16 +320,40 @@ describe("Plaza camera: never past what is built", () => {
         }
       }
     }
-    // A phone can zoom out a little and in a lot; a desktop in too.
-    const phone = plazaZoomRange(844, 390);
-    expect(phone.min).toBeLessThan(0.6);
-    expect(phone.max).toBeGreaterThan(1.1);
+    // A tablet or a desktop can zoom in, and out a little.
+    const tablet = plazaZoomRange(1133, 744);
+    expect(tablet.min).toBeLessThan(tablet.base);
+    expect(tablet.max).toBe(1.5);
     expect(plazaZoomRange(1280, 800).max).toBe(1.5);
-    expect(plazaZoomAt(844, 390, NaN)).toBe(0.66);
+    expect(plazaZoomAt(844, 390, NaN)).toBe(PLAZA_PHONE_ZOOM);
   });
-  it("phones see as much as before (zoom 0.66), desktops 1", () => {
-    expect(plazaZoom(844, 390)).toBe(0.66);
+  it("phones are a little closer (zoom 0.8, the owner's pick), desktops 1", () => {
+    expect(PLAZA_PHONE_ZOOM).toBe(0.8);
+    expect(plazaZoom(844, 390)).toBe(0.8);
+    expect(plazaZoom(667, 375)).toBe(0.8);
     expect(plazaZoom(1280, 800)).toBe(1);
+    // A fighter (84 px) is 67 px tall on a phone, a sixth of the screen.
+    expect(84 * plazaZoom(844, 390)).toBeGreaterThan(65);
+  });
+  it("only phones lose the zoom: tablets, touch laptops and desktops keep it", () => {
+    // Phones in landscape and portrait (touch, short side under 500 px).
+    for (const [w, h] of [
+      [667, 375],
+      [844, 390],
+      [932, 430],
+      [390, 844],
+    ])
+      expect(plazaZoomable(true, w, h), `${w}x${h}`).toBe(false);
+    // iPad mini to iPad Pro, both ways up.
+    for (const [w, h] of [
+      [1133, 744],
+      [744, 1133],
+      [1366, 1024],
+    ])
+      expect(plazaZoomable(true, w, h), `${w}x${h}`).toBe(true);
+    // A mouse keeps the zoom, even in a small window.
+    expect(plazaZoomable(false, 844, 390)).toBe(true);
+    expect(plazaZoomable(false, 1440, 900)).toBe(true);
   });
   it("at an edge you are no longer pressed against the side of the screen", () => {
     const z = plazaZoom(844, 390);

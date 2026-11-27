@@ -3,7 +3,7 @@ import type { Tint } from "./fashion-art";
 
 /**
  * Body colours for the themed collections (Hồn Việt, Stars & Stripes, Hero
- * Squad, Neon Campus), chosen per champion for the figure it plays (a gold
+ * Squad, Neon Campus, Starlight Idol), chosen per champion for the figure it plays (a gold
  * Kim Quy, a candy-red hot-rod racer, a magnet-red Magnetail, a velvet-red
  * drama lead...). Each moves the champion's
  * own colours toward a hue while keeping their lightness, so faces, eyes and
@@ -58,6 +58,32 @@ export const STARS_TINTS: Record<CharacterId, Tint> = {
   mossloth: T(285, 0.45), // Woodstock Folk: tie-dye violet
 };
 
+/**
+ * Sun Dynasty (Legendary): the court of a desert kingdom, each figure in a
+ * colour of its own trade (faience turquoise, saffron, papyrus, red
+ * granite...), every one at least 26 ΔE from the champion's other bodies.
+ */
+export const SUN_TINTS: Record<CharacterId, Tint> = {
+  voltkit: T(175, 0.7, -0.06), // Storm Charioteer: faience turquoise
+  cindrake: T(40, 0.85), // Phoenix Prince: phoenix gold
+  tidefin: T(225, 0.8, -0.06), // River Pilot: river lapis
+  auralynx: T(48, 0.45, 0.02), // Temple Cat: temple sand
+  lumoth: T(210, 0.65, -0.06), // Lamp Keeper: dusk blue
+  mystowl: T(245, 0.7, -0.18), // Royal Astronomer: night indigo
+  terradon: T(24, 0.3, -0.12), // Obelisk Builder: sun-baked brick
+  duskveil: T(265, 0.45, 0.12), // Moon Vizier: moonlit lavender
+  coilemur: T(22, 0.7, -0.12), // Dune Caravaneer: dune copper
+  pyranda: T(45, 0.85), // Spice Healer: saffron
+  glacelle: T(332, 0.6, -0.08), // Mirage Dancer: mirage orchid
+  halcyra: T(195, 0.35, -0.06), // Falcon Herald: falcon sky
+  sunbara: T(359, 0.75, -0.12), // Sun Sovereign: royal carnelian
+  astrabun: T(170, 0.6, -0.16), // Lotus Sceptre: blue lotus
+  wombolder: T(0, 0.3, -0.06), // Sphinx Guardian: red granite
+  shadopus: T(45, 0.7, 0.06), // Royal Scribe: papyrus
+  pangrove: T(110, 0.7, -0.04), // Oasis Keeper: palm green
+  mossloth: T(350, 0.55), // Shade Bearer: desert rose
+};
+
 export const HERO_TINTS: Record<CharacterId, Tint> = {
   voltkit: T(275, 0.6, 0.04), // Volt Streak: electric violet
   cindrake: T(12, 0.25, -0.14), // Blaze Breaker: charcoal ember
@@ -99,3 +125,53 @@ export const CAMPUS_TINTS: Record<CharacterId, Tint> = {
   pangrove: T(40, 0.7, -0.02), // Band Drummer: brass gold
   mossloth: T(150, 0.45, 0.1), // Nap Club Captain: pastel mint
 };
+
+export const IDOL_TINTS: Record<CharacterId, Tint> = {
+  voltkit: T(355, 0.7), // Thunder Riff: stage-light crimson
+  cindrake: T(275, 0.55), // Pyro Headliner: royal purple
+  tidefin: T(285, 0.6), // Pearl Popstar: orchid
+  auralynx: T(180, 0.55, 0.06), // Prism Soloist: hologram aqua
+  lumoth: T(270, 0.55), // Disco Flutter: disco violet
+  mystowl: T(235, 0.55, -0.12), // Midnight Enchantress: midnight blue
+  terradon: T(175, 0.6), // Street Beat: spray-can turquoise
+  duskveil: T(42, 0.5, 0.04), // Phantom Crooner: champagne gold
+  coilemur: T(310, 0.65), // Synth Looper: synthwave magenta
+  pyranda: T(272, 0.5, -0.04), // Chestnut MC: grape
+  glacelle: T(335, 0.5, 0.04), // Crystal Soprano: rose quartz
+  halcyra: T(178, 0.65, -0.06), // Plume Showstar: peacock teal
+  sunbara: T(100, 0.5, 0.06), // Sunflower Sweetheart: leaf green
+  astrabun: T(340, 0.8, -0.18), // Mochi Starlet: strawberry mochi
+  wombolder: T(215, 0.45, -0.06), // Bedrock Drummer: denim blue
+  shadopus: T(25, 0.8), // Neon Octave: neon coral
+  pangrove: T(8, 0.65, 0.04), // Island Serenader: hibiscus coral
+  mossloth: T(50, 0.8), // Lo-fi Lullaby: honey yellow
+};
+
+/**
+ * Abyssal Expedition: one dive team, a sea of its own for every diver. The
+ * body takes a deep-water hue (lantern-fish blue, kelp green, vent coral,
+ * abyssal violet...) instead of one teal for all eighteen, and the suit's
+ * stripes, tank bands and gauge pips take the diver's team colour, so the
+ * divers tell apart at battle size. The suit cloth and brass stay shared.
+ */
+export const ABYSSAL_TEAM: Record<CharacterId, { hue: number; team: string }> =
+  {
+    voltkit: { hue: 198, team: "#ffd23f" }, // Arc Diver: lantern-fish blue, signal yellow
+    cindrake: { hue: 8, team: "#ffb347" }, // vent crab red, magma orange
+    tidefin: { hue: 182, team: "#ff7a59" }, // reef teal, coral
+    auralynx: { hue: 246, team: "#8ff5e6" }, // anglerfish indigo, lure aqua
+    lumoth: { hue: 166, team: "#fff17a" }, // glow-plankton green, pale light
+    mystowl: { hue: 220, team: "#ffb02e" }, // Sonar Owl: cobalt, sonar amber
+    terradon: { hue: 150, team: "#ff7a59" }, // Reef Bastion: kelp green, coral
+    duskveil: { hue: 268, team: "#7dffb0" }, // abyssal violet, ghost-light green
+    coilemur: { hue: 204, team: "#ffd23f" }, // steel blue, warning yellow
+    pyranda: { hue: 18, team: "#fff3c4" }, // Coral Rescuer: rescue coral, cream
+    glacelle: { hue: 190, team: "#ff6fae" }, // ice-water teal, jelly pink
+    halcyra: { hue: 212, team: "#ff9a2e" }, // open-sea blue, flare orange
+    sunbara: { hue: 30, team: "#e8443a" }, // Buoy Captain: buoy amber, buoy red
+    astrabun: { hue: 234, team: "#ffd23f" }, // midnight-zone indigo, star yellow
+    wombolder: { hue: 158, team: "#ff9a2e" }, // sea-grass green, hazard orange
+    shadopus: { hue: 176, team: "#ffb02e" }, // Nautilus Captain: deep teal, brass light
+    pangrove: { hue: 136, team: "#ffd23f" }, // kelp-forest green, sun yellow
+    mossloth: { hue: 350, team: "#8ff5e6" }, // Coral Keeper: coral pink, aqua
+  };
