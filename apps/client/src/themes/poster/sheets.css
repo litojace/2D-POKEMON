@@ -122,7 +122,7 @@
 }
 :root[data-ui="poster"] .rv-you {
   border-radius: 0;
-  background: var(--hot);
+  background: var(--hot-fill);
   color: #fff;
 }
 :root[data-ui="poster"] .vs-back {
