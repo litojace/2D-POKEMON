@@ -16,16 +16,26 @@ and the game's fonts, so they can be made again when the game changes:
 
 ```bash
 npx playwright test --config scripts/site-clips/playwright.config.ts scripts/site-clips/scenes.spec.ts
+npx playwright test --config scripts/instagram/playwright.config.ts
+python3 scripts/instagram/make-reel.py
 node scripts/instagram/make-posts.mjs
 ```
 
 The first command records the real battles (the same captures as the
-website's "Ways to play", about 7 minutes). The pictures land in
-`instagram/` (not committed): `profile-picture.png`, and each post as
-`NN-name-feed.jpg` (1080 × 1350, 4:5), `-square.jpg` (1080 × 1080) and
-`-story.jpg` (1080 × 1920). Post the **feed** version; use the **story**
-version for Stories. The profile grid shows posts cropped to 3:4, so every
-word sits 84 px or more from the left and right edges.
+website's "Ways to play", about 7 minutes). The second records the three
+Mythical skins in the game's fitting room at Stage III, frame by frame on
+the page's own clock (about 6 minutes): standing, then each one's Entrance,
+Victory and Ultimate with their effects as the game draws them.
+`make-reel.py` cuts those into the skins Reel and picks each skin's still at
+its Ultimate's peak; `make-posts.mjs` puts the stills on post 8.
+
+The pictures land in `instagram/` (not committed): `profile-picture.png`,
+each post as `NN-name-feed.jpg` (1080 × 1350, 4:5), `-square.jpg`
+(1080 × 1080) and `-story.jpg` (1080 × 1920), and the Reel,
+`08-skins-reel.mp4` (1080 × 1920, 30 fps, H.264, 27 s, no sound) with its
+cover `08-skins-reel-cover.jpg`. Post the **feed** version; use the
+**story** version for Stories. The profile grid shows posts cropped to 3:4,
+so every word sits 84 px or more from the left and right edges.
 
 To change a post, edit its entry in `POSTS` in
 `scripts/instagram/make-posts.mjs`; `POSTS=6 node scripts/instagram/make-posts.mjs`
@@ -147,12 +157,20 @@ Play free, link in bio.
 #ElementArena #pvp #indiegame #mobilegame #battlegame
 ```
 
-### 8. The Shop: Mythical skins
+### 8. The Shop: Mythical skins (Reel)
+
+Post `08-skins-reel.mp4` as a **Reel**, with `08-skins-reel-cover.jpg` as
+its cover: the three skins' Entrance, Victory and Ultimate with their full
+effects. Add a track from Instagram's audio library when posting (the file
+has no sound; Reels without sound reach fewer people). A Business account
+only gets the commercially licensed part of the library; a Creator account
+gets more. `08-skins-feed.jpg` (the three at their Ultimate's peak) is the
+still version, for a later post or Story.
 
 ```
 Walk in a legend. ✨
 
-Ashen Warlord, Abyssal Reaver, Hellforge: costumes with their own entrance and victory. Try anything on before you spend a coin.
+Ashen Warlord, Abyssal Reaver, Hellforge: Mythical skins with their own entrance, victory and ultimate. Win in them to awaken them, stage by stage. Try anything on before you spend a coin.
 
 All cosmetic, never stronger.
 
@@ -188,7 +206,7 @@ with a link sticker to https://play.elementarenausa.com.
 | Fri 4 Dec, 6:00 PM  | 5. 2v2 teams           |
 | Mon 7 Dec, 6:00 PM  | 6. Pyranda             |
 | Wed 9 Dec, 6:00 PM  | 7. Free-for-all        |
-| Fri 11 Dec, 6:00 PM | 8. The Shop            |
+| Fri 11 Dec, 6:00 PM | 8. The Shop (Reel)     |
 | Mon 14 Dec, 6:00 PM | 9. The Spire           |
 
 The grid shows the newest post first, so after launch day the first row

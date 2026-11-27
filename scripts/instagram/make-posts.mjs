@@ -141,9 +141,9 @@ const POSTS = [
     name: "skins",
     kind: "skins",
     skins: ["pyranda-harvest-moon", "tidefin-moontide", "cindrake-sunforged"],
-    eyebrow: "The Shop",
+    eyebrow: "The Shop · Mythical skins",
     title: "Walk in a legend.",
-    line: "Costumes with their own entrance and victory. All cosmetic, never stronger.",
+    line: "Their own entrance, victory and ultimate. All cosmetic, never stronger.",
   },
   {
     id: 9,
@@ -342,10 +342,16 @@ function skinsPost(post, size) {
   const cards = post.skins
     .map((id) => {
       const s = all.find((x) => x.id === id);
-      return `<figure><img src="${skinArt(id)}"><figcaption>${s.name}<small>${s.champ.name} · ${s.rarity}</small></figcaption></figure>`;
+      // The skin at its Stage III ultimate, as the fitting room draws it
+      // (make-reel.py), else its drawing alone.
+      const still = `instagram-clips/${id}/still.jpg`;
+      const art = existsSync(at(still))
+        ? `<img class="still" style="--c:${s.champ.color}" src="${url(still)}">`
+        : `<img src="${skinArt(id)}">`;
+      return `<figure>${art}<figcaption>${s.name}<small>${s.champ.name} · Stage III</small></figcaption></figure>`;
     })
     .join("");
-  const cardW = story ? 912 : small ? 290 : 300;
+  const cardW = story ? 912 : small ? 260 : 296;
   return (
     `<div class="bg"></div>` +
     flow(
@@ -354,9 +360,11 @@ function skinsPost(post, size) {
       `<div class="row">${cards}</div>`,
       `<p>${post.line}</p>${PLAY}`,
       `.bg { position: absolute; inset: 0; background: radial-gradient(90% 55% at 50% 50%, #3b2a12 0%, #160f22 55%, #0b1020 85%); }
-.row { display: flex; ${story ? "flex-direction: column; gap: 0;" : "gap: 6px;"} }
+.row { display: flex; ${story ? "flex-direction: column; gap: 22px;" : "gap: 12px;"} }
 figure { margin: 0; width: ${cardW}px; display: flex; ${story ? "flex-direction: row; align-items: center; gap: 24px;" : "flex-direction: column; align-items: center;"} }
-figure img { width: ${story ? 270 : cardW}px; height: ${story ? 270 : small ? 250 : cardW + 40}px; object-fit: contain; filter: drop-shadow(0 0 26px #ffd65b55) drop-shadow(0 10px 16px #000a); }
+figure img { width: ${story ? 236 : cardW}px; height: ${story ? 236 : small ? 250 : cardW + 40}px; object-fit: contain; filter: drop-shadow(0 0 26px #ffd65b55) drop-shadow(0 10px 16px #000a); }
+figure img.still { height: auto; aspect-ratio: 1; object-fit: cover; border-radius: 22px; filter: none; box-shadow: 0 0 0 3px var(--c), 0 0 40px color-mix(in srgb, var(--c) 45%, transparent), 0 14px 30px #000a; }
+figure:has(.still) figcaption { margin-top: ${story ? 0 : 18}px; }
 figcaption { font: 800 ${small ? 32 : story ? 52 : 40}px/1 B; text-transform: uppercase; text-align: ${story ? "left" : "center"}; }
 figcaption small { display: block; margin-top: 8px; font: 700 ${small ? 18 : story ? 28 : 22}px/1 B; letter-spacing: .1em; color: #ffd65b; }`,
     )

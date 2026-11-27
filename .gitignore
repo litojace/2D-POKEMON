@@ -18,3 +18,4 @@ __pycache__/
 
 # Instagram posts (scripts/instagram): rendered on demand.
 /instagram/
+/instagram-clips/
