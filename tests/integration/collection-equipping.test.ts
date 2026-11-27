@@ -182,7 +182,6 @@ it("still equips earned raid rewards alongside collection pieces", async () => {
         peril: 1,
         trait: "ancient",
         gilded: false,
-        weekly: false,
         partySize: 1,
         seconds: 300,
         downs: 0,

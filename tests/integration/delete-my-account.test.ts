@@ -94,7 +94,6 @@ beforeAll(async () => {
       peril: 1,
       trait: "ancient",
       gilded: false,
-      weekly: false,
       partySize: 2,
       seconds: 300,
       downs: 0,
