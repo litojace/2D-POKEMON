@@ -7,6 +7,10 @@ import {
   snap,
 } from "./helpers";
 import { ISLAND, setInsets } from "./ui-measure";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // The Reveal (docs/hidden-picks.md): a PvP match's briefing. Each player's
 // card starts face down (a "?" and their name) while the arena loads, then

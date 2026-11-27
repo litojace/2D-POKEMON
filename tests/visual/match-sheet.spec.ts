@@ -8,6 +8,10 @@ import {
   snap,
 } from "./helpers";
 import { ISLAND, setInsets } from "./ui-measure";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // Every mode opens and ends in the PvP Reveal's style (match-sheet.css,
 // owner 22 Nov 2026): the raid and Spire briefings ("I'm ready"), the break
@@ -163,7 +167,22 @@ const recapProblems = (page: Page) =>
     const problems: string[] = [];
     if (box.left < sheetBox.left || box.right > sheetBox.right)
       problems.push("the card leaves the sheet");
-    if (getComputedStyle(table).borderTopWidth === "0px")
+    // The card stands apart from the sheet: an edge (the old look's border)
+    // or a fill of its own (Poster's ink block on the sheet's colour).
+    const rgba = (c: string) => {
+      const cx = document.createElement("canvas").getContext("2d")!;
+      cx.fillStyle = c;
+      cx.fillRect(0, 0, 1, 1);
+      return [...cx.getImageData(0, 0, 1, 1).data];
+    };
+    const fill = rgba(getComputedStyle(table).backgroundColor);
+    const under = rgba(
+      getComputedStyle(table.closest(".overlay-card")!).backgroundColor,
+    );
+    if (
+      getComputedStyle(table).borderTopWidth === "0px" &&
+      !(fill[3] === 255 && fill.join() !== under.join())
+    )
       problems.push("no card edge");
     for (const row of Array.from(table.querySelectorAll("tbody tr"))) {
       const cells = Array.from(row.children) as HTMLElement[];
@@ -436,7 +455,18 @@ for (const size of SIZES) {
                   inside:
                     you.right <= name.right + 0.5 && you.right < plate.right,
                 },
-                edge: getComputedStyle(li).boxShadow,
+                // The edge's colour as rgb: since #568 Poster's computes
+                // as oklch(), which a canvas turns back into rgb.
+                edge: (() => {
+                  const c = getComputedStyle(li).boxShadow.match(
+                    /(rgba?|oklch|color)\([^)]*\)/,
+                  )?.[0];
+                  if (!c) return null;
+                  const cx = document.createElement("canvas").getContext("2d")!;
+                  cx.fillStyle = c;
+                  cx.fillRect(0, 0, 1, 1);
+                  return [...cx.getImageData(0, 0, 1, 1).data.slice(0, 3)];
+                })(),
                 text: li.textContent,
               };
             }),
@@ -456,7 +486,11 @@ for (const size of SIZES) {
         for (const p of places) expect(p.nameFrom).toBeLessThanOrEqual(16);
         expect(places[1].you?.width).toBeGreaterThan(0);
         expect(places[1].you?.inside).toBe(true);
-        expect(places[1].edge).toContain("rgb(255, 214, 91)");
+        // Your plate's edge is gold (rgb 255, 214, 91, within a step).
+        expect(places[1].edge).not.toBeNull();
+        places[1].edge!.forEach((v, i) =>
+          expect(Math.abs(v - [255, 214, 91][i])).toBeLessThanOrEqual(6),
+        );
         // The content never needs dragging sideways.
         expect(
           await overlay

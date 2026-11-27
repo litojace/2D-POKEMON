@@ -8,6 +8,10 @@ import {
 } from "./helpers";
 import { ISLAND, setInsets } from "./ui-measure";
 import { decodePng } from "./png";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // PvP's score badge (owner, 7 Nov 2026): one pill at the top middle with
 // names, rounds and the clock; health over each fighter; no opponent's

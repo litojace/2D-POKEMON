@@ -8,6 +8,10 @@ import {
   snap,
 } from "./helpers";
 import { ISLAND, setInsets, layoutProblems } from "./ui-measure";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // The PvP room's seats and banner line up (docs/hidden-picks.md), in every
 // mode, from a small phone to a desktop: the pick tiles in one column, the
