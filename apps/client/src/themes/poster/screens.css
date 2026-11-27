@@ -751,6 +751,11 @@
 :root[data-ui="poster"] .fit-grid {
   grid-auto-rows: 1fr;
 }
+/* An empty Wardrobe slot's dash: Archivo's em dash at the look underneath's
+   28 px was wider than the slot's picture box, which cut its ends. */
+:root[data-ui="poster"] :is(.fit-slot-art i, .fit-none) {
+  font-size: calc(20px * var(--text-scale, 1));
+}
 /* wardrobe slots */
 :root[data-ui="poster"] :is(.fit-slot, .fit-slots > *) {
   border-radius: 0;
