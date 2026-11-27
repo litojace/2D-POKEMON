@@ -64,7 +64,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      - run: bash scripts/ci-playwright-install.sh
       # Plain paths only (touchedSpecs), split on spaces on purpose.
       - run: npm run test:visual -- $SPECS
         env:
@@ -148,7 +148,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      - run: bash scripts/ci-playwright-install.sh
       - run: node scripts/visual-shards.mjs ${{ matrix.shard }} ${{ strategy.job-total }} visual-shard.txt
       - run: npm run test:visual -- --test-list visual-shard.txt
         env:
