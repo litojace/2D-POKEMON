@@ -1,0 +1,85 @@
+/* Showcase: the tokens. Most of the look is here: the game's surfaces read
+   ui/tokens.css, so swapping these turns glass into dark tiles everywhere.
+   --el is the lobby fighter's element colour (set on :root by ui-theme's
+   foundation); gold is the fallback before a fighter is known. */
+:root[data-ui="showcase"] {
+  --sc-el: var(--el, #ffd65b);
+  --sc-bg: #0c0b11;
+  --sc-panel: #121118;
+  --sc-tile: #1b1a24;
+  --sc-tile-2: #252331;
+  --sc-track: #2c2a38;
+  --sc-line: rgba(255, 255, 255, 0.07);
+  --sc-text: #f4f3f8;
+  --sc-dim: #a3a1b5;
+  --sc-cta: #b8ff3c;
+  --sc-cta-ring: rgba(184, 255, 60, 0.12);
+  --sc-ink: #0c0b11;
+  --sc-stage: linear-gradient(180deg, #13121a, #09080d);
+
+  /* Rubik ships real weights 300–900: never a faked bold. */
+  font-synthesis: none;
+  --font-display: "Rubik", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-body: "Rubik", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --ui-bg-0: var(--sc-bg);
+  --ui-bg-1: var(--sc-panel);
+  --ui-bg-2: var(--sc-tile);
+  --ui-bg-3: var(--sc-tile-2);
+  --ui-glass: var(--sc-panel);
+  --ui-line: var(--sc-line);
+  --ui-line-2: rgba(255, 255, 255, 0.14);
+  --ui-text: var(--sc-text);
+  --ui-dim: var(--sc-dim);
+  --ui-faint: #6e6c80;
+  /* The accent is the fighter's colour: progress, "you", what is selected.
+     Actions are lime (--btn-primary-bg), whatever the fighter. */
+  --ui-accent: var(--sc-el);
+  --ui-accent-hi: var(--sc-el);
+  --ui-accent-lo: var(--sc-el);
+  --ui-accent-deep: color-mix(in srgb, var(--sc-el) 55%, #000);
+  --ui-accent-ink: var(--sc-ink);
+
+  --rad-xs: 8px;
+  --rad-sm: 12px;
+  --rad-md: 14px;
+  --rad-lg: 18px;
+  --rad-xl: 22px;
+
+  /* No glass: every material is one solid dark board, nothing blurred. */
+  --glass-thin: var(--sc-tile);
+  --glass-regular: var(--sc-panel);
+  --glass-thick: var(--sc-panel);
+  --glass-solid: var(--sc-panel);
+  --glass-opaque: var(--sc-panel);
+  --glass-blur: none;
+  --glass-blur-panel: none;
+  --glass-rim: var(--sc-line);
+  --glass-rim-on: var(--sc-el);
+  --aero-tint: var(--sc-tile);
+  --aero-tint-solid: var(--sc-tile);
+  --aero-rim: transparent;
+  --aero-rim-on: var(--sc-el);
+  --aero-blur: none;
+  --fill-well: var(--sc-bg);
+  --fill-card: var(--sc-tile);
+  --fill-card-hi: var(--sc-tile-2);
+  --fill-bar: transparent;
+  --scrim: rgba(5, 4, 8, 0.6);
+
+  --btn-primary-bg: var(--sc-cta);
+  --btn-primary-ink: var(--sc-ink);
+  --cta-bg: var(--sc-cta);
+  --icon-btn-bg: var(--sc-tile);
+  --icon-btn-line: transparent;
+  --shadow-1: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --shadow-2: 0 20px 50px rgba(0, 0, 0, 0.55);
+
+  --topbar-bg: var(--sc-panel);
+  --panel-top: var(--sc-panel);
+  --panel-bottom: var(--sc-panel);
+  --panel-line: var(--sc-line);
+  --scroll-track: var(--sc-bg);
+  --scroll-thumb: var(--sc-tile-2);
+  --scroll-thumb-light: var(--sc-dim);
+}

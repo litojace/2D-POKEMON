@@ -913,6 +913,12 @@
 .lobby-card[hidden] {
   display: none;
 }
+/* The Raid card (lobby-raid.ts) is in every look's markup; only a look
+   that wants it shows it (themes/showcase/lobby.css). Its picture loads
+   lazily, so a hidden card costs no download. */
+.lobby-raid-card {
+  display: none;
+}
 .lobby-layer .lobby-card.lobby-spire-card {
   grid-template-columns: 34px minmax(0, 1fr);
   align-items: center;
