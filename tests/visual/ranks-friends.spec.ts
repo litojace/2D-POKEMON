@@ -9,12 +9,37 @@ import {
   spills,
 } from "./ui-checks";
 import { ISLAND, closeSpot, layoutProblems, setInsets } from "./ui-measure";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // UI remodel step 6 (docs/ui-remodel/PLAN.md): Ranks (a panel) and Friends
 // (a sheet beside the live Lobby). Measured at the five review sizes with
 // the shared layout rules (ui-measure.ts), and the owner's priority for this
 // step: every label centred in its box (measured on the pixels), rows that
 // share their edges and heights, nothing cut off or spilling out.
+/**
+ * A tab's label in the middle of the tab, by the label's own box against
+ * the tab's (for where its ink can't be told from the tab's corners).
+ */
+async function labelCentred(page: Page, selector: string, label: string) {
+  const off = await page.locator(selector).evaluate((e) => {
+    const r = document.createRange();
+    r.selectNodeContents(e);
+    const t = r.getBoundingClientRect(),
+      b = e.getBoundingClientRect();
+    return [
+      Math.round((t.left + t.right) / 2 - (b.left + b.right) / 2),
+      Math.round((t.top + t.bottom) / 2 - (b.top + b.bottom) / 2),
+    ];
+  });
+  for (const d of off)
+    expect(Math.abs(d), `${label}: ${off} px off centre`).toBeLessThanOrEqual(
+      1,
+    );
+}
+
 const SIZES = [
   { name: "1720x1392", width: 1720, height: 1392, phone: false },
   { name: "1440x900", width: 1440, height: 900, phone: false },
@@ -298,7 +323,12 @@ for (const size of SIZES)
         }),
       ).toEqual([]);
       expect(await spills(page, ".ranks-panel")).toEqual([]);
-      await centred(page, '[data-ui-scope="friends"]', "Friends (on)");
+      // The last tab, chosen: its label's own box against the tab's. Its
+      // ink can't be read here: the switch's slanted end cuts past the tab,
+      // so one bare corner of the tab's box shows the switch's ink and the
+      // opposite one the masthead's colour, and inkOffset counts the ink
+      // corner as the label (-5,-4 px on a phone; the label is centred).
+      await labelCentred(page, '[data-ui-scope="friends"]', "Friends (on)");
       await snap(page, info, `ranks-friends-${size.name}`);
       expect(errors).toEqual([]);
     } finally {
