@@ -641,6 +641,17 @@
   font-family: var(--font-body);
   font-weight: 800;
 }
+/* Phones: Archivo's capitals are wider than the old look's, so "RATING"
+   (51 px) spilled its 46 px column. The column takes 8 px more from the
+   name's; the letters sit a little closer. */
+@media (max-height: 500px) {
+  :root[data-ui="poster"] .rk-board {
+    --rk-cols: 40px 30px minmax(0, 1fr) 54px 52px;
+  }
+  :root[data-ui="poster"] .rk-head {
+    letter-spacing: 0.06em;
+  }
+}
 :root[data-ui="poster"] .rk-pin > .rk-row {
   background: var(--el);
   color: var(--ink);
