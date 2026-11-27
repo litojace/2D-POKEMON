@@ -485,11 +485,23 @@
   color: #d01836;
   box-shadow: inset 0 0 0 2px #d01836;
 }
+/* The kit's primary on a sheet: its slanted block (::before, kit.css) and
+   its words take the sheet's CTA colours, as the buttons above: an ink
+   block with element-colour words on a win's element-colour sheet, the
+   element colour with ink words on a defeat's ink sheet (sheets.css).
+   (Painting the button's own box ink left the kit's element-colour block
+   on top of it, under element-colour words: "Run again" on a raid or
+   Spire defeat read yellow on yellow.) */
 :root[data-ui="poster"]
   #arena-overlay#arena-overlay.is-sheet
   .ui-btn.is-primary {
-  background: var(--ink);
-  color: var(--el);
+  background: none;
+  color: var(--sheet-cta-ink, var(--el));
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .ui-btn.is-primary::before {
+  background: var(--sheet-cta, var(--ink));
 }
 :root[data-ui="poster"]
   #arena-overlay#arena-overlay.is-sheet
