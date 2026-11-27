@@ -13,17 +13,22 @@ import { openHub } from "./helpers";
  *   change makes the browser lay the page out again then and there), and
  *   it is laid out only a few times;
  * - no canvas is made again for the screen (the Roster's portraits);
- * - and on a 4× slowed CPU no frame takes longer than LONG_FRAME_MS (more
- *   than the page's steady frame, where every frame was already long).
+ * - and on a 4× slowed CPU no frame of the open does more than
+ *   LONG_FRAME_MS of the page's own work: its script, and drawing the frame
+ *   (see openFrames).
  *
  * A phone held sideways (956×440, an iPhone's landscape screen), touch.
  * Mostly counted, not timed: this machine draws on the CPU. The timed limit
  * is loose; what it guards against took two to three times as long.
- * On CI's runner every Lobby frame at 4× was a long one, 250-380 ms, before
- * anything opened (here they are not long at all), and the Profile's repeat
- * open had frames of 522-627 ms: its own work well within the limit, the
- * frame as a whole not (PR #237, 19 Nov). Where the page's frames are long
- * one after another, the limit counts from their median.
+ * It times work, not how long a frame lasts. On CI's runner every Lobby
+ * frame at 4× was a long one, 110-380 ms, before anything opened, with
+ * almost nothing done in it (here they are not long at all): the page
+ * waiting for the runner to put the last frame on screen. A frame that
+ * opened a screen lasted 260-890 ms there and 170-280 here, its work about
+ * the same on both: 85-333 ms there, 91-274 here (27 Nov 2026, #562).
+ * Until then the limit counted a frame's length over the page's steady
+ * frame, which the waiting made fail by chance (#559) or count the open as
+ * its own steady frame (the Spire's 889 ms, judged 0 over).
  * Frames are taken by when they started, after the tap: on a busy page the
  * browser reports a long frame up to seconds later, so taking those reported
  * while an open was measured counted the Lobby's frames from before the tap
@@ -59,41 +64,6 @@ const PROBE = () => {
   };
   const runs = [once(), once(), once()].sort((a, b) => a - b);
   return Math.round(runs[1]);
-};
-/**
- * How long the runner takes to draw the whole screen anew, on the page as
- * it is measured (same throttling), timed as the open's frames are: a
- * screen-sized layer of text put over the page by a task just after a
- * frame was drawn (as a tap is), and the long-animation-frame that holds
- * it; the median of three, in ms (0: no frame of 50 ms or more). With
- * `nothing`, a 1 px layer: the frame's cost without the drawing.
- * Here it is 0 either way, at 4× too (27 Nov 2026).
- */
-const DRAW_PROBE = async (nothing = false) => {
-  const drawn = () =>
-    new Promise<void>((done) => requestAnimationFrame(() => setTimeout(done)));
-  const layer = document.createElement("div");
-  layer.setAttribute("aria-hidden", "true");
-  layer.style.cssText = nothing
-    ? "position:fixed;left:0;top:0;width:1px;height:1px"
-    : "position:fixed;inset:0;z-index:2147483647;pointer-events:none;overflow:hidden;padding:24px;background:linear-gradient(135deg,#16213f,#3b1d4f);color:#fff;font:600 15px/1.5 system-ui,sans-serif";
-  if (!nothing) layer.textContent = "Element Arena ".repeat(400);
-  const ats: number[] = [];
-  for (let i = 0; i < 3; i++) {
-    await drawn();
-    ats.push(performance.now());
-    document.body.append(layer);
-    await drawn();
-    layer.remove();
-    await drawn();
-  }
-  // Long frames are reported up to a second or more later on a busy page.
-  await new Promise((done) => setTimeout(done, 1500));
-  const all = (window as any).__count.all as [number, number][];
-  const times = ats
-    .map((at) => all.find(([t, d]) => t <= at && at < t + d)?.[1] ?? 0)
-    .sort((a, b) => a - b);
-  return Math.round(times[1]);
 };
 /** Layouts in the 1.5 s after a tap (the open, its entrance, settling). */
 const MAX_LAYOUTS = 12;
@@ -175,40 +145,38 @@ const PANELS: Panel[] = [
   { name: "fighters", open: rail("fighters"), asks: [] },
 ];
 
-/** A long frame: when it started and how long it took (ms), what ran in
- * it (for a failure to name), and how long the page's own script ran. */
-type Frame = [start: number, duration: number, label: string, own: number];
+/**
+ * A long frame: when it started and how long it took (ms), what ran in it
+ * (for a failure to name), how long the page's own script ran, and the
+ * frame's work: that script, and drawing the frame (from its rendering's
+ * start to its end). Not the wait before that, for the runner to show the
+ * last frame: on CI most of a long frame.
+ */
+type Frame = [
+  start: number,
+  duration: number,
+  label: string,
+  own: number,
+  work: number,
+];
 /** A frame's own script that makes it the page's work, not only drawing
  * (as `quiet` and instrument's lastLong count one busy). */
 const OWN_MS = 30;
 /**
- * The open's longest frame, and the page's steady frame, from its long
- * frames and when the tap came.
+ * What an open did, from the page's long frames and when the tap came.
  *
- * The open's frames: the one with the tap in it, then those that started
- * in the settle with the page's own work in them. A frame after the tap
- * with no script of the page's is the runner drawing: on CI every Lobby
- * frame at 4× took 180-380 ms with no script at all, and the Spire's
- * repeat open had a 609 ms one there, its third frame, which read 350 ms
- * on two other runs (27 Nov 2026; here the whole open is one 170 ms
- * frame). A screen that builds or lays out again does it with script, in
- * the tap's frame or one that is counted.
+ * `work`: the most work in one frame of the open (the one with the tap in
+ * it, and those that started in the settle). The limit is on this.
  *
- * The steady frame: where the second before the tap was long frames one
- * after another (over 70% of it), their median; otherwise 0, and the limit
- * is as it was. `steady` takes the frames that ended before the tap: the
- * tap's own frame starts before the tap, and counted with the frames
- * before it, it was its own steady frame (the Spire's open, 740 and 889
- * ms, judged 0 ms over: CI, 27 Nov 2026). `steadyWas` counts it, as the
- * limit still does while CI's numbers for `steady` come in.
+ * Shown, not judged: `worst`, the longest of those frames that ran the
+ * page's own script (a frame without is the runner drawing), and `steady`,
+ * where the second before the tap was long frames one after another (over
+ * 70% of it), the median of those that ended before it.
  */
 function openFrames(all: Frame[], tapAt: number, settle: number) {
   const after = all.filter(([t, d]) => t + d > tapAt && t < tapAt + settle);
-  const open = after.filter(([t, , , own]) => t <= tapAt || own >= OWN_MS);
   const pre = all.filter(([t]) => t >= tapAt - 1000 && t < tapAt);
   const from = tapAt - 1000;
-  // How much of the second before the tap was long frames (the tap's own
-  // frame up to the tap).
   const busy = all
     .filter(([t, d]) => t < tapAt && t + d > from)
     .reduce((n, [t, d]) => n + Math.min(t + d, tapAt) - Math.max(t, from), 0);
@@ -216,18 +184,15 @@ function openFrames(all: Frame[], tapAt: number, settle: number) {
     .filter(([t, d]) => t + d > from && t + d <= tapAt)
     .map(([, d]) => d)
     .sort((a, b) => a - b);
-  const was = pre.map(([, d]) => d).sort((a, b) => a - b);
-  const wasBusy = was.reduce((n, d) => n + d, 0);
+  const ownWork = (f: Frame) => f[0] <= tapAt || f[3] >= OWN_MS;
   return {
-    worst: Math.round(Math.max(0, ...open.map(([, d]) => d))),
+    work: Math.round(Math.max(0, ...after.map(([, , , , w]) => w))),
+    worst: Math.round(Math.max(0, ...after.filter(ownWork).map(([, d]) => d))),
     steady:
       busy < 700 || !ended.length ? 0 : Math.round(ended[ended.length >> 1]),
-    steadyWas: wasBusy < 700 ? 0 : Math.round(was[was.length >> 1]),
     longs: [
       ...pre.map(([, , s]) => `before the tap: ${s}`),
-      ...after.map(([t, , s, own]) =>
-        t <= tapAt || own >= OWN_MS ? s : `${s} (drawing only)`,
-      ),
+      ...after.map((f) => (ownWork(f) ? f[2] : `${f[2]} (drawing only)`)),
     ],
   };
 }
@@ -332,19 +297,20 @@ function instrument() {
               .split("/")
               .pop()}:${s.sourceFunctionName ?? ""} ${Math.round(s.duration)}`,
         );
-        // Where the frame's time went: from its rendering's start (rAF
-        // callbacks, then style and layout, paint) and from style and
-        // layout's start, to its end.
+        // The frame's work: the page's script before the frame is drawn,
+        // and drawing it (rAF callbacks, style, layout, paint: from its
+        // rendering's start to its end). Not the wait in between.
         const end = e.startTime + e.duration;
-        const r = (e as any).renderStart
-          ? Math.round(end - (e as any).renderStart)
-          : 0;
-        const sl = (e as any).styleAndLayoutStart
-          ? Math.round(end - (e as any).styleAndLayoutStart)
-          : 0;
+        const rs = (e as any).renderStart as number;
+        const drawing = rs ? end - rs : 0;
+        const work =
+          drawing +
+          ((e as any).scripts ?? [])
+            .filter((s: any) => !rs || s.startTime < rs)
+            .reduce((n: number, s: any) => n + (s.duration ?? 0), 0);
         const longs = (c as any).longs as string[];
         longs.push(
-          `${Math.round(e.startTime)} +${Math.round(e.duration)} ms (render ${r}, style→end ${sl}) [${scripts.join(", ")}]`,
+          `${Math.round(e.startTime)} +${Math.round(e.duration)} ms, work ${Math.round(work)} (drawing ${Math.round(drawing)}) [${scripts.join(", ")}]`,
         );
         if (longs.length > 30) longs.shift();
         // Every long frame by when it started: on a busy page the observer
@@ -352,7 +318,7 @@ function instrument() {
         // frames from before a tap were reported during the open, and
         // none in the second before it), so frames are picked by start.
         const all = (c as any).all as Frame[];
-        all.push([e.startTime, e.duration, longs[longs.length - 1], own]);
+        all.push([e.startTime, e.duration, longs[longs.length - 1], own, work]);
         if (all.length > 600) all.shift();
       }
     }).observe({ type: "long-animation-frame" });
@@ -520,61 +486,64 @@ async function measure(
   return { ...counted, ...frames, laidOut, openAt, closedAt, probe };
 }
 
-// The frames judged, on CI's own numbers (main 519b39a, shard 21, 27 Nov
-// 2026). No browser: openFrames alone.
-test("an open is judged by its own frames, not the runner's drawing", () => {
-  // The Spire's repeat open, which failed: the tap's frame (the screen
-  // opening, 162 ms of script), then frames with no script of the page's.
+// The frames judged, on CI's own numbers (#562's first run, 27 Nov 2026).
+// No browser: openFrames alone.
+test("an open is judged by its own work, not by how long its frames last", () => {
+  // The Spire's repeat open: the Lobby's frames long one after another,
+  // the tap's frame 343 ms with 168 ms of work in it, then frames of the
+  // runner drawing with almost none.
   const spire: Frame[] = [
-    [78319, 478, "tap", 162],
-    [78814, 237, "", 0],
-    [79053, 609, "", 0],
-    [79677, 219, "audio", 13],
-    [79896, 87, "", 0],
+    [81177, 204, "", 5, 11],
+    [81384, 247, "", 0, 5],
+    [81634, 343, "open", 92, 168],
+    [81995, 174, "", 0, 2],
+    [82171, 271, "", 0, 4],
+    [82445, 186, "", 0, 6],
+    [82715, 207, "", 0, 1],
   ];
-  expect(openFrames(spire, 78330, SETTLE_MS)).toMatchObject({
-    worst: 478,
-    steady: 0,
+  expect(openFrames(spire, 81900, SETTLE_MS)).toMatchObject({
+    work: 168,
+    worst: 343,
+    steady: 247,
   });
-  // A screen built again after it opened does it with script: counted.
-  const rebuilt: Frame[] = [...spire, [79300, 900, "rebuild", 400]];
-  expect(openFrames(rebuilt, 78330, SETTLE_MS).worst).toBe(900);
-  // The Shop's: the Lobby's frames long one after another before the tap
-  // (their median is the steady frame), the open in the tap's frame.
-  const shop: Frame[] = [
-    [84490, 334, "", 5],
-    [84827, 334, "", 0],
-    [85165, 675, "open", 243],
-    [85854, 82, "", 34],
-    [85966, 276, "", 28],
-    [86255, 155, "", 17],
+  // Work after the tap counts, script or drawing: a screen built again
+  // after it opened, or a frame that takes long to draw (a big blur).
+  const rebuilt: Frame[] = [...spire, [82300, 900, "rebuild", 400, 520]];
+  expect(openFrames(rebuilt, 81900, SETTLE_MS).work).toBe(520);
+  const heavy: Frame[] = [...spire, [82300, 600, "", 0, 470]];
+  expect(openFrames(heavy, 81900, SETTLE_MS).work).toBe(470);
+  // Before the tap and after the settle do not.
+  const around: Frame[] = [
+    [81000, 600, "", 300, 500],
+    ...spire,
+    [83500, 900, "", 400, 800],
   ];
-  expect(openFrames(shop, 85300, SETTLE_MS)).toMatchObject({
-    worst: 675,
-    steady: 334,
-    steadyWas: 334,
-  });
-  // The Spire's that passed: one Lobby frame, then the open's, which began
-  // before the tap. Counted with the frame before it, the open was its own
-  // steady frame (740: judged 0 ms over); without it, there is none.
-  const spireBefore: Frame[] = [
-    [71303, 383, "", 0],
-    [71690, 740, "tap", 124],
-    [72449, 114, "", 0],
-  ];
-  expect(openFrames(spireBefore, 71700, SETTLE_MS)).toMatchObject({
-    worst: 740,
-    steady: 0,
-    steadyWas: 740,
-  });
+  expect(openFrames(around, 81900, SETTLE_MS).work).toBe(168);
 });
+
+/**
+ * A check of the check: PANEL_OPEN_HEAVY=<screen> (spire, shop…) gives that
+ * screen's repeat open HEAVY_MS of extra script on its tap, as a screen
+ * that started doing too much again would. The test must then fail on it.
+ */
+const HEAVY = process.env.PANEL_OPEN_HEAVY;
+const HEAVY_MS = LONG_FRAME_MS;
+const slowNextOpen = (page: Page) =>
+  page.evaluate((ms) => {
+    document.addEventListener(
+      "click",
+      () => {
+        const t = performance.now();
+        while (performance.now() - t < ms);
+      },
+      { capture: true, once: true },
+    );
+  }, HEAVY_MS);
 
 test("a screen opened again shows what it had: no new requests, no rebuild, no long frame", async ({
   browser,
 }) => {
-  // (The draw probes add a few seconds per screen: up to a minute and a
-  // half on CI.)
-  test.setTimeout(480_000);
+  test.setTimeout(300_000);
   const context = await browser.newContext({
     viewport: { width: 956, height: 440 },
     deviceScaleFactor: 3,
@@ -630,14 +599,6 @@ test("a screen opened again shows what it had: no new requests, no rebuild, no l
     for (const panel of PANELS) {
       // The server says records changed (after a match, a raid, a
       // purchase): the next open asks for them again…
-      // How long the runner draws the screen anew, at 4× (DRAW_PROBE), here
-      // rather than between the two opens: the second must come soon after
-      // the first (a copy of the friends list is reused for 10 s).
-      await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
-      await quiet(page);
-      const draw = await page.evaluate(DRAW_PROBE, false);
-      const drawNothing = await page.evaluate(DRAW_PROBE, true);
-      await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
       const first = await measure(page, cdp, panel, { changed: true });
       for (const path of panel.asks)
         expect(
@@ -646,13 +607,11 @@ test("a screen opened again shows what it had: no new requests, no rebuild, no l
         ).toContain(path);
       // …and again, on a phone-speed CPU.
       await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
+      if (panel.name === HEAVY) await slowNextOpen(page);
       const again = await measure(page, cdp, panel);
       await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
-      results[panel.name] = { first, again, draw, drawNothing };
-      console.log(
-        panel.name,
-        JSON.stringify({ first, again, draw, drawNothing }),
-      );
+      results[panel.name] = { first, again };
+      console.log(panel.name, JSON.stringify({ first, again }));
       // (The Lobby's own minute-long friends poll may land in the window.)
       expect(
         again.asks.filter((a) =>
@@ -686,8 +645,8 @@ test("a screen opened again shows what it had: no new requests, no rebuild, no l
       const slower = Math.max(1, again.probe / PROBE_REF_MS);
       const limit = Math.round(LONG_FRAME_MS * slower);
       expect(
-        again.worst - again.steadyWas,
-        `${panel.name}: longest frame on a repeat open (ms) over the steady ${again.steadyWas} ms (counting the tap's frame; ${again.steady} without it; drawing the screen ${draw}, a 1 px layer ${drawNothing}), ${again.openAt - first.closedAt} ms after the first closed, limit ${limit} ms (runner probe ${again.probe} ms, ${slower.toFixed(2)}× the reference): ${again.longs.join("; ")}`,
+        again.work,
+        `${panel.name}: work in one frame of a repeat open (ms; the longest frame ${again.worst} ms, the steady frame ${again.steady} ms), ${again.openAt - first.closedAt} ms after the first closed, limit ${limit} ms (runner probe ${again.probe} ms, ${slower.toFixed(2)}× the reference): ${again.longs.join("; ")}`,
       ).toBeLessThanOrEqual(limit);
     }
     console.log(JSON.stringify(results));
