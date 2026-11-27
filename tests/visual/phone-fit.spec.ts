@@ -120,6 +120,10 @@ async function chatOverScreen(page: Page) {
 async function look(page: Page, inset: number[]) {
   await settle(page);
   const chat = await chatOverScreen(page);
+  // Again, just before measuring: chatOverScreen waits 100 ms, and what
+  // starts moving meanwhile (a redraw when data comes, a transition) would
+  // be measured mid-way.
+  await settle(page);
   const rest = await page.evaluate(([left, right, bottom]) => {
     const out: string[] = [];
     const W = innerWidth,
@@ -268,10 +272,37 @@ async function look(page: Page, inset: number[]) {
         tall = got.t + got.b,
         needX = half.l + half.r,
         needY = half.t + half.b;
-      if (across < needX - 2.5 || tall < needY - 2.5)
+      // What a finger lands on instead, on each side that falls short: the
+      // element at the probe's first miss, so a failure names it.
+      const what = (el: Element | null) =>
+        el
+          ? `${el.tagName.toLowerCase()}${el.id ? `#${el.id}` : ""}${Array.from(
+              el.classList,
+              (c) => `.${c}`,
+            ).join("")}`
+          : "nothing";
+      const instead = () =>
+        (
+          [
+            ["left", got.l, half.l, -1, 0],
+            ["right", got.r, half.r, 1, 0],
+            ["top", got.t, half.t, 0, -1],
+            ["bottom", got.b, half.b, 0, 1],
+          ] as const
+        )
+          .filter(([, g, h]) => g < h - 1)
+          .map(([side, g, , dx, dy]) => {
+            const x = cx + dx * Math.ceil(g),
+              y = cy + dy * Math.ceil(g);
+            return `${side}: ${what(x >= 0 && y >= 0 && x < W && y < H ? document.elementFromPoint(x, y) : null)}`;
+          })
+          .join(", ");
+      if (across < needX - 2.5 || tall < needY - 2.5) {
+        const beside = instead();
         out.push(
-          `small hit area: ${name(e)} ${across.toFixed(0)}×${tall.toFixed(0)} (needs ${needX.toFixed(0)}×${needY.toFixed(0)})`,
+          `small hit area: ${name(e)} ${across.toFixed(0)}×${tall.toFixed(0)} (needs ${needX.toFixed(0)}×${needY.toFixed(0)})${beside ? `, beside it ${beside}` : ""}`,
         );
+      }
       // ...and no dead gap in a row or column of them: every point between
       // it and a neighbour closer than half a finger hits one or the other.
       const dead = (
