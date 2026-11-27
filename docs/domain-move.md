@@ -359,3 +359,12 @@ this move doesn't touch how the session is stored.
   Render holds a Resend key. A throwaway sign-up then got its confirmation
   from `noreply@mail.elementarenausa.com` within 2 s, and was deleted (no
   rows left).
+- 27 Nov, ~11:00 AM PT: the Resend domain `litojace.com` (bare, added 13
+  Nov) is deleted with its three Cloudflare records
+  (`resend._domainkey`, `send`, `rsend` on `litojace.com`), with the
+  owner's OK here. Nothing had sent from it: every email in Resend's log
+  since 13 Nov came from `mail.litojace.com` or `mail.elementarenausa.com`.
+  **`mail.litojace.com` stays**: the owner's other project, AMATYC Arena
+  (`amatyc.litojace.com`), sends its auth emails from
+  `noreply@mail.litojace.com`, and the game's test inbox receives there.
+  A leftover `resend._domainkey.parena.litojace.com` record is untouched.
