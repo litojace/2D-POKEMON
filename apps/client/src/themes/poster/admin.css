@@ -1,0 +1,127 @@
+/* Poster on the admin panel (admin-panel.css, the owner's tool). Its tabs
+   sit on the dialog's element-colour masthead, where the default look's
+   pale-gold labels could not be read; its cards were the default navy. */
+
+/* ── tabs on the masthead: ink labels, the open one an ink block ── */
+:root[data-ui="poster"] .dialog-toolbar .admin-tab {
+  border-radius: 0;
+  color: rgba(13, 13, 15, 0.66);
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.05em;
+}
+:root[data-ui="poster"] .dialog-toolbar .admin-tab:hover:not(.active) {
+  background: rgba(13, 13, 15, 0.08);
+  color: var(--ink);
+}
+:root[data-ui="poster"] .dialog-toolbar .admin-tab.active {
+  background: var(--ink);
+  color: var(--el);
+}
+:root[data-ui="poster"] .dialog-toolbar .admin-tab.active::after {
+  display: none;
+}
+:root[data-ui="poster"] .dialog-toolbar .admin-tab .button-icon {
+  color: currentColor;
+}
+:root[data-ui="poster"] .dialog-toolbar .admin-tabs {
+  border-bottom: 0;
+}
+:root[data-ui="poster"] .admin-count {
+  border-radius: 0;
+  background: var(--hot);
+  color: #fff;
+}
+:root[data-ui="poster"] .admin-tab.active .admin-count {
+  background: var(--el);
+  color: var(--ink);
+}
+
+/* ── the board: ink cards, square controls ── */
+:root[data-ui="poster"] .adm {
+  --adm-bg: var(--ink);
+  --adm-card: var(--ink-1);
+  --adm-card-hi: var(--ink-2);
+  --adm-line: transparent;
+  --adm-dim: var(--ui-dim);
+}
+:root[data-ui="poster"]
+  .adm
+  :is(
+    .admin-row,
+    .report-card,
+    .adm-title,
+    .adm-panel,
+    .adm-kpi,
+    .adm-btn,
+    .adm-icon-btn,
+    .adm-chips > button,
+    .adm-mini button,
+    .adm-seg,
+    .adm-presets > button,
+    .adm-switch
+  ),
+:root[data-ui="poster"]
+  :is(
+    .adm-empty,
+    .adm-ledger,
+    .adm-check,
+    .adm-preview,
+    .adm-tone,
+    .adm-done,
+    .adm-details dl,
+    .adm-color
+  ) {
+  border-radius: 0;
+}
+:root[data-ui="poster"]
+  .adm
+  :is(.admin-row, .report-card, .adm-title, .adm-panel) {
+  border-left: 4px solid var(--ink-3);
+}
+:root[data-ui="poster"] .adm .adm-btn {
+  background: var(--ink-3);
+}
+:root[data-ui="poster"] .adm .adm-btn-primary {
+  background: var(--el);
+  color: var(--ink);
+  box-shadow: 3px 3px 0 var(--hot);
+}
+:root[data-ui="poster"] .adm .adm-icon-btn {
+  background: var(--ink-2);
+}
+:root[data-ui="poster"] .adm .adm-chips > button {
+  border-color: transparent;
+  background: var(--ink-2);
+}
+:root[data-ui="poster"] .adm .adm-chips > button.active {
+  background: var(--el);
+  color: var(--ink);
+}
+:root[data-ui="poster"] .adm .adm-chips > button b {
+  border-radius: 0;
+}
+:root[data-ui="poster"] .adm .adm-seg > button {
+  background: var(--ink-2);
+}
+:root[data-ui="poster"] .adm .adm-presets > button {
+  background: var(--ink-2);
+  color: var(--el);
+}
+:root[data-ui="poster"]
+  :is(.adm-ledger, .adm-details dl, .adm-check, .adm-preview) {
+  background: var(--ink-1);
+}
+:root[data-ui="poster"] .adm-avatar {
+  background: var(--ink-3);
+}
+:root[data-ui="poster"]
+  :is(
+    #adm-root .adm-search-box input,
+    #adm-root .adm-coins input,
+    #adm-root .adm-announce textarea,
+    .adm .adm-hours select
+  ) {
+  border-radius: 0;
+  background: var(--fill-well);
+}
