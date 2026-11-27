@@ -3,7 +3,10 @@ import { io, type Socket } from "socket.io-client";
 import { createArenaServer } from "../../apps/server/src/server";
 import { fakeAccounts } from "../helpers/accounts";
 import { RaidArena } from "../../apps/server/src/raid";
-import { RAID_FUNCTIONS_MIGRATION } from "../../apps/server/src/accounts";
+import {
+  AccountError,
+  RAID_FUNCTIONS_MIGRATION,
+} from "../../apps/server/src/accounts";
 import { TidewyrmArena } from "../../apps/server/src/raid-tidewyrm";
 import { SomnaraArena } from "../../apps/server/src/raid-somnara";
 import { GloomshadeArena } from "../../apps/server/src/raid-gloomshade";
@@ -28,15 +31,29 @@ const emit = (s: Socket, event: string, data: unknown = {}) =>
         err ? reject(err) : resolve(r),
       ),
   );
-const setup = async () => {
+const setup = async (
+  opts: {
+    recordRaid?: () => Promise<void>;
+    log?: { event: string; details: Record<string, unknown> }[];
+  } = {},
+) => {
   const accounts = fakeAccounts(),
-    recordRaid = vi.fn(async () => {});
+    recordRaid = vi.fn(opts.recordRaid ?? (async () => {}));
   accounts.provider.recordRaid = recordRaid;
   accounts.provider.rpc = async (_token, name) =>
     name === "arena_raid_progress"
       ? { highestPeril: 0, clears: 0, cosmetics: [] }
       : null;
-  server = createArenaServer({ accounts: accounts.provider, autoTick: false });
+  server = createArenaServer({
+    accounts: accounts.provider,
+    autoTick: false,
+    ...(opts.log
+      ? {
+          connectionLog: (event: string, details: Record<string, unknown>) =>
+            opts.log!.push({ event, details }),
+        }
+      : {}),
+  });
   await new Promise<void>((r) => server!.http.listen(0, "127.0.0.1", r));
   const addr = server.http.address() as { port: number };
   const connect = async () => {
@@ -124,6 +141,59 @@ it("starts a regular-player solo raid at the one difficulty and records a verifi
   expect(a.phase).toBe("intermission");
   expect(a.raid.result).toBeNull();
   expect(a.players).toHaveLength(2);
+});
+it("logs a raid result the database refused, without accounts or names", async () => {
+  const log: { event: string; details: Record<string, unknown> }[] = [];
+  const { connect, recordRaid } = await setup({
+      log,
+      recordRaid: async () => {
+        throw new AccountError(
+          503,
+          "Raid rewards could not be stored.",
+          'column "weekly" does not exist',
+        );
+      },
+    }),
+    host = await connect();
+  const created = await emit(host, "create", {
+    name: "Raider",
+    mode: "raid",
+    boss: "grumblecrag",
+  });
+  const a = server!.rooms.get(created.code!) as RaidArena;
+  await emit(host, "ready");
+  await emit(host, "instructions-ready");
+  await emit(host, "rite", { id: a.raid.offers[created.id!][0] });
+  await emit(host, "rite", { id: a.raid.offers[created.id!][0] });
+  for (let i = 0; i < 125; i++) server!.step();
+  expect(a.phase).toBe("playing");
+  for (let stage = 1; stage <= 3; stage++) {
+    a.damage(a.boss()!, 100000, created.id!);
+    server!.step();
+  }
+  server!.step();
+  await new Promise((r) => setTimeout(r, 20));
+  expect(a.raid.result).toBe("victory");
+  expect(recordRaid).toHaveBeenCalledTimes(1);
+  expect(a.raid.rewardStatus).toBe("unavailable");
+  const lines = log.filter((l) => l.event === "arena-raid-unsaved");
+  expect(lines).toHaveLength(1);
+  expect(lines[0].details).toEqual({
+    run: a.raid.resultId,
+    boss: "grumblecrag",
+    partySize: 1,
+    error: "Raid rewards could not be stored.",
+    detail: 'column "weekly" does not exist',
+  });
+  // Nothing that names a player: no account id, token or display name.
+  const text = JSON.stringify(lines[0].details);
+  const accountId = (
+    recordRaid.mock.calls[0] as unknown as [
+      { players: { accountId: string }[] },
+    ]
+  )[0].players[0].accountId;
+  expect(text).not.toContain(accountId);
+  expect(text).not.toContain("Raider");
 });
 it("rejects retired daily mode; raids stay at the one difficulty", async () => {
   const { connect, accounts } = await setup(),
