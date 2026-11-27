@@ -329,48 +329,14 @@
    toast keeps no gutters for them (ui/components.css). Squeezed between
    them, "Watching room …" took three lines and rose into the countdown's
    line under its number (watch-countdown.spec.ts, 667 x 375). It also sits
-   lower than a player's, just above the install pill's row (style.css,
-   #pwa-banner: 6 px up, about 25 px tall), and so clear of that line at
-   844 x 390 and 852 x 393 too. */
+   low, in the install pill's row (style.css, #pwa-banner, 6 px up): any
+   higher and at 844 x 390 and 852 x 393 it ran into that line, which sits
+   lower since the kicker stands clear of the number (sheets.css, D13). The
+   pill takes no taps; the toast covers it for its 4.5 s at most. */
 :root[data-ui="poster"] body.battle-active.touch-mode.spectating #toast {
   --toast-l: calc(var(--safe-left) + 8px);
   --toast-r: calc(var(--safe-right) + 8px);
-  bottom: calc(var(--safe-bottom) + 34px);
-}
-
-/* ── the update ask (pwa.ts): the banner, and the first ask over the whole
-   screen. They were the look underneath's: a rounded teal card the Plaza's
-   event chip showed through, a navy shade, a glowing title and a navy
-   "Later" (UI audit, 27 Nov 2026). The banner is the toast's ink block;
-   the first ask keeps the hub dimly in view behind an ink shade (the
-   owner's option B, 20 Nov), its title flat. ── */
-:root[data-ui="poster"] #pwa-banner {
-  background: var(--ink);
-  color: #fff;
-  border: 0;
-  border-left: 6px solid var(--el);
-  border-radius: 0;
-  box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.35);
-  font-family: var(--font-body);
-  font-weight: 700;
-}
-:root[data-ui="poster"] #pwa-takeover {
-  background: rgba(13, 13, 15, 0.84);
-}
-:root[data-ui="poster"] #pwa-takeover .eyebrow {
-  color: var(--el);
-  text-shadow: none;
-}
-:root[data-ui="poster"] #pwa-takeover h2 {
-  font-weight: 400;
-  text-shadow: none;
-}
-:root[data-ui="poster"] #pwa-takeover p {
-  text-shadow: none;
-}
-:root[data-ui="poster"] #pwa-takeover .pwa-takeover-later,
-:root[data-ui="poster"] #pwa-takeover .pwa-takeover-later:hover:not(:disabled) {
-  background: var(--ink-3);
+  bottom: calc(var(--safe-bottom) + 6px);
 }
 
 /* Close always sits over a scrolled tab row. */
