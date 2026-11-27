@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { openHub } from "./helpers";
+import { askReducedMotion, openHub } from "./helpers";
 import { onPlayersLook } from "./players-look";
 
 // In the look players have (players-look.ts).
@@ -63,10 +63,10 @@ test("raid navigation reverses motion, restores the gallery and respects motion 
         ),
       )
       .toBe(0);
-    await page.emulateMedia({ reducedMotion: "reduce" });
+    await askReducedMotion(page, true);
     expect(await navigate('[data-raid-card="storm-twins"]')).toHaveLength(0);
     expect(await navigate("[data-raid-back]")).toHaveLength(0);
-    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await askReducedMotion(page, false);
     await page.evaluate(() => localStorage.setItem("ea-graphics", "low"));
     expect(await navigate('[data-raid-card="storm-twins"]')).toHaveLength(0);
     expect(await navigate("[data-raid-back]")).toHaveLength(0);

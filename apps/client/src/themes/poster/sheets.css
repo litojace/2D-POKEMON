@@ -289,3 +289,132 @@
   background: var(--ink);
   box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.35);
 }
+
+/* ── a win's element-colour sheet: its small words are ink ──
+   The notes under the score and the table ("Updating your XP…",
+   "Couldn't save this match to your records") and the records line kept
+   the look underneath's pale grey and white, near invisible on the
+   element colour. --on-el-dim passes AA on every element colour
+   (tokens.css). */
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .is-victory
+  :is(
+    .rw-pending,
+    .journey-xp-pending,
+    .records,
+    .records .muted,
+    .arcade-rating-note
+  ) {
+  color: var(--on-el-dim);
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .is-victory
+  .records
+  b {
+  color: var(--ink);
+}
+/* A win's kicker is green, a loss's red (owner, 22 Nov 2026): on the
+   element-colour sheet the green is a slanted block with ink words, so it
+   reads on every element colour (green text would not on Shadow's
+   purple). A loss's kicker stays --hot on its ink sheet (above). */
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .overlay-card.is-victory
+  > .eyebrow,
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .is-victory
+  .rc-head
+  .ui-kicker {
+  display: inline-block;
+  justify-self: center;
+  align-self: center;
+  width: fit-content;
+  margin-inline: auto;
+  padding: 3px 12px;
+  background: #3ee07a;
+  color: var(--ink);
+  clip-path: polygon(5px 0, 100% 0, calc(100% - 5px) 100%, 0 100%);
+}
+
+/* Raid rites: "Rite details" and the team list open over the tiles as a
+   solid ink sheet. The old look's 95% navy let the tiles, title and timer
+   behind show through its words (audit A04). Entries are flat ink-2
+   blocks; the text is the light grey of Poster's ink cards. */
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-rites
+  .raid-rite-reference,
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-rites
+  .raid-team-summary[open]
+  > :is(.raid-team-builds, .spire-team) {
+  border-radius: 0;
+  background: var(--ink);
+  box-shadow: 8px 8px 0 rgba(0, 0, 0, 0.4);
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-rites
+  .raid-rite-reference
+  li {
+  border-radius: 0;
+  background: var(--ink-2);
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-rites
+  .raid-rite-reference
+  :is(h3, h4) {
+  font-weight: 400;
+  letter-spacing: 0.03em;
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-rites
+  .raid-rite-reference
+  p {
+  color: #d6d5dc;
+}
+
+/* The reward reveal (audit C13): the old look's rounded navy card with a
+   thin gold rim and a glow. On Poster it is an ink card in the reward's
+   colour, square, with Anton words; the slot tag is an ink block. */
+:root[data-ui="poster"] .reveal-face {
+  border: 3px solid var(--reveal);
+  border-radius: 0;
+}
+:root[data-ui="poster"] .reveal-back {
+  background: repeating-linear-gradient(
+    45deg,
+    var(--ink),
+    var(--ink) 10px,
+    var(--ink-2) 10px,
+    var(--ink-2) 20px
+  );
+  font-family: var(--font-display);
+  font-weight: 400;
+}
+:root[data-ui="poster"] .reveal-front {
+  background: var(--ink);
+  box-shadow: 8px 8px 0 rgba(0, 0, 0, 0.4);
+}
+:root[data-ui="poster"] .reveal-slot {
+  border-radius: 0;
+  background: var(--reveal);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-weight: 800;
+}
+:root[data-ui="poster"] :is(.reveal-name, .reveal-title-art) {
+  color: #fff;
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  text-shadow: none;
+}
+:root[data-ui="poster"] .reveal-source {
+  color: #d6d5dc;
+}
+:root[data-ui="poster"] .reveal-actions button {
+  text-transform: uppercase;
+}

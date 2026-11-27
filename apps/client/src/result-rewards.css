@@ -385,23 +385,25 @@
 #arena-overlay#arena-overlay .rw.is-still .rw-tile.has-burst .rw-gain {
   display: none;
 }
-@media (prefers-reduced-motion: reduce) {
+:where(:root[data-motion="reduced"])
   #arena-overlay#arena-overlay
-    :is(
-      .rw-tile,
-      .rw-gain,
-      .rw-bar i,
-      .rw-burst,
-      .rw-levelup,
-      .rw-confetti i,
-      .rw-fighter
-    ) {
-    animation: none;
-  }
-  #arena-overlay#arena-overlay .rw-tile.has-burst .rw-gain,
-  #arena-overlay#arena-overlay .rw-confetti {
-    display: none;
-  }
+  :is(
+    .rw-tile,
+    .rw-gain,
+    .rw-bar i,
+    .rw-burst,
+    .rw-levelup,
+    .rw-confetti i,
+    .rw-fighter
+  ) {
+  animation: none;
+}
+:where(:root[data-motion="reduced"])
+  #arena-overlay#arena-overlay
+  .rw-tile.has-burst
+  .rw-gain,
+:where(:root[data-motion="reduced"]) #arena-overlay#arena-overlay .rw-confetti {
+  display: none;
 }
 
 /* Phones: three tiles a row, tighter. */

@@ -132,6 +132,13 @@
   width: 100%;
   height: 100%;
 }
+/* A frame's ornaments hang outside its ring (a gem, a tassel): at the box's
+   full size the Conqueror frame's gem sat in the middle of its name below.
+   The ring takes 80% of the box, so they stay inside it. */
+.reveal-card[data-slot="frame"] .reveal-art .raid-cosmetic-preview {
+  width: 80%;
+  height: 80%;
+}
 .reveal-title-art {
   color: #fff3d6;
   font: 800 calc(20px * var(--text-scale, 1))/1.15 var(--display, sans-serif);
@@ -158,12 +165,10 @@
   color: #8fa3c2;
   font-size: calc(12px * var(--text-scale, 1));
 }
-@media (prefers-reduced-motion: reduce) {
-  .reveal-face {
-    transition: none;
-  }
-  .reveal-card.is-flipped::after,
-  #reward-reveal {
-    animation: none;
-  }
+:where(:root[data-motion="reduced"]) .reveal-face {
+  transition: none;
+}
+:where(:root[data-motion="reduced"]) .reveal-card.is-flipped::after,
+:where(:root[data-motion="reduced"]) #reward-reveal {
+  animation: none;
 }

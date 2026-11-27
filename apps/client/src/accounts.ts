@@ -616,14 +616,16 @@ export class AccountUI {
    * The Raids, Shop and Journey code and styles load on demand, not with the
    * game (it starts sooner). Loaded in quiet moments after sign-in, the
    * first open of each is as quick as the next: on a 4× slowed CPU the first
-   * Raids open took about twice as long as the next (Nov 2026).
+   * Raids open took about twice as long as the next (Nov 2026). Raids and
+   * the Shop keep what loaded, so their first open is in the tap's moment
+   * too (see loadShop).
    */
   private preloadScreens() {
     if (this.preloaded) return;
     this.preloaded = true;
     const loads: (() => Promise<unknown>)[] = [
-      () => import("./screens/raid-hall"),
-      () => import("./screens/fitting-room"),
+      () => this.loadRaids(),
+      () => this.loadShop(),
       () => import("./screens/journey"),
     ];
     const next = () => {
@@ -1050,27 +1052,27 @@ export class AccountUI {
       mode === "signup"
         ? field(
             "Display name",
-            '<input name="displayName" maxlength="20" required autocomplete="nickname" placeholder="Your player name">',
+            '<input name="displayName" maxlength="20" required autocomplete="nickname" placeholder="Your name">',
           )
         : "",
       mode !== "reset"
         ? field(
             "Email",
-            '<input name="email" type="email" required autocomplete="email" placeholder="you@example.com">',
+            '<input name="email" type="email" required autocomplete="email" placeholder="Your email">',
           )
         : "",
       mode !== "forgot"
         ? passwordField(
             mode === "reset" ? "New password" : "Password",
             "password",
-            `${mode === "login" ? "" : 'minlength="8"'} maxlength="128" required autocomplete="${mode === "login" ? "current-password" : "new-password"}" placeholder="${mode === "login" ? "Your password" : "8+ characters"}"`,
+            `${mode === "login" ? "" : 'minlength="8"'} maxlength="128" required autocomplete="${mode === "login" ? "current-password" : "new-password"}" placeholder="${mode === "login" ? "" : "Min. 8"}"`,
           )
         : "",
       mode === "signup" || mode === "reset"
         ? passwordField(
             "Confirm password",
             "confirmPassword",
-            'minlength="8" maxlength="128" required autocomplete="new-password" placeholder="Type it again"',
+            'minlength="8" maxlength="128" required autocomplete="new-password" placeholder="Again"',
           )
         : "",
     ].join("");
@@ -1086,7 +1088,7 @@ export class AccountUI {
     }[mode];
     const guest =
       (mode === "login" || mode === "signup") && this.client
-        ? `<div class="auth-divider"><span>or</span></div><form id="guest-form" class="auth-guest"><input name="nickname" maxlength="20" placeholder="Nickname (optional)" autocomplete="nickname" aria-label="Guest nickname"><button class="auth-secondary" type="submit">${iconLabel("user", "Play as a guest")}</button></form><p class="auth-note">No email needed. Save your account later from your profile to keep your progress.</p>`
+        ? `<div class="auth-divider"><span>or</span></div><form id="guest-form" class="auth-guest"><input name="nickname" maxlength="20" placeholder="Nickname" autocomplete="nickname" aria-label="Guest nickname (optional)"><button class="auth-secondary" type="submit">Play as a guest</button></form><p class="auth-note">No email needed. Save your account later from your profile to keep your progress.</p>`
         : "";
     const back =
       mode === "forgot" || mode === "reset"
@@ -1490,6 +1492,20 @@ export class AccountUI {
     this.fittingRoom?.close();
   }
   /**
+   * The Shop's code, once loaded (ahead, or by its first open). Awaiting
+   * `import()` of code already loaded still waited several tasks: 330-380 ms
+   * in the visual harness, 1.5-1.75 s at 4× CPU, so the Shop opened that
+   * long after the tap (Nov 2026, #582). As Raids does, an open with it
+   * here runs in the tap's own moment.
+   */
+  private shopCode?: typeof import("./screens/fitting-room");
+  private loadShop() {
+    return import("./screens/fitting-room").then((module) => {
+      this.shopCode = module;
+      return module;
+    });
+  }
+  /**
    * The fitting room opens inside the Lobby at once with what is known, then
    * shows the server's fresh copy of your coins, items and raid rewards.
    */
@@ -1503,7 +1519,7 @@ export class AccountUI {
     this.toLobbyScreen();
     // Its code and styles load the first time it opens, not with the game.
     const accountId = this.account?.id;
-    const { openFittingRoom } = await import("./screens/fitting-room");
+    const { openFittingRoom } = this.shopCode ?? (await this.loadShop());
     if (this.account?.id !== accountId) return;
     if (this.fittingRoom?.isOpen) this.fittingRoom.show(mode, section);
     else {

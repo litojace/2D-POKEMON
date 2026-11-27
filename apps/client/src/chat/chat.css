@@ -100,10 +100,8 @@
     transform: scale(2.4);
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .chat-unread::after {
-    animation: none;
-  }
+:where(:root[data-motion="reduced"]) .chat-unread::after {
+  animation: none;
 }
 .chat-unread[hidden] {
   display: none;
@@ -140,10 +138,8 @@
     opacity: 0;
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .chat-drawer {
-    animation: none;
-  }
+:where(:root[data-motion="reduced"]) .chat-drawer {
+  animation: none;
 }
 .chat-head {
   display: flex;

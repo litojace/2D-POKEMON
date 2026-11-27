@@ -30,7 +30,6 @@ import {
   raidLookOf,
   type RaidAttack,
   pacificDate,
-  raidWeek,
   RAID,
   RAID_BOSSES,
   RAID_BOSS_ORDER,
@@ -301,7 +300,8 @@ export function createArenaServer(
     backpressure?: boolean;
     /**
      * Where diagnostic lines go: dropped players ("arena-disconnect",
-     * "arena-client-drop") and battle load times ("arena-load"). Defaults
+     * "arena-client-drop"), battle load times ("arena-load") and raid
+     * results the database didn't keep ("arena-raid-unsaved"). Defaults
      * to console.log on a live server (autoTick), and to nothing in tests.
      */
     connectionLog?: (event: string, details: Record<string, unknown>) => void;
@@ -1636,10 +1636,6 @@ export function createArenaServer(
         peril: r.peril,
         trait: r.trait,
         gilded: r.gilded,
-        // Still read by the database (RaidReceipt): not raid modes.
-        weekly: false,
-        week: raidWeek(new Date(`${r.day}T12:00:00Z`)),
-        daily: false,
         day: r.day,
         feat: arena.feat(),
         seed: r.seed,
@@ -1721,7 +1717,19 @@ export function createArenaServer(
             }
           broadcast(arena);
         })
-        .catch(() => {
+        .catch((error: unknown) => {
+          // Players only see "unavailable"; the reason goes to the log, or a
+          // database that starts refusing receipts goes unnoticed. No
+          // accounts or names: the run, the boss and the party size.
+          connectionLog("arena-raid-unsaved", {
+            run: runId,
+            boss: receipt.boss,
+            partySize: receipt.partySize,
+            error: error instanceof Error ? error.message : String(error),
+            ...(error instanceof AccountError && error.detail
+              ? { detail: error.detail.slice(0, 300) }
+              : {}),
+          });
           if (arena.raid.resultId === runId) {
             r.rewardStatus = "unavailable";
             broadcast(arena);

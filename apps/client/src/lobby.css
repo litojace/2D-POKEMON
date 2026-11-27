@@ -1070,10 +1070,8 @@
     transform: scale(2.4);
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .lobby-badge::after {
-    animation: none;
-  }
+:where(:root[data-motion="reduced"]) .lobby-badge::after {
+  animation: none;
 }
 .lobby-spark {
   color: #ffe39d !important;
@@ -1572,22 +1570,20 @@
     height: 46px;
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .lobby-play-button::after {
-    animation: none;
-    opacity: 0;
-  }
-  .lobby-play::before {
-    animation: none;
-  }
-  .lobby-fighter-art,
-  .lobby-member-art {
-    animation: none;
-  }
-  .lobby-emote-bubble.is-popping,
-  .lobby-fighter-art.is-hopping {
-    animation: none;
-  }
+:where(:root[data-motion="reduced"]) .lobby-play-button::after {
+  animation: none;
+  opacity: 0;
+}
+:where(:root[data-motion="reduced"]) .lobby-play::before {
+  animation: none;
+}
+:where(:root[data-motion="reduced"]) .lobby-fighter-art,
+:where(:root[data-motion="reduced"]) .lobby-member-art {
+  animation: none;
+}
+:where(:root[data-motion="reduced"]) .lobby-emote-bubble.is-popping,
+:where(:root[data-motion="reduced"]) .lobby-fighter-art.is-hopping {
+  animation: none;
 }
 
 /* ── Hub top bar: the scene switch and fixed-size boxes ─────────────────── */
@@ -1842,10 +1838,26 @@ body.hub-active #account-coins > * {
 }
 
 /* Behind a dialog, a full-screen drawer or a hub panel the Lobby holds
-   still; the screen open on top (ui/hub-panel.ts) keeps moving. */
-.lobby-layer.is-covered,
-.lobby-layer.is-covered > :not(.ui-panel-host),
-.lobby-layer.is-covered > :not(.ui-panel-host) * {
+   still; the screen open on top (ui/hub-panel.ts) keeps moving.
+   - Under a full panel, the parts it covers (data-ui-covered, hidden by
+     ui/components.css) pause whatever moves in them, a cosmetic's too. Set
+     with their visibility, the pause costs no restyle of its own.
+   - Behind a dialog or the drawer (is-covered, lobby-screen.ts), the
+     Lobby's own animations pause by name.
+   (A rule on `.lobby-layer.is-covered > :not(.ui-panel-host) *` restyled
+   every Lobby element, 900-1,500 of them, a second time on every open and
+   close, and missed pseudo-elements: PLAY's glow and sweep ran on under a
+   screen. Nov 2026.) */
+.lobby-layer [data-ui-covered],
+.lobby-layer [data-ui-covered] *,
+.lobby-layer [data-ui-covered]::before,
+.lobby-layer [data-ui-covered]::after,
+.lobby-layer [data-ui-covered] *::before,
+.lobby-layer [data-ui-covered] *::after,
+.lobby-layer.is-covered
+  :is(.lobby-fighter-art, .lobby-member-art, .lobby-emote-bubble),
+.lobby-layer.is-covered :is(.lobby-badge, .lobby-play-button)::after,
+.lobby-layer.is-covered .lobby-play::before {
   animation-play-state: paused !important;
 }
 

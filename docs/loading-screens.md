@@ -2,7 +2,7 @@
 
 Opening the game used to show four different screens in about two seconds
 (an HTML "Entering the arena…" page, the plaza front door with "Checking your
-account…", the starfield "Opening the arena…" panel, then the Lobby), and the
+account…", a starfield "Opening the arena…" panel, then the Lobby), and the
 Lobby kept changing after it appeared: "Log in / Sign up" turned into the
 player's profile and coins, the default fighter (Voltkit) swapped for the one
 the account last picked, the Journey card and the worn skin arrived last.
@@ -44,7 +44,7 @@ after another and the saved fighter and avatar were not waited for at all.
 
 1. `index.html`'s boot shell shows the same title and line as the curtain
    while the code downloads (it remains the retry page when code fails).
-2. `startStartupCurtain` (`startup-curtain.ts`) holds the starfield panel
+2. `startStartupCurtain` (`startup-curtain.ts`) holds the curtain
    (`server-connection.ts`) from the first frame. A healthy server no
    longer removes it; the bar moves through the startup steps:
    server (30%) → account → profile (50%) → connection (72%) → scene (88%).
@@ -73,37 +73,37 @@ after another and the saved fighter and avatar were not waited for at all.
    in the same format version; a fresh profile that fails to load drops it
    (the front door offers to try again, as before), a refused login and
    signing out forget it.
-7. **Tips** (`loading-tips.ts`): short, one or two lines, text only (the
-   owner, 20 Nov: no illustrations). Each start shows the next one while it
-   loads. The curtain never waits for it: the game opens as soon as its
-   first screen is complete (the owner, 20 Nov: enter by itself, no "Tap to
+7. **No tips** (27 Nov 2026). The curtain showed a gameplay tip while it
+   loaded (`loading-tips.ts`, 20–27 Nov); the owner took them out of the
+   game: over a painting the tip and the status line covered the art. The
+   curtain still never waits for a tap: the game opens as soon as its first
+   screen is complete (the owner, 20 Nov: enter by itself, no "Tap to
    enter"; it still waits for the fighter, skins and pictures, so nothing
-   pops in). A long load moves on to the next tip once this one has had
-   time to be read (`tipReadMs`, 2.5–5 s, plus `TIP_LINGER_MS`). Every
-   number in a tip is built from the server's rules (`RULES`) and
-   `tests/unit/loading-tips.test.ts` checks each claim against the server's
-   simulation (where and when orbs appear, what they give). Only the visual
-   harness sets `localStorage["ea-loading-tips"] = "off"`, unless a test
-   turns them on.
+   pops in). `index.html`'s first inline script still reads
+   `localStorage["ea-loading-tips"]` and sets a class nothing uses: it is
+   left as it is because inline scripts are allowed by hash (CLAUDE.md);
+   take the line out the next time that script has to change anyway.
 
 8. **Paintings** (`loading-art.ts`, 20 Nov):
    hand-painted pictures, made in ChatGPT, of champions in Legendary and
    Mythical Shop skins fighting in the PvP modes
    ([loading-art-prompts.md](loading-art-prompts.md)). With one, the curtain
-   takes its painting layout, the owner's style K: the painting fills the
-   screen; the gold star and the title stand top right; the tip (a caption
-   with a gold line on its right, not a box) bottom right, above a loading
-   bar across the whole width with one status line over its left end. Each
-   startup step replaces the last status with a short cross-fade, each shown
-   at least 0.8 s so every step can be read (the curtain lifts once the status on screen has had its time), then the bar holds full for a beat and the curtain fades in 0.45 s. Darker bands at the bottom
-   and behind the title keep them readable on any painting. Every painting has the same
-   chance, never twice in a row. The next start's painting is chosen and
-   downloaded once the game is up (`ea-next-art`), so it is on the device
-   before that curtain needs it; a first start shows the starfield. The
-   painting fades in once decoded; a missing one leaves the starfield behind
-   the same layout. Tips suit the painting's mode (`LoadingTip.modes`: no
-   1v1 orb tip over a 2v2 painting). index.html's boot screen reads the same
-   key and takes the same layout, so nothing moves at the hand-over either.
+   takes its painting layout: the painting fills the screen and stays
+   clear; the star and the title stand top right in their ink block; along
+   the bottom a loading bar across the whole width, the runner on it, and
+   one status line UNDER it at its left end (the owner, 27 Nov; before that
+   the owner's style K of 20 Nov had the line over the bar and a tip above
+   it). Each startup step replaces the last status with a short cross-fade,
+   each shown at least 0.8 s so every step can be read (the curtain lifts
+   once the status on screen has had its time), then the bar holds full for
+   a beat and the curtain fades in 0.45 s. A shade along the bottom keeps
+   the line readable on any painting. Every painting has the same chance,
+   never twice in a row. The next start's painting is chosen and downloaded
+   once the game is up (`ea-next-art`), so it is on the device before that
+   curtain needs it; a first start shows the plain cover. The painting
+   fades in once decoded; a missing one leaves ink behind the same layout.
+   index.html's boot screen reads the same key and takes the same layout,
+   so nothing moves at the hand-over either.
    Paintings are named `startup-art-<scene>.webp` in `src/art/loading-art/`:
    a scene shows only once its picture is there. The service worker does
    not install them with the game (thirteen are 3 MB): it keeps the one each
@@ -117,8 +117,8 @@ files come in the background and never hold it.
 
 `tests/visual/startup-curtain.spec.ts` records every uncovered frame from
 the start and checks the hub is only ever seen complete, from the saved copy
-too, that the curtain never waits for a tip, the painting layout and the
-next painting chosen ahead; `tests/unit/loading-art.test.ts` checks the
+too, that the curtain never waits for a tap, the runner, the painting
+layout and the next painting chosen ahead; `tests/unit/loading-art.test.ts` checks the
 scenes' skins and that choices are even.
 
 ## The other loading moments
@@ -130,7 +130,7 @@ together, and no cover ever traps them.
   door would show "connecting" or "loading" (a log-in from the front door,
   signing in as another account, the hub's connection lost, say when the
   app comes back from the background), `renderGate` holds the same curtain
-  again (`startStartupCurtain(..., again)`): painting, tip and status line,
+  again (`startStartupCurtain(..., again)`): painting, runner and status line,
   fading in over what was showing, lifted the same way once the Lobby is
   complete, and capped the same way. A front-door screen that needs the
   player (signed out, another device) lifts it at once.
@@ -156,11 +156,33 @@ together, and no cover ever traps them.
 return to Raids and the fighter frame by frame; `startup-curtain.spec.ts`
 checks the log-in and the dropped connection.
 
-## Adding a tip
+## How the startup screens look (27 Nov 2026)
 
-Add it to `LOADING_TIPS`, build any number from `RULES` (never type it), keep
-it under 22 words, and add a check of its claim to
-`tests/unit/loading-tips.test.ts`.
+One screen in two layers, both in the game's Poster look whatever look the
+page wears: `index.html`'s boot screen (its inline `<style>`, drawn before
+any code) and the curtain (`server-connection.css`). Ink, gold, Anton
+capitals, a square bar with a hard shadow; no artwork of their own. A first
+start (no painting yet) is the gold cover in halftone; later starts show
+the painting chosen the start before. Both draw the name in the two font
+files at `public/assets/fonts/anton-latin-…` and `archivo-latin-…`, the
+same files the look itself uses (`themes/poster/fonts.css`), fetched once.
+Changing the boot screen's `<style>` or markup needs no new CSP hash (only
+the inline scripts are hashed); keep the two layers' boxes in the same
+places (`startup-curtain.spec`, "hands over without moving").
+
+**The runner** (`startup-runner.ts`, the owner's idea): the fighter this
+device showed last (`arena-featured-fighter`; Voltkit on a first start), in
+the skin it wears once the profile or this device's copy of it names one,
+in the game's own side view facing right (`creatureSvg(id, "right")`, the
+battle rig's profile art, so nothing is downloaded). It stands on the bar
+at the end of the fill and glides with it; while the bar moves it runs
+(the rig's own swing of arms and legs, lean and bounce, slower), and it
+stands and breathes while the bar waits. It is drawn by the game's code,
+so the boot screen has none: it steps onto the bar when the curtain
+arrives. Reduced motion and Low graphics (`data-ui-effects="light"`): it
+stands still and only glides. A stopped start (failed, offline) shows no
+runner. `loading-preview.html?p=0.6&f=pyranda&art=rest-hoi-an` holds the
+curtain still to look at.
 
 ## Adding to the first screen
 

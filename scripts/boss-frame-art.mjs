@@ -664,10 +664,8 @@ ${all}[data-tier="mythic"] > .tier-glow {
   from { translate: 0 0; }
   to { translate: 4% -6%; }
 }
-@media (prefers-reduced-motion: reduce) {
-  ${all}::after {
-    animation: none !important;
-  }
+:where(:root[data-motion="reduced"]) ${all}::after {
+  animation: none !important;
 }
 `;
 for (const x of frames) {

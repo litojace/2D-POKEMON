@@ -14,13 +14,14 @@ export type PvpMode = "duel" | "teams" | "ffa";
 export type LoadingScene = {
   id: string;
   /**
-   * The PvP mode it shows (its tips suit it); none for a calm scene, such
-   * as champions resting between matches (the owner, 20 Nov): any tip.
+   * The PvP mode it shows; none for a calm scene, such as champions
+   * resting between matches (the owner, 20 Nov). Nothing reads it since
+   * the loading tips went (27 Nov 2026); kept as the paintings' record.
    */
   mode?: PvpMode;
   /** Who is in it, each in a Legendary or Mythical skin from the Shop. */
   fighters: { champion: CharacterId; skin: string }[];
-  /** Where the fight is (object-position), kept clear of the tip's column. */
+  /** Where the fight is (object-position), clear of the title's corner. */
   focus?: string;
 };
 export type LoadingArt = LoadingScene & { src: string };
@@ -161,7 +162,7 @@ export const LOADING_SCENES: LoadingScene[] = [
   {
     id: "ffa-shifting-ruins",
     mode: "ffa",
-    // Shown from higher up: Astrabun (top right) clear of the title, Auralynx of the tip.
+    // Shown from higher up: Astrabun (top right) clear of the title.
     focus: "50% 20%",
     fighters: [
       { champion: "coilemur", skin: "coilemur-hon-viet" },
@@ -223,7 +224,7 @@ export const NEXT_ART_KEY = "ea-next-art";
 /**
  * This start's painting: the one the last start chose and downloaded, so it
  * is on the device before the curtain needs it. None on a first start (the
- * starfield shows; the boot screen in index.html reads the same key).
+ * plain cover shows; the boot screen in index.html reads the same key).
  */
 export function artForThisStart(list = LOADING_ART): LoadingArt | undefined {
   try {
@@ -258,7 +259,7 @@ export function prepareNextArt(current: string | undefined) {
     if (next) localStorage.setItem(NEXT_ART_KEY, next.id);
     else localStorage.removeItem(NEXT_ART_KEY);
   } catch {
-    return; // No storage: every start shows the starfield.
+    return; // No storage: every start shows the plain cover.
   }
   if (!next) return;
   const picture = new Image();

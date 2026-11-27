@@ -1,5 +1,6 @@
 import { battleCurves } from "./battle-curves";
 import { addCanvasTexture } from "./canvas-texture";
+import { reducedMotion } from "./reduced-motion";
 import type Phaser from "phaser";
 // Phaser constants as literals, so this module loads without Phaser (tests).
 const ADD = 1; // ADD
@@ -91,9 +92,6 @@ const hash = (n: number) => {
   const x = Math.sin(n * 12.9898) * 43758.5453;
   return x - Math.floor(x);
 };
-const reducedMotion = () =>
-  typeof matchMedia !== "undefined" &&
-  matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 function makeTextures(scene: Phaser.Scene) {
   if (scene.textures.exists("fx-glow")) return;

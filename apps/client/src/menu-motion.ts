@@ -1,3 +1,4 @@
+import { reducedMotionQuery } from "./reduced-motion";
 /** Keep animated SVG portraits alive only while the player can see them.
  * CSS handles articulated parts; SMIL auras need the SVG clock paused too.
  */
@@ -5,10 +6,8 @@ export function watchMenuMotion(
   menu: HTMLElement,
   ...panels: (HTMLDialogElement | HTMLDetailsElement)[]
 ) {
-  const motion =
-    typeof matchMedia === "undefined"
-      ? undefined
-      : matchMedia("(prefers-reduced-motion: reduce)");
+  // Settings → Reduce motion (reduced-motion.ts), not the device's setting.
+  const motion: typeof reducedMotionQuery | undefined = reducedMotionQuery;
   const portraits = new Map<HTMLElement, boolean>();
   const paused = new WeakMap<HTMLElement, boolean>();
   const sync = () => {

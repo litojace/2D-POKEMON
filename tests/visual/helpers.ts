@@ -264,3 +264,21 @@ export const asRgb = (css: string) =>
         : `rgba(${c.join(", ")}, ${parseFloat(a)})`;
     },
   );
+
+/**
+ * Ask for reduced motion (or full motion again) in a page already loaded.
+ * The game no longer follows the device (apps/client/src/reduced-motion.ts);
+ * in the harness the browser's emulated setting flips the game's own switch
+ * (harness/motion-asked.ts), and the browser reports the change with its
+ * next frame, so this waits until the switch has followed.
+ */
+export async function askReducedMotion(page: Page, reduce: boolean) {
+  await page.emulateMedia({
+    reducedMotion: reduce ? "reduce" : "no-preference",
+  });
+  await expect
+    .poll(() =>
+      page.evaluate(() => document.documentElement.dataset.motion ?? ""),
+    )
+    .toBe(reduce ? "reduced" : "");
+}

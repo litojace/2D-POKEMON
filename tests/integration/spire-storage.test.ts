@@ -683,8 +683,8 @@ it("rejects broken receipts", async () => {
 it("reads checkpoints and raid clears before a climb (lowest among the party)", async () => {
   // Bo has cleared Cragmuff once; Ana never has.
   await db.exec(
-    `reset role;insert into public.arena_raid_runs(id,boss,peril,trait,gilded,weekly,week,party_size,seconds,downs,revives,receipt,result)
-     values('${run(90)}','grumblecrag',3,'ancient',false,false,'2026-11-09',1,200,0,0,'{}','victory');
+    `reset role;insert into public.arena_raid_runs(id,boss,peril,trait,gilded,party_size,seconds,downs,revives,receipt,result)
+     values('${run(90)}','grumblecrag',3,'ancient',false,1,200,0,0,'{}','victory');
      insert into public.arena_raid_players(run_id,player_id,character) values('${run(90)}','${bo}','terradon');`,
   );
   const members = await server<(SpireMember & { id: string })[]>(
@@ -723,8 +723,8 @@ it("reads each climber's highest floor, so a climb resumes past the zone's elite
   await db.query("select public.arena_me()");
   for (let f = 1; f <= 6; f++) await record(floor(run(95), f, [cy]));
   await db.exec(
-    `reset role;insert into public.arena_raid_runs(id,boss,peril,trait,gilded,weekly,week,party_size,seconds,downs,revives,receipt,result)
-     values('${run(96)}','grumblecrag',3,'ancient',false,false,'2026-11-09',1,200,0,0,'{}','victory');
+    `reset role;insert into public.arena_raid_runs(id,boss,peril,trait,gilded,party_size,seconds,downs,revives,receipt,result)
+     values('${run(96)}','grumblecrag',3,'ancient',false,1,200,0,0,'{}','victory');
      insert into public.arena_raid_players(run_id,player_id,character) values('${run(96)}','${cy}','terradon');`,
   );
   const [me, them] = await server<(SpireMember & { id: string })[]>(

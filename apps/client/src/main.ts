@@ -415,6 +415,11 @@ import {
   setVibration,
   vibrationOn,
 } from "./game-feel";
+import {
+  reducedMotion as reducedMotionChoice,
+  reducedMotionQuery,
+  setReducedMotion,
+} from "./reduced-motion";
 import { captureInvite, clearInvite, pendingInvite } from "./invite";
 import { lockScrollWhileOpen, setScrollLock } from "./scroll-lock";
 import { watchMenuMotion } from "./menu-motion";
@@ -904,7 +909,12 @@ let screen = "",
   menuOpen = false,
   connected = false,
   inputSessionReady = false;
-const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+// Settings → Reduce motion (reduced-motion.ts): the player's own choice, off
+// by default, never the device's setting. It can change in a match.
+let reducedMotion = reducedMotionChoice();
+reducedMotionQuery.addEventListener("change", () => {
+  reducedMotion = reducedMotionChoice();
+});
 const $ = <T extends HTMLElement>(id: string) =>
   document.getElementById(id) as T;
 const escape = (s: string) =>
@@ -1882,12 +1892,7 @@ function vsReveal(
   s: Snapshot,
   loading: boolean,
 ): ((i: number) => number | "wait") | undefined {
-  if (
-    s.raid ||
-    s.practice ||
-    matchMedia("(prefers-reduced-motion: reduce)").matches
-  )
-    return undefined;
+  if (s.raid || s.practice || reducedMotion) return undefined;
   const key = `${s.code}:${s.players.map((p) => `${p.id}=${p.character}`).join(",")}`;
   if (key !== vsRevealKey && loading) return () => "wait";
   if (key !== vsRevealKey) {
@@ -5797,7 +5802,9 @@ const syncDialogPrefs = () => syncPrefOutputs($<HTMLDialogElement>("dialog"));
  * scrolling (settings-screen.css).
  */
 function settingsMarkup(reduced: boolean) {
-  const motion = `<div class="st-row"><span class="st-row-text"><b>Reduced motion</b><small>Follows your device's accessibility setting.</small></span><span class="st-badge${reduced ? " is-on" : ""}">${reduced ? "On" : "Off"}</span></div>`;
+  // The game's own switch, off by default (reduced-motion.ts): the device's
+  // accessibility setting no longer decides it (owner, 27 Nov 2026).
+  const motion = `<div class="st-row"><span class="st-row-text"><b id="prefs-motion">Reduce motion</b><small>Calmer fighters, effects and menus.</small></span><button type="button" class="prefs-switch" id="settings-motion" role="switch" aria-labelledby="prefs-motion" aria-checked="${reduced}"><span>${reduced ? "On" : "Off"}</span></button></div>`;
   const sound = `<section class="prefs-card st-card" aria-labelledby="prefs-sound"><h3 id="prefs-sound">${menuIcon("sound")}Sound</h3>${prefSlider("music", "Music", audio.music, { min: 0, max: 1, step: 0.01 })}${prefSlider("effects", "Sound effects", audio.effects, { min: 0, max: 1, step: 0.01 })}${vibrationRow()}</section>`;
   let side: string;
   if (state) {
@@ -5846,10 +5853,19 @@ function bindVibrationRow() {
     if (on) rumble(40, 0.5);
   };
 }
+function bindMotionRow() {
+  const button = document.getElementById("settings-motion");
+  if (!button) return;
+  button.onclick = () => {
+    const on = !reducedMotionChoice();
+    setReducedMotion(on);
+    button.setAttribute("aria-checked", String(on));
+    button.querySelector("span")!.textContent = on ? "On" : "Off";
+  };
+}
 function showSettings() {
   settingsOpen = true;
-  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  dialog(settingsMarkup(reduced));
+  dialog(settingsMarkup(reducedMotion));
   bindGraphicsCard();
   void bindAppIconCard(toast);
   for (const kind of ["music", "effects"] as const)
@@ -5869,6 +5885,7 @@ function showSettings() {
     };
   bindDisplayCard();
   bindVibrationRow();
+  bindMotionRow();
   $("open-controls").onclick = showControls;
   $("settings-report").onclick = () => accountsUI.showReport(reportContext());
   $("settings-credits").onclick = showCredits;

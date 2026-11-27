@@ -278,6 +278,18 @@ for (const size of [
         expect(
           await page.evaluate(() => (window as any).__riteRequests),
         ).toEqual([]);
+        // On Poster the sheet is solid ink: the tiles, title and timer
+        // behind it showed through the old look's 95% navy (audit A04).
+        if (
+          await page.evaluate(
+            () => document.documentElement.dataset.ui === "poster",
+          )
+        )
+          expect(
+            await page
+              .locator(".raid-rite-reference")
+              .evaluate((e) => getComputedStyle(e).backgroundColor),
+          ).toBe("rgb(13, 13, 15)");
         const reference = await box(page, ".raid-rite-reference"),
           close = await box(page, ".raid-rite-more > summary");
         expect(reference.y + reference.height).toBeLessThanOrEqual(close.y);
@@ -433,6 +445,18 @@ for (const size of [
             (e) =>
               e.getAnimations().filter((a) => a.playState === "running").length,
           );
+      // How opaque each tile shows, its own opacity times its ancestors':
+      // only a tile's content fades, never the tile, or the arena shows
+      // through it (the global button:disabled fade, style.css, did).
+      const tileOpacity = () =>
+        cards.evaluateAll((els) =>
+          els.map((e) => {
+            let o = 1;
+            for (let n: Element | null = e; n; n = n.parentElement)
+              o *= Number(getComputedStyle(n).opacity);
+            return o;
+          }),
+        );
       await show(offer, []);
       await expect(cards).toHaveCount(6);
       await expect(page.locator(".rites-screen")).toBeVisible();
@@ -476,6 +500,8 @@ for (const size of [
           .locator(".raid-rite-copy")
           .evaluate((e) => Number(getComputedStyle(e).opacity)),
       ).toBeLessThan(0.7);
+      // …the tile itself not: it stays opaque.
+      expect(await tileOpacity()).toEqual(Array(6).fill(1));
       await snap(page, info, `rite-picked-${size.width}x${size.height}`);
       // Second pick: every card stays, two checked, all disabled.
       await show(undefined, ["core", "courage"]);
@@ -487,6 +513,8 @@ for (const size of [
       ).toHaveCount(2);
       expect(await popping()).toBe(0);
       expect(await places()).toEqual(before);
+      // Locked: every tile still opaque, only its content greyed.
+      expect(await tileOpacity()).toEqual(Array(6).fill(1));
       await snap(page, info, `rite-locked-${size.width}x${size.height}`);
       expect(errors).toEqual([]);
     } finally {
