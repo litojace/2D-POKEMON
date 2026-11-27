@@ -48,8 +48,16 @@ today: `poster.spec.ts` (the Lobby, five screens, Settings, a new player's
 locks, at four sizes), `ui-theme.spec.ts` (the default, from the first
 frame), and any spec run with `VISUAL_UI=poster` (`helpers.ts`).
 `VITE_VISUAL_LOOK=poster`, set where the harness's server starts, runs the
-whole suite on Poster. Moving the suite to Poster, spec by spec, is the next
-job; a spec that has moved drops the pin by setting `window.__lookDefault`.
+whole suite on Poster. Moving the suite to Poster, spec by spec, is under
+way: a spec that has moved calls `onPlayersLook()` once at its top
+(`tests/visual/players-look.ts`), which drops the pin (`window.__lookDefault`)
+for every page its tests open, contexts they make themselves included.
+`players-look.ts` is not the shared harness, so a moved spec keeps its pull
+request in the fast lane. Slice 1, a new player's flows (welcome, the guest
+warning, the tour, feature unlocks, getting started, the first PvP match,
+the daily gift, dialogs, the startup curtain and recovery, the Journey, the
+Lobby and its safe areas, poster), moved in #569. `ui-theme.spec.ts` sets
+its look itself and tests the pin; it moves with the PR that removes it.
 
 **The budgets measure Poster** (27 Nov 2026): `battle-style-budget`,
 `match-flow-budget` and `panel-open-budget` call `playersLook(page)`
