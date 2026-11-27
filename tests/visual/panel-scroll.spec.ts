@@ -98,7 +98,7 @@ async function crowd(page: Page) {
         place: i + 1,
         name: i === 7 ? "tester" : `Friend ${i}`,
         rating: 1500 - i * 10,
-        rankName: "Master",
+        rankName: "Prism II",
         placementLeft: 0,
         wins: 10,
         matches: 20,
@@ -200,19 +200,21 @@ const HUB_SCREENS: Screen[] = [
       await page.click(`[data-ui-spire-tab="${tab}"]`);
     },
   })),
-  // Step 6: Ranks (both boards) and the Friends sheet (each tab), filled
-  // with more than fits: fifty friends, many requests, a long board.
-  ...(["everyone", "friends"] as const).map((scope) => ({
+  // Step 6: Ranks (the road it opens on and both boards) and the Friends
+  // sheet (each tab), filled with more than fits: fifty friends, many
+  // requests, a long board.
+  ...(["road", "everyone", "friends"] as const).map((scope) => ({
     name: `ranks ${scope}`,
     root: HUB,
     open: async (page: Page) => {
       await crowd(page);
       await rail("ranks")(page);
+      await expect(page.locator(".ranks-panel .rk-tier")).toHaveCount(7);
+      if (scope === "road") return;
+      await page.click(`[data-ui-scope="${scope}"]`);
       await expect(page.locator(".ranks-panel .rk-row").first()).toBeVisible();
-      if (scope === "friends") {
-        await page.click('[data-ui-scope="friends"]');
+      if (scope === "friends")
         await expect(page.locator(".rk-list .rk-row")).toHaveCount(31);
-      }
     },
   })),
   ...(["friends", "requests", "recent"] as const).map((tab) => ({

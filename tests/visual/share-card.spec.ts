@@ -41,9 +41,9 @@ const PROGRESS = {
     rating: 1110,
     matches: 62,
     peak: 1140,
-    rank: "Expert",
+    rank: "Flare III",
     placementLeft: 0,
-    next: { name: "Candidate Master", at: 1150 },
+    next: { name: "Flare II", at: 1140 },
   },
 };
 

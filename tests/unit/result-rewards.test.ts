@@ -110,52 +110,111 @@ describe("the tiles", () => {
       rating: 1020,
       before: 1012,
       matches: 9,
-      rank: "Specialist",
-      next: { name: "Expert", at: 1075 },
+      rank: "Spark III",
+      next: { name: "Spark II", at: 1035 },
     })!;
     expect(up).toMatchObject({ gain: "+8", tone: "up", burst: undefined });
-    expect(style(up.bar!, "from")).toBeCloseTo(12 / 75, 2);
-    expect(style(up.bar!, "to")).toBeCloseTo(20 / 75, 2);
-    expect(up.note).toBe("Expert at 1,075");
+    expect(style(up.bar!, "from")).toBeCloseTo(12 / 35, 2);
+    expect(style(up.bar!, "to")).toBeCloseTo(20 / 35, 2);
+    expect(up.note).toBe("Spark II at 1,035");
     const down = rankTile({
       rating: 1004,
       before: 1012,
       matches: 9,
-      rank: "Specialist",
-      next: { name: "Expert", at: 1075 },
+      rank: "Spark III",
+      next: { name: "Spark II", at: 1035 },
     })!;
     expect(down).toMatchObject({ gain: "−8", tone: "down" });
+    // A step up inside the tier.
     const promoted = rankTile({
-      rating: 1002,
-      before: 995,
+      rating: 1037,
+      before: 1030,
       matches: 9,
-      rank: "Specialist",
-      next: { name: "Expert", at: 1075 },
+      rank: "Spark II",
+      previousRank: "Spark III",
+      next: { name: "Spark I", at: 1070 },
     })!;
     expect(promoted.burst).toBe("Rank up");
     expect(style(promoted.bar!, "from")).toBe(0);
+    // A new tier reads louder: its title, coins and a shield came with it.
+    const tierUp = rankTile({
+      rating: 1002,
+      before: 995,
+      matches: 9,
+      rank: "Spark III",
+      previousRank: "Sprout I",
+      next: { name: "Spark II", at: 1035 },
+      shield: true,
+    })!;
+    expect(tierUp.burst).toBe("New tier");
+    expect(style(tierUp.bar!, "from")).toBe(0);
     // A lost rank: the bar shows where you landed, with nothing to run.
     const demoted = rankTile({
       rating: 995,
       before: 1002,
       matches: 9,
-      rank: "Pupil",
-      next: { name: "Specialist", at: 1000 },
+      rank: "Sprout I",
+      previousRank: "Spark III",
+      next: { name: "Spark III", at: 1000 },
     })!;
     expect(demoted.burst).toBeUndefined();
     expect(style(demoted.bar!, "from")).toBe(style(demoted.bar!, "to"));
     // The top rank has no next.
     const top = rankTile({
-      rating: 1600,
-      before: 1590,
+      rating: 1760,
+      before: 1750,
       matches: 99,
-      rank: "Legendary Grandmaster",
+      rank: "Legend I",
+      previousRank: "Legend I",
       next: null,
     })!;
     expect(style(top.bar!, "to")).toBe(1);
     expect(top.note).toBe("The highest rank");
+  });
+  it("rank: the shield that held a loss, placement and the first rank", () => {
+    // The loss would have dropped them out of Flare: held on its first step.
+    const held = rankTile({
+      rating: 1105,
+      before: 1108,
+      matches: 30,
+      rank: "Flare III",
+      previousRank: "Flare III",
+      next: { name: "Flare II", at: 1140 },
+      shield: false,
+      shielded: true,
+    })!;
+    expect(held).toMatchObject({
+      gain: "−3",
+      tone: "down",
+      burst: "Shield",
+      note: "Your shield held",
+    });
+    expect(held.value).toContain("Flare III");
+    // Placement: the rating may cross a rank's line, but there is no rank yet.
+    const placing = rankTile({
+      rating: 1012,
+      before: 992,
+      matches: 3,
+      rank: "Unranked",
+      previousRank: "Unranked",
+      placementLeft: 2,
+      next: { name: "Spark II", at: 1035 },
+    })!;
+    expect(placing.burst).toBeUndefined();
+    expect(placing.label).toBe("Rank · 2 placement left");
+    // The match that ends placement gives the first rank.
+    const first = rankTile({
+      rating: 1112,
+      before: 1090,
+      matches: 5,
+      rank: "Flare III",
+      previousRank: "Unranked",
+      placementLeft: 0,
+      next: { name: "Flare II", at: 1140 },
+    })!;
+    expect(first.burst).toBe("Ranked");
     // Not a rated match (no rating before it): no tile.
-    expect(rankTile({ rating: 1000, matches: 0, rank: "Pupil" })).toBeNull();
+    expect(rankTile({ rating: 1000, matches: 0, rank: "Unranked" })).toBeNull();
   });
   it("placements say how many are left", () => {
     expect(

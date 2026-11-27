@@ -1,13 +1,17 @@
 import { PGlite } from "@electric-sql/pglite";
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { beforeAll, afterAll, it, expect } from "vitest";
 import { RANKS } from "../../packages/shared/src/accounts";
-import { buildFriendsBoard, buildRecentPlayers } from "../../apps/server/src/social";
+import {
+  buildFriendsBoard,
+  buildRecentPlayers,
+} from "../../apps/server/src/social";
 
 let db: PGlite;
 const ids = Array.from(
   { length: 6 },
-  (_, i) => `00000000-0000-4000-8000-0000000000${(i + 1).toString(16).padStart(2, "0")}`,
+  (_, i) =>
+    `00000000-0000-4000-8000-0000000000${(i + 1).toString(16).padStart(2, "0")}`,
 );
 const [ana, ben, cy, dee, eve, fay] = ids;
 const names = ["Ana", "Ben", "Cy", "Dee", "Eve", "Fay"];
@@ -38,7 +42,9 @@ async function play(
     arena: "classic",
     bot: players.some((p) => !p.id) ? "hard" : null,
     winnerTeam,
-    rounds: rounds ?? (winnerTeam === null ? [] : [winnerTeam, winnerTeam, winnerTeam]),
+    rounds:
+      rounds ??
+      (winnerTeam === null ? [] : [winnerTeam, winnerTeam, winnerTeam]),
     players: players.map((p, i) => ({
       account: p.id,
       name: `P${i}`,
@@ -77,28 +83,27 @@ async function play(
 async function rating(id: string) {
   await db.exec("reset role");
   return (
-    await db.query<{ v: Rating }>("select public.arena_rating_of($1) as v", [id])
+    await db.query<{ v: Rating }>("select public.arena_rating_of($1) as v", [
+      id,
+    ])
   ).rows[0].v;
 }
 beforeAll(async () => {
   db = new PGlite();
   await db.exec(
-    `create role anon;create role authenticated;create schema auth;create table auth.users(id uuid primary key,raw_user_meta_data jsonb);create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;grant usage on schema auth,public to anon,authenticated;grant execute on function auth.uid() to anon,authenticated;insert into auth.users values ${ids.map((id, i) => `('${id}','{"display_name":"${names[i]}"}')`).join(",")};`,
+    `create role anon;create role authenticated;create role service_role;create schema auth;create table auth.users(id uuid primary key,raw_user_meta_data jsonb);create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;grant usage on schema auth,public to anon,authenticated,service_role;grant execute on function auth.uid() to anon,authenticated,service_role;insert into auth.users values ${ids.map((id, i) => `('${id}','{"display_name":"${names[i]}"}')`).join(",")};`,
   );
-  for (const m of [
-    "001_arena_accounts.sql",
-    "002_admin_cleanup_reports.sql",
-    "003_titles.sql",
-    "004_matches_achievements.sql",
-    "005_friends.sql",
-    "006_ratings.sql",
-  ])
+  // Every migration: the ratings as they are today (the rank road,
+  // migration 20261127090000, replaced the ladder 006 made).
+  for (const m of (await readdir("supabase/migrations"))
+    .filter((f) => f.endsWith(".sql"))
+    .sort())
     await db.exec(await readFile(`supabase/migrations/${m}`, "utf8"));
   for (const id of ids) {
     await as(id);
     await db.query("select public.arena_me()");
   }
-}, 30000);
+}, 120000);
 afterAll(async () => {
   await db.close();
 });
@@ -122,7 +127,11 @@ it("moves ratings like Elo: placement swings bigger, wins against equals ~half K
     0,
   );
   // Placement K=40 between equals: ±20.
-  expect(first[ana].rating).toMatchObject({ rating: 1020, before: 1000, rank: "Unranked" });
+  expect(first[ana].rating).toMatchObject({
+    rating: 1020,
+    before: 1000,
+    rank: "Unranked",
+  });
   expect(first[ben].rating).toMatchObject({ rating: 980, before: 1000 });
   expect(first[ana].rating?.placementLeft).toBe(4);
 });
@@ -139,18 +148,21 @@ it("ranks after 5 matches, grants every title reached and says what rank you had
   const a = await rating(ana);
   expect(a.matches).toBe(5);
   expect(a.rating).toBeGreaterThan(1075);
-  expect(["Expert", "Candidate Master"]).toContain(a.rank);
+  expect(["Spark I", "Flare III", "Flare II"]).toContain(a.rank);
   await as(ana);
   const me = await db.query<{ v: { ownedTitles: { name: string }[] } }>(
     "select public.arena_me() as v",
   );
   const owned = me.rows[0].v.ownedTitles.map((t) => t.name);
-  expect(owned).toEqual(expect.arrayContaining(["Newbie", "Pupil", "Specialist", "Expert"]));
-  // Legendary needs #1 and 1550: not handed out.
-  expect(owned).not.toContain("Legendary Grandmaster");
+  // Every tier reached, and none above.
+  expect(owned).toEqual(expect.arrayContaining(["Sprout", "Spark"]));
+  expect(owned).not.toContain("Tempest");
+  expect(owned).not.toContain("Legend");
+  // The first ladder's names are no longer handed out.
+  expect(owned).not.toContain("Pupil");
   const b = await rating(ben);
   expect(b.rating).toBeLessThan(950);
-  expect(b.rank).toBe("Newbie");
+  expect(b.rank).toMatch(/^Sprout (III|II)$/);
 });
 
 it("barely rewards beating a much weaker player, and rewards upsets", async () => {
@@ -252,17 +264,23 @@ it("softly resets ratings once a month, keeping titles", async () => {
   const me = await db.query<{ v: { ownedTitles: { name: string }[] } }>(
     "select public.arena_me() as v",
   );
-  expect(me.rows[0].v.ownedTitles.map((t) => t.name)).toContain("Expert");
+  expect(me.rows[0].v.ownedTitles.map((t) => t.name)).toContain("Spark");
 });
 
 it("keeps rating tables and helpers private", async () => {
   await as(ana);
-  await expect(db.query("select * from public.arena_ratings")).rejects.toThrow();
+  await expect(
+    db.query("select * from public.arena_ratings"),
+  ).rejects.toThrow();
   await expect(
     db.query("select public.arena_apply_ratings('x', '{}'::jsonb)"),
   ).rejects.toThrow();
-  await expect(db.query("select public.arena_season_reset()")).rejects.toThrow();
-  const mine = await db.query<{ v: Rating }>("select public.arena_my_rating() as v");
+  await expect(
+    db.query("select public.arena_season_reset()"),
+  ).rejects.toThrow();
+  const mine = await db.query<{ v: Rating }>(
+    "select public.arena_my_rating() as v",
+  );
   expect(mine.rows[0].v.matches).toBeGreaterThan(0);
 });
 
@@ -276,12 +294,13 @@ it("gives the server's friends board and recent players the database's ranks and
       [ids],
     )
   ).rows;
-  const top = (
-    await db.query<{ player_id: string }>(
-      `select r.player_id from public.arena_ratings r join public.arena_profiles p on p.id=r.player_id
+  const top =
+    (
+      await db.query<{ player_id: string }>(
+        `select r.player_id from public.arena_ratings r join public.arena_profiles p on p.id=r.player_id
        where r.matches >= 5 and not p.guest and not p.suspended order by r.rating desc, r.updated_at asc limit 1`,
-    )
-  ).rows[0]?.player_id ?? null;
+      )
+    ).rows[0]?.player_id ?? null;
   const board = buildFriendsBoard({
     me: { id: ana, name: "Ana" },
     friends: ids.slice(1).map((id, i) => ({ id, name: names[i + 1] })),
@@ -295,14 +314,24 @@ it("gives the server's friends board and recent players the database's ranks and
     expect([row.name, row.rankName]).toEqual([row.name, db_rank]);
   }
   const mine = (
-    await db.query<{ match_id: string; team: number; won: boolean; played_at: string }>(
+    await db.query<{
+      match_id: string;
+      team: number;
+      won: boolean;
+      played_at: string;
+    }>(
       `select mp.match_id, mp.team, mp.won, m.played_at::text as played_at from public.arena_match_players mp
        join public.arena_matches m on m.id = mp.match_id where mp.player_id = $1`,
       [ana],
     )
   ).rows;
   const others = (
-    await db.query<{ match_id: string; player_id: string; team: number; character: string }>(
+    await db.query<{
+      match_id: string;
+      player_id: string;
+      team: number;
+      character: string;
+    }>(
       "select match_id, player_id, team, character from public.arena_match_players where match_id = any($1) and player_id <> $2",
       [mine.map((m) => m.match_id), ana],
     )

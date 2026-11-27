@@ -238,6 +238,10 @@ export const ratingSchema = z.object({
   /** After a match: your rating and rank before it. */
   before: z.number().optional(),
   previousRank: z.string().optional(),
+  /** A shield is in hand: the next loss out of this tier is held (rank road). */
+  shield: z.boolean().optional(),
+  /** After a match: the shield held this loss on the tier's first step. */
+  shielded: z.boolean().optional(),
 });
 export type Rating = z.infer<typeof ratingSchema>;
 /** One finished match, as every player in it reports it (migration 004). */
@@ -626,22 +630,92 @@ export function friendCode(accountId: string) {
 }
 
 /**
- * The rank ladder (must match supabase/migrations/006_ratings.sql). Ratings
- * start at 1000; reaching a rank grants its title for good.
+ * The rank road (owner, 26 Nov 2026; migration 20261127090000_rank_road.sql
+ * holds the same table): seven tiers named for what a fighter's element
+ * grows into, three steps each (III, II, I), on the rating every player
+ * already has. Ratings start at 1000, so a player who comes out of their
+ * placement matches even lands on Spark III.
+ *
+ * Reaching a tier gives its title for good and its coins once; the rank
+ * itself can drop. The first names (Newbie to Legendary Grandmaster) were
+ * borrowed from competitive programming: long, and "International
+ * Grandmaster" never fitted a phone. Titles earned under them stay.
  */
 export const PLACEMENT_MATCHES = 5;
-export const RANKS = [
-  { name: "Newbie", min: 0, color: "#a9b4c9" },
-  { name: "Pupil", min: 950, color: "#65d38a" },
-  { name: "Specialist", min: 1000, color: "#50dbe9" },
-  { name: "Expert", min: 1075, color: "#719aff" },
-  { name: "Candidate Master", min: 1150, color: "#c68bff" },
-  { name: "Master", min: 1225, color: "#ffbc65" },
-  { name: "International Master", min: 1300, color: "#ffd29a" },
-  { name: "Grandmaster", min: 1375, color: "#ff697f" },
-  { name: "International Grandmaster", min: 1450, color: "#ff465f" },
-  { name: "Legendary Grandmaster", min: 1550, color: "#ffd65b" },
+export const RANK_TIERS = [
+  { name: "Sprout", color: "#8ad66f", floors: [0, 900, 950], coins: 0 },
+  { name: "Spark", color: "#ffd65b", floors: [1000, 1035, 1070], coins: 100 },
+  { name: "Flare", color: "#ff8a4c", floors: [1105, 1140, 1175], coins: 150 },
+  {
+    name: "Tempest",
+    color: "#50dbe9",
+    floors: [1210, 1250, 1290],
+    coins: 250,
+  },
+  { name: "Prism", color: "#c68bff", floors: [1330, 1370, 1410], coins: 400 },
+  { name: "Nova", color: "#ff697f", floors: [1450, 1500, 1550], coins: 600 },
+  {
+    name: "Legend",
+    color: "#ffe08a",
+    floors: [1600, 1675, 1750],
+    coins: 1000,
+  },
 ] as const;
+export type RankTier = (typeof RANK_TIERS)[number];
+/** A tier's steps, lowest first. */
+export const RANK_STEPS = ["III", "II", "I"] as const;
+export interface Rank {
+  /** "Spark II". */
+  name: string;
+  /** The rating it starts at. */
+  min: number;
+  color: string;
+  /** Its tier's place on the road, from 0. */
+  tier: number;
+  /** Its step in the tier, from 0 (III) to 2 (I). */
+  step: number;
+}
+/** Every rank, lowest first: 21 steps. */
+export const RANKS: readonly Rank[] = RANK_TIERS.flatMap((t, tier) =>
+  t.floors.map((min, step) => ({
+    name: `${t.name} ${RANK_STEPS[step]}`,
+    min,
+    color: t.color,
+    tier,
+    step,
+  })),
+);
+/** The rank a rating stands on. */
+export function rankAt(rating: number): Rank {
+  let at = RANKS[0];
+  for (const r of RANKS) if (rating >= r.min) at = r;
+  return at;
+}
+/** A rank by its name ("Spark II"), or undefined (Unranked, an old name). */
+export const rankNamed = (name: string | undefined) =>
+  RANKS.find((r) => r.name === name);
+/** The rating a tier starts at: what a shield holds a player to. */
+export const tierFloor = (tier: number) =>
+  RANK_TIERS[Math.max(0, Math.min(RANK_TIERS.length - 1, tier))].floors[0];
+/** The ranks' names before the rank road, lowest first: titles some players keep. */
+export const LEGACY_RANKS = [
+  { name: "Newbie", color: "#a9b4c9" },
+  { name: "Pupil", color: "#65d38a" },
+  { name: "Specialist", color: "#50dbe9" },
+  { name: "Expert", color: "#719aff" },
+  { name: "Candidate Master", color: "#c68bff" },
+  { name: "Master", color: "#ffbc65" },
+  { name: "International Master", color: "#ffd29a" },
+  { name: "Grandmaster", color: "#ff697f" },
+  { name: "International Grandmaster", color: "#ff465f" },
+  { name: "Legendary Grandmaster", color: "#ffd65b" },
+] as const;
+/** A rank's colour: its tier's, or grey for Unranked and names it doesn't know. */
 export function rankColor(name: string | undefined) {
-  return RANKS.find((r) => r.name === name)?.color ?? "#a0afc8";
+  return (
+    rankNamed(name)?.color ??
+    RANK_TIERS.find((t) => t.name === name)?.color ??
+    LEGACY_RANKS.find((r) => r.name === name)?.color ??
+    "#a0afc8"
+  );
 }
