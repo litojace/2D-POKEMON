@@ -286,16 +286,33 @@
   z-index: 3;
 }
 
-/* A switch on the masthead (Shop | Wardrobe, Everyone | Friends): a skewed
-   ink block; the chosen half is the element colour. */
+/* A switch on the masthead (Shop | Wardrobe, Everyone | Friends): an ink
+   block with slanted ends; the chosen half is a slanted block in the element
+   colour, its label upright in the middle of its box. Both slants are cut
+   with clip-path, inside their boxes, with no transform: a skewed switch
+   with counter-skewed buttons left the chosen label slanted, about 6 px
+   left of its box's middle on phones, and a block skewed inside them was
+   drawn about 1 px off its box (ranks-friends.spec, "Road (on)",
+   "Friends (on)"). 6 px over the 36 px switch, 5 px over its 30-34 px
+   buttons: about 10°. */
 :root[data-ui="poster"] .ui-panel-head .ui-seg {
-  transform: skewX(-10deg);
-}
-:root[data-ui="poster"] .ui-panel-head .ui-seg > button {
-  transform: skewX(10deg);
+  clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
 }
 :root[data-ui="poster"] .ui-panel-head .ui-seg > button[aria-pressed="true"] {
-  transform: none;
+  position: relative;
+  isolation: isolate;
+  background: none;
+}
+:root[data-ui="poster"]
+  .ui-panel-head
+  .ui-seg
+  > button[aria-pressed="true"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--el);
+  clip-path: polygon(5px 0, 100% 0, calc(100% - 5px) 100%, 0 100%);
 }
 
 /* The title keeps its width (up to under half the masthead) and the tabs
