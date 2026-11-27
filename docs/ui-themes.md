@@ -56,7 +56,10 @@ for every page its tests open, contexts they make themselves included.
 request in the fast lane. Slice 1, a new player's flows (welcome, the guest
 warning, the tour, feature unlocks, getting started, the first PvP match,
 the daily gift, dialogs, the startup curtain and recovery, the Journey, the
-Lobby and its safe areas, poster), moved in #569. `ui-theme.spec.ts` sets
+Lobby and its safe areas, poster), moved in #569; slice 2, the hub screens
+(the Shop and fitting room, the roster, raids, Ranks and Friends, the
+Profile, Missions, Match history, panel-scroll, phone-fit, text-collisions),
+in #581. `ui-theme.spec.ts` sets
 its look itself and tests the pin; it moves with the PR that removes it.
 
 **The budgets measure Poster** (27 Nov 2026): `battle-style-budget`,
