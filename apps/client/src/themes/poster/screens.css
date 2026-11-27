@@ -158,15 +158,26 @@
   border-radius: 0;
 }
 /* ── battle HUD ── */
+/* The score badge: a slanted ink block, drawn behind it (::before). The
+   badge keeps its own transform, which centres it (left: 50% and
+   translateX(-50%)); a skew on the badge itself replaced that and put the
+   badge's left edge at the middle of the screen, 93 px right of centre. */
 :root[data-ui="poster"] body.battle-active #battle #hud.hud {
-  background: var(--ink);
+  background: none;
   border: 0;
   border-radius: 0;
-  transform: skewX(-10deg);
-  box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.3);
+  box-shadow: none;
+  isolation: isolate;
 }
-:root[data-ui="poster"] body.battle-active #battle #hud.hud > * {
-  transform: skewX(10deg);
+:root[data-ui="poster"] body.battle-active #battle #hud.hud::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--ink);
+  box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.3);
+  transform: skewX(-10deg);
+  pointer-events: none;
 }
 :root[data-ui="poster"] body.battle-active #battle #hud #timer {
   font-family: var(--font-display);
