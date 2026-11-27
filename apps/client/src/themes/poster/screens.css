@@ -101,10 +101,11 @@
   font: 400 calc(17px * var(--text-scale, 1)) / 1 var(--font-display);
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--el);
+  /* On --ink-2: the lifted element colour (tokens.css). */
+  color: var(--el-text);
 }
 :root[data-ui="poster"] :is(.prefs-card, .st-card) h3 svg {
-  color: var(--el);
+  color: var(--el-text);
 }
 /* buttons outside the kit */
 :root[data-ui="poster"]
@@ -586,7 +587,7 @@
   align-self: flex-end;
   height: calc(100% - 7px);
   min-height: 0;
-  color: rgba(13, 13, 15, 0.62);
+  color: var(--on-el-dim);
   margin: 0;
   padding-top: 0;
   padding-bottom: 0;
@@ -662,7 +663,7 @@
   align-self: flex-end;
   height: calc(100% - 7px);
   min-height: 0;
-  color: rgba(13, 13, 15, 0.62);
+  color: var(--on-el-dim);
   margin: 0;
   padding-top: 0;
   padding-bottom: 0;
@@ -1062,7 +1063,7 @@
 }
 :root[data-ui="poster"] .title-level {
   padding: 1px 5px;
-  background: var(--hot);
+  background: var(--hot-fill);
   color: #fff;
   font: 400 calc(12px * var(--text-scale, 1)) / 1.2 var(--font-display);
   letter-spacing: 0.04em;
@@ -1151,4 +1152,10 @@
   .round-break
   .live-seconds {
   color: var(--el);
+}
+
+/* The stars a boss doesn't have, after the ones it has: dim, but still a
+   3:1 shape on the banner. */
+:root[data-ui="poster"] :is(.room-stars, .rh-stars) i {
+  color: rgba(255, 255, 255, 0.45);
 }
