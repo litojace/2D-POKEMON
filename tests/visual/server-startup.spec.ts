@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import { expect, test, type Page } from "@playwright/test";
 import { box, inside, snap } from "./helpers";
 
@@ -212,6 +213,86 @@ test("offline startup resumes without a login error when the network returns", a
   await expect(page.locator("#toast")).not.toContainText(
     "couldn't load your profile",
   );
+});
+
+// Every champion's arms swing from the shoulder as it runs (owner, 28 Nov:
+// a paw flew clear of the body). Each limb turns about the battle rig's
+// joint (startup-runner.ts); turned about a point of its own box (50% 14%),
+// the shoulder itself travelled and the arm ended a gap away from the body
+// at each end of its swing.
+test("the startup runner's arms and legs swing from their joints", async ({
+  page,
+}) => {
+  test.setTimeout(60_000);
+  await page.setViewportSize({ width: 844, height: 390 });
+  await coldServer(page);
+  await page.goto("/");
+  const runner = page.locator("#server-startup .server-startup-runner");
+  await expect(runner.locator("svg .fighter-character")).toHaveCount(1);
+  const src = (path: string) =>
+    "/@fs" + fileURLToPath(new URL(`../../${path}`, import.meta.url));
+  const moved = await page.evaluate(
+    async ([shared, startup, design, profile]) => {
+      const { CHARACTERS } = await import(/* @vite-ignore */ shared);
+      const { runnerMarkup } = await import(/* @vite-ignore */ startup);
+      const { proportioned } = await import(/* @vite-ignore */ design);
+      const { profilePivot } = await import(/* @vite-ignore */ profile);
+      const host = document.querySelector<HTMLElement>(
+        ".server-startup-runner",
+      )!;
+      host.style.visibility = "hidden";
+      // A runner of our own beside the page's, so the page never redraws it.
+      const box = document.createElement("span");
+      box.className = "server-startup-runner is-running";
+      host.after(box);
+      const found: string[] = [];
+      for (const id of Object.keys(CHARACTERS)) {
+        box.innerHTML = runnerMarkup(id);
+        for (const at of [0, 200]) {
+          for (const a of box.getAnimations({ subtree: true })) {
+            a.pause();
+            a.currentTime = at;
+          }
+          for (const part of ["armL", "armR", "legL", "legR"]) {
+            const el = box.querySelector<SVGGraphicsElement>(
+              `.fighter-${part}`,
+            );
+            const joint = profilePivot(id, "right", part);
+            if (!el || !joint) continue;
+            const [x, y] = proportioned(part, ...joint);
+            // The joint as the swung part draws it, and as its parent
+            // (the unswung body) does: the same point when it swings
+            // about its joint.
+            const swung = new DOMPoint(x, y).matrixTransform(
+              el.getScreenCTM()!,
+            );
+            const still = new DOMPoint(x, y).matrixTransform(
+              (el.parentNode as SVGGraphicsElement).getScreenCTM()!,
+            );
+            // In the drawing's units: a leg also steps 2 up and down
+            // (server-runner-leg); an arm only turns.
+            const scale = Math.hypot(
+              el.getScreenCTM()!.a,
+              el.getScreenCTM()!.b,
+            );
+            const off =
+              Math.hypot(swung.x - still.x, swung.y - still.y) / scale;
+            if (off > (part.startsWith("leg") ? 2.1 : 0.1))
+              found.push(`${id} ${part} at ${at} ms: ${off.toFixed(1)}`);
+          }
+        }
+      }
+      box.remove();
+      return found;
+    },
+    [
+      src("packages/shared/src/index.ts"),
+      src("apps/client/src/startup-runner.ts"),
+      src("apps/client/src/creature-design.ts"),
+      src("apps/client/src/creature-profile.ts"),
+    ],
+  );
+  expect(moved).toEqual([]);
 });
 
 test("the startup runner respects reduced motion", async ({ page }) => {
