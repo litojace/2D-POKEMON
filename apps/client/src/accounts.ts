@@ -104,6 +104,10 @@ import {
 import type { FriendsData, FriendsRoom } from "./screens/friends-view";
 import { noteServerTime } from "./server-clock";
 import { titleTag } from "./title-tag";
+import { ServerCopies } from "./server-copies";
+import { featureLocked } from "./feature-unlocks";
+import { curtainWaitsFor } from "./startup-curtain";
+import { historyState } from "./screens/match-history-view";
 import { setStoredTitleTiers } from "../../../packages/shared/src/title-tier";
 import {
   authRedirectUrl,
@@ -205,7 +209,7 @@ type Hooks = {
   messageFriend?: (id: string, name: string) => void;
   /** Friends closed (a room puts its picker back). */
   onFriendsClosed?: () => void;
-  notify: (message: string) => void;
+  notify: (message: string, kind?: "ok" | "warn" | "error") => void;
   /** Running announcements from the admins, fetched at sign-in (announcements.ts). */
   announce?: (list: unknown) => void;
   onChange: () => void;
@@ -491,7 +495,12 @@ export class AccountUI {
       this.fittingRoom = undefined;
       this.fitProgress = null;
       // Nor any other screen's last copy (each kept it for the next open).
-      this.forgetCopies();
+      this.copyStore.forgetAll();
+      this.profileShown = [];
+      this.friendsListRaw = undefined;
+      this.ranksBoardRaw = undefined;
+      this.friendsBoardRaw = undefined;
+      this.fitProgress = null;
       this.raidProgress = null;
       this.raidFriends = null;
       this.profileData = { progress: null, raids: null, nameStatus: null };
@@ -517,6 +526,13 @@ export class AccountUI {
     this.hooks.onSession(session?.access_token ?? null, session?.user.id);
     if (session && !samePlayer) this.hooks.onChange();
     let freshAccount = false;
+    // A new sign-in: the loading screen also waits (briefly, capped:
+    // startup-curtain.ts LOBBY_WAIT_MS) for the Lobby's panels to be ready
+    // (warmLobby), from this first moment.
+    let lobbyReady = () => {};
+    let warming = false;
+    if (session && !samePlayer)
+      curtainWaitsFor(new Promise<void>((resolve) => (lobbyReady = resolve)));
     if (session) {
       try {
         if (!samePlayer) await waitForServer();
@@ -528,6 +544,12 @@ export class AccountUI {
         // The tiers administrators gave the titles they made (migration
         // 20261128060000): none before it, and never in the way.
         void this.loadTitleTiers();
+        // Every Lobby panel's data and code, while the loading screen is
+        // up (owner, 28 Nov): a tap on any of them opens it complete.
+        if (!samePlayer) {
+          warming = true;
+          void this.warmLobby(account.id, version).finally(lobbyReady);
+        }
         // Announcements still running (migration 20261122120000); none
         // before it, and never in the way of signing in.
         void this.api("/api/announcements").then(
@@ -558,8 +580,10 @@ export class AccountUI {
         if (raids.status === "fulfilled") {
           try {
             const progress = raids.value as RaidProgress;
-            // Raids open with it at once (and ask again only once it's old).
+            // Raids open with it at once (and ask again only once it's old),
+            // and so does the Wardrobe's side of the Shop.
             this.raidProgress = progress;
+            this.fitProgress ??= progress;
             this.raidLook = raidLookOf(progress);
             noteSeenRewards(account.id, progress);
             this.raidClears = bossClears(progress);
@@ -600,6 +624,10 @@ export class AccountUI {
             ? error.message
             : "Unable to load your profile.",
         );
+      } finally {
+        // No account (refused, offline, another sign-in began): nothing to
+        // wait for.
+        if (!warming) lobbyReady();
       }
     }
     this.fromCopy = false;
@@ -631,7 +659,7 @@ export class AccountUI {
     const loads: (() => Promise<unknown>)[] = [
       () => this.loadRaids(),
       () => this.loadShop(),
-      () => import("./screens/journey"),
+      () => this.loadJourney(),
     ];
     const next = () => {
       const load = loads.shift();
@@ -650,6 +678,52 @@ export class AccountUI {
     };
     next();
   }
+  /**
+   * The Lobby's panels, ready before the player taps one (owner, 28 Nov:
+   * "no wait, not even a short second"). While the loading screen is up,
+   * each panel's data is asked for at once, the way the panel itself asks
+   * (the same copies: it then opens on them, and asks again behind them
+   * only once they are old), and the code of the screens that load on
+   * demand comes in, so preloadScreens has nothing left to do. Small JSON
+   * and code; of pictures only the Raids hall's first cards, downloaded
+   * and not decoded (warmHallPictures, below). Never while a battle runs
+   * (a room rejoined at startup): it waits for the battle to end. Never
+   * fails.
+   */
+  private async warmLobby(accountId: string, version: number) {
+    const fresh = () =>
+      version === this.generation && this.account?.id === accountId;
+    while (document.body.classList.contains("battle-active")) {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      if (!fresh()) return;
+    }
+    if (!fresh()) return;
+    this.preloaded = true;
+    await Promise.allSettled([
+      // The player card: records, raids, the name's status, the first page
+      // of matches, and who of the players in it are friends.
+      this.loadProfile(accountId),
+      this.matchHistory({ kind: historyState().kind }),
+      // Friends, and the Raids panel's friends from the same list.
+      this.loadFriendList(accountId, FRIENDS_MAX_AGE_MS).then(() => {
+        const list = this.friendsData.list;
+        if (fresh() && list && !this.raidFriends)
+          this.raidFriends = list.friends;
+      }),
+      // Ranks, both boards.
+      this.loadRanks("everyone", accountId),
+      this.loadRanks("friends", accountId),
+      // The screens whose code loads on demand.
+      this.raidHall ?? this.loadRaids(),
+      this.shopCode ?? this.loadShop(),
+      this.journeyCode ?? this.loadJourney(),
+    ]);
+    // The pictures of the Raids hall's first view (downloaded, not decoded:
+    // warmHallPictures), once the player has Raids. Behind the data and
+    // code, and the curtain doesn't wait for them.
+    if (fresh() && this.raidHall && !featureLocked("raids", this.level ?? 0))
+      void this.raidHall.warmHallPictures(this.raidProgress);
+  }
   async refresh() {
     await this.setSession(this.session, true);
   }
@@ -660,24 +734,22 @@ export class AccountUI {
    * changed: a request that changes something (any POST), the server saying
    * records changed (economy-changed → loadEconomy), another player.
    */
-  private copies = new Map<string, { at: number; value: Promise<unknown> }>();
-  /** GET `path`, or the copy asked for less than `maxAge` ms ago. */
+  private copyStore = new ServerCopies((path) => this.api(path));
+  /**
+   * GET `path`, or the copy asked for less than `maxAge` ms ago. An answer
+   * the same as the last one is the same object (server-copies.ts): the
+   * screen drawn from it draws nothing again.
+   */
   fetchCopy(path: string, maxAge = COPY_MAX_AGE_MS): Promise<unknown> {
-    const key = `${this.account?.id ?? ""} ${path}`;
-    const now = performance.now();
-    const kept = this.copies.get(key);
-    if (kept && now - kept.at < maxAge) return kept.value;
-    const value = this.api(path);
-    this.copies.set(key, { at: now, value });
-    // A failure isn't kept: the next open asks again.
-    value.catch(() => {
-      if (this.copies.get(key)?.value === value) this.copies.delete(key);
-    });
-    return value;
+    return this.copyStore.get(
+      `${this.account?.id ?? ""} ${path}`,
+      path,
+      maxAge,
+    );
   }
   /** The next screen asks the server again (its copies may be old). */
   forgetCopies() {
-    this.copies.clear();
+    this.copyStore.forget();
   }
   /**
    * With the shared cookie (elementarenausa.com), the website may refresh
@@ -764,6 +836,7 @@ export class AccountUI {
       extra:
         '<p class="ui-note">They aren\'t told. You can unblock them under Friends → Recent.</p>',
       confirm: "Block",
+      danger: true,
       confirmIcon: "block",
     });
     if (!sure) return false;
@@ -956,7 +1029,7 @@ export class AccountUI {
   async logOut() {
     if (this.account?.guest && !this.confirmedGuestLogout) {
       this.hooks.openDialog(
-        `<div class="eyebrow">Guest account</div><h2>Log out of your guest pass?</h2><p>Guest accounts can't be recovered after logging out: your records and titles would be lost. Save your account with an email first to keep them.</p><div class="dialog-actions"><button class="primary" id="guest-save">${iconLabel("save", "Save my account")}</button><button class="secondary" id="guest-leave">${iconLabel("leave", "Log out anyway")}</button></div>`,
+        `<div class="eyebrow">Guest account</div><h2>Log out of your guest pass?</h2><p>Guest accounts can't be recovered after logging out: your records and titles would be lost. Save your account with an email first to keep them.</p><div class="dialog-actions is-even"><button class="primary" id="guest-save">${iconLabel("save", "Save my account")}</button><button class="secondary is-danger" id="guest-leave">${iconLabel("leave", "Log out anyway")}</button></div>`,
       );
       element("guest-save").onclick = () => void this.showProfile();
       element("guest-leave").onclick = () => {
@@ -1413,8 +1486,16 @@ export class AccountUI {
       this.fetchCopy("/api/spire") as Promise<SpireProgress>,
     ]);
     // The Spire's records (before its migration runs: none, still playable).
-    if (climb.status === "fulfilled" && climb.value)
+    // A new climb is news for the Lobby too (its Spire card, the Raids
+    // badge), even when the raid records came back the same.
+    if (
+      climb.status === "fulfilled" &&
+      climb.value &&
+      climb.value !== this.spireProgress
+    ) {
       this.spireProgress = climb.value;
+      if (this.account?.id === accountId) this.hooks.onChange();
+    }
     if (this.account?.id !== accountId || !screen.isOpen) return;
     if (screen.view.mode === "spire") this.noteSpireSeen();
     if (raids.status === "fulfilled") {
@@ -1668,11 +1749,19 @@ export class AccountUI {
         this.fittingRoom?.refresh();
         void this.loadFittingRoom();
       },
-      notify: (message: string) => this.hooks.notify(message),
+      notify: (message: string, kind?: "ok" | "warn" | "error") =>
+        this.hooks.notify(message, kind),
     };
   }
   /** The open Journey panel, if any (UI remodel step 4). */
   private journeyScreen?: JourneyScreen;
+  private journeyCode?: typeof import("./screens/journey");
+  private loadJourney() {
+    return import("./screens/journey").then((module) => {
+      this.journeyCode = module;
+      return module;
+    });
+  }
   private journeyProblem = "";
   private journeyLoading = false;
   /**
@@ -1683,8 +1772,10 @@ export class AccountUI {
     if (!this.ensurePlayer()) return;
     this.toLobbyScreen();
     const accountId = this.account?.id;
-    // Its code and styles load the first time it opens, not with the game.
-    const { openJourney } = await import("./screens/journey");
+    // Its code and styles load the first time it opens, not with the game
+    // (or during the loading screen: warmLobby). Kept once loaded, as the
+    // Shop's is: an open then runs in the tap's own moment.
+    const { openJourney } = this.journeyCode ?? (await this.loadJourney());
     if (this.account?.id !== accountId) return;
     if (!this.journeyScreen?.isOpen) {
       this.journeyLoading = !this.economy;
@@ -2302,6 +2393,8 @@ export class AccountUI {
   private ranksData: Omit<RanksData, "me"> = { board: null, friends: null };
   /** The server's answer `ranksData.board` was read from. */
   private ranksBoardRaw: unknown;
+  /** The server's answer `ranksData.friends` was read from. */
+  private friendsBoardRaw: unknown;
   /**
    * Ranks: your rank and the leaderboard, a panel inside the Lobby. The
    * Friends board loads the first time it is picked.
@@ -2322,7 +2415,11 @@ export class AccountUI {
             titles: (this.account?.ownedTitles ?? []).map((t) => t.name),
           },
         }),
-        load: (scope) => this.loadRanks(scope, accountId),
+        // The Friends board is asked for again each time it is picked (it
+        // shows the copy it has meanwhile): friends' ratings move between
+        // matches, and it was never older than the pick before #681.
+        load: (scope) =>
+          this.loadRanks(scope, accountId, scope === "friends" ? 0 : undefined),
         reportPhoto: (photo, name) =>
           void this.hooks.reportPhoto?.(photo, name),
         friends: () => void this.showFriends(),
@@ -2334,7 +2431,11 @@ export class AccountUI {
     // Opened again on the board it already shows: nothing to redraw.
     if (this.ranksData !== shown) this.ranksScreen?.refresh();
   }
-  private async loadRanks(scope: "everyone" | "friends", accountId?: string) {
+  private async loadRanks(
+    scope: "everyone" | "friends",
+    accountId?: string,
+    maxAge?: number,
+  ) {
     const fresh = () => this.account?.id === accountId;
     if (scope === "everyone") {
       if (this.ranksData.problem)
@@ -2358,12 +2459,15 @@ export class AccountUI {
           };
       }
     } else {
-      this.ranksData = { ...this.ranksData, friendsProblem: "" };
+      if (this.ranksData.friendsProblem)
+        this.ranksData = { ...this.ranksData, friendsProblem: "" };
       try {
-        const friends = friendsBoardSchema.parse(
-          await this.api("/api/leaderboard/friends"),
-        );
-        if (fresh()) this.ranksData = { ...this.ranksData, friends };
+        const raw = await this.fetchCopy("/api/leaderboard/friends", maxAge);
+        if (fresh() && raw !== this.friendsBoardRaw) {
+          this.friendsBoardRaw = raw;
+          const friends = friendsBoardSchema.parse(raw);
+          this.ranksData = { ...this.ranksData, friends };
+        }
       } catch (error) {
         if (fresh())
           this.ranksData = {
@@ -2387,7 +2491,7 @@ export class AccountUI {
       return;
     }
     this.hooks.openDialog(
-      `<div class="eyebrow">Help us fix it</div><h2>${context.playerName ? `Report ${escape(context.playerName)}` : "Report a problem"}</h2><p>Tell the admins what happened. Your current screen${context.playerName ? " and who you're reporting" : ""}${context.room ? ` and room code ${escape(context.room)}` : ""} ${context.playerName || context.room ? "are" : "is"} included automatically.</p><form id="report-form" class="account-form"><label>What kind of problem?<select name="category" required>${Object.entries(
+      `<div class="eyebrow">Help us fix it</div><h2>${context.playerName ? `Report ${escape(context.playerName)}` : "Report a problem"}</h2><p>Tell the admins what happened. Your current screen${context.playerName ? " and who you're reporting" : ""}${context.room ? ` and room code ${escape(context.room)}` : ""} ${context.playerName || context.room ? "are" : "is"} included automatically.</p><form id="report-form" class="account-form" data-dialog-size="m"><label>What kind of problem?<select name="category" required>${Object.entries(
         REPORT_CATEGORIES,
       )
         .map(

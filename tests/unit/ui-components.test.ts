@@ -106,4 +106,18 @@ describe("shared UI components", () => {
     expect(html).toContain('role="alertdialog"');
     expect(html).toContain('class="is-total"');
   });
+  it("draws a confirm that can't be taken back as the danger button", () => {
+    const ask = { kicker: "Block player", title: "Block Kai?", lines: [] };
+    const okButton = (html: string) =>
+      html.match(/<button[^>]*data-ui-confirm-ok[^>]*>/)?.[0] ?? "";
+    // Spending stays the primary button; Block is red (severity.css).
+    expect(okButton(confirmModal({ ...ask, confirm: "Buy" }))).toContain(
+      "is-primary",
+    );
+    const block = okButton(
+      confirmModal({ ...ask, confirm: "Block", danger: true }),
+    );
+    expect(block).toContain("is-danger");
+    expect(block).not.toContain("is-primary");
+  });
 });

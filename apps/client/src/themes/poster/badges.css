@@ -1,0 +1,90 @@
+/* Every notification indicator in the Plaza's shape (owner, 28 Nov 2026:
+   "update the indicators to match the Plaza's"): plaza.css, the gift box's
+   count. One look, three kinds:
+
+   - count: a red square (--hot-fill) with a white count in tabular
+     figures; a 1.5 px ink edge and a hard 2 px shadow, so it sits on its
+     icon's corner rather than floating;
+   - dot: the same red square, small, for "waits, nothing to count"
+     (today's missions);
+   - news: the Spire's violet, the same edge and shadow, a white ✦ inside,
+     so "new" never rests on its colour alone. No glow.
+
+   Red still means something waits on you; amber and green are never
+   indicators (the Plaza's all-done green tick is the one exception).
+   Where each sits is the screen's own (lobby.css: on the phone rail it
+   rides above its icon and grows left, inside its own button); this only
+   draws it. The ping when one appears stays, square; with Reduce motion it
+   is off, as before. */
+:root[data-ui="poster"] {
+  --badge-news: #8a63f5;
+  --badge-edge: 0 0 0 1.5px var(--ink), 2px 2px 0 1.5px rgba(0, 0, 0, 0.45);
+}
+
+/* count */
+:root[data-ui="poster"]
+  :is(.lobby-badge, .chat-unread, .ui-badge, .chat-friend em) {
+  border: 0;
+  border-radius: 0;
+  background: var(--hot-fill);
+  color: #fff;
+  font-family: var(--font-body);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  text-shadow: none;
+  box-shadow: var(--badge-edge);
+}
+
+/* dot */
+:root[data-ui="poster"] .ui-dot {
+  border-radius: 0;
+  background: var(--hot-fill);
+  box-shadow: var(--badge-edge);
+}
+
+/* news: the violet square with a white ✦ */
+:root[data-ui="poster"] .lobby-badge.is-new {
+  min-width: 14px;
+  width: 14px;
+  height: 14px;
+  background: var(--badge-news);
+  box-shadow: var(--badge-edge);
+}
+:root[data-ui="poster"] .lobby-badge.is-new::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  background: #fff;
+  -webkit-mask: var(--badge-spark) center / contain no-repeat;
+  mask: var(--badge-spark) center / contain no-repeat;
+}
+:root[data-ui="poster"] {
+  --badge-spark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 0Q8.9 7.1 16 8Q8.9 8.9 8 16Q7.1 8.9 0 8Q7.1 7.1 8 0Z'/%3E%3C/svg%3E");
+}
+
+/* The ping when one appears: square, in the indicator's own colour. */
+:root[data-ui="poster"] :is(.lobby-badge, .chat-unread)::after {
+  border-radius: 0;
+  border-color: var(--hot-fill);
+  box-shadow: none;
+}
+:root[data-ui="poster"] .lobby-badge.is-new::after {
+  border-color: var(--badge-news);
+}
+
+/* The Lobby rail on a desktop, where the words sit beside the icons: the
+   Plaza's 18 px, and over the icon's corner rather than past it, so a
+   square's corner stays clear of the word (a round badge's curve had left
+   that gap). Phones keep lobby.css's sizes and places (the words sit under
+   the icons there). */
+@media (min-height: 501px) {
+  :root[data-ui="poster"] .lobby-badge:not(.is-dot, .is-new) {
+    top: -11px;
+    left: calc(100% - 13px);
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    font-size: calc(11px * var(--text-scale, 1));
+  }
+}
