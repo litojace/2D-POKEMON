@@ -362,6 +362,11 @@ export interface NetSummary {
   pressToSendP50?: number;
   pressToSendP95?: number;
   pressToSendP99?: number;
+  /**
+   * Touch presses left out of the timings because the browser stamped them
+   * with another finger's old time (WebKit on iOS: touch-stamp.ts).
+   */
+  pressStale?: number;
   /** Event delivery delay vs the subsequent wait for the input deadline. */
   eventToHandlerP95?: number;
   handlerToSendP95?: number;
@@ -489,6 +494,7 @@ export class NetMeter {
   private sendGaps: number[] = [];
   private presses: number[] = [];
   private handlerDelays: number[] = [];
+  private stalePresses = 0;
   private sendDelays: number[] = [];
   private lastSend: number | undefined;
   private actionPresses = new Map<
@@ -532,7 +538,11 @@ export class NetMeter {
     origin = performance.timeOrigin,
     source: "touch-controls" | "unknown" = "unknown",
   ) {
-    if (stamp === undefined || !Number.isFinite(stamp)) return;
+    if (stamp === undefined || !Number.isFinite(stamp)) {
+      // A touch with no usable time: counted apart, never as a wait.
+      if (source === "touch-controls") this.stalePresses++;
+      return;
+    }
     const event = stamp > 1e12 ? stamp - origin : stamp;
     if (event < 0 || event > handled || handled - event > 60_000) return;
     this.actionPresses.set(action, { event, handler: handled, source });
@@ -653,6 +663,7 @@ export class NetMeter {
             handlerToSendP95: q(this.sendDelays, 0.95),
           }
         : {}),
+      ...(this.stalePresses ? { pressStale: this.stalePresses } : {}),
       ...(this.sendGaps.length
         ? {
             sendGapP50: q(this.sendGaps, 0.5),
@@ -685,6 +696,7 @@ export class NetMeter {
     this.sendGaps = [];
     this.presses = [];
     this.handlerDelays = [];
+    this.stalePresses = 0;
     this.sendDelays = [];
     this.rtts = [];
     this.gaps = [];
