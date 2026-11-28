@@ -91,7 +91,7 @@ const PHONE_ASPECT = 2868 / 1320;
 /**
  * A screen outside battle, whole, from screens.spec.ts (same phone, same
  * look): the Plaza in an Orb Shower with made-up players and their titles
- * over their names, every tier (#650; frame 13: every name and title in
+ * over their names, every tier (#650; frame 14: every name and title in
  * sight, none behind a lamp post), Friends with made-up friends.
  * Coin counts are blurred where they stand (the owner's rule: no amounts of
  * the game's money outside the game).
@@ -227,7 +227,7 @@ const POSTS = [
     name: "plaza",
     kind: "shot",
     el: EL.shadow,
-    art: ui("plaza/13.png"),
+    art: ui("plaza/14.png"),
     eyebrow: "The Plaza · up to 40 players",
     title: "Hang out between fights.",
     line: "Bounce pads, a ball pitch, a dash track, a photo spot, and an Orb Shower every 15 minutes.",
