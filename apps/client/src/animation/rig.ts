@@ -16,6 +16,13 @@ import type Phaser from "phaser";
 import { CHARACTERS, type CharacterId } from "@arena/shared";
 import { moodFor, squashFor } from "./expression";
 import {
+  ENTRANCES,
+  SETTLED,
+  VICTORIES,
+  type MoveAccent,
+  type MoveStage,
+} from "./champion-moves";
+import {
   AnimationController,
   facing,
   type AnimationPose,
@@ -162,6 +169,9 @@ export class FighterRig {
   /** Drawn under the fighter (the victory rock pile). */
   private under: Phaser.GameObjects.Graphics;
   private lastProgress = 0;
+  /** The champion's own move last frame, and how far into it (seconds). */
+  private moveState: AnimationState = "idle";
+  private moveT = 0;
   /** The scale the caller asked for (view zoom, giants); squash multiplies it. */
   private baseX = 1;
   private baseY = 1;
@@ -754,8 +764,68 @@ export class FighterRig {
       armR.rotation = -0.7;
       this.root.setAlpha(alpha * 0.65);
     }
-    // ---- Greetings (round intro) and victories, one for each champion.
-    if (state === "wave" && !reduced)
+    // ---- Entrances (the round's greeting) and victories, one for each
+    // champion (champion-moves.ts). An equipped Victory reward that brings
+    // its own action (Rockslide Flex) replaces the champion's victory move.
+    const ownMove =
+      state === "wave"
+        ? ENTRANCES[this.character]
+        : state === "victory" && pose.look?.victory !== "rockslide-flex"
+          ? VICTORIES[this.character]
+          : undefined;
+    const accents: [MoveAccent, number][] = [];
+    if (ownMove) {
+      const at = reduced ? SETTLED : t;
+      const before =
+        this.moveState === state && this.moveT <= at ? this.moveT : -1;
+      const stage: MoveStage = {
+        t: at,
+        calm: reduced,
+        facing: dir,
+        side: dir === "left" ? -1 : 1,
+        p: {
+          head,
+          body,
+          armL,
+          armR,
+          legL,
+          legR,
+          tail,
+          wings,
+          flame,
+          ears,
+          scarf,
+        },
+        move: (dx, dy) => {
+          offsetX += dx;
+          offsetY += dy;
+        },
+        squash: (x, y) => {
+          sx *= x;
+          sy *= y;
+        },
+        spin: (angle) => {
+          this.root.rotation += angle;
+        },
+        mood: (wanted) => {
+          if (dir === "up") return;
+          const key = moodKey(this.character, dir, wanted, this.suffix);
+          if (eyes.texture.key !== key && this.scene.textures.exists(key))
+            eyes.setTexture(key);
+        },
+        shut: (amount) => {
+          eyes.scaleY = Math.max(0.055, 0.5 * (1 - amount));
+        },
+        sway: (speed, phase = 0) =>
+          reduced ? 0 : Math.sin(at * speed + phase),
+        passed: (moment) => !reduced && before < moment && at >= moment,
+        accent: (kind, count) => {
+          accents.push([kind, count]);
+        },
+      };
+      ownMove(stage);
+      this.moveT = at;
+    } else if (state === "wave" && !reduced)
       this.wave(
         t,
         { head, body, armL, armR, legL, legR, tail, wings, flame, ears },
@@ -765,8 +835,7 @@ export class FighterRig {
         },
       );
     else if (state === "wave") armR.rotation = -2.4;
-    // An equipped Victory reward replaces the champion's own victory move.
-    if (
+    else if (
       state === "victory" &&
       !reduced &&
       t < 2.2 &&
@@ -780,6 +849,8 @@ export class FighterRig {
           offsetY += dy;
         },
       );
+    this.moveState = ownMove ? state : "idle";
+    for (const [kind, count] of accents) this.moveAccent(kind, count, x, y);
     // Rockslide Flex (a Victory reward): a pile of rocks rises under the
     // fighter, who stands on top flexing while pebbles bounce away.
     const flexing =
@@ -1191,6 +1262,42 @@ export class FighterRig {
     const prop = UPRIGHT_PROP_ARM[this.character];
     if (!prop) return undefined;
     return this.dir === "left" || this.dir === "right" ? prop.side : prop.front;
+  }
+
+  /** A few particles that belong to a champion's move (champion-moves.ts). */
+  private moveAccent(kind: MoveAccent, count: number, x: number, y: number) {
+    const sc = this.baseX,
+      feet = y + FEET * this.baseY;
+    for (let i = 0; i < Math.min(count, 6); i++) {
+      const out = (i / Math.max(1, count - 1) - 0.5) * 2 || 0;
+      if (kind === "ember")
+        this.emit({
+          x: x + out * 12 * sc,
+          y: y - 44 * this.baseY,
+          vx: out * 40,
+          vy: -50 - Math.random() * 40,
+          life: 0.6,
+          size: (1.6 + Math.random() * 1.4) * sc,
+          color: i % 2 ? 0xffd34d : 0xff7a4f,
+          shape: "dot",
+        });
+      else
+        this.emit({
+          x: x + (out * 14 + (Math.random() - 0.5) * 6) * sc,
+          y: feet - (2 + Math.random() * 5) * sc,
+          vx: out * (kind === "dust" ? 46 : 70) * (0.6 + Math.random() * 0.8),
+          vy:
+            kind === "dust"
+              ? -18 - Math.random() * 14
+              : -60 - Math.random() * 50,
+          life: kind === "dust" ? 0.45 : 0.4,
+          size: (kind === "dust" ? 2.6 : kind === "spark" ? 4.5 : 2.4) * sc,
+          color:
+            kind === "spark" ? 0x7ff3ff : kind === "drop" ? 0xbff6ff : 0xcbb89a,
+          shape:
+            kind === "spark" ? "spark" : kind === "drop" ? "bubble" : "dot",
+        });
+    }
   }
 
   /** Each champion's own greeting at the start of a round. */
