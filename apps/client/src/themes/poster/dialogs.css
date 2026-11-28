@@ -72,6 +72,24 @@
   border-color: var(--ink-3);
   border-radius: 0;
   box-shadow: inset 0 0 0 1px var(--ink-3);
+  /* Its arrow drawn, not the browser's (audit I06): a cream chevron of two
+     gradients at the right, the words kept clear of it. Gradients, not an
+     image, so nothing is fetched. Its size stays 16 px on a touch screen
+     (input-zoom.spec: smaller and iOS zooms in). */
+  appearance: none;
+  -webkit-appearance: none;
+  /* A finger tall: without the browser's drawing it was 39 px. */
+  min-height: 44px;
+  box-sizing: border-box;
+  padding-right: 34px;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--paper) 50%),
+    linear-gradient(135deg, var(--paper) 50%, transparent 50%);
+  background-position:
+    calc(100% - 18px) 50%,
+    calc(100% - 12px) 50%;
+  background-size: 6px 6px;
+  background-repeat: no-repeat;
 }
 :root[data-ui="poster"] :is(dialog, .account-form) select:focus {
   border-color: var(--el);

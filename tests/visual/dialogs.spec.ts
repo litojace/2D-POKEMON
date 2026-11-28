@@ -117,14 +117,35 @@ for (const s of SCREENS)
       await dialog.locator('[data-settings-tab="about"]').click();
       await dialog.locator("#settings-credits").click();
       await expect(dialog.locator(".credits-screen")).toBeVisible();
-      // The way back reads on the masthead (ink, not the pale blue-grey
-      // it had there), and the page counts the roster as it is ("Eight
-      // original creatures" beside eighteen fighters).
+      // The way back reads on the masthead: its words are the masthead's
+      // dim cream on its ink (themes/poster/screens.css). They were ink, set
+      // when the masthead was the element colour; on #673's ink masthead
+      // that drew "Settings" ink on ink, unseen. And the page counts the
+      // roster as it is ("Eight original creatures" beside eighteen
+      // fighters).
+      const back = await dialog.locator("#credits-back").evaluate((el) => {
+        const ctx = document.createElement("canvas").getContext("2d", {
+          willReadFrequently: true,
+        })!;
+        const rgb = (css: string) => {
+          ctx.clearRect(0, 0, 1, 1);
+          ctx.fillStyle = "#000";
+          ctx.fillStyle = css;
+          ctx.fillRect(0, 0, 1, 1);
+          return Array.from(ctx.getImageData(0, 0, 1, 1).data.slice(0, 3));
+        };
+        return {
+          words: rgb(getComputedStyle(el).color),
+          head: rgb(getComputedStyle(el.parentElement!).backgroundColor),
+        };
+      });
       expect(
-        await dialog
-          .locator("#credits-back")
-          .evaluate((back) => getComputedStyle(back).color),
-      ).toBe("rgb(13, 13, 15)");
+        Math.min(...back.words),
+        "the way back's words are light",
+      ).toBeGreaterThan(150);
+      expect(back.words, "not the masthead's own colour").not.toEqual(
+        back.head,
+      );
       await expect(dialog.locator(".credits-screen")).toContainText(
         `${Object.keys(CHARACTERS).length} original creatures`,
       );
