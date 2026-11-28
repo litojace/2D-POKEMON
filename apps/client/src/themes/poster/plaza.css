@@ -385,7 +385,10 @@
   color: #fff;
   font: 800 calc(11px * var(--text-scale, 1)) / 1 var(--font-body);
   font-variant-numeric: tabular-nums;
-  box-shadow: 1px 1px 0 var(--ink);
+  /* Its own ink edge and hard shadow, so it sits on the icon, not afloat. */
+  box-shadow:
+    0 0 0 1.5px var(--ink),
+    2px 2px 0 1.5px rgba(0, 0, 0, 0.45);
 }
 /* A pressed or focused icon in the game's gold, as in battle. */
 :root[data-ui="poster"]
