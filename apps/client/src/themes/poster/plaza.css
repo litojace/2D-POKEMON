@@ -96,8 +96,9 @@
 }
 
 /* ── chat: the drawer is a Poster sheet ──
-   An ink board with a masthead in the element colour, as every panel
-   (kit.css). The board is ink by name, not through the glass tokens: on an
+   An ink board under an ink masthead with cream words and a 3 px cream
+   rule, as every panel after colour direction G (its --head-* tokens; the
+   fallbacks give the same before G is in). The board is ink by name, not through the glass tokens: on an
    iPhone after a match against a bot, the tabs, the field and Send floated
    on the result's dotted backdrop with no sheet behind them, and "No
    messages yet" read pale grey on cyan (owner, 27 Nov). A hard shadow, not
@@ -115,31 +116,32 @@
     calc(-10px - var(--safe-left, 0px));
   padding: max(8px, calc(var(--safe-top, 0px) + 6px)) 10px 8px
     calc(var(--safe-left, 0px) + 10px);
-  background: var(--el);
-  color: var(--ink);
+  background: var(--head-bg, var(--ink));
+  color: var(--head-ink, #f4ead5);
+  box-shadow: inset 0 -3px 0 var(--head-ink, #f4ead5);
 }
-/* Tabs on the masthead: the words in quiet ink, the chosen one an ink
-   block with its word in the element colour (kit.css's masthead tabs). */
+/* Tabs on the masthead: the words in quiet cream, the chosen one a block
+   of the accent (--el: cream after G) with ink words. */
 :root[data-ui="poster"] .chat-tab {
   border: 0;
   border-radius: 0;
   background: transparent;
-  color: var(--on-el-dim);
+  color: var(--head-dim, rgba(244, 234, 213, 0.72));
   font-weight: 400;
 }
 :root[data-ui="poster"] .chat-tab[aria-selected="true"] {
   border-color: transparent;
-  background: var(--ink);
-  color: var(--el-text);
-}
-/* An unread count on the masthead: ink on the element colour, red on the
-   chosen tab's ink (5.3:1). */
-:root[data-ui="poster"] .chat-tab i {
+  background: var(--el);
   color: var(--ink);
+}
+/* An unread count: red on the masthead's ink (5.3:1), ink on the chosen
+   tab's accent. */
+:root[data-ui="poster"] .chat-tab i {
+  color: var(--hot);
   font-weight: 800;
 }
 :root[data-ui="poster"] .chat-tab[aria-selected="true"] i {
-  color: var(--hot);
+  color: var(--ink);
 }
 :root[data-ui="poster"]
   :is(
@@ -187,12 +189,12 @@
   border-radius: 0;
   background: var(--ink-2);
 }
-/* Settings and Close on the masthead: ink blocks, white icons (kit.css's
-   masthead buttons); the gear in the element colour while it is open. */
+/* Settings and Close on the masthead: blocks of lighter ink, cream icons;
+   the gear in the accent while it is open. */
 :root[data-ui="poster"] .chat-head :is(.chat-gear, .chat-close) {
   border: 0;
-  background: var(--ink);
-  color: #fff;
+  background: var(--head-box, var(--ink-3));
+  color: var(--head-ink, #f4ead5);
 }
 :root[data-ui="poster"] .chat-head .chat-gear[aria-expanded="true"] {
   color: var(--el-text);
