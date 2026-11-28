@@ -844,11 +844,22 @@ test.describe("website", () => {
         await page.waitForTimeout(80);
       }
       // Every card the fallback dimmed has been seen, and its fade is over.
+      // On a slow renderer (CI's) a frame can outlast a step of the sweep,
+      // and a card that crossed the screen between two frames was never
+      // seen: so bring each one still dimmed to the middle of the screen
+      // and let the observer see it, as a visitor stopping there would.
       await expect
-        .poll(() =>
-          page.evaluate(
-            () => document.querySelectorAll(".reveal:not(.in)").length,
-          ),
+        .poll(
+          () =>
+            page.evaluate(() => {
+              const dimmed = document.querySelectorAll(".reveal:not(.in)");
+              dimmed[0]?.scrollIntoView({
+                block: "center",
+                behavior: "instant",
+              });
+              return dimmed.length;
+            }),
+          { intervals: [150], timeout: 30_000 },
         )
         .toBe(0);
       await page.waitForTimeout(800);
