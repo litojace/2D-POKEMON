@@ -444,6 +444,15 @@ test.describe("website", () => {
         for (let y = 0; y < height; y += Math.round(h * 0.7)) {
           await page.evaluate((y) => scrollTo(0, y), y);
           await page.waitForTimeout(150);
+          // Two frames, so site.js's observers have answered the scroll (the
+          // nav's current link) before we look: on a slow renderer 150 ms
+          // can pass without one.
+          await page.evaluate(
+            () =>
+              new Promise((done) =>
+                requestAnimationFrame(() => requestAnimationFrame(done)),
+              ),
+          );
           await settle(page);
           low.push(...(await lowContrast(page, `page@${y}`)));
         }

@@ -87,6 +87,11 @@ for (const size of SIZES)
       const page = await context.newPage();
       await openPlaza(page);
       if (size.island) await setInsets(page, ISLAND);
+      // The clock's sun or moon and its time are written by the scene's
+      // frame loop (plaza-scene.ts): until its first frame the clock holds
+      // only "--:--". On a slow runner 300 ms was not always a frame (#680's
+      // shard 21, twice at 1440x900).
+      await expect(page.locator("#pz-clock .ico")).toHaveCount(1);
       await page.waitForTimeout(300);
       for (const b of await look(page)) {
         expect(b.background, b.id).toBe("rgba(0, 0, 0, 0)");

@@ -1,11 +1,13 @@
 import type {
   RaidAttack,
   RaidBossId,
+  RaidProgress,
 } from "../../../../packages/shared/src/raid";
 import { openHubPanel, type HubPanel } from "../ui/hub-panel";
 import { parse, patch } from "../ui/patch";
 import { enter, markTabs, playTabSwitch, whenSettled } from "../ui/motion";
 import {
+  hallFirstPictures,
   raidMarkup,
   raidView,
   startState,
@@ -65,6 +67,25 @@ const FOCUS_KEYS = [
   "data-raid-back",
   "data-raid-start",
 ];
+
+/**
+ * Download, ahead, the pictures the hall's first view shows (its first
+ * four cards, about 0.5 MB): on a first start they are not on the device
+ * yet (the service worker keeps them once used), and the cards would open
+ * blank on a slow connection. Bytes only: nothing is decoded or kept in
+ * memory here (four decoded cards would hold about 13 MB); the cards decode
+ * as the hall shows them. Not when the player asked to save data.
+ */
+export async function warmHallPictures(p: RaidProgress | null) {
+  const saveData = (navigator as { connection?: { saveData?: boolean } })
+    .connection?.saveData;
+  if (saveData) return;
+  await Promise.allSettled(
+    hallFirstPictures(p).map((url) =>
+      fetch(url, { priority: "low" } as RequestInit).then((r) => r.blob()),
+    ),
+  );
+}
 
 export function openRaids(
   hooks: RaidHooks,
