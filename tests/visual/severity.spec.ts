@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { createRoom, openHub, openPlayPanel, pushUntilBattle } from "./helpers";
+import { fileURLToPath } from "node:url";
 import { onPlayersLook } from "./players-look";
 
 // One scale for how serious a word is (owner, 27 Nov 2026: colour by danger
@@ -268,4 +269,39 @@ test("each toast kind carries its sign and its colour; the words stay cream", as
         getComputedStyle(document.getElementById("toast")!, "::before").content,
     ),
   ).toBe("none");
+});
+
+test("the guest's two choices share one size, Log out anyway in red", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 667, height: 375 });
+  await openHub(page);
+  // The real dialog (dialog.ts), with the markup accounts.ts gives it.
+  const dialogTs = fileURLToPath(
+    new URL("../../apps/client/src/dialog.ts", import.meta.url),
+  );
+  const sizes = await page.evaluate(async (dialogTs) => {
+    const { setDialogContent } = await import(
+      /* @vite-ignore */ `/@fs${dialogTs}`
+    );
+    const d = document.getElementById("dialog") as HTMLDialogElement;
+    setDialogContent(
+      d,
+      '<div class="eyebrow">Guest account</div><h2>Log out of your guest pass?</h2><p>Guest accounts can\'t be recovered.</p><div class="dialog-actions is-even"><button class="primary" id="guest-save">Save my account</button><button class="secondary is-danger" id="guest-leave">Log out anyway</button></div>',
+    );
+    d.showModal();
+    await new Promise((r) => setTimeout(r, 400));
+    return ["guest-save", "guest-leave"].map((id) => {
+      const r = document.getElementById(id)!.getBoundingClientRect();
+      return {
+        w: Math.round(r.width),
+        h: Math.round(r.height),
+        top: Math.round(r.top),
+      };
+    });
+  }, dialogTs);
+  expect(sizes[0]).toEqual(sizes[1]);
+  expect(sizes[0].h).toBeGreaterThanOrEqual(44);
+  const fill = await rgbOf(page, "#guest-leave", "background-color");
+  expect(fill[0]).toBeGreaterThan(180);
 });

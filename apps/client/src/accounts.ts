@@ -957,7 +957,7 @@ export class AccountUI {
   async logOut() {
     if (this.account?.guest && !this.confirmedGuestLogout) {
       this.hooks.openDialog(
-        `<div class="eyebrow">Guest account</div><h2>Log out of your guest pass?</h2><p>Guest accounts can't be recovered after logging out: your records and titles would be lost. Save your account with an email first to keep them.</p><div class="dialog-actions"><button class="primary" id="guest-save">${iconLabel("save", "Save my account")}</button><button class="secondary is-danger" id="guest-leave">${iconLabel("leave", "Log out anyway")}</button></div>`,
+        `<div class="eyebrow">Guest account</div><h2>Log out of your guest pass?</h2><p>Guest accounts can't be recovered after logging out: your records and titles would be lost. Save your account with an email first to keep them.</p><div class="dialog-actions is-even"><button class="primary" id="guest-save">${iconLabel("save", "Save my account")}</button><button class="secondary is-danger" id="guest-leave">${iconLabel("leave", "Log out anyway")}</button></div>`,
       );
       element("guest-save").onclick = () => void this.showProfile();
       element("guest-leave").onclick = () => {

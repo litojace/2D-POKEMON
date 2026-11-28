@@ -116,6 +116,15 @@
   color: #fff;
 }
 
+/* A choice between two (the guest's Save or Log out anyway): one size for
+   both, the widest label's (owner, 28 Nov 2026: buttons side by side share
+   one size). Equal shares of the row, in the dialog's own row or its
+   footer (which shows the row's buttons as its own). */
+:root[data-ui="poster"] #dialog .dialog-actions.is-even > button {
+  flex: 1 1 0;
+  min-width: max-content;
+}
+
 /* A danger button that isn't a confirm (Delete account, Exit test mode,
    Report): its words in the one danger red, not a pinker one of its own. */
 :root[data-ui="poster"] .ui-btn.is-danger {
