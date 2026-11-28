@@ -164,3 +164,13 @@ In battle a fighter is about 30 px tall on a phone, so a move reads through
 the whole body (a leap, a lean, a crest, a tail), not through its arms.
 `tests/visual/harness/champion-moves.ts` draws frame strips of any move, in
 any facing and skin, to look at before shipping one.
+
+## Shadow and aura: one ground rule
+
+A champion's shadow and aura are the same ellipse in every view (Lobby,
+Fighters page, Shop, Wardrobe, battle, Plaza), from
+`apps/client/src/ground.ts`. A new champion needs nothing there unless its
+art reaches below the standard feet line (give it a `groundDrop`) or its body
+is wider than the standard footprint (give it a `footprint`). No view
+special-cases a champion; `tests/unit/ground.test.ts` holds the views to
+that file.

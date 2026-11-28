@@ -1,3 +1,4 @@
+import { GROUND_FLAT } from "./ground";
 import { WORLD_ART } from "../../../packages/shared/src/world-art";
 import { auraScale } from "./aura-size";
 /** Shared framing for the static loading art and the battle rig. */
@@ -103,15 +104,10 @@ export function previewViewBox(
   ].join(" ");
 }
 
-/** The fitting room's contact shadow at the fighter's feet, in canvas pixels. */
-export const SHOP_SHADOW = { width: 128, height: 26 } as const;
-/** Ground plane of the fitting room: the shadow's own flatness. */
-export const SHOP_GROUND_FLAT = SHOP_SHADOW.height / SHOP_SHADOW.width;
-
 // The aura's size is set in one place for the whole game (aura-size.ts).
 export { AURA_ART_SCALE, battleAuraScale } from "./aura-size";
 /**
- * Auras lie on the same plane as the shadow (SHOP_GROUND_FLAT), sized to the
+ * Auras lie on the same plane as the shadow (GROUND_FLAT), sized to the
  * fighter as in the Lobby (AURA_ART_SCALE), and the whole projected aura
  * stays inside the frame.
  */
@@ -121,7 +117,7 @@ export function previewAuraScale(
     y: number;
     scale: number;
   },
-  flat: number = SHOP_GROUND_FLAT,
+  flat: number = GROUND_FLAT,
 ) {
   const feet = frame.y + WORLD_ART.fighterFeet * frame.scale;
   return Math.min(
