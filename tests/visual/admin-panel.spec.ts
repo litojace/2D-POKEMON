@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { openLobby, snap } from "./helpers";
+import { openLobby, settle, snap } from "./helpers";
 import { exposeAccount } from "./shop-server";
 import { ISLAND, setInsets, type Insets } from "./ui-measure";
 
@@ -407,6 +407,7 @@ for (const size of [
           await page.locator("[data-player] .adm-row-main").first().click();
           await expect(page.locator(".adm-detail")).toBeVisible();
         }
+        await settle(page);
         const fit = await fits(page, inset);
         expect(
           fit.sideways,
@@ -451,6 +452,10 @@ for (const size of [
       await expect(tier).toHaveValue("common");
       // Every control of the form inside it, none over another, each at
       // least 44 px tall.
+      // Where it settles: an opened dialog or panel scales in (ea-pop,
+      // hub-panel's enter), and CI's slow renderer can still be at its
+      // first frame (#715: a 44 px tab read 42.68). settle() finishes it.
+      await settle(page);
       const boxes = await form.evaluate((el) => {
         const f = el.getBoundingClientRect();
         return [
@@ -778,6 +783,7 @@ test("Admin actions on a phone held sideways", async ({ browser }, info) => {
       "Legendary",
       "Mythical",
     ]);
+    await settle(page);
     const pick = await tier.boundingBox();
     expect(pick!.height).toBeGreaterThanOrEqual(44);
     await snap(page, info, "admin-title-form");

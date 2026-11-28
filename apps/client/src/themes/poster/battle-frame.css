@@ -1,0 +1,19 @@
+/* Poster: the page around the court (the audit, 28 Nov). On a wide screen
+   the court sat on navy (a radial glow on #101c35) in a rounded navy frame
+   with a pale rim; on a touch screen its stands band was a navy gradient.
+   Now the ink every Poster screen sits on, the frame square with an ink
+   rim. The court's own apron (the purple bands either side of the court on
+   a phone) is the court's art and stays. Backgrounds only: nothing here
+   changes as the match runs. */
+:root[data-ui="poster"] body.battle-active {
+  background: var(--ink);
+}
+:root[data-ui="poster"] body.battle-active.touch-mode #battle {
+  background: var(--ink);
+}
+:root[data-ui="poster"] body.battle-active .arena-frame {
+  border-color: var(--ink-3);
+  border-radius: 0;
+  background: var(--ink);
+  box-shadow: none;
+}
