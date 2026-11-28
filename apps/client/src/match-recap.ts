@@ -75,7 +75,7 @@ export function recordsMarkup(
   if (record.status === "pending")
     return '<p class="records muted">Saving to your records…</p>';
   if (record.status === "unavailable")
-    return `<p class="records muted">${escape(record.message)}</p>`;
+    return `<p class="records muted is-error">${escape(record.message)}</p>`;
   const { reply } = record;
   const lines = reply.records.map((r) => {
     if (!r.wins && !r.losses && r.together)
