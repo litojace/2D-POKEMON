@@ -681,9 +681,10 @@ export class AccountUI {
    * (the same copies: it then opens on them, and asks again behind them
    * only once they are old), and the code of the screens that load on
    * demand comes in, so preloadScreens has nothing left to do. Small JSON
-   * and code: the pictures each panel's first view shows are warmed
-   * separately (warmPictures). Never while a battle runs (a room rejoined
-   * at startup): it waits for the battle to end. Never fails.
+   * and code; of pictures only the Raids hall's first cards, downloaded
+   * and not decoded (warmHallPictures, below). Never while a battle runs
+   * (a room rejoined at startup): it waits for the battle to end. Never
+   * fails.
    */
   private async warmLobby(accountId: string, version: number) {
     const fresh = () =>
