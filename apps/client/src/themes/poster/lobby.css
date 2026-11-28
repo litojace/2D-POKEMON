@@ -239,6 +239,17 @@
 :root[data-ui="poster"] .lobby-layer .lobby-slot span {
   color: var(--ink);
 }
+/* A seat too small for its word shows the plus alone: on the shortest
+   phones (844 x 280, 568 x 320) the seat is 44 px, "INVITE" is 40 px of ink
+   in 38 px of room, and the frame cut through it (audit B04). The word
+   needs a seat of 52 px; under that its row closes (the multiplier turns
+   one pixel short into nothing). The button's aria-label still names it.
+   Not a container query: the seat's size is in container units, which a
+   container on the seat would re-measure for what is inside it. */
+:root[data-ui="poster"] .lobby-layer .lobby-slot small {
+  overflow: hidden;
+  max-height: clamp(0px, calc((var(--seat) * 0.8 - 51px) * 100), 1.2em);
+}
 /* A party member's name under their fighter: white on its ink pill (it
    took the seat's ink and could not be read; yours keeps its colour). */
 :root[data-ui="poster"] .lobby-layer .lobby-member:not(.is-you) figcaption {
