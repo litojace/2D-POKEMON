@@ -132,3 +132,26 @@ In the rig, Glacelle floats (like Mystowl), Wombolder steps heavily (like
 Terradon, its rump plate following the torso), Shadopus's tentacles sway, and
 each has its own greeting and victory pose. Menu trait auras are in
 `trait-effects.ts`.
+
+### Entrances and victories
+
+A champion's entrance (its greeting during a round's countdown) and victory
+are body movement of its own, in `apps/client/src/animation/champion-moves.ts`:
+a function of the seconds since the move began, which poses the rig's parts.
+Voltkit, Cindrake and Tidefin have one (the pilot, 28 Nov 2026); a champion
+without one keeps its older pose in `rig.ts`. The rules are at the top of
+that file and held by `tests/unit/champion-moves.test.ts`:
+
+- a move starts and ends where the fighter stands, tells its story in about
+  1.6 s and then holds a pose (the countdown is 3 s; nothing waits for it);
+- Reduce motion shows the held pose, still;
+- nothing leaves the body: the rig keeps the head on its neck whatever a move
+  asks, and an arm with a prop painted on it (`UPRIGHT_PROP_ARM`: Astrabun's
+  mallet, Tidefin's blade) only turns where the prop clears the body;
+- at most a few particles that belong to the move. The Shop's Entrance and
+  Victory effects still play on top.
+
+In battle a fighter is about 30 px tall on a phone, so a move reads through
+the whole body (a leap, a lean, a crest, a tail), not through its arms.
+`tests/visual/harness/champion-moves.ts` draws frame strips of any move, in
+any facing and skin, to look at before shipping one.

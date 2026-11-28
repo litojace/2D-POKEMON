@@ -122,9 +122,13 @@
   color: #ffe08a;
 }
 /* The letters are painted with a gradient from Rare up (the text shows
-   through its own shape). */
+   through its own shape). Only the fill is transparent: the text keeps the
+   title's colour, one of the stops of every tier's gradient, as its
+   colour, so contrast checks, high-contrast modes and selection still see
+   a real colour (tests/visual/poster-contrast.spec.ts read the corner's title as
+   invisible when the colour itself was transparent). */
 :root[data-ui="poster"] .title-tag:not([data-tier="common"]) > span {
-  color: transparent;
+  -webkit-text-fill-color: transparent;
   -webkit-background-clip: text;
   background-clip: text;
   background-image: linear-gradient(
