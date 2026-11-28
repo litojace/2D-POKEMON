@@ -918,6 +918,9 @@ body::before {
   grid-column: 1 / -1;
   color: var(--dim);
 }
+.modes li > p a {
+  color: var(--paper);
+}
 
 /* ---------- Raid bosses: a stage and a picker ---------- */
 /* A stage shows one boss's splash at a time (only its picture downloads);
@@ -1181,6 +1184,197 @@ body::before {
     clip-path: none;
     white-space: normal;
   }
+}
+
+/* ---------- The Plaza and its pond ---------- */
+/* Hanging out and fishing as one place (owner, 27 Nov). The band takes
+   Water's blue as its colour, as a champion's panel takes its element's:
+   the title's key words, the numbers and the button. */
+.pond {
+  --brand: var(--el-water);
+  --el: var(--el-water);
+}
+.pond-top {
+  align-items: center;
+}
+@media (min-width: 900px) {
+  .pond-top {
+    grid-template-columns: minmax(0, 6fr) minmax(0, 7fr);
+  }
+  .pond-top .head {
+    margin-bottom: 0;
+  }
+}
+/* Cast, wait, reel: three numbered blocks. */
+.pond-steps {
+  display: grid;
+  gap: 10px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+  max-width: 34em;
+}
+.pond-steps li {
+  position: relative;
+  min-height: 44px;
+  padding: 10px 14px 10px 58px;
+  background: var(--ink-2);
+  color: var(--dim);
+  counter-increment: step;
+}
+.pond-steps li::before {
+  content: counter(step);
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 44px;
+  display: grid;
+  place-items: center;
+  background: var(--brand);
+  color: var(--ink);
+  font: 400 1.5rem/1 var(--display);
+}
+.pond-steps b {
+  color: var(--paper);
+  font: 400 1.1rem/1 var(--display);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+/* The pond itself, framed: a real moment from the game. */
+.pond-shot {
+  position: relative;
+  margin: 0 10px 10px 0;
+  border: 4px solid var(--brand);
+  box-shadow: 10px 10px 0 var(--hot);
+  background: var(--ink);
+}
+.pond-shot img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 3 / 2;
+  object-fit: cover;
+}
+.pond-tag {
+  position: absolute;
+  right: -8px;
+  top: -16px;
+  padding: 7px 12px 6px;
+  background: var(--hot-fill);
+  color: var(--paper);
+  font: 400 1.15rem/1 var(--display);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transform: rotate(4deg);
+  box-shadow: 4px 4px 0 var(--ink);
+}
+.pond-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: clamp(30px, 5vw, 48px);
+}
+.pond-facts li {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+  padding-left: 12px;
+  border-left: 4px solid var(--brand);
+}
+.pond-facts b {
+  font: 400 clamp(2.4rem, 7vw, 3.8rem) / 0.9 var(--display);
+  color: var(--brand);
+}
+.pond-facts span {
+  color: var(--dim);
+  font: 400 0.95rem/1.2 var(--display);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.fish-head {
+  display: grid;
+  gap: 8px;
+  margin: clamp(30px, 5vw, 48px) 0 18px;
+  max-width: 46em;
+}
+.fish-head h3 {
+  font-size: clamp(1.9rem, 5vw, 2.6rem);
+}
+.fish-head p {
+  color: var(--dim);
+}
+.fish-head p b {
+  color: var(--brand);
+  font-weight: 700;
+}
+/* The Fish book: every fish in the pond, the game's own drawings. Three to
+   a row on a phone, eight on a desk. */
+.fish-book {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(clamp(100px, 11vw, 128px), 1fr)
+  );
+  gap: 8px;
+}
+.fish {
+  --el: var(--el-water);
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 3px;
+  padding: 0 6px 10px;
+  background: var(--ink-2);
+  text-align: center;
+}
+.fish img {
+  width: calc(100% + 12px);
+  max-width: none;
+  margin: 0 -6px 5px;
+  padding: 8px 10px;
+  aspect-ratio: 8 / 5;
+  background: #0b2533;
+  border-bottom: 3px solid var(--el);
+}
+.fish b {
+  font: 400 1.05rem/1.05 var(--display);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+.fish small {
+  color: var(--dim);
+  font-size: 0.875rem;
+  line-height: 1.25;
+}
+.fish .fish-el {
+  color: var(--el-text);
+  font-weight: 600;
+}
+.fish.r-rare {
+  --el: #5fb3ff;
+}
+.fish.r-legendary {
+  --el: var(--r-legendary);
+}
+/* Not caught yet: the game's shadow of the fish and its "???". */
+.fish.unknown img {
+  background: var(--ink);
+}
+.fish.unknown b {
+  color: var(--el);
+  letter-spacing: 0.12em;
+}
+.fish-when {
+  margin-top: 3px;
+  padding: 3px 6px 2px;
+  background: var(--paper);
+  color: var(--ink);
+  font: 400 0.875rem/1.1 var(--display);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.pond-cta {
+  margin-top: 26px;
 }
 
 /* ---------- Make it yours: the Shop's window ---------- */
@@ -2207,7 +2401,15 @@ body::before {
     animation-range: entry 0% entry 80%;
   }
   :root:not([data-motion="paused"])
-    :is(.roster > li, .modes > li, .stores > li, .raid-week, .shop-show) {
+    :is(
+      .roster > li,
+      .modes > li,
+      .stores > li,
+      .raid-week,
+      .shop-show,
+      .pond-shot,
+      .fish-book > li
+    ) {
     animation: rise linear both;
     animation-timeline: view();
     animation-range: entry var(--lag, 0%) entry calc(60% + var(--lag, 0%));
