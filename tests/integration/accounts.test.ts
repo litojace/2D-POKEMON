@@ -285,6 +285,58 @@ it("checks HTTP authorization, payloads, origin and title ownership RPC paths", 
     ).status,
   ).toBe(200);
   expect(calls.at(-1)?.name).toBe("arena_admin_save_title");
+  // No tier in the request: null goes to the database, which keeps the
+  // tier the title has (Common for a new one).
+  expect(calls.at(-1)?.args.p_tier).toBeNull();
+  // A title's tier (migration 20261128060000): an administrator's choice,
+  // one of the five, sent on to the database.
+  const saveTitle = (who: string, tier: unknown) =>
+    fetch(`${url}/api/admin/titles`, {
+      method: "POST",
+      headers: { ...headers, Authorization: `Bearer ${who}` },
+      body: JSON.stringify({
+        id: null,
+        name: "Founder",
+        description: "Here from the start",
+        color: "#ffd65b",
+        active: true,
+        tier,
+      }),
+    });
+  expect((await saveTitle(admin.token, "legendary")).status).toBe(200);
+  expect(calls.at(-1)).toMatchObject({
+    name: "arena_admin_save_title",
+    args: { p_name: "Founder", p_tier: "legendary" },
+  });
+  const before = calls.length;
+  // Not one of the five: refused before the database is asked.
+  for (const bad of ["godlike", "Legendary", "", 5, null])
+    expect((await saveTitle(admin.token, bad)).status, String(bad)).toBe(400);
+  // Not an administrator: refused, whatever the tier.
+  expect((await saveTitle(player.token, "mythic")).status).toBe(403);
+  expect(calls.length).toBe(before);
+  // The game reads the administrators' tiers as { name: tier }; anything
+  // that is not a tier is dropped, and a database without the function
+  // (before the migration) gives none.
+  const tiers = async () =>
+    (
+      await fetch(`${url}/api/title-tiers`, {
+        headers: { Authorization: `Bearer ${player.token}` },
+      })
+    ).json();
+  expect((await fetch(`${url}/api/title-tiers`)).status).toBe(401);
+  const rpc = accounts.provider.rpc;
+  accounts.provider.rpc = async (token, name, args) =>
+    name === "arena_title_tiers"
+      ? { Founder: "legendary", Broken: "godlike", Odd: 3 }
+      : rpc(token, name, args);
+  expect(await tiers()).toEqual({ Founder: "legendary" });
+  accounts.provider.rpc = async (token, name, args) => {
+    if (name === "arena_title_tiers") throw new Error("function missing");
+    return rpc(token, name, args);
+  };
+  expect(await tiers()).toEqual({});
+  accounts.provider.rpc = rpc;
   expect(
     (
       await fetch(`${url}/api/admin/players/suspend`, {

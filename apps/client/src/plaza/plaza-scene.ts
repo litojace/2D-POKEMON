@@ -6639,6 +6639,9 @@ export function openPlaza(options) {
       },
       P,
       others,
+      /** Who gets the full effects this frame: you and the nearest five,
+       *  townsfolk included (pickFullFx; tests). */
+      fullFx: () => fullFx,
       orbs,
       ball,
       /** Smoothing and ball prediction state (plaza-net.ts; tests). */

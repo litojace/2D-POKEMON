@@ -1067,6 +1067,49 @@ dialog.framed-dialog .adm-tabs > .admin-tab {
   flex: 2 1 220px;
   min-width: 0;
 }
+/* A title's tier: picked in the form (Common to Mythical, the Shop's five),
+   shown beside the title in the list, in the tier's own colour. */
+.adm .adm-tier-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  min-height: 44px;
+  font-weight: 700;
+}
+#adm-root .adm-tier-pick select {
+  min-height: 44px;
+  min-width: 132px;
+  padding: 0 10px;
+  font: inherit;
+}
+.adm .adm-tier,
+.adm .adm-tier-fixed {
+  color: var(--tier);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.adm .adm-tier {
+  margin-left: 8px;
+}
+.adm .adm-tier-fixed {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 13px;
+  color: inherit;
+}
+.adm .adm-tier-fixed b {
+  margin-right: 4px;
+  color: var(--tier);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
 .adm-color {
   display: grid;
   place-items: center;
