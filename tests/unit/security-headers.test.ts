@@ -73,6 +73,7 @@ describe("game security headers", () => {
       "https://x.invalid",
       "https://play.elementarenausa.com",
       "https://elementarenausa.com",
+      "https://www.instagram.com",
     ]);
     const files: string[] = [];
     const walk = (dir: string) => {

@@ -149,6 +149,11 @@ describe("the look as shipped", () => {
         expect(css, file).not.toMatch(BLURS);
         // One animation runs for ever, by the owner's leave (27 Nov 2026):
         // the title cover's slow turn (docs/ui-themes.md). Nothing else.
+        // The glint on PLAY and "Tap to start", the owner's second motion
+        // that never ends, is not an exception here on purpose: glint.ts
+        // times single 0.7 s sweeps, so none of its rules says `infinite`
+        // (tests/unit/glint.test.ts), and this test goes on catching any
+        // other animation that would.
         const endless = css.match(/animation[^;{}]*\binfinite\b[^;{}]*/g) ?? [];
         expect(css.match(/\binfinite\b/g) ?? [], file).toHaveLength(
           endless.length,

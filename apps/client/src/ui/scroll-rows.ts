@@ -206,5 +206,12 @@ export function watchScrollRows() {
     childList: true,
     subtree: true,
   });
+  // A web font arriving changes a row's words, not its box: no resize and
+  // no mutation tells the row. The raid page's tabs, measured in the
+  // fallback face (wider), kept their "more →" fade once the font had
+  // narrowed them, and the fade's mask lay over Close (Nov 2026).
+  document.fonts?.addEventListener("loadingdone", () => {
+    for (const row of wired.keys()) fadeSoon(row);
+  });
   scanRows();
 }

@@ -19,6 +19,8 @@ export interface MissionsHooks {
   data(): MissionsData;
   /** Change the mission in this slot; resolves once the new economy is in. */
   change(slot: number): Promise<void>;
+  /** The daily gift's Claim or Calendar (on top of the sheet). */
+  openGift?(): void;
   onClose?(): void;
 }
 export interface MissionsScreen {
@@ -73,7 +75,8 @@ export function openMissions(hooks: MissionsHooks): MissionsScreen {
   const onClick = (event: MouseEvent) => {
     const t = (event.target as Element).closest<HTMLButtonElement>("button");
     if (!t || !root().contains(t) || t.disabled) return;
-    if (t.dataset.missionChange !== undefined)
+    if (t.dataset.giftOpen !== undefined) hooks.openGift?.();
+    else if (t.dataset.missionChange !== undefined)
       void change(Number(t.dataset.missionChange));
     else if (t.dataset.missionHelp !== undefined) {
       const slot = Number(t.dataset.missionHelp);

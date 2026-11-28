@@ -1,6 +1,10 @@
 import { expect, test, type Browser } from "@playwright/test";
 import { openPlaza, snap } from "./helpers";
 import { PLAZA_SPOTS } from "../../packages/shared/src/plaza";
+import { onPlayersLook } from "./players-look";
+
+// Players get Poster, on iPads too (CLAUDE.md, "One look").
+onPlayersLook();
 
 // On the Plaza, the header's avatar opens your card over the Plaza: you
 // stay where you are (it used to send you back to the Lobby, owner 24 Nov).
@@ -100,7 +104,9 @@ for (const size of SIZES)
   }, info) => {
     const { context, page, errors } = await open(browser, size);
     // On tablets the round buttons are small beside them (owner's size C),
-    // their words whole.
+    // their words whole. In Poster they are bare icons with the word under
+    // them (#656); the gift box's <small> is its count, a red badge on the
+    // box's corner, and its word (Gifts) is the box's ::after.
     if (size.name.startsWith("ipad")) {
       const rounds = await page
         .locator(".plaza-layer .pz-left .pz-round")
@@ -108,20 +114,49 @@ for (const size of SIZES)
           els.map((el) => {
             const r = el.getBoundingClientRect(),
               s = el.querySelector("small")!,
-              t = s.getBoundingClientRect();
-            // The word inside the circle: within its inscribed square-ish
-            // band (left and right edges at least 4 px in).
+              t = s.getBoundingClientRect(),
+              badge = getComputedStyle(s).position === "absolute";
+            // The word: the <small>, or the ::after where the <small> is a
+            // badge. A pseudo-element has no box, so its width is its text's,
+            // measured in its own font and letter spacing.
+            let left = t.left,
+              right = t.right,
+              font = parseFloat(getComputedStyle(s).fontSize);
+            if (badge) {
+              const a = getComputedStyle(el, "::after"),
+                text = a.content.replace(/^"|"$/g, ""),
+                ctx = document.createElement("canvas").getContext("2d")!;
+              ctx.font = a.font;
+              const shown =
+                  a.textTransform === "uppercase" ? text.toUpperCase() : text,
+                w =
+                  ctx.measureText(shown).width +
+                  (parseFloat(a.letterSpacing) || 0) * shown.length;
+              left = r.left + (r.width - w) / 2;
+              right = left + w;
+              font = parseFloat(a.fontSize);
+            }
             return {
+              id: el.id,
               w: r.width,
-              fits: t.left >= r.left + 4 && t.right <= r.right - 4,
-              font: parseFloat(getComputedStyle(s).fontSize),
+              // Within the box's inscribed band, 4 px in from each side.
+              fits: left >= r.left + 4 && right <= r.right - 4,
+              font,
+              // A badge stays on the box: inside it, at its top.
+              badgeIn:
+                !badge ||
+                (t.left >= r.left &&
+                  t.right <= r.right &&
+                  t.top >= r.top &&
+                  t.bottom <= r.top + r.height / 2),
             };
           }),
         );
       for (const r of rounds) {
-        expect(Math.round(r.w), "round button").toBe(56);
-        expect(r.fits, "its word fits").toBe(true);
-        expect(r.font).toBeGreaterThanOrEqual(11);
+        expect(Math.round(r.w), `${r.id} round button`).toBe(56);
+        expect(r.fits, `${r.id}: its word fits`).toBe(true);
+        expect(r.font, r.id).toBeGreaterThanOrEqual(11);
+        expect(r.badgeIn, `${r.id}: its badge on the box`).toBe(true);
       }
     }
     // Dash and Jump: big enough to hit, round.

@@ -7,7 +7,7 @@ onPlayersLook();
 
 // Getting started (getting-started.ts): a new account's Lobby shows the
 // guide in the Journey card's place; the sheet lists the steps; Go does a
-// step; Hide puts the Journey back; the Menu brings the guide back.
+// step; Hide puts the Journey back; Settings → Help brings the guide back.
 // At level 2, as after a first win: the boss step is open (at level 1 it
 // wears its padlock: tests/visual/feature-unlocks.spec.ts).
 async function newPlayer(page: Page) {
@@ -113,9 +113,10 @@ for (const size of [
       await page.waitForFunction(() => !!(window as any).__sock);
       await page.evaluate(() => (window as any).__sock.fire("connect"));
       await expect(card(page)).toHaveAttribute("data-lobby-action", "journey");
-      // ...and the Menu brings it back, nothing done yet.
-      await page.click("#header-menu > summary");
-      await page.click("#guide-open");
+      // ...and Settings → Help brings it back, nothing done yet.
+      await page.click("#home-settings");
+      await page.click('[data-settings-tab="help"]');
+      await page.click("#settings-guide");
       await expect(page.locator("[data-guide]")).toBeVisible();
       await expect(page.locator(".guide-step.is-done")).toHaveCount(0);
       await expect(card(page)).toHaveAttribute("data-lobby-action", "guide");

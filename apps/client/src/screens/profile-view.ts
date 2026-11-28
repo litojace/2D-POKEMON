@@ -259,7 +259,7 @@ export function playerCard(d: ProfileData, label = "Your player card") {
   const rank = rankLine(d.progress);
   const best = bestMastery(d.progress);
   const tags = [
-    level !== null ? tag(`Lv ${level}`, "new") : "",
+    level !== null ? tag(`Lv ${level}`, "mark") : "",
     rank
       ? `<span class="ui-tag pf-rank-tag" style="color:${rank.color}">${esc(rank.text)}</span>`
       : "",

@@ -37,7 +37,7 @@ async function boxes(page: Page) {
     add("profile", document.querySelector("#account-profile"));
     add("scenes", document.querySelector("#hub-scenes"));
     add("coins", document.querySelector("#account-coins > *"));
-    add("menu", document.querySelector(".header-menu > summary"));
+    add("menu", document.querySelector("#home-settings"));
     add("rail", document.querySelector(".lobby-rail"));
     add("party", document.querySelector(".lobby-party"));
     add("nameplate", document.querySelector(".lobby-nameplate"));
@@ -253,7 +253,7 @@ for (const view of [
         const header = Math.max(
           r("#account-profile").bottom,
           r("#account-coins > *").bottom,
-          r(".header-menu > summary").bottom,
+          r("#home-settings").bottom,
           r("#hub-scenes").bottom,
         );
         return {
@@ -1146,10 +1146,12 @@ test("Invite a friend says In party and Invited for friends already asked", asyn
 });
 
 // Poster's PLAY is a slanted ink block with a hard red shadow: it stands
-// out by its shape, so the old look's glow behind it and the light sweeping
-// across it are off (themes/poster/lobby.css). Nothing on it moves, in any
-// setting: reduced motion and Low graphics have nothing to stop.
-test("PLAY has a drawn icon (no emoji), stands out by its shadow, and nothing on it moves", async ({
+// out by its shape, so the old look's glow behind it is off
+// (themes/poster/lobby.css). A glint crosses it about every 5 s while it
+// shows (owner, 27 Nov 2026; glint.ts, tests/visual/poster-glint.spec.ts):
+// one short sweep, and between sweeps nothing on it moves. With Reduce
+// motion or on Low graphics nothing ever does.
+test("PLAY has a drawn icon (no emoji), stands out by its shadow, and only its glint moves", async ({
   browser,
 }) => {
   test.setTimeout(120_000);
@@ -1189,6 +1191,28 @@ test("PLAY has a drawn icon (no emoji), stands out by its shadow, and nothing on
       graphics,
     );
     const errors = await openLobby(page);
+    const glinting = () =>
+      page.evaluate(() =>
+        document
+          .getElementById("lobby-play")!
+          .classList.contains("is-glinting"),
+      );
+    if (name === "normal") {
+      // A sweep: the one thing on PLAY that moves, and only for its length.
+      await expect
+        .poll(glinting, { timeout: 8_000, intervals: [50] })
+        .toBe(true);
+      const during = await state(page);
+      expect(during.sweepShown, name).toBe(true);
+      expect(during.moving, name).toBe(1);
+      await expect
+        .poll(glinting, { timeout: 3_000, intervals: [50] })
+        .toBe(false);
+    } else {
+      // Past where the first sweep would start: none came.
+      await page.waitForTimeout(1_600);
+      expect(await glinting(), name).toBe(false);
+    }
     const s = await state(page);
     expect(s.text, name).toBe("PLAY");
     expect(s.icon, name).toBe(true);

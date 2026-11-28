@@ -183,6 +183,59 @@
   background: var(--ui-accent);
   color: var(--ui-accent-ink);
 }
+/* The daily gift on top (giftCard in missions-view.ts): its words, the
+   seven days as a track under them, and Claim or Calendar at the end. */
+.missions-gift {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "text action" "days action";
+  align-items: center;
+  gap: 6px var(--sp-3);
+  padding: 10px 12px;
+  border: 1px solid var(--ui-line);
+  border-left: 3px solid var(--ui-accent);
+  border-radius: var(--rad-md);
+  background: var(--fill-card);
+}
+.missions-gift-text {
+  grid-area: text;
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.missions-gift-text > b {
+  font: 700 var(--fs-body) / 1.25 var(--font-body);
+  color: var(--ui-text);
+}
+.missions-gift-text > small {
+  color: var(--ui-dim);
+  font-size: var(--fs-micro);
+  line-height: 1.3;
+}
+.missions-gift-days {
+  grid-area: days;
+  display: flex;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.missions-gift-days > li {
+  width: 22px;
+  height: 10px;
+  border-radius: 5px;
+  background: #ffffff1a;
+}
+.missions-gift-days > li.is-taken {
+  background: var(--ui-accent);
+}
+.missions-gift-days > li.is-today:not(.is-taken) {
+  box-shadow: inset 0 0 0 2px var(--ui-accent);
+}
+.missions-gift-open {
+  grid-area: action;
+  min-height: 44px;
+}
 .missions-status:empty {
   display: none;
 }
@@ -219,6 +272,12 @@
     padding: 6px 8px;
   }
   .missions-streak-days i {
+    width: 16px;
+  }
+  .missions-gift {
+    padding: 6px 8px;
+  }
+  .missions-gift-days > li {
     width: 16px;
   }
   .missions-streak-days i.is-pay {

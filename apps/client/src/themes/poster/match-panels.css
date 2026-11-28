@@ -1,0 +1,77 @@
+/* Poster audit, slice 5 (28 Nov 2026): three panels a player meets in a
+   match that still wore the look underneath: the first match's coach, the
+   bar a knocked-out player watches from, and the practice room's tools.
+   Navy, rounded and soft-shadowed there; ink blocks here. Static rules
+   only: nothing here changes while a match runs. battle-coach.css,
+   practice-panel.css and style.css keep their rules for the look
+   underneath. */
+
+/* The coach's one line over the court: an ink block, its key a gold block
+   (the thing to press), its steps square. */
+:root[data-ui="poster"] .battle-coach {
+  border: 0;
+  border-radius: 0;
+  background: var(--ink);
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.4);
+  color: var(--paper);
+}
+:root[data-ui="poster"] .battle-coach kbd {
+  border-radius: 0;
+  background: var(--gold);
+  color: var(--ink);
+}
+:root[data-ui="poster"] .coach-dots i {
+  border-radius: 0;
+}
+:root[data-ui="poster"] .coach-dots i.is-next {
+  background: var(--paper);
+}
+
+/* Knocked out and watching a survivor: an ink bar, its two arrows ink
+   blocks with cream arrows. */
+:root[data-ui="poster"] .spectate-banner.pvp-spectator {
+  --aero-tint-solid: var(--ink);
+  border-radius: 0;
+  background: var(--ink);
+}
+:root[data-ui="poster"] .spectate-banner.pvp-spectator button {
+  border-radius: 0;
+  background: var(--ink-3);
+  color: var(--paper);
+}
+:root[data-ui="poster"]
+  .spectate-banner.pvp-spectator
+  button:not(:disabled):active {
+  background: var(--paper);
+  color: var(--ink);
+}
+:root[data-ui="poster"] .spectator-copy small {
+  color: var(--ui-dim);
+}
+
+/* The practice room's tools: a square icon and a square close button. */
+:root[data-ui="poster"] .pp-icon {
+  border: 0;
+  border-radius: 0;
+  background: var(--ink-3);
+  color: var(--paper);
+}
+:root[data-ui="poster"] #practice-controls .pp-close {
+  border: 0;
+  border-radius: 0;
+  background: var(--ink-3);
+}
+/* The panel itself is ink (the battle's glass tint is a navy), and leaving
+   the practice room is a square red-on-ink button that reads like Reset
+   arena beside it. */
+:root[data-ui="poster"] .practice-panel {
+  --aero-tint-solid: var(--ink);
+}
+:root[data-ui="poster"] #practice-controls .pp-actions > .leave-button {
+  border: 2px solid var(--hot);
+  border-radius: 0;
+  background: var(--ink);
+  color: var(--hot);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}

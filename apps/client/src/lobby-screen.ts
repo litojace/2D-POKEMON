@@ -15,6 +15,7 @@ import type { RaidLoadout } from "../../../packages/shared/src/raid";
 import { iconLabel, menuIcon } from "./menu-icons";
 import { fighterStageArt, wornSkin } from "./fighter-selection";
 import { lowGraphics } from "./graphics-quality";
+import { wakeGlint, watchGlint } from "./glint";
 import type { ShopPreviewHandle } from "./shop-preview";
 import { QUIP_MOVE_MS, pickQuip } from "./lobby-quips";
 import { elementIcon } from "./element-icons";
@@ -297,6 +298,8 @@ export interface LobbyView {
   /** The party's members as themselves (avatars), for its bar. */
   partyFaces?: { name: string; avatar: string | null; leader: boolean }[];
   economy?: Economy;
+  /** Today's daily gift is there to claim (on top of Missions). */
+  giftWaiting?: boolean;
   /** Your equipped raid look (colours, aura...), shown on your fighter. */
   look?: RaidLoadout;
   /** Friend requests waiting for an answer. */
@@ -739,6 +742,8 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
     layer.classList.toggle("is-covered", covered);
     rig?.suspend(covered);
     for (const seat of seatRigs) seat?.suspend(covered);
+    // PLAY's glint rests while the Lobby is covered (glint.ts).
+    if (!covered) wakeGlint();
   };
   /** A friend in a seat moves like your fighter (not on Low graphics). */
   const mountSeatRig = (seat: number) => {
@@ -955,6 +960,11 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
     attributeFilter: ["open", "hidden", "data-ui-leaving"],
   });
   syncCovered();
+  // A bar of light crosses PLAY now and then while it shows (glint.ts).
+  const unwatchGlint = watchGlint(
+    $("lobby-play"),
+    () => !layer.classList.contains("is-covered"),
+  );
   // The frame-rate read-out (perf-hud.ts): your fighter's frames, our own
   // drawing time (median and slowest) and its canvas, while the Lobby shows.
   const perfSource = () => {
@@ -1184,9 +1194,11 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
         '[data-badge-for="missions"]',
       )!;
       // A plain red dot, no count: missions come back every day, so a
-      // number would sit there all day and teach players to skip red.
+      // number would sit there all day and teach players to skip red. It
+      // also says today's gift is waiting on top of Missions.
       missionBadge.hidden =
-        !missions.length || !left || featureLocked("missions", view.level);
+        ((!missions.length || !left) && !view.giftWaiting) ||
+        featureLocked("missions", view.level);
       missionBadge.classList.add("is-dot");
       // The Spire, once open: its card above Missions (a shortcut past the
       // Raid Hub), glowing with a dot on Raids while something is new.
@@ -1226,6 +1238,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       clearTimeout(hopTimer);
       clearTimeout(armTimer);
       coverWatch.disconnect();
+      unwatchGlint();
       setPerfSource("lobby", undefined);
       document.removeEventListener("ea-graphics-change", syncGraphics);
       document.removeEventListener(UI_THEME_EVENT, fitSoon);

@@ -59,7 +59,7 @@ test.describe("glass", () => {
     await page.click("[data-ui-close]");
 
     // An old-style dialog (Settings): thick glass and the same rim.
-    await page.evaluate(() => document.getElementById("settings")!.click());
+    await page.evaluate(() => document.getElementById("home-settings")!.click());
     const dialog = "dialog[open]";
     await expect(page.locator(dialog)).toBeVisible();
     expect(await bg(page, dialog)).toBe("rgba(11, 16, 32, 0.88)");

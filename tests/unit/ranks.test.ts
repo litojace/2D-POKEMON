@@ -166,7 +166,7 @@ describe("the rank road", () => {
     expect(names).toEqual([...RANK_TIERS].reverse().map((t) => t.name));
     expect(html.match(/<li class="rk-tier/g)).toHaveLength(7);
     expect(html).toMatch(
-      /<li class="rk-tier is-cur is-earned"[^>]*aria-current="true">.*?<b>Flare<\/b><span class="ui-tag is-new">You<\/span>/,
+      /<li class="rk-tier is-cur is-earned"[^>]*aria-current="true">.*?<b>Flare<\/b><span class="ui-tag is-mark">You<\/span>/,
     );
     // Flare II: steps III and II lit, II yours; every step under Flare lit.
     const flare = html.slice(html.indexOf("<b>Flare</b>"));

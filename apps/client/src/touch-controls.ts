@@ -11,6 +11,7 @@ import { stadiumBands } from "./stadium";
 import { abilityIcon } from "./ability-icons";
 import { rumble } from "./game-feel";
 import type { AimKind } from "./touch-aim";
+import { TouchClock } from "./touch-stamp";
 import {
   TouchInputState,
   controlExtent,
@@ -53,7 +54,7 @@ interface AimGesture {
 }
 /** What a touch on the left half may land on without starting the stick. */
 const FLOAT_BLOCKERS =
-  "button, a, input, select, textarea, label, summary, [role=button], dialog, .overlay-card, .practice-panel, #practice-controls, .mobile-tools, .touch-buttons, .header-menu, .ui-panel, .ui-modal";
+  "button, a, input, select, textarea, label, summary, [role=button], dialog, .overlay-card, .practice-panel, #practice-controls, .mobile-tools, .touch-buttons, .ui-panel, .ui-modal";
 export class TouchControls {
   readonly input = new TouchInputState();
   enabled: boolean;
@@ -81,9 +82,11 @@ export class TouchControls {
   private canPlay: () => boolean;
   private fire: (
     action: Partial<Actions>,
-    stamp: number,
+    stamp: number | undefined,
     handled: number,
   ) => void;
+  /** Which touches carry another finger's old time (touch-stamp.ts). */
+  private clock = new TouchClock();
   /**
    * How each skill slot (0–3) aims on a drag (touch-aim.ts): main.ts sets
    * it from the fighter's kit. Unknown slots fire on the press.
@@ -134,7 +137,11 @@ export class TouchControls {
   constructor(
     root: HTMLElement,
     canPlay: () => boolean,
-    fire: (action: Partial<Actions>, stamp: number, handled: number) => void,
+    fire: (
+      action: Partial<Actions>,
+      stamp: number | undefined,
+      handled: number,
+    ) => void,
     notify: (text: string) => void,
     resetActions: () => void = () => {},
     preview = false,
@@ -143,6 +150,9 @@ export class TouchControls {
     this.resetActions = resetActions;
     this.canPlay = canPlay;
     this.fire = fire;
+    // Before the game's own touch listeners: which events carry another
+    // finger's old time (touch-stamp.ts).
+    if (typeof window !== "undefined") this.clock.listen();
     // One layout for everyone: the joystick, button sizes and opacity were
     // player settings until 22 Nov 2026 and are no longer read (players set
     // them by mistake and couldn't find their way back). They shared the
@@ -347,7 +357,11 @@ export class TouchControls {
             return;
           // Only a finger lifted casts a held (aimed) skill; a cancelled
           // contact or a lost capture lets it go.
-          this.release(id, event.type === "pointerup", event.timeStamp);
+          this.release(
+            id,
+            event.type === "pointerup",
+            this.clock.stampOf(event),
+          );
         },
         true,
       );
@@ -362,7 +376,7 @@ export class TouchControls {
           // casts nothing.
           if (type === "touchend")
             for (const [id, held] of [...this.aiming])
-              if (held.touch) this.release(id, true, event.timeStamp);
+              if (held.touch) this.release(id, true, this.clock.stampOf(event));
           this.reset(true);
         },
         { capture: true, passive: true },
@@ -383,18 +397,18 @@ export class TouchControls {
         this.capture(button, event.pointerId);
         this.paint();
         if (action === "attack")
-          fire({ basic: true }, event.timeStamp, handled);
+          fire({ basic: true }, this.clock.stampOf(event), handled);
         else if (action === "dash")
-          fire({ dash: true }, event.timeStamp, handled);
+          fire({ dash: true }, this.clock.stampOf(event), handled);
         else if (action === "jump")
-          fire({ jump: true }, event.timeStamp, handled);
+          fire({ jump: true }, this.clock.stampOf(event), handled);
         else if (this.aimsOnDrag(Number(action)))
           // Held: the guide shows on the court, and it casts when the
           // finger lifts (where it was dragged, or the automatic aim).
           this.startAim(event, Number(action), button);
         else {
           this.drag = null;
-          fire({ skill: Number(action) }, event.timeStamp, handled);
+          fire({ skill: Number(action) }, this.clock.stampOf(event), handled);
         }
       };
     }
@@ -701,7 +715,9 @@ export class TouchControls {
             at: handled,
           }
         : null;
-    this.fire({ skill: g.slot }, stamp ?? handled, handled);
+    // No stamp: the release carried another finger's old time (or none);
+    // the meter counts it apart rather than as a wait.
+    this.fire({ skill: g.slot }, stamp, handled);
   }
   private hideAim() {
     this.wheel.classList.remove("is-on", "is-cancel");

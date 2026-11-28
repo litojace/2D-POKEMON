@@ -452,7 +452,7 @@ const HUB: [string, (page: Page) => Promise<void>][] = [
   [
     "settings",
     async (page) => {
-      await page.evaluate(() => document.getElementById("settings")!.click());
+      await page.evaluate(() => document.getElementById("home-settings")!.click());
       await expect(page.locator("#dialog .settings-screen")).toBeVisible();
     },
   ],

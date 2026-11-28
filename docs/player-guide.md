@@ -16,7 +16,7 @@ Create a private room, share its six-character code, select a fighter, and confi
 
 **Party rules:** the host of any room can switch on _Turbo_ (skills recharge twice as fast, ultimates charge 50% faster), _Glass cannon_ (+50% damage), _Orb rain_ (orbs twice as often), _Quick match_ (first to two), _Calm court_ (Coliseum Sands only, no hazards), _Crown Hill_ (hold the centre circle alone for 12 seconds to take the round), _Orb Rush_ (carry gems to your own goal; bank 5 to take the round, big hits knock gems loose), _Fighter roulette_ (a random fighter each round), _Double time_ (60% faster running) and _Giants_ (huge-looking fighters). Everyone readies up again after a change.
 
-**Watching and friends:** enter a room code and choose _Watch this room instead_ to watch a match live without playing (up to six watchers). Menu → _Friends_ shows your 8-character friend code, friend requests and who's online, with _Join_ for open lobbies and _Watch_ for live matches; the result card offers _Add as a friend_ for the people you just played ([migration 005](../supabase/migrations/005_friends.sql)).
+**Watching and friends:** enter a room code and choose _Watch this room instead_ to watch a match live without playing (up to six watchers). The Lobby rail's _Friends_ shows your 8-character friend code, friend requests and who's online, with _Join_ for open lobbies and _Watch_ for live matches; the result card offers _Add as a friend_ for the people you just played ([migration 005](../supabase/migrations/005_friends.sql)).
 
 **EX skills:** press your ultimate before its meter is full (33% or more) to arm an EX version of your next skill: 35% more damage and 20% more reach for a third of the meter. Works the same on keyboard, controller and touch.
 

@@ -51,6 +51,8 @@ export const nativeDeviceInfo = () => deviceInfo;
 export const PRIVACY_URL = `${(import.meta.env.VITE_SITE_URL || "").replace(/\/+$/, "")}/privacy.html`;
 /** Help and contact (public/support.html), the same way as the policy. */
 export const SUPPORT_URL = `${(import.meta.env.VITE_SITE_URL || "").replace(/\/+$/, "")}/support.html`;
+/** The game's Instagram (docs/instagram.md), from Settings → About. */
+export const INSTAGRAM_URL = "https://www.instagram.com/elementarena.usa/";
 
 interface AppleSignInResult {
   user: string;
