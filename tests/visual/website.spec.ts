@@ -290,8 +290,7 @@ test.describe("website", () => {
   // The champion tape stood still after a panel opened from it closed: focus
   // went back to the name (:focus-within held it), and the click that
   // closed the panel left the mouse on it (owner, 27 Nov).
-  /** The drift's state: the first of the tape's animations (the second,
-   * where scroll timelines exist, follows the scroll and never waits). */
+  /** The drift's state (its first animation, should it ever get more). */
   const tapeState = (page: Page) =>
     page
       .locator(".ticker-run")
@@ -530,7 +529,7 @@ test.describe("website", () => {
       expect(small).toEqual([]);
     });
   // Scroll-driven motion (owner, 27 Nov): the reading stripe, the hero
-  // leaving, the tape pushed by the scroll, the boss faces and the phone.
+  // leaving, titles and cards in and out, the boss faces and the phone.
   // CSS timelines only; none of it where they are missing or motion is
   // paused.
   test.describe("scroll-driven motion", () => {
@@ -558,7 +557,6 @@ test.describe("website", () => {
     const NEW = [
       "read-on",
       "sink-back",
-      "tape-push",
       "face-up",
       "phone-up",
       "wipe-out",
@@ -608,7 +606,16 @@ test.describe("website", () => {
             )
             .toBe(true);
         };
-        await at(".ticker", "tape-push");
+        // The champion tape only drifts: the scroll never moves it (owner,
+        // 28 Nov: it jerked back as the page went down).
+        expect(
+          await page.evaluate(() =>
+            document
+              .querySelector(".ticker-run")!
+              .getAnimations()
+              .map((a) => a.timeline?.constructor.name),
+          ),
+        ).toEqual(["DocumentTimeline"]);
         await at(".raid-picks", "face-up");
         await at(".phone", "phone-up");
         await page.evaluate(() =>

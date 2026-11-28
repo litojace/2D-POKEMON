@@ -800,6 +800,15 @@
   padding-bottom: 0;
   border-bottom: 0;
 }
+/* The row keeps its 2 px between tabs (ui/components.css); each tab's
+   reach runs 1 px into the gap on either side, so a finger landing between
+   two tabs takes one of them, never the row (phone-fit, "dead gap beside
+   GUIDE" on a boss page at 667 x 375, #641). */
+:root[data-ui="poster"] .ui-split-main > .ui-tabs > button::before {
+  content: "";
+  position: absolute;
+  inset: 0 -1px;
+}
 :root[data-ui="poster"]
   .ui-split-main
   > .ui-tabs
