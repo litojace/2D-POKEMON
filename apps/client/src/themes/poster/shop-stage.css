@@ -1,0 +1,209 @@
+/* The Shop's and the Wardrobe's stage on a phone held sideways (owner,
+   28 Nov 2026: "on mobile the skin preview box is still cramped: make it a
+   bit wider and line up the right-hand side"). On an iPhone Pro Max
+   (932×430) the stage was 210 px wide with its buttons over the fighter,
+   four narrow cards a row with the second row cut off, and the tabs, the
+   portraits, the filters and the cards each starting on a different pixel.
+
+   - The stage takes 30% of the screen's width, from 210 px up to 290 px.
+   - Its buttons keep the right edge as a rail and the fighter stands in the
+     room left of it, so nothing sits over the fighter.
+   - Entrance, Victory and Ultimate are bare icons (cream, an ink outline, a
+     hard shadow; gold when chosen), one size, as the game's other icons in
+     the world.
+   - Three cards a row, each a little shorter, so a whole row shows above
+     the action bar with its name and price.
+   - One left and right edge for the tabs, the portraits, the filters, the
+     cards and the action bar. */
+@media (max-height: 500px) {
+  :root[data-ui="poster"] .ui-panel.is-split.fit-room {
+    --stage-w: clamp(210px, 30vw, 290px);
+    /* Whole pixels where the browser can round (30vw of 852 is 255.6 px,
+       and everything right of the stage stood on a fraction). */
+    --stage-w: clamp(210px, round(30vw, 1px), 290px);
+    /* The rail: 40 px of buttons and the 8 px they stand in from the edge. */
+    --fit-rail: 48px;
+  }
+  :root[data-ui="poster"]
+    .fit-room
+    .fit-stage
+    > .shop-live-stage:not(.is-frame) {
+    left: calc(50% - var(--fit-rail) / 2);
+  }
+
+  /* Bare icons. The three values are the game's bare-icon tokens (the top
+     bar's chat and gear, the battle's corner icons); they are set here on
+     the stage's own buttons until those tokens are on every screen. */
+  :root[data-ui="poster"] .fit-plays {
+    --bare-ink: var(--paper);
+    --bare-hot: var(--gold);
+    --bare-icon-edge: drop-shadow(1px 0 0 var(--ink))
+      drop-shadow(-1px 0 0 var(--ink)) drop-shadow(0 1px 0 var(--ink))
+      drop-shadow(0 -1px 0 var(--ink))
+      drop-shadow(2px 3px 0 rgba(0, 0, 0, 0.55));
+  }
+  :root[data-ui="poster"] .fit-plays .ui-btn.is-s {
+    border: 0;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    color: var(--bare-ink);
+  }
+  :root[data-ui="poster"] .fit-plays .ui-btn.is-s > svg {
+    width: 26px;
+    height: 26px;
+    color: inherit;
+    filter: var(--bare-icon-edge);
+  }
+  :root[data-ui="poster"]
+    .fit-plays
+    .ui-btn.is-s:is([aria-pressed="true"], :hover, :focus-visible, :active) {
+    background: none;
+    color: var(--bare-hot);
+  }
+
+  /* Revert (it shows once something is tried on) stands in the stage's
+     other top corner. As a fourth icon in the rail it ran into the
+     III / II / I bars on every phone under 400 px tall. */
+  :root[data-ui="poster"] .fit-plays > [data-fit-revert] {
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+
+  /* The chosen card: its cream frame goes around the card, not inside it,
+     where it lay over the first letter of the name (the frame is 3 px, the
+     card's padding 4). */
+  :root[data-ui="poster"]
+    .fit-grid
+    .ui-tile:is([aria-pressed="true"], .is-selected, [aria-current="true"]) {
+    box-shadow:
+      0 0 0 3px var(--el),
+      5px 5px 0 var(--el);
+  }
+
+  /* Three cards a row, and a card's picture wider than tall: a row with
+     its name and price is about 160 px, which shows whole above the action
+     bar on a 390 px-tall phone. */
+  :root[data-ui="poster"] .fit-grid[style*="--cols:5"],
+  :root[data-ui="poster"] .fit-grid[style*="--cols:4"] {
+    --cols: 3 !important;
+  }
+  :root[data-ui="poster"] .fit-grid .ui-tile-art {
+    aspect-ratio: 5 / 3;
+  }
+
+  /* One edge, 8 px in from the panel's: the Shop | Wardrobe switch starts
+     where the cards do, and the portraits scroll between the cards' two
+     edges (they ran to the panel's own edge, past the cards). */
+  :root[data-ui="poster"] .fit-room .fit-head {
+    padding-left: 8px;
+  }
+  :root[data-ui="poster"] .fit-room .fit-fighters {
+    margin-inline: 0;
+    padding-inline: 0;
+  }
+}
+/* The Wardrobe's six slots: with the wider stage a sixth of the right side
+   is under 80 px on phones up to 900 px wide, and "ENTRANCE" was cut to
+   "ENTRA…" (852×393). Three a row there, as the narrowest phones have. */
+@media (max-height: 500px) and (max-width: 900px) {
+  :root[data-ui="poster"] .fit-room .fit-slots {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* Equip is the button to press: gold with ink words, as PLAY is. It was a
+   green fill, and green is kept for "done" (the owner's colour standard).
+   Every size, not only phones. */
+:root[data-ui="poster"] .fit-room .ui-panel-foot .ui-btn.is-ok {
+  background: var(--gold);
+  box-shadow: 4px 4px 0 var(--hot);
+  color: var(--ink);
+}
+
+/* A row that scrolls sideways in the Shop's head and body (the tabs, the
+   portraits): where more of it is hidden, the last 48 px fade out, so a
+   half-seen tab or portrait reads as "more this way", not as a cut. The
+   shared fade is 32 px, less than one portrait. */
+@media (max-height: 500px) {
+  :root[data-ui="poster"]
+    .fit-room
+    :is(.ui-tabs, .fit-fighters).has-more-right {
+    -webkit-mask-image: linear-gradient(
+      90deg,
+      #000 calc(100% - 48px),
+      transparent
+    );
+    mask-image: linear-gradient(90deg, #000 calc(100% - 48px), transparent);
+  }
+  :root[data-ui="poster"]
+    .fit-room
+    :is(.ui-tabs, .fit-fighters).has-more-left.has-more-right {
+    -webkit-mask-image: linear-gradient(
+      90deg,
+      transparent,
+      #000 32px,
+      #000 calc(100% - 48px),
+      transparent
+    );
+    mask-image: linear-gradient(
+      90deg,
+      transparent,
+      #000 32px,
+      #000 calc(100% - 48px),
+      transparent
+    );
+  }
+}
+
+/* Phones under 400 px tall (844×390, 852×393, 667×375): with a skin chosen
+   and the action bar up, the portraits and the filters above the cards
+   left about 118 px for a 148 px card, so the first row's name and price
+   were cut (the owner's screenshot). The portraits and filters already
+   scroll away with the cards; here they are tighter and the pictures a
+   little flatter, so a whole first row shows before any scrolling. */
+@media (max-height: 400px) {
+  :root[data-ui="poster"] .fit-room .fit-body {
+    gap: 4px;
+    padding-block: 4px;
+  }
+  :root[data-ui="poster"] .fit-room .fit-fighters {
+    padding-block: 3px;
+  }
+  :root[data-ui="poster"] .fit-room .fit-filters .ui-seg {
+    --h: 32px;
+    height: 32px;
+  }
+  :root[data-ui="poster"] .fit-grid .ui-tile-art {
+    aspect-ratio: 21 / 10;
+  }
+}
+
+/* Phones up to 900 px wide: with the wider stage, Shop | Wardrobe, four
+   tabs and Close have under 300 px, and Collections ran under Close
+   (852×393 with the island) or off the row (667×375). The switch and the
+   tabs stand closer and a size smaller, so all four tabs are on the row.
+   The row keeps its own 4 px at each end: the chosen tab's slanted block
+   leans into it (poster-masthead-tabs.spec). */
+@media (max-height: 500px) and (max-width: 900px) {
+  :root[data-ui="poster"] .fit-room .fit-head .ui-seg.is-display > button {
+    padding: 0 6px;
+  }
+  :root[data-ui="poster"] .fit-room .fit-head .ui-tabs > button[role="tab"] {
+    padding-inline: 4px;
+    font-size: calc(11px * var(--text-scale, 1));
+    letter-spacing: 0.01em;
+  }
+}
+/* The narrowest phones (667×375) need a few pixels more for Collections. */
+@media (max-height: 500px) and (max-width: 720px) {
+  :root[data-ui="poster"] .fit-room .fit-head .ui-seg.is-display > button {
+    padding: 0 4px;
+  }
+  :root[data-ui="poster"] .fit-room .fit-head .ui-tabs > button[role="tab"] {
+    padding-inline: 2px;
+  }
+}
