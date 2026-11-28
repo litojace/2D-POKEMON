@@ -112,6 +112,28 @@ test("severity colours hold their contrast on the surfaces they sit on", async (
   expect(fill[0]).toBeGreaterThan(180); // red, not the primary button
 });
 
+/** What the clock is drawn on: the nearest box behind it with a fill. */
+const clockGround = (page: Page) =>
+  page.evaluate(() => {
+    const g = document.createElement("canvas").getContext("2d", {
+      willReadFrequently: true,
+    })!;
+    g.canvas.width = g.canvas.height = 1;
+    for (
+      let n: Element | null = document.getElementById("timer");
+      n;
+      n = n.parentElement
+    ) {
+      const bg = getComputedStyle(n).backgroundColor;
+      g.clearRect(0, 0, 1, 1);
+      g.fillStyle = bg;
+      g.fillRect(0, 0, 1, 1);
+      const d = g.getImageData(0, 0, 1, 1).data;
+      if (d[3] > 240) return [d[0], d[1], d[2]] as Rgb;
+    }
+    return null;
+  });
+
 test("the battle clock warns while the ring closes and turns red in the last 10 s", async ({
   page,
 }, info) => {
@@ -159,6 +181,10 @@ test("the battle clock warns while the ring closes and turns red in the last 10 
   expect(
     await rgbOf(page, "#phase-label", "background-color", "::before"),
   ).toEqual(warn);
+  // Words on the clock's own ink badge: AA, amber and red alike.
+  const ground = await clockGround(page);
+  expect(ground).not.toBeNull();
+  expect(ratio(warn, ground!), "amber clock").toBeGreaterThanOrEqual(4.5);
   await page.screenshot({ path: info.outputPath("ring.png") });
 
   await at(7);
@@ -167,6 +193,7 @@ test("the battle clock warns while the ring closes and turns red in the last 10 
   expect(
     await rgbOf(page, "#phase-label", "background-color", "::before"),
   ).toEqual(danger);
+  expect(ratio(danger, ground!), "red clock").toBeGreaterThanOrEqual(4.5);
   await page.screenshot({ path: info.outputPath("low.png") });
   expect(errors).toEqual([]);
 });
