@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   ENTRANCES,
   SETTLED,
+  TURNS,
   VICTORIES,
   type Move,
   type MovePart,
@@ -138,4 +139,17 @@ describe("champion moves", () => {
       expect(total).toBeLessThanOrEqual(16);
     });
   }
+  it("a move that turns the fighter round ends in its own facing", () => {
+    const facings = ["up", "down", "left", "right"] as const;
+    for (const [id, turns] of Object.entries(TURNS))
+      for (const turn of [turns!.wave, turns!.victory])
+        for (const own of facings) {
+          if (!turn) continue;
+          expect(turn(0, own), `${id} starts`).toBeDefined();
+          for (let t = 0; t <= 8; t += 1 / 60)
+            expect(facings).toContain(turn(t, own));
+          expect(turn(1.7, own), `${id} facing ${own}`).toBe(own);
+          expect(turn(8, own)).toBe(own);
+        }
+  });
 });

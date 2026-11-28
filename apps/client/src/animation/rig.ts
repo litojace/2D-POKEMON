@@ -378,9 +378,20 @@ export class FighterRig {
         : state === "wave" || state === "victory"
           ? TURNS[this.character]?.[state]
           : undefined;
-    const dir = turn
-      ? turn((now - this.controller.started) / 1000, facing(pose.angle))
-      : facing(pose.angle);
+    const own = facing(pose.angle);
+    const turned = turn
+      ? turn((now - this.controller.started) / 1000, own)
+      : own;
+    // Only into a facing whose art this rig holds (the Shop's stage loads
+    // the front view alone): otherwise it plays the move facing as it is.
+    const dir =
+      turned === own ||
+      (this.layer(turned, "body") &&
+        this.scene.textures.exists(
+          rigKey(this.character, turned, "body", this.suffix),
+        ))
+        ? turned
+        : own;
     if (dir !== this.dir) {
       this.dir = dir;
       const order = (
