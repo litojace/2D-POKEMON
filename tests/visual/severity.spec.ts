@@ -110,6 +110,25 @@ test("severity colours hold their contrast on the surfaces they sit on", async (
   const words = await rgbOf(page, "#sev-probe .ui-btn", "color");
   expect(ratio(words, fill)).toBeGreaterThanOrEqual(4.5);
   expect(fill[0]).toBeGreaterThan(180); // red, not the primary button
+  // A danger button that isn't a confirm: its words in the one red.
+  await page.evaluate(() => {
+    const m = document.createElement("div");
+    m.innerHTML =
+      '<button type="button" id="sev-quiet" class="ui-btn is-danger"><span>Delete account</span></button><p id="sev-failed" class="records muted is-error">Couldn’t save this match to your records.</p>';
+    document.body.append(m);
+  });
+  expect(await rgbOf(page, "#sev-quiet span", "color")).toEqual(danger);
+  // What failed to save carries the danger sign before its words.
+  expect(
+    await page.evaluate(
+      () =>
+        getComputedStyle(document.getElementById("sev-failed")!, "::before")
+          .maskImage,
+    ),
+  ).toContain("svg");
+  expect(
+    await rgbOf(page, "#sev-failed", "background-color", "::before"),
+  ).toEqual(danger);
 });
 
 /** What the clock is drawn on: the nearest box behind it with a fill. */

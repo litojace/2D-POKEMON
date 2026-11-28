@@ -115,3 +115,31 @@
 :root[data-ui="poster"] #dialog .dialog-actions button.is-danger svg {
   color: #fff;
 }
+
+/* A danger button that isn't a confirm (Delete account, Exit test mode,
+   Report): its words in the one danger red, not a pinker one of its own. */
+:root[data-ui="poster"] .ui-btn.is-danger {
+  color: var(--sev-danger);
+}
+
+/* What failed to save (the result sheet's records and XP lines): a danger
+   sign before the words, which stay the sheet's own colour. On a loss's ink
+   sheet the sign is red; on a win's element-colour field it is ink, as red
+   can't hold 3:1 on every element colour, and the words say what failed. */
+:root[data-ui="poster"] :is(.records, .journey-xp-pending).is-error::before {
+  content: "";
+  display: inline-block;
+  width: 1.05em;
+  height: 1.05em;
+  margin-right: 0.4em;
+  vertical-align: -0.16em;
+  background: var(--sev-danger);
+  -webkit-mask: var(--sev-sign) center / contain no-repeat;
+  mask: var(--sev-sign) center / contain no-repeat;
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .is-victory
+  :is(.records, .journey-xp-pending).is-error::before {
+  background: var(--ink);
+}
