@@ -12,11 +12,12 @@ const esc = (s: string) =>
 const HEX = /^#[0-9a-fA-F]{6}$/;
 
 /**
- * A player's title as a small tag in its tier's look (title-tier.ts; the
- * same steps as over heads in the Plaza, plaza-title-art.ts): Common is the
- * title in its colour, Rare an ink plate, Epic an edged plate with a glint,
- * Legendary gold-edged with notched ends and twinkling stars, Mythical a
- * drifting ribbon. Styled in themes/poster/plaza.css (`.title-tag`).
+ * A player's title in its tier's look (title-tier.ts; the same steps as
+ * over heads in the Plaza, plaza-title-art.ts), with no plate or frame:
+ * Common is the title in its colour, Rare is shaded, Epic has a glint
+ * across its letters, Legendary gold-lit letters and twinkling stars,
+ * Mythical letters whose colours drift. Styled in themes/poster/plaza.css
+ * (`.title-tag`).
  */
 export function titleTag(title: string, color: string | null | undefined) {
   const tier = titleTier(title),

@@ -4545,11 +4545,11 @@ export function openPlaza(options) {
       lift = PLAZA_TITLE_LIFT;
       const art = plazaTitleArt(b.title, b.titleColor, photo ? 2 : PS * Z),
         moving = !photo && !low && !reduced && fullFx.has(b);
-      drawPlazaTitle(g, art, b.x, ny - 16.5, time, moving);
+      drawPlazaTitle(g, art, b.x, ny - 16, time, moving);
       // What was drawn (tests).
       b.titleTier = art.tier;
       b.titleMoving = moving;
-      b.titleY = ny - 16.5;
+      b.titleY = ny - 16;
       b.titleW = art.pw;
     } else if (b.titleTier) b.titleTier = null;
     if (b.emoteT > 0) {

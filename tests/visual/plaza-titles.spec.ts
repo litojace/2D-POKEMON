@@ -135,18 +135,20 @@ for (const viewport of [
           .filter((c) => c[2])
           .map((c) => c[1]),
       );
-      // On the canvas: a Rare title's ink plate is there over Pip, and
-      // nothing like it over Sol, who has no title.
+      // On the canvas: Pip's Rare title is lettering with its dark outline
+      // and no plate behind it (owner, 28 Nov: no frames), and there is
+      // nothing over Sol, who has no title.
       const ink = (px: number[] | null) => {
         if (!px) return 0;
         let n = 0;
         for (let i = 0; i < px.length; i += 4)
-          if (px[i] < 40 && px[i + 1] < 40 && px[i + 2] < 44) n++;
+          if (px[i] < 60 && px[i + 1] < 60 && px[i + 2] < 70) n++;
         return n / (px.length / 4);
       };
       await expect
         .poll(async () => ink(await titlePixels(page, "Pip")))
-        .toBeGreaterThan(0.2);
+        .toBeGreaterThan(0.08);
+      expect(ink(await titlePixels(page, "Pip"))).toBeLessThan(0.7);
       expect(await titlePixels(page, "Sol")).toBeNull();
       await snap(
         page,
@@ -160,20 +162,34 @@ for (const viewport of [
   });
 }
 
-test("a Mythical title's ribbon drifts; with Reduce motion every title holds still", async ({
+/** The share of a title's pixels that changed clearly between two reads
+ *  (the town behind the letters twinkles a little: that is not counted). */
+function changed(a: number[], b: number[]) {
+  let n = 0;
+  for (let i = 0; i < a.length; i += 4)
+    if (
+      Math.abs(a[i] - b[i]) > 40 ||
+      Math.abs(a[i + 1] - b[i + 1]) > 40 ||
+      Math.abs(a[i + 2] - b[i + 2]) > 40
+    )
+      n++;
+  return n / (a.length / 4);
+}
+
+test("a Mythical title's colours drift through its letters", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 844, height: 390 });
   const errors = await openPlaza(page);
   await titleCrowd(page, SPOT);
   await ready(page);
-  // The player's own Mythical ribbon changes from frame to frame.
-  const first = (await titlePixels(page, null))!.join();
+  // The player's own Mythical lettering changes from frame to frame.
+  const first = (await titlePixels(page, null))!;
   await expect
-    .poll(async () => (await titlePixels(page, null))!.join() !== first, {
+    .poll(async () => changed(first, (await titlePixels(page, null))!), {
       timeout: 15_000,
     })
-    .toBe(true);
+    .toBeGreaterThan(0.1);
   expect(errors).toEqual([]);
 });
 
@@ -187,18 +203,16 @@ test("Reduce motion holds every title still", async ({ page }) => {
   expect(d.me.tier).toBe("mythic");
   expect(d.me.moving).toBe(false);
   expect(d.crowd.filter((c) => c?.moving)).toEqual([]);
-  // The ribbon over the player is the same picture a second later.
-  const first = (await titlePixels(page, null))!.join();
-  for (let i = 0; i < 4; i++) {
-    await page.waitForTimeout(300);
-    expect((await titlePixels(page, null))!.join()).toBe(first);
+  // The lettering over the player is the same picture for the next seconds.
+  const first = (await titlePixels(page, null))!;
+  for (let i = 0; i < 6; i++) {
+    await page.waitForTimeout(400);
+    expect(changed(first, (await titlePixels(page, null))!)).toBeLessThan(0.03);
   }
   expect(errors).toEqual([]);
 });
 
-test("Low graphics shows titles and plates, and nothing moves", async ({
-  page,
-}) => {
+test("Low graphics shows titles, and nothing moves", async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem("ea-graphics", "low"));
   await page.setViewportSize({ width: 844, height: 390 });
   const errors = await openPlaza(page);
