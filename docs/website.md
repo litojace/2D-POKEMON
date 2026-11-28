@@ -231,10 +231,14 @@ Checked by slowing every animation to a quarter (CDP
 Scroll reveals use CSS scroll-driven animations (`animation-timeline:
 view()`, Chrome 115, Safari 26, Firefox 159) on transform and opacity, so
 they run on the compositor at the screen's rate; `site.js`'s
-IntersectionObserver does it elsewhere. They fill forwards only: an element
-below the screen keeps its own look (a full-page capture or a search engine
-sees it whole) and takes the first frame as it starts to enter, where no one
-sees the change.
+IntersectionObserver does it elsewhere. They fill both ways: an element
+below the screen already waits at its first frame, so nothing jumps as it
+starts to enter. They used to fill forwards only, keeping their own look
+until then, which on an iPhone made them blink: Safari draws the page under
+its bottom toolbar too, below the edge the timeline measures, so a title
+seen whole in that band went blank as it crossed the edge and came back in
+(owner, 28 Nov). `website.spec.ts` checks that no entrance changes as it
+starts.
 
 On top of the reveals, the page moves with the reader's scroll (owner,
 27 and 28 Nov: "words and panels gather in as you reach them, then each

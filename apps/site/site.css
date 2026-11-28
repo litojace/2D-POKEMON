@@ -2175,19 +2175,24 @@ body::before {
 :root:not([data-motion="paused"]) .enter .spot-tx > :nth-child(n + 3) {
   animation-delay: 0.06s;
 }
-/* Fill forwards only: before an element reaches the screen's foot it keeps
-   its own look (a full-page capture, a search engine or a reader who jumps
-   down sees it whole); it takes the animation's first frame as it starts to
-   enter, where no one sees the change. */
+/* Every entrance fills both ways: an element not yet in view already waits
+   at its first frame, so nothing changes at the moment it starts to enter.
+   With forwards only it kept its own look below the screen's foot and
+   snapped to the first frame there, unseen on a desktop, but on an iPhone
+   Safari also draws the page under its bottom toolbar, below the edge the
+   timeline measures: a title or card showed whole in that band, blinked
+   out as it crossed the edge and came back in (owner, 28 Nov). Each one
+   moves only with the scroll, so no state jumps at any point. Leaving needs
+   no such care: its last frame is above the screen's top, under the bar. */
 @supports (animation-timeline: view()) {
   :root:not([data-motion="paused"]) .head > * {
-    animation: wipe-in linear forwards;
+    animation: wipe-in linear both;
     animation-timeline: view();
     animation-range: entry 0% entry 80%;
   }
   :root:not([data-motion="paused"])
     :is(.roster > li, .modes > li, .stores > li, .raid-week, .shop-show) {
-    animation: rise linear forwards;
+    animation: rise linear both;
     animation-timeline: view();
     animation-range: entry var(--lag, 0%) entry calc(60% + var(--lag, 0%));
   }
@@ -2204,7 +2209,7 @@ body::before {
   (animation-range: exit-crossing 0% exit-crossing 100%) {
   :root:not([data-motion="paused"]) .head > * {
     animation:
-      wipe-in linear forwards,
+      wipe-in linear both,
       wipe-out linear none;
     animation-timeline: view(), view();
     animation-range:
@@ -2214,7 +2219,7 @@ body::before {
   :root:not([data-motion="paused"])
     :is(.roster > li, .modes > li, .stores > li) {
     animation:
-      rise linear forwards,
+      rise linear both,
       lift-off linear none;
     animation-timeline: view(), view();
     animation-range:
@@ -2224,7 +2229,7 @@ body::before {
   :root:not([data-motion="paused"]) :is(.raid-week, .shop-show) {
     transform-origin: 50% 100%;
     animation:
-      rise linear forwards,
+      rise linear both,
       ease-back linear none;
     animation-timeline: view(), view();
     animation-range:
@@ -2319,7 +2324,7 @@ body::before {
     }
   }
   :root:not([data-motion="paused"]) .pick {
-    animation: face-up linear forwards;
+    animation: face-up linear both;
     animation-timeline: view();
     animation-range: entry 0% cover 28%;
   }
@@ -2330,7 +2335,7 @@ body::before {
   /* 4. The phone straightens up to its own slight lean as it rises. */
   :root:not([data-motion="paused"]) .phone {
     animation:
-      phone-up linear forwards,
+      phone-up linear both,
       phone-off linear none;
     animation-timeline: view(), view();
     animation-range:
