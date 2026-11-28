@@ -44,9 +44,7 @@
 
 /* The glass pieces: tint and blur (background-color only, so a card's
    own gradient stays on top of it). */
-:root
-  body.hub-active
-  :is(#account-profile, #account-admin, .header-menu > summary),
+:root body.hub-active :is(#account-profile, #account-admin, .home-settings),
 :root body.hub-active #account-coins > *,
 :root .hub-scenes,
 .lobby-layer
@@ -64,9 +62,7 @@
   box-shadow: none;
 }
 /* The warm-gold hairline (not on the coin pill). */
-:root
-  body.hub-active
-  :is(#account-profile, #account-admin, .header-menu > summary),
+:root body.hub-active :is(#account-profile, #account-admin, .home-settings),
 :root .hub-scenes,
 .lobby-layer
   :is(
@@ -80,7 +76,7 @@
   border-color: var(--aero-rim);
 }
 /* Hover and keyboard focus: the rim lights up gold. */
-:root body.hub-active .header-menu > summary:is(:hover, :focus-visible),
+:root body.hub-active .home-settings:is(:hover, :focus-visible),
 .lobby-layer :is(.lobby-card, .lobby-mode):is(:hover, :focus-visible),
 .plaza-layer
   :is(.pz-round, .pz-act:not(.big, .pz-interact, .cd)):is(
@@ -143,7 +139,7 @@
   :is(
     #account-profile,
     #account-admin,
-    .header-menu > summary,
+    .home-settings,
     .hub-scenes,
     .chat-button
   ),
@@ -189,8 +185,7 @@
    solid navy. Here they take thick glass and the gold rim. :root and [open]
    outweigh style.css's many dialog rules without !important. */
 :root dialog[open],
-:root .home-drawer,
-:root .header-menu-panel {
+:root .home-drawer {
   background: var(--glass-thick);
   border-color: var(--glass-rim);
 }
@@ -203,14 +198,7 @@
    (--glass-opaque, below and in ui/light-effects.css). */
 :root
   body:not(.battle-active)
-  :is(
-    dialog[open],
-    .home-drawer,
-    .header-menu-panel,
-    .chat-drawer,
-    .ui-modal,
-    #toast
-  ) {
+  :is(dialog[open], .home-drawer, .chat-drawer, .ui-modal, #toast) {
   -webkit-backdrop-filter: var(--glass-blur-panel);
   backdrop-filter: var(--glass-blur-panel);
 }

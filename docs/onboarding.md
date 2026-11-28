@@ -111,7 +111,7 @@ card lists it ("75 First Win bonus").
 | 3     | Daily Missions | Rail, the Missions card                           |
 | 4     | The Plaza      | The Lobby / Plaza switch                          |
 | 5     | The Shop       | Rail                                              |
-| 6     | Ranks          | Rail, the Menu's Leaderboard                      |
+| 6     | Ranks          | Rail                                              |
 
 - A locked button stays where it is with a pill, "Lv 3"; a tap says "Daily
   Missions open at Lv 3". A level that opens something shows the
@@ -206,8 +206,9 @@ that grow with the days in a row.
   missions.
 - **Where it shows:** the dialog opens on the Lobby while today's gift
   waits, with seven days, today's lit, and Claim. Once taken it says what
-  it gave and what tomorrow's is. Later puts it away for this visit; the
-  Menu's _Daily gift_ opens it at any time. A match's result sheet says
+  it gave and what tomorrow's is. Later puts it away for this visit; its
+  card on top of Missions opens it at any time (Claim takes it as it
+  opens), and the rail's Missions dot shows while it waits. A match's result sheet says
   "Tomorrow's gift: 150 XP" in a line.
 - **A brand-new player plays first:** the dialog waits until they have
   finished a match or reached level 2, and for the Lobby tour and the

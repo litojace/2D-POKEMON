@@ -53,7 +53,7 @@ interface AimGesture {
 }
 /** What a touch on the left half may land on without starting the stick. */
 const FLOAT_BLOCKERS =
-  "button, a, input, select, textarea, label, summary, [role=button], dialog, .overlay-card, .practice-panel, #practice-controls, .mobile-tools, .touch-buttons, .header-menu, .ui-panel, .ui-modal";
+  "button, a, input, select, textarea, label, summary, [role=button], dialog, .overlay-card, .practice-panel, #practice-controls, .mobile-tools, .touch-buttons, .ui-panel, .ui-modal";
 export class TouchControls {
   readonly input = new TouchInputState();
   enabled: boolean;

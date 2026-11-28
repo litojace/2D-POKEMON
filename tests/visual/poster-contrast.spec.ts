@@ -234,7 +234,7 @@ test("Poster: words keep AA contrast in every element colour", async ({
       await panel.locator(".ui-close").click();
       await expect(panel).toBeHidden();
     }
-    await page.evaluate(() => document.getElementById("settings")!.click());
+    await page.evaluate(() => document.getElementById("home-settings")!.click());
     await expect(page.locator("#dialog .settings-screen")).toBeVisible();
     await page.waitForTimeout(400);
     failures.push(...(await measure(page, `${name} settings`)));

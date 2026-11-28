@@ -94,7 +94,7 @@ test("Low graphics: the hub has no blur and no decorative loops", async ({
     await page.waitForTimeout(800);
     expect((await effects(page)).blurred, "the Plaza").toEqual([]);
     // Choosing High in Settings brings the look back at once.
-    await page.evaluate(() => document.getElementById("settings")!.click());
+    await page.evaluate(() => document.getElementById("home-settings")!.click());
     await page.click('#dialog [data-graphics="high"]');
     await expect(page.locator("html")).toHaveAttribute(
       "data-ui-effects",

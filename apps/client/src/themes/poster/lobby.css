@@ -75,7 +75,7 @@
 /* header */
 :root[data-ui="poster"] body.hub-active #account-profile,
 :root[data-ui="poster"] body.hub-active #account-coins > *,
-:root[data-ui="poster"] body.hub-active .header-menu > summary,
+:root[data-ui="poster"] body.hub-active .home-settings,
 :root[data-ui="poster"] .hub-scenes,
 :root[data-ui="poster"] body.hub-active .chat-button {
   background: var(--ink);
@@ -123,7 +123,7 @@
   font-variant-numeric: tabular-nums;
   letter-spacing: 0;
 }
-:root[data-ui="poster"] body.hub-active .header-menu > summary svg,
+:root[data-ui="poster"] body.hub-active .home-settings svg,
 :root[data-ui="poster"] body.hub-active .chat-button svg {
   color: #fff;
 }

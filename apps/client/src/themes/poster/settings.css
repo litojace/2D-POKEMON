@@ -1,0 +1,30 @@
+/* Poster on Settings (settingsMarkup in main.ts; settings-screen.css lays
+   it out). Its tabs sit on the dialog's masthead after the title, drawn as
+   the admin panel's tabs there (admin.css): ink labels, the open one an
+   ink block in the element colour, each a finger tall. */
+:root[data-ui="poster"] .dialog-toolbar .settings-tab {
+  color: rgba(13, 13, 15, 0.66);
+  font: 400 calc(15px * var(--text-scale, 1)) / 1 var(--font-display);
+  letter-spacing: 0.05em;
+}
+:root[data-ui="poster"]
+  .dialog-toolbar
+  .settings-tab:is(:hover, :focus-visible):not([aria-selected="true"]) {
+  background: rgba(13, 13, 15, 0.08);
+  color: var(--ink);
+}
+:root[data-ui="poster"] .dialog-toolbar .settings-tab[aria-selected="true"] {
+  background: var(--ink);
+  color: var(--el);
+  box-shadow: none;
+}
+
+/* The server's line, while it isn't connected: the hot red's words. */
+:root[data-ui="poster"] .st-server .st-value {
+  color: var(--hot);
+}
+:root[data-ui="poster"] .st-value {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+}

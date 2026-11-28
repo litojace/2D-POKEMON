@@ -327,7 +327,7 @@ test("the Lobby fighter follows Settings → Graphics at once", async ({
   await expect(read).toContainText("fighter: still art (Low graphics)");
   await expect(page.locator(`${art} > canvas`)).toHaveCount(0);
   const pick = async (value: "high" | "low") => {
-    await page.evaluate(() => document.getElementById("settings")!.click());
+    await page.evaluate(() => document.getElementById("home-settings")!.click());
     await page.locator(`#dialog [data-graphics="${value}"]`).click();
     await page.keyboard.press("Escape");
     await expect(page.locator("#dialog")).not.toBeVisible();

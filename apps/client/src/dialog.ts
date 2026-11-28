@@ -30,8 +30,15 @@ export function setDialogContent(dialog: HTMLDialogElement, html: string) {
     if (heading) {
       heading.classList.add("dialog-heading");
       toolbar.prepend(heading);
-    }
-  }
+      // A screen's own tabs go on the masthead after its title (Settings):
+      // the row stays put while the tab under it scrolls.
+      const headTabs = content.querySelector<HTMLElement>(
+        "[data-dialog-head-tabs]",
+      );
+      if (headTabs) heading.after(headTabs);
+      dialog.classList.toggle("has-head-tabs", !!headTabs);
+    } else dialog.classList.remove("has-head-tabs");
+  } else dialog.classList.remove("has-head-tabs");
   const footer = document.createElement("div");
   footer.className = "dialog-footer";
   footer.setAttribute("role", "group");
@@ -44,7 +51,6 @@ export function setDialogContent(dialog: HTMLDialogElement, html: string) {
       ".fullscreen-actions",
       ".settings-actions",
       "#controls-reset",
-      "#open-controls",
       "#report-form > button[type=submit]",
     ].join(","),
   );

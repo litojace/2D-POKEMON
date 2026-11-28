@@ -29,7 +29,7 @@ test("Auto switches a slow device to Low and remembers it", async ({ browser }) 
     await expect.poll(async () => { await page.evaluate(() => (window as any).__sock.fire("connect")); return page.locator("#lobby-play").isVisible(); }, { timeout: 30_000 }).toBe(true);
     await page.click('#hub-scenes [data-hub-scene="plaza"]');
     await expect(page.locator(".plaza-layer")).toHaveAttribute("data-graphics", "low");
-    await page.evaluate(() => document.getElementById("settings")!.click());
+    await page.evaluate(() => document.getElementById("home-settings")!.click());
     await expect(page.locator(".prefs-graphics-note")).toContainText(/Auto picked Low .*the Plaza ran at \d+ fps/);
     expect(errors).toEqual([]);
   } finally {
@@ -41,7 +41,7 @@ test("Settings picks the Plaza's graphics; the Plaza reloads at once", async ({ 
   await page.setViewportSize({ width: 1024, height: 700 });
   const errors = await openPlaza(page);
   await expect(page.locator(".plaza-layer")).toHaveAttribute("data-graphics", "high");
-  await page.evaluate(() => document.getElementById("settings")!.click());
+  await page.evaluate(() => document.getElementById("home-settings")!.click());
   const choice = page.locator(".prefs-choice");
   await expect(choice).toBeVisible();
   await expect(choice.locator('[data-graphics="high"]')).toHaveAttribute("aria-checked", "true");

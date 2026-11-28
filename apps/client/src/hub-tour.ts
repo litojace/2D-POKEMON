@@ -1,11 +1,11 @@
 /**
  * The Lobby tour: a new account's first look at the hub, one spotlight at a
- * time (PLAY, the rail, the cards, Lobby / Plaza, the party, the Menu).
+ * time (PLAY, the rail, the cards, Lobby / Plaza, the party, the gear).
  *
  * What big games teach about it (docs/onboarding.md): keep it short (a few
  * marks, each about what is on screen), let the player skip at any step
- * without a confirmation, and let them replay it later (the Menu and How to
- * play). Battle skills are taught in the first match instead (battle-coach.ts)
+ * without a confirmation, and let them replay it later (How to play, under
+ * the gear). Battle skills are taught in the first match instead (battle-coach.ts)
  * and side systems when they are opened, not here.
  *
  * Steps are data: a step whose target is not on screen (a phone layout, a
@@ -58,9 +58,9 @@ export const TOUR_STEPS: TourStep[] = [
   },
   {
     id: "menu",
-    targets: ["#home-settings", ".header-menu > summary"],
-    title: "Help is in the Menu",
-    text: "How to play, Getting started and Settings. You can replay this tour from How to play.",
+    targets: ["#home-settings"],
+    title: "Settings and help",
+    text: "The gear opens Settings. Its Help tab has How to play, Controls and Getting started; How to play can replay this tour.",
   },
 ];
 

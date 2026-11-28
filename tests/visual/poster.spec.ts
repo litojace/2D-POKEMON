@@ -274,7 +274,7 @@ for (const size of SIZES) {
       expect(el).toMatch(/^#[0-9a-f]{6}$/i);
 
       // Settings, with the look on.
-      await page.evaluate(() => document.getElementById("settings")!.click());
+      await page.evaluate(() => document.getElementById("home-settings")!.click());
       const dialog = page.locator("#dialog");
       await expect(dialog.locator(".settings-screen")).toBeVisible();
       await snap(page, info, `poster-settings-${name}`);

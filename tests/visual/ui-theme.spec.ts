@@ -73,7 +73,7 @@ test.describe("phone", () => {
     await page.waitForTimeout(1500);
     await expect(picker(page)).toHaveCount(0);
     // One look: Settings has nothing to choose.
-    await page.evaluate(() => document.getElementById("settings")!.click());
+    await page.evaluate(() => document.getElementById("home-settings")!.click());
     await expect(page.locator("#dialog .settings-screen")).toBeVisible();
     await expect(page.locator("#dialog .st-look")).toHaveCount(0);
     // Nothing was saved for it: the default is the game's, not the device's.

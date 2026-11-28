@@ -198,23 +198,6 @@ button:active {
   font-size: calc(12px * var(--text-scale, 1));
   padding: 8px;
 }
-.connection {
-  font-size: calc(10px * var(--text-scale, 1));
-  letter-spacing: 1px;
-  color: #a09d7f;
-}
-.connection:before {
-  content: "";
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
-  margin-right: 8px;
-}
-.connection.online {
-  color: #9cc5ff;
-}
 main {
   max-width: 1480px;
   margin: auto;
@@ -1063,9 +1046,6 @@ dialog input[type="range"] {
   }
   .top-links {
     gap: 6px;
-  }
-  .connection {
-    display: none;
   }
   .quiet {
     font-size: calc(10px * var(--text-scale, 1));
@@ -1990,81 +1970,6 @@ dialog {
     right: calc(var(--safe-right) + 20px);
   }
 }
-.header-menu {
-  position: relative;
-  flex-shrink: 0;
-}
-.header-menu summary {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  list-style: none;
-  cursor: pointer;
-  color: #e7efff;
-  border: 1px solid #8baee538;
-  border-radius: 9px;
-  background: #253a5c;
-  padding: 10px 13px;
-  font-size: calc(12px * var(--text-scale, 1));
-  font-weight: 600;
-  min-height: 40px;
-  user-select: none;
-}
-.header-menu summary::-webkit-details-marker {
-  display: none;
-}
-.header-menu summary:focus-visible {
-  outline: 2px solid var(--lime);
-  outline-offset: 3px;
-}
-.header-menu[open] summary {
-  border-color: color-mix(in srgb, var(--ui-accent) 50.2%, transparent);
-  color: var(--accent);
-}
-.header-menu-panel {
-  position: absolute;
-  top: calc(100% + 10px);
-  left: 0;
-  z-index: 60;
-  display: grid;
-  gap: 3px;
-  min-width: 210px;
-  max-width: calc(100vw - var(--safe-left) - var(--safe-right) - 40px);
-  max-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 150px);
-  overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding: 9px;
-  border: 1px solid #8baee544;
-  border-radius: 12px;
-  background: #152743;
-  box-shadow: 0 14px 35px #030a1b80;
-}
-.header-menu-panel .quiet {
-  text-align: left;
-  padding: 12px 13px;
-  min-height: 44px;
-  border-radius: 7px;
-  font-size: calc(12px * var(--text-scale, 1));
-  color: #dce7fa;
-  width: 100%;
-}
-.header-menu-panel .quiet:hover {
-  background: #263e63;
-}
-.header-menu-panel .connection {
-  display: block;
-  margin: 7px 8px 2px;
-  padding: 10px 0 3px;
-  border-top: 1px solid #ffffff15;
-  font-size: calc(8px * var(--text-scale, 1));
-}
-@media (min-width: 701px) {
-  .header-menu-panel {
-    left: auto;
-    right: 0;
-  }
-}
 @media (max-width: 700px) {
   .top-links {
     align-items: center;
@@ -2072,9 +1977,6 @@ dialog {
   }
   .top-links .account-nav {
     margin-left: auto;
-  }
-  .header-menu summary {
-    padding: 10px 12px;
   }
 }
 /* Separate stadium bands and control gutters keep the court unobstructed. */
@@ -4017,12 +3919,6 @@ html.zoom-locked dialog :is(input, textarea) {
   .overlay-card:not(:empty):not(.countdown-card):not(.match-reveal) {
   animation: ea-pop 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-/* Room list rows and the header menu panel. */
-:where(:root:not([data-motion="reduced"]))
-  .header-menu[open]
-  .header-menu-panel {
-  animation: ea-pop 0.18s ease-out;
-}
 /* Dialogs scroll on their own; reaching their end never scrolls the page. */
 dialog {
   overscroll-behavior: contain;
@@ -4739,11 +4635,6 @@ button.small {
 }
 
 /* Keep menu actions easy to recognize without relying on icon fonts. */
-.header-menu-panel .quiet {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
 .menu-option-icon {
   width: 20px;
   height: 20px;
@@ -7299,22 +7190,6 @@ button.small .button-icon {
       calc(100vw - var(--safe-left) - var(--safe-right) - 24px)
     );
   }
-  .header-menu {
-    position: static;
-  }
-  .header-menu-panel {
-    top: calc(100% + 4px);
-    right: calc(12px + var(--safe-right));
-    left: auto;
-    width: 460px;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .header-menu-panel .connection {
-    grid-column: 1 / -1;
-  }
-  .header-menu-panel > button {
-    min-width: 0;
-  }
   .help-layout {
     display: grid;
     grid-template-columns: minmax(220px, 0.7fr) minmax(0, 1.3fr);
@@ -7402,9 +7277,6 @@ button.small .button-icon {
   }
 }
 @media (orientation: landscape) and (min-width: 560px) and (max-width: 759px) {
-  .header-menu-panel {
-    max-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 70px);
-  }
   .help-layout {
     grid-template-columns: 1fr;
     gap: 12px;
@@ -7880,27 +7752,6 @@ dialog::backdrop {
   background: transparent;
 }
 
-/* Top bar: menu and account as glass pills; Sign up is the gold action. */
-.header-menu summary {
-  border: 0;
-  border-radius: 999px;
-  background: var(--glass);
-  box-shadow: inset 0 0 0 1px var(--glass-line);
-  font: 700 calc(16px * var(--text-scale, 1))/1 var(--display);
-  letter-spacing: 0.3px;
-  padding: 10px 16px;
-}
-.header-menu[open] summary {
-  box-shadow: inset 0 0 0 1px
-    color-mix(in srgb, var(--ui-accent) 60%, transparent);
-}
-.header-menu-panel {
-  border-radius: 16px;
-}
-.header-menu-panel .quiet {
-  border-radius: 10px;
-  font-size: calc(13px * var(--text-scale, 1));
-}
 .selected-art > span {
   letter-spacing: 0.3px;
   font-size: calc(12px * var(--text-scale, 1));
@@ -9586,20 +9437,6 @@ body.home-active .home-settings {
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
 }
-body.home-active .header-menu summary {
-  min-width: 44px;
-  min-height: 44px;
-  display: grid;
-  place-items: center;
-  padding: 10px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--line);
-  font-size: calc(18px * var(--text-scale, 1));
-  background: transparent;
-}
-body.home-active .header-menu summary > span {
-  display: none;
-}
 
 /* Holds only the Fighters and Play panels (they slide over the hub). */
 .home-screen {
@@ -9746,8 +9583,7 @@ body.home-active .header-menu summary > span {
     width: 30px;
     height: 30px;
   }
-  body.home-active .home-settings,
-  body.home-active .header-menu summary {
+  body.home-active .home-settings {
     width: 36px;
     min-width: 36px;
     min-height: 36px;
@@ -10829,77 +10665,6 @@ body.battle-active:not(.touch-mode) .topbar .home-settings {
 body.battle-active:not(.touch-mode) .topbar .top-links {
   gap: 0;
 }
-body.battle-active:not(.touch-mode) .topbar .header-menu > summary {
-  min-height: 36px;
-  padding: 8px 14px;
-  border-radius: var(--radius-sm);
-  background: var(--bg-1);
-}
-body.battle-active:not(.touch-mode) .topbar:has(.header-menu[open]) {
-  width: min(420px, calc(100vw - var(--safe-left) - var(--safe-right) - 24px));
-  max-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 24px);
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 12px;
-  overflow: hidden auto;
-  padding: 16px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  background: var(--bg-1);
-  box-shadow: 0 12px 40px #0008;
-}
-body.battle-active:not(.touch-mode) .topbar:has(.header-menu[open]) > .brand {
-  display: flex;
-  font-size: calc(20px * var(--text-scale, 1));
-}
-body.battle-active:not(.touch-mode)
-  .topbar:has(.header-menu[open])
-  .brand-mark {
-  width: 28px;
-  height: 28px;
-}
-body.battle-active:not(.touch-mode) .topbar:has(.header-menu[open]) .top-links {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 12px;
-}
-body.battle-active:not(.touch-mode)
-  .topbar:has(.header-menu[open])
-  .account-nav {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 8px;
-}
-body.battle-active:not(.touch-mode)
-  .topbar:has(.header-menu[open])
-  .account-nav
-  > button {
-  min-width: 0;
-  justify-content: flex-start;
-  font-size: calc(13px * var(--text-scale, 1));
-}
-body.battle-active:not(.touch-mode)
-  .topbar:has(.header-menu[open])
-  #account-profile {
-  order: -1;
-}
-body.battle-active:not(.touch-mode)
-  .topbar:has(.header-menu[open])
-  .header-menu-panel {
-  position: static;
-  width: 100%;
-  min-width: 0;
-  max-width: none;
-  max-height: none;
-  overflow: visible;
-  margin-top: 8px;
-  padding: 0;
-  border: 0;
-  box-shadow: none;
-  background: transparent;
-}
 body.battle-active:not(.touch-mode) main {
   padding: 6px calc(8px + var(--safe-right)) calc(4px + var(--safe-bottom))
     calc(8px + var(--safe-left));
@@ -11240,11 +11005,9 @@ body.hub-screen #account-admin {
   border-radius: 999px;
   background: rgba(14, 26, 49, 0.82);
 }
-/* Settings and menu: round glass buttons. */
+/* Settings: a round glass button. */
 body.lobby-active .home-settings,
-body.hub-screen .home-settings,
-body.lobby-active .header-menu > summary,
-body.hub-screen .header-menu > summary {
+body.hub-screen .home-settings {
   display: inline-grid;
   place-items: center;
   width: 42px;
@@ -11256,18 +11019,9 @@ body.hub-screen .header-menu > summary {
   background: rgba(14, 26, 49, 0.82);
   backdrop-filter: blur(6px);
 }
-body.lobby-active .header-menu > summary span,
-body.hub-screen .header-menu > summary span {
-  display: none;
-}
 .nav-xp,
-.nav-title,
-#menu-logout {
+.nav-title {
   display: none;
-}
-body.lobby-active #menu-logout,
-body.hub-screen #menu-logout {
-  display: flex;
 }
 @media (max-height: 500px) {
   body.lobby-active #account-profile,
@@ -11290,9 +11044,7 @@ body.hub-screen #menu-logout {
     width: 100px;
   }
   body.lobby-active .home-settings,
-  body.hub-screen .home-settings,
-  body.lobby-active .header-menu > summary,
-  body.hub-screen .header-menu > summary {
+  body.hub-screen .home-settings {
     width: 36px;
     height: 36px;
   }
@@ -11301,31 +11053,13 @@ body.hub-screen #menu-logout {
     min-height: 34px;
   }
 }
-/* The header menu's icon: ☰ normally; in the hub one gear button opens the
-   same menu (Settings is its second item), replacing the separate gear. */
-.menu-burger,
-.menu-gear {
-  font-style: normal;
-}
-.menu-gear {
-  display: none;
-}
+/* The gear opens Settings (owner, 28 Nov 2026: its menu of nine went). */
 body.lobby-active .home-settings,
 body.hub-screen .home-settings {
-  display: none;
-}
-body.lobby-active .menu-burger,
-body.hub-screen .menu-burger {
-  display: none;
-}
-body.lobby-active .menu-gear,
-body.hub-screen .menu-gear {
-  display: inline-grid;
-  place-items: center;
   color: var(--ui-accent);
 }
-body.lobby-active .menu-gear svg,
-body.hub-screen .menu-gear svg {
+body.lobby-active .home-settings svg,
+body.hub-screen .home-settings svg {
   width: 20px;
   height: 20px;
 }
@@ -11437,11 +11171,6 @@ body.hub-screen .menu-gear svg {
   stroke: var(--ui-accent-ink);
   stroke-width: 2.4;
 }
-/* Solo test mode: no site menu. */
-body.practice-active .header-menu {
-  display: none;
-}
-
 /* ── Welcome screen ──
    A static painting of Elemental Plaza sits behind the page; the pitch
    sits on the left over a dark wash, the account panel on the right. */
@@ -11819,11 +11548,7 @@ dialog .auth-panel {
   width: 17px;
   height: 17px;
 }
-/* The iPhone app has no install prompt (native.ts). */
-.native-app #install-app {
-  display: none;
-}
-/* Nor a full-screen button: it is always full screen. Beats the battle
+/* The iPhone app has no full-screen button: it is always full screen. Beats the battle
    dock's display: flex (.battle-active.touch-mode .battle-dock …). */
 html.native-app #mobile-fullscreen {
   display: none !important;

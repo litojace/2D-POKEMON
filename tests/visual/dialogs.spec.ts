@@ -16,32 +16,63 @@ for (const s of SCREENS)
   test.describe(s.name, () => {
     test.use({ viewport: s.viewport, hasTouch: s.touch, isMobile: s.touch });
 
-    test("Settings fits the screen with every action reachable", async ({
+    test("Settings fits the screen with every tab and action reachable", async ({
       page,
     }, info) => {
       const errors = await openHub(page);
-      await page.evaluate(() => document.getElementById("settings")!.click());
+      // The gear opens Settings itself (owner, 28 Nov 2026: its menu went).
+      await page.locator("#home-settings").click();
       const dialog = page.locator("#dialog");
       await expect(dialog.locator(".settings-screen")).toBeVisible();
       const screen = { x: 0, y: 0, ...s.viewport };
       expect(inside(await box(page, "#dialog"), screen)).toBe(true);
-      for (const id of [
-        "#open-controls",
-        "#settings-report",
-        "#settings-credits",
-      ]) {
-        await expect(dialog.locator(id)).toBeVisible();
-        expect(inside(await box(page, id), screen)).toBe(true);
+      // Its four tabs on the masthead, Game open; each a finger tall, each
+      // whole, and the dialog the same height whichever is open.
+      const tabs = dialog.locator("[data-settings-tab]");
+      await expect(tabs).toHaveText(["Game", "Help", "Account", "About"]);
+      await expect(dialog.locator('[aria-selected="true"]')).toHaveText("Game");
+      const height = (await box(page, "#dialog")).height;
+      const ACTIONS = {
+        game: [
+          "#settings-vibration",
+          "#settings-fullscreen",
+          "#settings-motion",
+        ],
+        help: [
+          "#settings-howto",
+          "#open-controls",
+          "#settings-guide",
+          "#settings-report",
+        ],
+        account: ["#settings-profile", "#settings-logout"],
+        about: ["#settings-version", "#settings-credits", "#settings-privacy"],
+      };
+      for (const [tab, ids] of Object.entries(ACTIONS)) {
+        const button = dialog.locator(`[data-settings-tab="${tab}"]`);
+        await button.click();
+        await expect(button).toHaveAttribute("aria-selected", "true");
+        const b = await box(page, `[data-settings-tab="${tab}"]`);
+        expect(b.height, `${tab} tab's height`).toBeGreaterThanOrEqual(44);
+        expect(inside(b, screen)).toBe(true);
+        for (const id of ids) {
+          await expect(dialog.locator(id)).toBeVisible();
+          expect(inside(await box(page, id), screen), id).toBe(true);
+        }
+        // Everything shows at once: the tab doesn't need scrolling.
+        const scroll = await dialog
+          .locator(".dialog-content")
+          .evaluate((el) => el.scrollHeight - el.clientHeight);
+        expect(scroll, `${tab} scrolls`).toBeLessThanOrEqual(1);
+        expect(
+          Math.abs((await box(page, "#dialog")).height - height),
+        ).toBeLessThanOrEqual(1);
+        await snap(page, info, `settings-${s.name}-${tab}`);
       }
+      await dialog.locator('[data-settings-tab="game"]').click();
       // In the hub, Settings → Display offers full screen (hub redesign);
       // battle Settings never shows it (see battle-settings.spec.ts).
       await expect(dialog.locator("#settings-fullscreen")).toHaveCount(1);
       await expect(dialog.locator(".settings-quick-actions")).toHaveCount(0);
-      // Everything shows at once: the dialog's content doesn't need scrolling.
-      const scroll = await dialog
-        .locator(".dialog-content")
-        .evaluate((el) => el.scrollHeight - el.clientHeight);
-      expect(scroll).toBeLessThanOrEqual(1);
       // Sliders say their value.
       await expect(dialog.locator('output[data-pref-for="music"]')).toHaveText(
         /^\d+%$/,
@@ -75,8 +106,10 @@ for (const s of SCREENS)
       await snap(page, info, `settings-${s.name}-vibration-off`);
       await page.keyboard.press("Escape");
       await expect(dialog.locator(".settings-screen")).toBeHidden();
-      await page.evaluate(() => document.getElementById("settings")!.click());
+      await page.locator("#home-settings").click();
       await expect(vibration).toHaveAttribute("aria-checked", "false");
+      // Credits are in About.
+      await dialog.locator('[data-settings-tab="about"]').click();
       await dialog.locator("#settings-credits").click();
       await expect(dialog.locator(".credits-screen")).toBeVisible();
       // The way back reads on the masthead (ink, not the pale blue-grey
@@ -93,6 +126,10 @@ for (const s of SCREENS)
       await snap(page, info, `credits-${s.name}`);
       await dialog.locator("#credits-back").click();
       await expect(dialog.locator(".settings-screen")).toBeVisible();
+      // Back on the tab it came from.
+      await expect(dialog.locator('[aria-selected="true"]')).toHaveText(
+        "About",
+      );
       expect(errors).toEqual([]);
     });
   });
@@ -115,9 +152,12 @@ test("on a phone, Controls has no joystick or button sliders; keys fold away", a
       ),
     );
     const errors = await openHub(page);
-    await page.evaluate(() => document.getElementById("settings")!.click());
+    await page.evaluate(() =>
+      document.getElementById("home-settings")!.click(),
+    );
     const dialog = page.locator("#dialog");
     await expect(dialog.locator(".settings-screen")).toBeVisible();
+    await dialog.locator('[data-settings-tab="help"]').click();
     await dialog.locator("#open-controls").click();
     await expect(dialog.locator("#raid-court")).toBeVisible();
     await expect(dialog.locator('input[type="range"]')).toHaveCount(0);
