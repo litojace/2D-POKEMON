@@ -157,6 +157,7 @@ import {
 } from "./plaza-fishing";
 import {
   PLAZA_SPRITE_PX,
+  plazaGround,
   PLAZA_SPRITE_TALL,
   PLAZA_SPRITE_TOP,
   cheerWearer,
@@ -4490,7 +4491,17 @@ export function openPlaza(options) {
     const sh = 1 - Math.min(0.6, b.z / 220);
     g.fillStyle = "rgba(0,0,0,.28)";
     g.beginPath();
-    g.ellipse(b.x, b.y, 24 * sh, 9 * sh, 0, 0, 7);
+    // The champion's ground point and footprint, as everywhere (ground.ts).
+    const ground = plazaGround(b.character);
+    g.ellipse(
+      b.x,
+      b.y + ground.drop,
+      24 * sh * ground.wide,
+      9 * sh * ground.wide,
+      0,
+      0,
+      7,
+    );
     g.fill();
     if (b.me && !photo) {
       g.strokeStyle = b.buff > 0 ? "#ffd84a" : "#ffd65b";

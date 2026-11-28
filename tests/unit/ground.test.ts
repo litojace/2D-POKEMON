@@ -58,6 +58,10 @@ describe("the ground a champion stands on", () => {
     const battle = readFileSync(join(SRC, "main.ts"), "utf8");
     expect(battle).toContain("groundDrop(p.character)");
     expect(battle).toContain("footprintScale(p.character)");
+    const plaza = readFileSync(join(SRC, "plaza/plaza-scene.ts"), "utf8");
+    expect(plaza).toContain("plazaGround(b.character)");
+    const worn = readFileSync(join(SRC, "plaza/plaza-cosmetics.ts"), "utf8");
+    expect(worn).toContain("plazaGround(b.character)");
     // The menu art's shadow has no floater branch any more.
     const art = readFileSync(join(SRC, "fighter-art.ts"), "utf8");
     const shadow = art.slice(
