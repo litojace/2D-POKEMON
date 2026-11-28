@@ -21,6 +21,14 @@ onPlayersLook();
 
 const OUT = "instagram-clips";
 const FPS = 30;
+/**
+ * The game time each frame moves on, in ms. Playwright's fake clock fires
+ * requestAnimationFrame every 16 ms, so a step of 1000 / 30 let three
+ * frames' time through every eighth step (the stage's data-animation-time
+ * moved 32, 32 ... 48): a hitch several times a second. Two whole rAF ticks
+ * per frame keep every step equal; the Reel plays 4% slow, which no one sees.
+ */
+const STEP = 32;
 /** The part of the 2000 x 2500 window kept: the fighter, its circle and
  * what rises above it, clear of the Lobby bar at the top (CSS pixels). */
 const CLIP = { x: 400, y: 200, width: 1200, height: 1500 };
@@ -99,7 +107,7 @@ for (const [skin, champion] of SKINS)
             .locator(`[data-fit-play="${play}"]`)
             .dispatchEvent("click");
         for (let n = 0; n < (ms * FPS) / 1000; n++) {
-          await page.clock.runFor(1000 / FPS);
+          await page.clock.runFor(STEP);
           await page.screenshot({
             path: `${dir}/${String(f++).padStart(3, "0")}.jpg`,
             type: "jpeg",
