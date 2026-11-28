@@ -1,0 +1,44 @@
+/* Poster audit, slice 3 (28 Nov 2026): what the Journey, Ranks and Match
+   history still took from the look underneath: rounded chips, round
+   see-through checks, a pill, a sheen, rows washed in a result's colour.
+   A tier's or a season's own colour stays on its own things (its card, its
+   steps), as the fighter's does. journey.css, ranks.css and
+   match-history.css keep their rules for the look underneath. */
+
+/* Ranks: a tier's three steps are square blocks. */
+:root[data-ui="poster"] .rk-steps > i {
+  border-radius: 0;
+}
+/* A tier you have reached: a square green block with an ink tick (it was a
+   round, see-through green with a green tick). */
+:root[data-ui="poster"] .rk-got {
+  border-radius: 0;
+}
+:root[data-ui="poster"] .rk-tier.is-earned .rk-got {
+  background: var(--ui-ok);
+  color: var(--ink);
+}
+/* "Shield ready": a block with the tier's colour as its left edge. */
+:root[data-ui="poster"] .rk-shield {
+  border: 0;
+  border-left: 4px solid var(--rank);
+  border-radius: 0;
+  background: var(--ink-3);
+  color: var(--paper);
+}
+
+/* The Journey's banner (the season, or your next level): flat ink, the
+   season's colour as one thick edge instead of a sheen and an outline. */
+:root[data-ui="poster"] .journey-banner {
+  border: 0;
+  border-left: 6px solid var(--season, var(--paper));
+  background: var(--ink-1);
+}
+
+/* Match history: a row is ink with the result's colour as its left edge
+   (it keeps that edge from match-history.css); "Victory" or "Defeat" in
+   words says the rest. The whole row was washed in the result's colour. */
+:root[data-ui="poster"] .mh-row {
+  border: 0;
+  background: var(--ink-1);
+}
