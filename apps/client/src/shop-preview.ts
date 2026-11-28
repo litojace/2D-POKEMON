@@ -16,6 +16,7 @@ import { SKINS } from "./animation/cosmetics";
 import { drawCollectionAura } from "./skins/collection-fx";
 import { auraScale as auraSizeFor } from "./aura-size";
 import { menuShadow } from "./fighter-art";
+import { GROUND_FLAT, footprint, footprintScale, groundDrop } from "./ground";
 import { lowGraphics } from "./graphics-quality";
 import { reducedMotionQuery } from "./reduced-motion";
 import { previewDensity } from "./render-budget";
@@ -30,8 +31,6 @@ import {
   fitDrop,
   previewViewBox,
   previewAuraScale,
-  SHOP_SHADOW,
-  SHOP_GROUND_FLAT,
 } from "./shop-preview-layout";
 
 export type PreviewPlacement = "shop" | "selection";
@@ -619,10 +618,19 @@ export function mountShopPreview(
       const feet = framing.y + WORLD_ART.fighterFeet * framing.scale;
       // The light itself (glow, lit disc and ring) is the stage's own layer
       // behind the canvas (stage-light.ts, owner's option C): the rig draws
-      // only the fighter's contact shadow.
+      // only the fighter's contact shadow, the champion's ground ellipse
+      // (ground.ts) as the Lobby and the still art draw it. The rig draws
+      // an art unit at half the framing's scale.
+      const art = framing.scale / 2,
+        width = 2 * footprint(champion) * art;
       this.floor
         .fillStyle(0x040d20, 0.4)
-        .fillEllipse(framing.x, feet, SHOP_SHADOW.width, SHOP_SHADOW.height);
+        .fillEllipse(
+          framing.x,
+          feet + groundDrop(champion) * art,
+          width,
+          width * GROUND_FLAT,
+        );
     }
     update(_time: number, delta: number) {
       if (
@@ -679,7 +687,7 @@ export function mountShopPreview(
       let auraScale = previewAuraScale(framing),
         auraX = x,
         auraY = y + WORLD_ART.fighterFeet * framing.scale,
-        flat: number = SHOP_GROUND_FLAT,
+        flat = GROUND_FLAT,
         lift: number | undefined;
       if (selection) {
         const shadow = menuShadow(champion);
@@ -688,9 +696,12 @@ export function mountShopPreview(
         // fighter's shadow.
         auraX = (shadow.cx + 20) * 2;
         auraY = (shadow.cy + 40) * 2;
-        auraScale = auraSizeFor(2) * (shadow.rx / 32);
-        flat = shadow.ry / shadow.rx;
+        auraScale = auraSizeFor(2) * footprintScale(champion);
         lift = 0;
+      } else {
+        // The Shop's stage: the same ground point and footprint.
+        auraY += (groundDrop(champion) * framing.scale) / 2;
+        auraScale *= footprintScale(champion);
       }
       this.aura.setScale(auraScale);
       this.auraFront.setScale(auraScale);

@@ -10,6 +10,7 @@ import {
   playCollectionEntrance,
 } from "./skins/collection-fx";
 import { canvasGraphics } from "./skins/fx-canvas";
+import { GROUND_FLAT } from "./ground";
 import { reducedMotionQuery } from "./reduced-motion";
 import { drawColorsFx, isColors } from "./skins/colors-fx";
 import "./cosmetic-fx.css";
@@ -202,7 +203,7 @@ function draw(live: Live, now: number, paint = true) {
       still ? 0 : now,
       still,
       gf,
-      18 / 48,
+      GROUND_FLAT,
       3,
     );
   } else if (live.kind === "entrance") {
