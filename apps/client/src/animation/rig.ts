@@ -940,6 +940,15 @@ export class FighterRig {
         Math.min(prop + swing, armR.rotation),
       );
     }
+    // The same prop in an attack, seen from the front or back: a swing that
+    // would carry it inward (the blade across the chest, the mallet upside
+    // down on the belly) goes outward by as much instead (owner, 28 Nov
+    // 2026: props never cut into the body). Side on, the swing is free.
+    if (prop !== undefined && attack && (dir === "down" || dir === "up")) {
+      const inner = prop - UPRIGHT_PROP_ARM[this.character]!.swing;
+      if (armR.rotation < inner)
+        armR.rotation = Math.min(prop + 1.4, 2 * inner - armR.rotation);
+    }
     // Side drawings are mirrored; their local limb poses must mirror too.
     // World-space lean, lunge and wind already use the aiming direction.
     if (dir === "left") {

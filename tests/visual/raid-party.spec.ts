@@ -94,16 +94,10 @@ const read = (page: Page) =>
         : null,
       chatBlur: getComputedStyle(document.querySelector("#battle-chat")!)
         .backdropFilter,
-      // Its fill's opacity, through a canvas (Poster's colours compute as
-      // oklch()).
-      chatOpaque: (() => {
-        const cx = document.createElement("canvas").getContext("2d")!;
-        cx.fillStyle = getComputedStyle(
-          document.querySelector("#battle-chat")!,
-        ).backgroundColor;
-        cx.fillRect(0, 0, 1, 1);
-        return cx.getImageData(0, 0, 1, 1).data[3] === 255;
-      })(),
+      // Poster's button is a bare icon: what holds it over the fight is
+      // the icon's own ink outline, drawn with drop-shadows.
+      chatOutline: getComputedStyle(document.querySelector("#battle-chat svg")!)
+        .filter,
       others: [".joystick-area", "#battle-menu", ".raid-elapsed"]
         .map((q) => document.querySelector(q))
         .filter(visible)
@@ -162,13 +156,14 @@ for (const size of [
         : { left: 0, top: 0, right: 0, bottom: 0 };
       expect(box.left).toBeGreaterThanOrEqual(inset.left);
       expect(box.top).toBeGreaterThanOrEqual(inset.top);
-      // The quick-chat button reads over the fight, as in the Lobby: glass
-      // in the old look (a blur, on High graphics), a solid ink block in
-      // Poster's.
+      // The quick-chat button reads over the fight: glass in the old look
+      // (a blur, on High graphics); in Poster's a bare cream icon with an
+      // ink outline and no block behind it (the owner's choice, #648).
       if (look.chat)
         expect(
-          look.chatBlur.includes("blur") || look.chatOpaque,
-          `chat button: ${look.chatBlur}, opaque ${look.chatOpaque}`,
+          look.chatBlur.includes("blur") ||
+            look.chatOutline.includes("drop-shadow"),
+          `chat button: ${look.chatBlur}, outline ${look.chatOutline}`,
         ).toBe(true);
       await snap(
         page,

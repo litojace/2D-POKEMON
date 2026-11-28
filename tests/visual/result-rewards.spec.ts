@@ -7,6 +7,10 @@ import {
   snap,
   startPractice,
 } from "./helpers";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // The result sheet's celebration (result-rewards.ts): after a match, tiles
 // show what it gave you (XP with LEVEL UP, rank, season, mastery, coins),

@@ -49,26 +49,30 @@ const CROWD: [
   level: number,
   x: number,
   y: number,
+  title: string | null,
+  titleColor: string | null,
 ][] = [
-  ["Rin", "tidefin", 7, 1160, 990],
-  ["Sunny", "halcyra", 31, 1250, 1045],
-  ["Kai", "voltkit", 12, 1450, 1045],
-  ["Moss", "cindrake", 18, 1555, 1035],
-  ["Zap", "lumoth", 9, 1560, 1130],
-  ["Hoot", "glacelle", 24, 1350, 1230],
-  ["Ink", "shadopus", 15, 1480, 1240],
+  // Titles over the names, every tier (#650; the game's own titles and
+  // colours, as tests/visual/plaza-title-crowd.ts), and one with none.
+  ["Rin", "tidefin", 7, 1160, 990, "Master Angler", "#5fb3ff"],
+  ["Sunny", "halcyra", 31, 1275, 1045, "Mountain Conqueror", "#ffcf66"],
+  ["Kai", "voltkit", 12, 1450, 1045, "Tempest", "#50dbe9"],
+  ["Moss", "cindrake", 18, 1555, 1035, "Echo Breaker", "#b79cff"],
+  ["Zap", "lumoth", 9, 1560, 1130, "First Victory", "#9ee6a8"],
+  ["Hoot", "glacelle", 24, 1350, 1230, "Legend", "#ffe08a"],
+  ["Ink", "shadopus", 15, 1480, 1240, null, null],
 ];
 async function crowd(page: Page) {
   await page.evaluate(
     ({ crowd, me }) => {
       const w = window as any;
       w.__plazaPosition(me.x, me.y);
-      crowd.forEach(([name, character, level, x, y], i) => {
+      crowd.forEach(([name, character, level, x, y, title, titleColor], i) => {
         const id = `crowd-${i}`;
         w.__plazaWorld.join(id, `acct-${id}`, {
           name,
-          title: null,
-          titleColor: null,
+          title,
+          titleColor,
           level,
           character,
           skin: null,
