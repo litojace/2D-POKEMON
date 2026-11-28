@@ -246,6 +246,45 @@ test.describe("measure", () => {
     { name: "phone-4x-quick", w: 844, h: 390, cpu: 4, delay: 60 },
     { name: "desktop-quick", w: 1440, h: 900, cpu: 1, delay: 60 },
   ];
+  // The Lobby's frames in the 8 s after the curtain starts to lift, no
+  // tap: anything still loading then competes with the Lobby's fighter.
+  for (const s of SETUPS.filter((s) => s.cpu > 1))
+    test(`${s.name} lobby frames after the lift`, async ({ page }) => {
+      test.setTimeout(180_000);
+      await page.setViewportSize({ width: s.w, height: s.h });
+      await prepare(page, s.delay);
+      const cdp = await page.context().newCDPSession(page);
+      await cdp.send("Emulation.setCPUThrottlingRate", { rate: s.cpu });
+      await start(page);
+      const frames = await page.evaluate(
+        () =>
+          new Promise<{ fps: number; longest: number; over50: number }>(
+            (resolve) => {
+              const t0 = performance.now();
+              let last = t0;
+              let n = 0;
+              let longest = 0;
+              let over50 = 0;
+              const f = (t: number) => {
+                const d = t - last;
+                last = t;
+                n++;
+                longest = Math.max(longest, d);
+                if (d > 50) over50++;
+                if (t - t0 < 8000) requestAnimationFrame(f);
+                else
+                  resolve({
+                    fps: Math.round((n / ((t - t0) / 1000)) * 10) / 10,
+                    longest: Math.round(longest),
+                    over50,
+                  });
+              };
+              requestAnimationFrame(f);
+            },
+          ),
+      );
+      console.log(`MEASURE ${JSON.stringify({ setup: s.name, panel: "lobby-frames", ...frames })}`);
+    });
   const ONLY = process.env.LOBBY_READY_ONLY?.split(",");
   for (const s of SETUPS)
     for (const panel of PANELS) {
