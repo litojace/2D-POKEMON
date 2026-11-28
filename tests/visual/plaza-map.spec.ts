@@ -90,6 +90,41 @@ for (const viewport of [
         expect(cy, p.id).toBeGreaterThan(view.y - 1);
         expect(cy, p.id).toBeLessThan(view.b + 1);
       }
+      // Where pins carry their names (not on a phone): each pin whole on
+      // the picture and none over another ("Photo Spot" covered the Runway's
+      // pin and the picture's edge cut "TOP DASH board": UI audit, 27 Nov).
+      if (!phone) {
+        const pins = await map.locator(".pz-pin").evaluateAll((els) =>
+          els.map((el) => {
+            const r = el.getBoundingClientRect();
+            return {
+              id: (el as HTMLElement).dataset.place!,
+              x: r.left,
+              y: r.top,
+              r: r.right,
+              b: r.bottom,
+            };
+          }),
+        );
+        const outside = pins
+          .filter(
+            (pin) =>
+              pin.x < view.x - 0.5 ||
+              pin.r > view.r + 0.5 ||
+              pin.y < view.y - 0.5 ||
+              pin.b > view.b + 0.5,
+          )
+          .map((pin) => pin.id);
+        const over: string[] = [];
+        pins.forEach((a, i) =>
+          pins.slice(i + 1).forEach((b) => {
+            if (a.x < b.r && b.x < a.r && a.y < b.b && b.y < a.b)
+              over.push(`${a.id} over ${b.id}`);
+          }),
+        );
+        expect(outside, "pins past the picture's edge").toEqual([]);
+        expect(over, "pins over each other").toEqual([]);
+      }
       // Close is the kit's round one, at the size every Lobby panel's is.
       const close = map.locator('[data-map="close"]');
       await expect(close).toHaveClass(/\bui-icon-btn\b/);
