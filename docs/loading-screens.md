@@ -62,27 +62,27 @@ after another and the saved fighter and avatar were not waited for at all.
    game has.
 
 5b. **Every Lobby panel is ready when the curtain lifts** (owner, 28 Nov:
-   a tap on any tile must never show a wait). At sign-in, beside the
-   profile's own load, `AccountUI.warmLobby` asks for each panel's data the
-   way the panel does (the player card's records, name status and first
-   page of matches; Friends; Ranks, both boards; the Raids panel's friends)
-   and loads the code of the screens that load on demand (Raids, the Shop,
-   the Journey). Once the scene is complete the curtain waits for that too,
-   at most 1.5 s more (`LOBBY_WAIT_MS`), with "Getting the Lobby ready…" on
-   the bar while it does; a slow or failed answer never holds it longer,
-   and `CURTAIN_CAP_MS` still caps everything. Data only: it is small JSON,
-   no pictures are decoded ahead. Never during a battle (a room rejoined at
-   startup): the warm-up waits for the battle to end and the curtain
-   doesn't wait for it.
-   Each panel then opens on the copy it has, whatever its age, and asks
-   again behind it once the copy is older than `COPY_MAX_AGE_MS` (30 s;
-   Friends 10 s). An answer the same as the last one is the same object
-   (`server-copies.ts`), so the panel draws nothing again; a changed one is
-   redrawn in place. A POST, the server saying records changed, and another
-   account forget the copies as before; another account also forgets what
-   was drawn from them. `tests/visual/lobby-ready.spec.ts` opens each panel
-   the moment the curtain lifts, with every API answer 600 ms late, and
-   fails on any loading state or a panel built again after its first frame.
+a tap on any tile must never show a wait). At sign-in, beside the
+profile's own load, `AccountUI.warmLobby` asks for each panel's data the
+way the panel does (the player card's records, name status and first
+page of matches; Friends; Ranks, both boards; the Raids panel's friends)
+and loads the code of the screens that load on demand (Raids, the Shop,
+the Journey). Once the scene is complete the curtain waits for that too,
+at most 1.5 s more (`LOBBY_WAIT_MS`), with "Getting the Lobby ready…" on
+the bar while it does; a slow or failed answer never holds it longer,
+and `CURTAIN_CAP_MS` still caps everything. Data only: it is small JSON,
+no pictures are decoded ahead. Never during a battle (a room rejoined at
+startup): the warm-up waits for the battle to end and the curtain
+doesn't wait for it.
+Each panel then opens on the copy it has, whatever its age, and asks
+again behind it once the copy is older than `COPY_MAX_AGE_MS` (30 s;
+Friends 10 s). An answer the same as the last one is the same object
+(`server-copies.ts`), so the panel draws nothing again; a changed one is
+redrawn in place. A POST, the server saying records changed, and another
+account forget the copies as before; another account also forgets what
+was drawn from them. `tests/visual/lobby-ready.spec.ts` opens each panel
+the moment the curtain lifts, with every API answer 600 ms late, and
+fails on any loading state or a panel built again after its first frame.
 
 6. **This device's copy of the profile** (`profile-copy.ts`): what the first
    screen shows (account, coins, worn skins, raid look, Journey and missions

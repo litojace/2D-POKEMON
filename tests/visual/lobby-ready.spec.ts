@@ -38,7 +38,14 @@ const PANELS: Panel[] = [
   { name: "missions", open: rail("missions") },
   { name: "ranks", open: rail("ranks") },
   { name: "friends", open: rail("friends") },
-  { name: "profile", open: `document.querySelector('#account-profile').click()` },
+  {
+    name: "profile",
+    open: `document.querySelector('#account-profile').click()`,
+  },
+  {
+    name: "spire",
+    open: `document.querySelector('#lobby-spire-card').click()`,
+  },
   {
     name: "journey",
     open: `document.querySelector('#lobby-journey-card').click()`,
@@ -63,6 +70,17 @@ async function prepare(page: Page, delay: number) {
       }
       performance.setResourceTimingBufferSize(5000);
       const w = window as any;
+      // A player with raid records and a Spire climb (the Spire card shows),
+      // as on a server with raid storage (the harness has none by default).
+      w.__raids = {
+        loadout: {},
+        clears: 2,
+        highestPeril: 1,
+        bestSeconds: 300,
+        titles: [],
+        cosmetics: [],
+      };
+      w.__spire = { best: 3, zones: [] };
       w.__asks = [] as string[];
       const native = window.fetch.bind(window);
       let inner: typeof fetch | undefined;
@@ -81,7 +99,8 @@ async function prepare(page: Page, delay: number) {
       });
       new MutationObserver(() => {
         const c = document.getElementById("server-startup");
-        if (c?.classList.contains("is-leaving")) w.__curtainLifts ??= performance.now();
+        if (c?.classList.contains("is-leaving"))
+          w.__curtainLifts ??= performance.now();
         if (w.__curtainSeen && !c) w.__curtainGone ??= performance.now();
         if (c) w.__curtainSeen = true;
       }).observe(document, {
@@ -175,12 +194,13 @@ async function openAndWatch(page: Page, panel: Panel, settle: number) {
               p.querySelectorAll('[aria-busy="true"]'),
             ).find((b) => !b.closest(".shop-live-stage, .fighter-rig-stage"));
             const wait =
-              /Loading|One moment/i.exec(text)?.[0] ??
+              /[^\n]*(Loading|One moment)[^\n]*/i.exec(text)?.[0] ??
               (busy ? `aria-busy ${busy.className}` : "");
             const pictures = Array.from(p.querySelectorAll("img")).every(
               (i) => i.loading === "lazy" || (i.complete && i.naturalWidth > 0),
             );
-            if (wait && !loading) loading = `${wait} at ${Math.round(now - t0)} ms`;
+            if (wait && !loading)
+              loading = `${wait} at ${Math.round(now - t0)} ms`;
             if (!wait && pictures) completeAt ||= now;
             else completeAt = 0;
             const seen = Array.from(p.querySelectorAll("img")).filter((i) => {
@@ -239,6 +259,34 @@ test.describe("every Lobby panel is ready when the curtain lifts", () => {
     });
 });
 
+// The screens whose code loads on demand (Raids and the Spire, the Shop and
+// Wardrobe, the Journey) are loaded before the curtain lifts: on main they
+// came 4 s apart after sign-in, and a tap before then waited 0.3-0.5 s here
+// (1.3-1.8 s at 4× CPU) for the code, with nothing on screen to say so.
+test("the screens' code is in before the curtain lifts", async ({ page }) => {
+  test.skip(MEASURE, "LOBBY_READY_MEASURE: measuring instead");
+  await page.setViewportSize({ width: 844, height: 390 });
+  await prepare(page, API_DELAY_MS);
+  await start(page);
+  const loaded = await page.evaluate(() => {
+    const lifts = (window as any).__curtainLifts as number;
+    const at = (name: string) =>
+      (performance.getEntriesByType("resource") as PerformanceResourceTiming[])
+        .filter((e) => new RegExp(`/src/screens/${name}\\.ts`).test(e.name))
+        .map((e) => Math.round(e.responseEnd - lifts))[0] ?? null;
+    return {
+      raids: at("raid-hall"),
+      shop: at("fitting-room"),
+      journey: at("journey"),
+    };
+  });
+  // Each loaded (ms relative to the lift: negative is before it).
+  for (const [screen, ms] of Object.entries(loaded))
+    expect(ms, `${screen}: loaded before the lift (${ms} ms)`).not.toBeNull();
+  for (const [screen, ms] of Object.entries(loaded))
+    expect(ms!, `${screen}: loaded before the lift`).toBeLessThanOrEqual(0);
+});
+
 test.describe("measure", () => {
   test.skip(!MEASURE, "set LOBBY_READY_MEASURE=1");
   const SETUPS = [
@@ -283,7 +331,9 @@ test.describe("measure", () => {
             },
           ),
       );
-      console.log(`MEASURE ${JSON.stringify({ setup: s.name, panel: "lobby-frames", ...frames })}`);
+      console.log(
+        `MEASURE ${JSON.stringify({ setup: s.name, panel: "lobby-frames", ...frames })}`,
+      );
     });
   const ONLY = process.env.LOBBY_READY_ONLY?.split(",");
   for (const s of SETUPS)

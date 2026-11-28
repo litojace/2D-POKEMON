@@ -48,10 +48,20 @@ describe("the server's copies the Lobby's screens are drawn from", () => {
 
   it("an old copy is asked again; the same answer is the same object (no redraw)", async () => {
     const s = server();
-    s.answers.set("/api/leaderboard", { rows: [{ name: "Aria", rating: 1200 }] });
-    const drawn = await s.copies.get("me /api/leaderboard", "/api/leaderboard", 30_000);
+    s.answers.set("/api/leaderboard", {
+      rows: [{ name: "Aria", rating: 1200 }],
+    });
+    const drawn = await s.copies.get(
+      "me /api/leaderboard",
+      "/api/leaderboard",
+      30_000,
+    );
     s.later(31_000);
-    const again = await s.copies.get("me /api/leaderboard", "/api/leaderboard", 30_000);
+    const again = await s.copies.get(
+      "me /api/leaderboard",
+      "/api/leaderboard",
+      30_000,
+    );
     expect(s.asks).toHaveLength(2);
     expect(again).toBe(drawn);
   });
@@ -70,10 +80,18 @@ describe("the server's copies the Lobby's screens are drawn from", () => {
   it("forget() makes the next screen ask, and still keeps an unchanged answer's object", async () => {
     const s = server();
     s.answers.set("/api/progress", { wins: 3 });
-    const drawn = await s.copies.get("me /api/progress", "/api/progress", 30_000);
+    const drawn = await s.copies.get(
+      "me /api/progress",
+      "/api/progress",
+      30_000,
+    );
     // A POST, or the server saying records changed.
     s.copies.forget();
-    const same = await s.copies.get("me /api/progress", "/api/progress", 30_000);
+    const same = await s.copies.get(
+      "me /api/progress",
+      "/api/progress",
+      30_000,
+    );
     expect(s.asks).toHaveLength(2);
     expect(same).toBe(drawn);
     s.answers.set("/api/progress", { wins: 4 });
@@ -86,7 +104,11 @@ describe("the server's copies the Lobby's screens are drawn from", () => {
   it("a copy changed in place is never handed back for its old answer", async () => {
     const s = server();
     s.answers.set("/api/economy", { balance: 100 });
-    const drawn = (await s.copies.get("me /api/economy", "/api/economy", 30_000)) as {
+    const drawn = (await s.copies.get(
+      "me /api/economy",
+      "/api/economy",
+      30_000,
+    )) as {
       balance: number;
     };
     drawn.balance = 50;
