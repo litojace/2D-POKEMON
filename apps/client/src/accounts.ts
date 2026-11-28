@@ -204,7 +204,7 @@ type Hooks = {
   messageFriend?: (id: string, name: string) => void;
   /** Friends closed (a room puts its picker back). */
   onFriendsClosed?: () => void;
-  notify: (message: string) => void;
+  notify: (message: string, kind?: "ok" | "warn" | "error") => void;
   /** Running announcements from the admins, fetched at sign-in (announcements.ts). */
   announce?: (list: unknown) => void;
   onChange: () => void;
@@ -760,6 +760,7 @@ export class AccountUI {
       extra:
         '<p class="ui-note">They aren\'t told. You can unblock them under Friends → Recent.</p>',
       confirm: "Block",
+      danger: true,
       confirmIcon: "block",
     });
     if (!sure) return false;
@@ -942,7 +943,7 @@ export class AccountUI {
   async logOut() {
     if (this.account?.guest && !this.confirmedGuestLogout) {
       this.hooks.openDialog(
-        `<div class="eyebrow">Guest account</div><h2>Log out of your guest pass?</h2><p>Guest accounts can't be recovered after logging out: your records and titles would be lost. Save your account with an email first to keep them.</p><div class="dialog-actions"><button class="primary" id="guest-save">${iconLabel("save", "Save my account")}</button><button class="secondary" id="guest-leave">${iconLabel("leave", "Log out anyway")}</button></div>`,
+        `<div class="eyebrow">Guest account</div><h2>Log out of your guest pass?</h2><p>Guest accounts can't be recovered after logging out: your records and titles would be lost. Save your account with an email first to keep them.</p><div class="dialog-actions"><button class="primary" id="guest-save">${iconLabel("save", "Save my account")}</button><button class="secondary is-danger" id="guest-leave">${iconLabel("leave", "Log out anyway")}</button></div>`,
       );
       element("guest-save").onclick = () => void this.showProfile();
       element("guest-leave").onclick = () => {
@@ -1654,7 +1655,8 @@ export class AccountUI {
         this.fittingRoom?.refresh();
         void this.loadFittingRoom();
       },
-      notify: (message: string) => this.hooks.notify(message),
+      notify: (message: string, kind?: "ok" | "warn" | "error") =>
+        this.hooks.notify(message, kind),
     };
   }
   /** The open Journey panel, if any (UI remodel step 4). */
