@@ -20,7 +20,9 @@ import {
   MAX_PLAYER_LEVEL,
   milestoneNames,
   playerLevel,
+  SEASON_THEMES,
   seasonRules,
+  seasonTheme,
   type Journey,
 } from "../../../packages/shared/src/journey";
 import {
@@ -79,9 +81,12 @@ interface Tile {
   /** A burst over the tile once its bar has run ("LEVEL UP"). */
   burst?: string;
   tone?: "up" | "down";
+  /** The resource's own colour, for its mark (a CSS colour): the season's,
+   * a mastery tier's. The tile carries it as --rw-mark (has-mark). */
+  mark?: string;
 }
 const tile = (t: Tile, i: number) =>
-  `<li class="rw-tile${t.burst ? " has-burst" : ""}${t.tone ? ` is-${t.tone}` : ""}" data-rw="${t.id}" style="--i:${i}"><span class="rw-icon" aria-hidden="true">${menuIcon(t.icon)}</span><span class="rw-head"><span class="rw-label">${esc(t.label)}</span>${t.gain ? `<em class="rw-gain">${t.gain}</em>` : ""}</span><b class="rw-value">${t.value}</b>${t.bar ?? ""}${t.note ? `<small class="rw-note">${t.note}</small>` : ""}${t.burst ? `<strong class="rw-burst">${esc(t.burst)}</strong>` : ""}</li>`;
+  `<li class="rw-tile${t.burst ? " has-burst" : ""}${t.tone ? ` is-${t.tone}` : ""}${t.mark ? " has-mark" : ""}" data-rw="${t.id}" style="--i:${i}${t.mark ? `;--rw-mark:${t.mark}` : ""}"><span class="rw-icon" aria-hidden="true">${menuIcon(t.icon)}</span><span class="rw-head"><span class="rw-label">${esc(t.label)}</span>${t.gain ? `<em class="rw-gain">${t.gain}</em>` : ""}</span><b class="rw-value">${t.value}</b>${t.bar ?? ""}${t.note ? `<small class="rw-note">${t.note}</small>` : ""}${t.burst ? `<strong class="rw-burst">${esc(t.burst)}</strong>` : ""}</li>`;
 
 /**
  * Where the XP came from, short enough for a tile ("Match 25 · First Win
@@ -204,6 +209,7 @@ export function seasonTile(j: Journey, a: XpAward): Tile {
         ? "Every tier reached"
         : `${num(Math.max(0, now) % rules.tierXp)} / ${num(rules.tierXp)} to tier ${tierOf(now) + 1}`,
     burst: up ? "Tier up" : undefined,
+    mark: SEASON_THEMES[seasonTheme(j.season.id)].color,
   };
 }
 /** The mastery tile: matches with this fighter toward its next tier. */
@@ -221,7 +227,7 @@ export function masteryTile(m: { fighter: string; matches: number }): Tile {
     icon: "user",
     label: "Mastery",
     value: tier
-      ? `<i style="color:${tier.color}">${tier.name}</i> <small>${esc(m.fighter)} · ${num(m.matches)}</small>`
+      ? `<i class="rw-tier">${tier.name}</i> <small>${esc(m.fighter)} · ${num(m.matches)}</small>`
       : `${esc(m.fighter)} <small>${num(m.matches)} of ${MASTERY_TIERS[0].matches}</small>`,
     gain: "+1",
     bar: bar(
@@ -234,6 +240,7 @@ export function masteryTile(m: { fighter: string; matches: number }): Tile {
     ),
     note: next ? `${next.name} at ${next.matches} matches` : "The top tier",
     burst: reached ? tier.name : undefined,
+    mark: tier?.color,
   };
 }
 /** The coins tile: what the match, its missions and a level-up paid. */
