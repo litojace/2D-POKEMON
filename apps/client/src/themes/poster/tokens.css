@@ -40,6 +40,25 @@
       transparent 1.7px
     )
     0 0 / 9px 9px;
+  /* A bare icon: a control drawn straight on a scene (the Plaza, the
+     playfield, the Lobby's field, a fighter's stage) with no block behind
+     it (docs/ui-themes.md, "Bare icons"; owner, 27–28 Nov). The icon is
+     cream with an ink outline, four 1 px shadows with no blur, and a hard
+     fifth below it, so it reads on a light scene and a dark one; its word
+     is drawn the same way in text shadows. Under a finger, or open, it is
+     gold. The one recipe every bare icon reads. */
+  --bare-ink: var(--paper);
+  --bare-hot: var(--gold);
+  --bare-icon-edge: drop-shadow(1px 0 0 var(--ink))
+    drop-shadow(-1px 0 0 var(--ink)) drop-shadow(0 1px 0 var(--ink))
+    drop-shadow(0 -1px 0 var(--ink)) drop-shadow(2px 3px 0 rgba(0, 0, 0, 0.55));
+  --bare-word-edge:
+    1px 0 0 var(--ink), -1px 0 0 var(--ink), 0 1px 0 var(--ink),
+    0 -1px 0 var(--ink), 1px 2px 0 rgba(0, 0, 0, 0.55);
+  /* A bare chevron (the ‹ and › that step through fighters), pointing
+     left: a clip-path for a ::before filled in currentColor, mirrored for
+     the right one. Drawn, not typed: Anton's ‹ is a thin mark at x-height. */
+  --bare-chevron: polygon(62% 0, 100% 16%, 38% 50%, 100% 84%, 62% 100%, 0 50%);
   /* Contrast (WCAG AA, measured for every element, boss and Spire colour:
      tests/visual/poster-contrast.spec.ts). Every --el is light, so what is
      drawn on --el is ink, never white (ink on the darkest, Shadow's

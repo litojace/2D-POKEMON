@@ -296,22 +296,20 @@
   box-shadow: none;
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
-  color: #f4ead5;
+  color: var(--bare-ink);
 }
 :root[data-ui="poster"]
   body.battle-active
   :is(#battle-menu, #battle-chat)
   > svg {
   color: inherit;
-  filter: drop-shadow(1px 0 0 var(--ink)) drop-shadow(-1px 0 0 var(--ink))
-    drop-shadow(0 1px 0 var(--ink)) drop-shadow(0 -1px 0 var(--ink))
-    drop-shadow(2px 3px 0 rgba(0, 0, 0, 0.55));
+  filter: var(--bare-icon-edge);
 }
 /* An open chat or the gear under a finger: the icon in the game's gold. */
 :root[data-ui="poster"]
   body.battle-active
   :is(#battle-menu, #battle-chat):is(:focus-visible, [aria-expanded="true"]) {
-  color: #ffd65b;
+  color: var(--bare-hot);
 }
 :root[data-ui="poster"] .touch-buttons > button {
   box-shadow:
@@ -1011,6 +1009,40 @@
 /* wardrobe slots */
 :root[data-ui="poster"] :is(.fit-slot, .fit-slots > *) {
   border-radius: 0;
+}
+/* The Fighters stage's ‹ and ›: bare chevrons on the stage, drawn as the
+   Lobby's are (--bare-chevron; docs/ui-themes.md, "Bare icons"). Each
+   keeps its box; where a phone makes it 30 px, components.css's hit area
+   still takes a 44 px finger. */
+:root[data-ui="poster"] .roster-stage .roster-step {
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--bare-ink);
+  font-size: 0;
+  filter: var(--bare-icon-edge);
+}
+:root[data-ui="poster"] .roster-stage .roster-step::before {
+  content: "";
+  width: 16px;
+  height: 28px;
+  background: currentColor;
+  clip-path: var(--bare-chevron);
+}
+:root[data-ui="poster"] .roster-stage .roster-next::before {
+  transform: scaleX(-1);
+}
+:root[data-ui="poster"]
+  .roster-stage
+  .roster-step:is(:hover, :focus-visible, :active) {
+  color: var(--bare-hot);
+}
+@media (max-height: 500px) {
+  :root[data-ui="poster"] .roster-stage .roster-step::before {
+    width: 13px;
+    height: 22px;
+  }
 }
 /* raid room backdrop: the poster, in the Lobby fighter's colour as the
    Lobby's field is */
