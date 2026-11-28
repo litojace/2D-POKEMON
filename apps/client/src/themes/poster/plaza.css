@@ -89,8 +89,9 @@
    28 Nov): the tier shows in the lettering. Common: the title in its own
    colour. Rare: shaded, light at the top. Epic: a slow glint across the
    letters. Legendary: gold-lit letters, the glint, a star at each end that
-   twinkles. Mythical: letters whose colours drift, and stars. What moves is
-   one small line of text on an open card, and holds still with Reduce
+   twinkles. Mythical: letters whose colours drift, and stars. Nothing here
+   runs for ever (Poster's rule, tests/unit/ui-theme.test.ts): each plays a
+   few times as the card opens, then rests, and holds still with Reduce
    motion. */
 :root[data-ui="poster"] .title-tag {
   display: inline-flex;
@@ -148,19 +149,18 @@
     100% 0,
     0 0;
   background-repeat: no-repeat;
-  animation: title-tag-glint 5.5s ease-in-out infinite;
+  animation: title-tag-glint 2.6s ease-in-out 0.4s 2 both;
 }
 :root[data-ui="poster"] .title-tag[data-tier="legendary"] > span {
   background-image:
     linear-gradient(100deg, transparent 42%, #fff 50%, transparent 58%),
     linear-gradient(180deg, #fff3c4, var(--r-legendary) 45%, var(--title) 100%);
-  animation-duration: 4s;
 }
 :root[data-ui="poster"] .title-tag[data-tier="legendary"] > i {
-  animation: title-tag-twinkle 2.4s ease-in-out infinite;
+  animation: title-tag-twinkle 1.6s ease-in-out 4;
 }
 :root[data-ui="poster"] .title-tag[data-tier="legendary"] > i:last-child {
-  animation-delay: -1.2s;
+  animation-delay: -0.8s;
 }
 /* Mythical: the title's colour, the tier's pink and a pale light, twice
    over, sliding by one turn. */
@@ -178,7 +178,7 @@
     var(--title)
   );
   background-size: 400% 100%;
-  animation: title-tag-drift 7s linear infinite;
+  animation: title-tag-drift 5s linear 2;
 }
 :root[data-ui="poster"] .title-tag[data-tier="mythic"] > i {
   color: #fff3c4;
@@ -190,7 +190,7 @@
 }
 @keyframes title-tag-glint {
   0%,
-  65% {
+  35% {
     background-position:
       100% 0,
       0 0;
@@ -204,12 +204,12 @@
 @keyframes title-tag-twinkle {
   0%,
   100% {
-    opacity: 0.25;
-    transform: scale(0.7);
+    opacity: 1;
+    transform: scale(1);
   }
   50% {
-    opacity: 1;
-    transform: scale(1.15);
+    opacity: 0.25;
+    transform: scale(0.7);
   }
 }
 @keyframes title-tag-drift {
