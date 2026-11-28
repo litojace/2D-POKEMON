@@ -4,7 +4,7 @@
 
 ### [▶ Play now at play.elementarenausa.com](https://play.elementarenausa.com)
 
-Free in your browser, on a phone (best in landscape) or a computer. More about the game at [elementarenausa.com](https://elementarenausa.com).
+Free in your browser, on a phone (best in landscape) or a computer, in open beta: we're still adding and polishing, and your progress carries over through every update. More about the game at [elementarenausa.com](https://elementarenausa.com).
 
 <p align="center">
   <img src="docs/readme/lobby.webp" width="49%" alt="The Lobby on a phone in landscape: Pyranda, a red panda, stands in the middle with Invite slots on each side, the Fighters, Shop, Raids, Missions, Ranks and Friends menu on the left, and Journey, Daily missions and a big Play button on the right.">
@@ -12,7 +12,7 @@ Free in your browser, on a phone (best in landscape) or a computer. More about t
 </p>
 <p align="center">
   <img src="docs/readme/raid.webp" width="49%" alt="A four-player raid against Lumiwick: the boss's health bar and phase at the top, a ring of fire warning on the floor and the warning 'Flame Ring: jump as the expanding edge reaches you!'.">
-  <img src="docs/readme/plaza.webp" width="49%" alt="The Plaza at midday: a player's Pyranda by the fountain, with bounce pads, lamp posts, benches, the Plaza map board and the Map, gifts, Album, Dash and Jump buttons.">
+  <img src="docs/readme/plaza.webp" width="49%" alt="The Plaza at midday: a player's Pyranda by the fountain with two other players, each with a title over their name, and bounce pads, lamp posts, benches, the Plaza map board and the Map, gifts, Album, Dash and Jump buttons.">
 </p>
 
 ## What's in the game
@@ -22,7 +22,7 @@ Free in your browser, on a phone (best in landscape) or a computer. More about t
 - **2v2 teams and free-for-all**: team up with a friend, or fight three or four players at once; bots fill the empty seats when you search alone. Hosts of private rooms can turn on party rules like Turbo, Glass cannon or Crown Hill.
 - **Co-op raids**: 1 to 4 players against seven giant bosses, each with its own phases, attacks to read and dodge, and cosmetic rewards.
 - **The Spire**: a 70-floor climb for up to 4 players in seven zones, each with an elite halfway up and an Ascendant raid boss at the top.
-- **The Plaza**: a shared playground for up to 40 players: bounce pads, a stage, a ball pitch, a dash track, a photo spot, gifts and daily quests.
+- **The Plaza**: a shared playground for up to 40 players: bounce pads, a stage, a ball pitch, a dash track, a photo spot, gifts and daily quests. Players wear their title over their name, and the harder the title was to earn (Common to Mythical), the more special it looks.
 - **Shop and cosmetics**: hundreds of champion skins in five rarities and themed collections, bought with coins you earn by playing.
 - **Missions, levels and ranks**: daily missions, player levels 1 to 100 with a seasonal reward journey, a rank road to climb, achievements, titles and mastery badges.
 - **Friends**: friend codes, invites, chat, and watching a friend's match live.
