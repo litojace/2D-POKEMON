@@ -81,12 +81,21 @@
   text-transform: uppercase;
 }
 /* Skills and Credits open inside Settings: their way back lies on the
-   masthead, so it is ink there (the look underneath's pale blue-grey was
-   near invisible on the element colour), and their titles are capitals as
-   every other dialog's. */
+   masthead, so it reads in the masthead's words, as Controls' "Back to
+   settings" does (dialogs.css): --head-dim, the masthead's cream under a
+   finger. It was ink, from when the masthead was the element colour; on
+   #673's ink masthead that drew Credits' "Settings" ink on ink, unseen.
+   Their titles are capitals as every other dialog's. */
 :root[data-ui="poster"] :is(#skills-back, #credits-back),
 :root[data-ui="poster"] :is(#skills-back, #credits-back) svg {
-  color: var(--ink);
+  color: var(--head-dim, var(--ui-dim));
+}
+:root[data-ui="poster"]
+  :is(#skills-back, #credits-back):is(:hover, :focus-visible),
+:root[data-ui="poster"]
+  :is(#skills-back, #credits-back):is(:hover, :focus-visible)
+  svg {
+  color: var(--head-ink, var(--paper));
 }
 :root[data-ui="poster"] :is(#skills-back, #credits-back) {
   font-weight: 700;
@@ -192,9 +201,15 @@
    field is 1 px shorter than the old look's, and Join, beside it in the
    row, stood 43 px tall on a 667x375 phone (lobby.spec, "Join or watch"). */
 @media (orientation: landscape) and (max-height: 600px), (max-width: 1000px) {
-  :root[data-ui="poster"] .home-play-drawer .join-row > :is(input, #join) {
+  :root[data-ui="poster"] .home-play-drawer .join-row > :is(input, #join),
+  :root[data-ui="poster"] .home-play-drawer #name {
     min-height: 44px;
   }
+}
+/* "Watch this room instead": its words at the body's 12 px, not the 10 px
+   a phone gave them (audit W05), so the drawer's last line reads. */
+:root[data-ui="poster"] .home-play-drawer button.quiet {
+  font-size: calc(12px * var(--text-scale, 1));
 }
 /* Join or watch's words in the kit's greys, not the look underneath's
    blue-grey (#c1cfe4 labels, a #8092b4 "ABC123"; audit W05): the field
@@ -1528,4 +1543,57 @@
    grey of the look underneath. */
 :root[data-ui="poster"] .fit-head .fit-hint {
   color: var(--head-dim);
+}
+
+/* Credits (main.ts showCredits): square, as the rest of Poster (audit
+   C05). The ELEMENT ARENA band was 14 px round with an accent edge, its
+   crest a navy 14 px tile, and the libraries were pills. Now the band is
+   an ink-1 block on an ink-3 edge, the crest an ink square, and each
+   library an ink-3 tag, as a Shop tag is. */
+:root[data-ui="poster"] .credits-hero {
+  border-color: var(--ink-3);
+  border-radius: 0;
+  background: var(--ink-1);
+}
+:root[data-ui="poster"] .credits-crest {
+  border-radius: 0;
+  background: var(--ink);
+}
+:root[data-ui="poster"] .credits-tags > li {
+  border: 0;
+  border-radius: 0;
+  background: var(--ink-3);
+  color: var(--paper);
+}
+
+/* How to play's topics (how-to-play.ts, .htp-tabs): a row of tabs in the
+   dialog's body, as Poster's other in-page tabs are (kit.css .ui-tabs), not
+   grey pills of the body face (audit F04). Anton capitals in --ui-dim on an
+   ink-3 rule; the open topic cream with a cream bar under it. A finger tall.
+   The row still scrolls sideways on a phone and stays on top of a long
+   topic (how-to-play.css). */
+:root[data-ui="poster"] .htp-tabs {
+  gap: 2px;
+  box-shadow:
+    0 -20px 0 var(--ui-bg-0),
+    inset 0 -2px 0 var(--ink-3);
+}
+:root[data-ui="poster"] .htp-tabs button {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--ui-dim);
+  font: 400 calc(15px * var(--text-scale, 1)) / 1 var(--font-display);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+:root[data-ui="poster"] .htp-tabs button:is(:hover, :focus-visible) {
+  color: var(--paper);
+}
+:root[data-ui="poster"] .htp-tabs button[aria-selected="true"] {
+  background: none;
+  color: var(--paper);
+  box-shadow: inset 0 -3px 0 var(--paper);
 }
