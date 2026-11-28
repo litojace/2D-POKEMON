@@ -1,5 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
-import { createRoom, openHub, openPlayPanel, pushUntilBattle } from "./helpers";
+import {
+  createRoom,
+  openHub,
+  openPlayPanel,
+  pushUntilBattle,
+  settle,
+} from "./helpers";
 import { fileURLToPath } from "node:url";
 import { onPlayersLook } from "./players-look";
 
@@ -280,7 +286,7 @@ test("the guest's two choices share one size, Log out anyway in red", async ({
   const dialogTs = fileURLToPath(
     new URL("../../apps/client/src/dialog.ts", import.meta.url),
   );
-  const sizes = await page.evaluate(async (dialogTs) => {
+  await page.evaluate(async (dialogTs) => {
     const { setDialogContent } = await import(
       /* @vite-ignore */ `/@fs${dialogTs}`
     );
@@ -290,24 +296,21 @@ test("the guest's two choices share one size, Log out anyway in red", async ({
       '<div class="eyebrow">Guest account</div><h2>Log out of your guest pass?</h2><p>Guest accounts can\'t be recovered.</p><div class="dialog-actions is-even"><button class="primary" id="guest-save">Save my account</button><button class="secondary is-danger" id="guest-leave">Log out anyway</button></div>',
     );
     d.showModal();
-    // Measure once the dialog has eased in: its open (ea-pop, style.css)
-    // scales it from 0.97, and a box read mid-way is a pixel short (CI's
-    // slower renderer was still scaling it 400 ms in).
-    await Promise.all(
-      d
-        .getAnimations({ subtree: true })
-        .filter((a) => a.effect?.getComputedTiming().endTime !== Infinity)
-        .map((a) => a.finished),
-    );
-    return ["guest-save", "guest-leave"].map((id) => {
+  }, dialogTs);
+  // Measure once the dialog has eased in: its open (ea-pop, style.css)
+  // scales it from 0.97, and a box read mid-way is a pixel short (CI's
+  // slower renderer was still scaling it 400 ms in; #703).
+  await settle(page);
+  const sizes = await page.evaluate(() =>
+    ["guest-save", "guest-leave"].map((id) => {
       const r = document.getElementById(id)!.getBoundingClientRect();
       return {
         w: Math.round(r.width),
         h: Math.round(r.height),
         top: Math.round(r.top),
       };
-    });
-  }, dialogTs);
+    }),
+  );
   expect(sizes[0]).toEqual(sizes[1]);
   expect(sizes[0].h).toBeGreaterThanOrEqual(44);
   const fill = await rgbOf(page, "#guest-leave", "background-color");
