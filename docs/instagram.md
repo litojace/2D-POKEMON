@@ -301,6 +301,18 @@ gets accounts locked).
   nothing is posted twice; a post more than 48 hours late, or a story more
   than 20, is left and reported. `tests/unit/instagram-plan.test.ts` checks
   the plan (every file served, captions within the limits and the rules).
+- **Comments**: `publish.mjs comments` lists the last two weeks' comments
+  the account hasn't answered or hidden (JSON lines with each comment's id);
+  `reply <comment-id> <text>` answers one, `hide <comment-id>` hides one.
+- **The scheduled task** "Element Arena Instagram" (on the owner's account,
+  in the ELEMENT_ARENA cloud environment) starts a fresh session at 9:47 AM,
+  11:47 AM and 5:47 PM PT every day. Each runs `due`, then goes through
+  `comments` by the rules above, and ends with a short report in
+  Vietnamese, pushed to the owner's phone when something happened or needs
+  them. On Sundays the 5:47 PM run adds the week's report, and a run says
+  so when fewer than five days of the plan are left. To stop it: "dừng" to
+  any session (it sets `paused` in plan.json, or turns the task off), or
+  turn the task off in the Claude app's scheduled tasks.
 - **The pictures** are in `apps/site/social/`, served by the website at
   `https://elementarenausa.com/social/`, where Meta fetches them; a new plan
   copies its files there in the same pull request.
