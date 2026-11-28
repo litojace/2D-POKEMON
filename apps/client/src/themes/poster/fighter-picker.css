@@ -1,0 +1,8 @@
+/* Poster: the results' Change fighter grid (fighter-picker.ts), the audit,
+   28 Nov. The names were 11 px body type; a fighter's name is Anton
+   capitals everywhere else (the roster, the Lobby, the stage). */
+:root[data-ui="poster"] dialog .fp-tile > span:last-child {
+  font: 400 calc(13px * var(--text-scale, 1)) / 1.1 var(--font-display);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
