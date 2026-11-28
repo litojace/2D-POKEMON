@@ -17,8 +17,11 @@ import { CHARACTERS, type CharacterId } from "@arena/shared";
 import { moodFor, squashFor } from "./expression";
 import {
   ENTRANCES,
+  MAX_TURN,
+  MIN_WIDTH,
   SETTLED,
   VICTORIES,
+  keepHeadRigid,
   type MoveAccent,
   type MoveStage,
 } from "./champion-moves";
@@ -827,6 +830,9 @@ export class FighterRig {
         shut: (amount) => {
           eyes.scaleY = Math.max(0.055, 0.5 * (1 - amount));
         },
+        fade: (k) => {
+          this.root.setAlpha(this.root.alpha * Math.max(0, Math.min(1, k)));
+        },
         sway: (speed, phase = 0) =>
           reduced ? 0 : Math.sin(at * speed + phase),
         passed: (moment) => !reduced && before < moment && at >= moment,
@@ -842,6 +848,13 @@ export class FighterRig {
       head.y = Math.max(neck, head.y);
       head.rotation = Math.max(-0.16, Math.min(0.16, head.rotation));
       ears.scaleX = Math.min(0.54, ears.scaleX);
+      // No spins: the art is flat, so a turn past a lean, or a squash that
+      // narrows it to fake turning edge-on, reads as paper flipping over.
+      this.root.rotation = Math.max(
+        -MAX_TURN,
+        Math.min(MAX_TURN, this.root.rotation),
+      );
+      sx = Math.max(MIN_WIDTH, sx);
       this.moveT = at;
     } else if (state === "wave" && !reduced)
       this.wave(
@@ -1081,6 +1094,16 @@ export class FighterRig {
       }
     }
     this.carriedRotation = dir === "down" ? 0 : body.rotation;
+    // A champion's own move never flattens the face: the squash or stretch
+    // is the body's, and the head with all it carries keeps its size and
+    // shape, riding on top (owner, 28 Nov 2026).
+    if (ownMove && (sx !== 1 || sy !== 1))
+      keepHeadRigid(
+        PROFILE_FACE_PARTS.flatMap((part) => this.images.get(part) ?? []),
+        { x: head.x, y: head.y },
+        sx,
+        sy,
+      );
     for (const image of this.images.values()) image.setVisible(true);
     // Shell Up: head, limbs and sprout tuck away; only the mossy shell shows.
     if (pose.shell)

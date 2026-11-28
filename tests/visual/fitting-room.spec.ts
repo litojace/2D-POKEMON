@@ -574,9 +574,10 @@ test("the open screen's rail icon lights up, and a second tap on it closes the s
 }) => {
   await shopServer(page);
   const errors = await openLobby(page);
-  // The open screen's button is a solid block in the element colour (gold
-  // for Voltkit): Poster draws it behind the button (its ::before, a
-  // slanted block inside the button's box), so read whichever is painted.
+  // The open screen's button is a solid block in the chrome's accent
+  // (Poster's cream, whoever the fighter): Poster draws it behind the button
+  // (its ::before, a slanted block inside the button's box), so read
+  // whichever is painted.
   const rim = (action: string) =>
     page
       .locator(`.lobby-rail [data-lobby-action="${action}"]`)
@@ -594,8 +595,8 @@ test("the open screen's rail icon lights up, and a second tap on it closes the s
   // Off the button, so its hover fill can't stand in for it.
   await page.mouse.move(700, 450);
   // Once its 0.15 s colour transition has run.
-  await expect.poll(() => rim("shop")).toBe("rgb(255, 214, 91)");
-  expect(await rim("fighters")).not.toBe("rgb(255, 214, 91)");
+  await expect.poll(() => rim("shop")).toBe("rgb(244, 234, 213)");
+  expect(await rim("fighters")).not.toBe("rgb(244, 234, 213)");
   // Still lit on the Wardrobe tab, and a second tap there closes it too.
   await page.click('.fit-room [data-ui-mode="wardrobe"]');
   await expect(shop).toHaveAttribute("aria-current", "page");

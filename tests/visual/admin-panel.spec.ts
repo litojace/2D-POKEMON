@@ -424,6 +424,82 @@ for (const size of [
   });
 }
 
+// A title's tier (migration 20261128060000): the administrator picks one
+// of five in the title form; one of the game's own titles shows the tier
+// its rule gives it instead.
+for (const size of [
+  { name: "667x375", width: 667, height: 375 },
+  { name: "844x390", width: 844, height: 390 },
+  { name: "1440x900", width: 1440, height: 900 },
+])
+  test(`the title form's tier picker fits at ${size.name}`, async ({
+    browser,
+  }, info) => {
+    const phone = size.width < 1000;
+    const context = await browser.newContext({
+      viewport: { width: size.width, height: size.height },
+      isMobile: phone,
+      hasTouch: phone,
+    });
+    try {
+      const page = await context.newPage();
+      const errors = await openAdmin(page);
+      await tab(page, "titles").click();
+      await page.locator('#adm-root [data-act="title-new"]').click();
+      const form = page.locator('form[data-form="title"]');
+      const tier = form.locator('select[name="tier"]');
+      await expect(tier).toHaveValue("common");
+      // Every control of the form inside it, none over another, each at
+      // least 44 px tall.
+      const boxes = await form.evaluate((el) => {
+        const f = el.getBoundingClientRect();
+        return [
+          ...el.querySelectorAll<HTMLElement>(
+            ".adm-color, input:not([type=color]), select, button",
+          ),
+        ].map((c) => {
+          const r = c.getBoundingClientRect();
+          return {
+            what: c.getAttribute("name") ?? c.textContent!.trim(),
+            x: r.left,
+            y: r.top,
+            w: r.width,
+            h: r.height,
+            inside: r.left >= f.left - 0.5 && r.right <= f.right + 0.5,
+          };
+        });
+      });
+      expect(boxes.filter((b) => !b.inside || b.h < 40)).toEqual([]);
+      for (const a of boxes)
+        for (const b of boxes)
+          if (a !== b)
+            expect(
+              a.x < b.x + b.w - 1 &&
+                b.x < a.x + a.w - 1 &&
+                a.y < b.y + b.h - 1 &&
+                b.y < a.y + a.h - 1,
+              `${a.what} over ${b.what}`,
+            ).toBe(false);
+      expect((await tier.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+      await snap(page, info, `admin-title-form-${size.name}`);
+      // One of the game's own titles: no picker, its rule's tier instead.
+      await form.locator('input[name="name"]').fill("Cragbreaker");
+      await form.locator("button:not([type=button])").click();
+      const own = page.locator(".adm-title", { hasText: "Cragbreaker" });
+      await expect(own.locator(".adm-tier")).toHaveText("Rare");
+      await own.locator('[data-act="title-edit"]').click();
+      const edit = page.locator('form[data-form="title"]');
+      await expect(edit.locator('select[name="tier"]')).toHaveCount(0);
+      await expect(edit.locator(".adm-tier-fixed")).toHaveText(
+        "Rare · set by the game's rules",
+      );
+      await snap(page, info, `admin-title-own-${size.name}`);
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+
 test("Admin actions on a phone held sideways", async ({ browser }, info) => {
   const context = await browser.newContext({
     viewport: { width: 844, height: 390 },
@@ -692,11 +768,51 @@ test("Admin actions on a phone held sideways", async ({ browser }, info) => {
     await form
       .locator('input[name="description"]')
       .fill("Won the November cup.");
+    // Its tier: the five, Common unless the administrator picks another.
+    const tier = form.locator('select[name="tier"]');
+    await expect(tier).toHaveValue("common");
+    expect(await tier.locator("option").allTextContents()).toEqual([
+      "Common",
+      "Rare",
+      "Epic",
+      "Legendary",
+      "Mythical",
+    ]);
+    const pick = await tier.boundingBox();
+    expect(pick!.height).toBeGreaterThanOrEqual(44);
+    await snap(page, info, "admin-title-form");
+    await tier.selectOption("legendary");
     await form.locator("button:not([type=button])").click();
     await expect(page.locator("#admin-message")).toHaveText(
       "Title “Champion” created.",
     );
     await expect(page.locator(".adm-title")).toHaveCount(3);
+    expect((await calls(page)).at(-1)?.body).toMatchObject({
+      name: "Champion",
+      tier: "legendary",
+    });
+    // The list says each title's tier; one made before tiers is Common.
+    const champion = page.locator(".adm-title", { hasText: "Champion" });
+    await expect(champion.locator(".adm-tier")).toHaveText("Legendary");
+    await expect(
+      page.locator(`[data-title-row="${RIVAL_TITLE}"] .adm-tier`),
+    ).toHaveText("Common");
+    // Editing shows the tier it has, and saves a new one.
+    await champion.locator('[data-act="title-edit"]').click();
+    const edit = page.locator('form[data-form="title"] select[name="tier"]');
+    await expect(edit).toHaveValue("legendary");
+    await edit.selectOption("mythic");
+    await page
+      .locator('form[data-form="title"] button:not([type=button])')
+      .click();
+    await expect(
+      page.locator(".adm-title", { hasText: "Champion" }).locator(".adm-tier"),
+    ).toHaveText("Mythical");
+    expect((await calls(page)).at(-1)?.body).toMatchObject({
+      name: "Champion",
+      tier: "mythic",
+    });
+    await snap(page, info, "admin-titles-tiers");
     expect(errors).toEqual([]);
   } finally {
     await context.close();
