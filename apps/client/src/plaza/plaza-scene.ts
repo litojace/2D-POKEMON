@@ -10,6 +10,7 @@
  * the same shared step. Ported drawing code is not type-checked line by
  * line; the typed entry point is plaza-screen.ts.
  */
+import { GROUND_FLAT } from "../ground";
 import { CHAT_EMOTES } from "../../../../packages/shared/src/chat";
 import { photoIdOf } from "../../../../packages/shared/src/avatars";
 import { avatarSrc } from "../portraits";
@@ -4497,7 +4498,7 @@ export function openPlaza(options) {
       b.x,
       b.y + ground.drop,
       24 * sh * ground.wide,
-      9 * sh * ground.wide,
+      24 * GROUND_FLAT * sh * ground.wide,
       0,
       0,
       7,

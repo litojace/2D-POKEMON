@@ -11,21 +11,23 @@ import type { CharacterId } from "@arena/shared";
  * - its centre is the champion's ground point: the standard feet line,
  *   lower by `groundDrop` for the few whose art reaches below it;
  * - its width follows the champion's `footprint`;
- * - its flatness is the view's ground plane, the same for every champion:
- *   MENU_GROUND_FLAT in the Lobby, the Fighters page, the Shop and the
- *   Wardrobe; the court's own plane in battle, whose camera looks down more
- *   steeply (main.ts).
+ * - its flatness is GROUND_FLAT, the battle's, in every view: battle, the
+ *   Lobby, the Fighters page, the Shop and Wardrobe, the Plaza, the menu
+ *   art's own shadow (cards, the VS screen, results, the loading runner)
+ *   and the cosmetic previews (owner, 28 Nov 2026: "make everything match
+ *   the battle one, so it's easy to edit").
  * A champion that floats keeps the same ellipse: only its body hovers above
  * it (HOVERING in creature-design.ts).
  *
- * Fix the numbers here; no view special-cases a champion.
- * tests/unit/ground.test.ts holds the views to this file.
+ * Fix the numbers here; no view special-cases a champion or keeps its own
+ * flatness. tests/unit/ground.test.ts holds the views to this file.
  */
 
-/** Height over width of the menus' ground plane (the Shop's 128 × 26). */
-export const MENU_GROUND_FLAT = 26 / 128;
-/** A contact shadow is flatter than the plane it lies on (4.5 over 32). */
-export const SHADOW_FLAT = 4.5 / 32;
+/**
+ * Height over width of every champion's shadow and aura: the battle's
+ * 48 × 18 shadow. The one place to change how round the ground looks.
+ */
+export const GROUND_FLAT = 18 / 48;
 /** The standard footprint: half the shadow's width, in art units. */
 export const FOOTPRINT = 32;
 

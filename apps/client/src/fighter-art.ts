@@ -3,10 +3,11 @@ import {
   AVATAR_VIEWBOX,
   HOVERING,
   creatureSvg,
+  groundEllipse,
   proportioned,
   type SkinLook,
 } from "./creature-design";
-import { SHADOW_FLAT, footprint, groundDrop } from "./ground";
+import { GROUND_FLAT } from "./ground";
 
 /**
  * The menu art's contact shadow (SVG art units), for anything on its plane:
@@ -14,11 +15,7 @@ import { SHADOW_FLAT, footprint, groundDrop } from "./ground";
  * champion. A floater keeps it; only its body hovers above.
  */
 export function menuShadow(id: CharacterId) {
-  const pawY = id === "terradon" ? 172 : id === "cindrake" ? 172 : 171;
-  const pawX = id === "terradon" ? 65 : id === "cindrake" ? 78 : 80;
-  const feet = proportioned("legL", pawX, pawY)[1];
-  const rx = footprint(id);
-  return { cx: 100, cy: feet + groundDrop(id), rx, ry: rx * SHADOW_FLAT };
+  return groundEllipse(id);
 }
 export function withSoftGround(svg: string, id: CharacterId) {
   // The old floor at y=177 predates the chibi limb proportions. Anchor the
@@ -35,7 +32,7 @@ export function withSoftGround(svg: string, id: CharacterId) {
     : [left, 200 - left]
         .map(
           (x) =>
-            `<ellipse cx="${x}" cy="${feet}" rx="9" ry="2.4" fill="url(#home-contact)"/>`,
+            `<ellipse cx="${x}" cy="${feet}" rx="9" ry="${9 * GROUND_FLAT}" fill="url(#home-contact)"/>`,
         )
         .join("");
   return svg

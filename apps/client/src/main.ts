@@ -225,7 +225,7 @@ import { fighterArt, fighterAvatar, scopeIds } from "./fighter-art";
 import { fighterSkillColor, wornArt } from "./skins/skin-art";
 import { drawCollectionAura } from "./skins/collection-fx";
 import { battleAuraScale } from "./shop-preview-layout";
-import { footprintScale, groundDrop } from "./ground";
+import { GROUND_FLAT, footprintScale, groundDrop } from "./ground";
 import { colourPreview } from "./colour-preview";
 import { stadiumCrowd } from "./stadium";
 import {
@@ -9061,7 +9061,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
         x,
         feetY,
         (48 - jump * 0.2) * wide,
-        (18 - jump * 0.1) * wide,
+        (48 * GROUND_FLAT - jump * 0.1) * wide,
       );
       g.lineStyle(
         2,
@@ -9200,7 +9200,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
                 battleAuraScale(view.fighterX * 0.7 * giant) * wide,
                 battleAuraScale(view.fighterY * 0.7 * giant) * wide,
               );
-          // On the shadow's plane (48×18 at the feet): same flatness.
+          // On the shadow's plane (ground.ts): same flatness.
           drawCollectionAura(
             g,
             p.raidLook.aura,
@@ -9209,7 +9209,7 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
             _time,
             reducedMotion,
             rig.front,
-            18 / 48,
+            GROUND_FLAT,
             0,
           );
           for (const layer of layers) layer.restore();

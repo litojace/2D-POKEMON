@@ -16,7 +16,7 @@ import { SKINS } from "./animation/cosmetics";
 import { drawCollectionAura } from "./skins/collection-fx";
 import { auraScale as auraSizeFor } from "./aura-size";
 import { menuShadow } from "./fighter-art";
-import { MENU_GROUND_FLAT, footprintScale, groundDrop } from "./ground";
+import { GROUND_FLAT, footprintScale, groundDrop } from "./ground";
 import { lowGraphics } from "./graphics-quality";
 import { reducedMotionQuery } from "./reduced-motion";
 import { previewDensity } from "./render-budget";
@@ -32,7 +32,6 @@ import {
   previewViewBox,
   previewAuraScale,
   SHOP_SHADOW,
-  SHOP_GROUND_FLAT,
 } from "./shop-preview-layout";
 
 export type PreviewPlacement = "shop" | "selection";
@@ -686,7 +685,7 @@ export function mountShopPreview(
       let auraScale = previewAuraScale(framing),
         auraX = x,
         auraY = y + WORLD_ART.fighterFeet * framing.scale,
-        flat: number = SHOP_GROUND_FLAT,
+        flat = GROUND_FLAT,
         lift: number | undefined;
       if (selection) {
         const shadow = menuShadow(champion);
@@ -696,8 +695,6 @@ export function mountShopPreview(
         auraX = (shadow.cx + 20) * 2;
         auraY = (shadow.cy + 40) * 2;
         auraScale = auraSizeFor(2) * footprintScale(champion);
-        // The menus' one ground plane (ground.ts), whoever stands on it.
-        flat = MENU_GROUND_FLAT;
         lift = 0;
       } else {
         // The Shop's stage: the same ground point and footprint.

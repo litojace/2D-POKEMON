@@ -49,7 +49,7 @@ import {
 import { rigEntrance, rigVictory } from "../skins/rig-piece-fx";
 import { wornArt } from "../skins/skin-art";
 import { auraScale } from "../aura-size";
-import { footprintScale, groundDrop } from "../ground";
+import { GROUND_FLAT, footprintScale, groundDrop } from "../ground";
 import { CHARACTERS, type CharacterId } from "@arena/shared";
 import { CREATURE_VIEWBOX, type CreaturePart } from "../creature-design";
 import { WORLD_ART } from "../../../../packages/shared/src/world-art";
@@ -75,8 +75,8 @@ export const PLAZA_PX_PER_ART = PLAZA_SPRITE_PX / ART_W;
  */
 export const PLAZA_AURA_BOOST = 1.35;
 export const PLAZA_AURA_SCALE = auraScale(PLAZA_PX_PER_ART) * PLAZA_AURA_BOOST;
-/** The shadow's flatness (24 × 9 radii): the aura lies on the same plane. */
-export const PLAZA_AURA_FLAT = 18 / 48;
+/** Every champion's ground flatness (ground.ts): shadow and aura alike. */
+export const PLAZA_AURA_FLAT = GROUND_FLAT;
 /**
  * A champion's ground on the Plaza (ground.ts): how far below the feet its
  * shadow and aura sit (Plaza px), and how much wider they are than the
