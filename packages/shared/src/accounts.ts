@@ -4,12 +4,29 @@ import { z } from "zod";
  * id or "photo:<id>"). */
 export const avatarField = z.string().max(60).nullable().optional();
 import { nameAllowed, NAME_NOT_ALLOWED } from "./name-filter.js";
+/**
+ * The five tiers a title can have, lowest first: the Shop's rarities
+ * (cosmetic-tier.ts holds their names and colours; tests/unit/title-tier
+ * keeps the two lists the same).
+ */
+export const TITLE_TIER_VALUES = [
+  "common",
+  "rare",
+  "epic",
+  "legendary",
+  "mythic",
+] as const;
+export const titleTierSchema = z.enum(TITLE_TIER_VALUES);
 export const titleSchema = z.object({
   id: z.string().uuid(),
   name: z.string().min(1).max(40),
   description: z.string().max(160),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
   active: z.boolean(),
+  /** The tier an administrator gave it (migration 20261128060000); absent
+   *  before that migration and in the player's own list. The game's own
+   *  titles take theirs from title-tier.ts, whatever is stored. */
+  tier: titleTierSchema.optional(),
   /** Present once migration 003 has run; used for ordering only. */
   createdAt: z.string().nullable().optional(),
 });

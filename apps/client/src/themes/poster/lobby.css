@@ -272,6 +272,14 @@
   padding: 4px 14px 5px;
   transform: skewX(-10deg);
   text-shadow: none;
+  /* The whole name, always: the look underneath caps the name at 150 px on
+     a phone and cuts it with "…" ("WOMBO…" for Wombolder in this wider
+     face). The plate takes the width its name needs; the longest fits the
+     196 px between the two arrows (tests/visual/poster-name-plate.spec.ts
+     steps through every fighter). */
+  max-width: none;
+  overflow: visible;
+  text-overflow: clip;
 }
 /* The shortest windows (320 px): a smaller plate, as the old look's 22 px
    name there, so the stage has the height its fighter needs. At 28 px a

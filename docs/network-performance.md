@@ -902,6 +902,20 @@ press once, and gamepad polling is not labelled as a physical DOM press.
 Raw timestamps remain local; only optional bounded aggregates enter the
 report and public export. `Input` and server authority are unchanged.
 
+**Stale touch stamps on iOS (28 Nov 2026).** Production lines from one iOS
+home-screen app read `eventToHandlerP95` 0.7–0.8 s (1.35 s at worst) with
+59 fps and frame p99 21 ms: no frame was long enough to hold a handler that
+long. WebKit stamps every touch and pointer event with
+`touches.anyObject.timestamp` (`WKTouchEventsGestureRecognizer`,
+`_recordTouches`): the last change of any finger down. A thumb resting
+still on the joystick hands a skill tap the time it last moved, so the
+"delivery" was how long the thumb had rested. `touch-stamp.ts` refuses a
+stamp no newer than one already delivered from an earlier dispatch (events
+arrive in order), and the meter counts those presses as `pressStale`
+instead of timing them. `tests/visual/press-latency.spec.ts` replays it
+with CDP touch timestamps at 4× CPU: stale stamps read 9.6 s at p95 before,
+none are timed after; real stamps keep all 12 taps timed.
+
 The battle/profile fixtures use `RULES.tick/snapshot` and wall-time catch-up,
 so before/after browser profiles run at the current 30 Hz snapshot cadence.
 The TimeStep replay, real-socket and browser regressions, measurements and

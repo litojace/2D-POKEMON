@@ -9,10 +9,15 @@ import { RAID_REWARDS } from "../../packages/shared/src/raid";
 import { SPIRE_REWARDS } from "../../packages/shared/src/spire";
 import {
   TITLE_TIER_ROWS,
+  setStoredTitleTiers,
   titleKnown,
   titleTier,
   titleTierRank,
 } from "../../packages/shared/src/title-tier";
+import {
+  TITLE_TIER_VALUES,
+  titleUpdateSchema,
+} from "../../packages/shared/src/accounts";
 
 /** Every title name a migration puts in arena_titles. */
 function migrationTitles() {
@@ -125,4 +130,49 @@ it("no title, or one made by hand, is Common", () => {
   expect(titleTier("")).toBe("common");
   expect(titleTier("Friend of the Owner")).toBe("common");
   expect(titleKnown("Friend of the Owner")).toBe(false);
+});
+
+it("an administrator's tier counts for a title they made, never for the game's own", () => {
+  // The same five tiers as cosmetics, in the same order.
+  expect([...TITLE_TIER_VALUES]).toEqual(COSMETIC_TIERS);
+  try {
+    setStoredTitleTiers({
+      "Friend of the Owner": "legendary",
+      // The game's own title: its rule stands, whatever is stored.
+      Cragbreaker: "mythic",
+      // Not a tier: dropped.
+      Broken: "godlike",
+      Odd: 3,
+    });
+    expect(titleTier("Friend of the Owner")).toBe("legendary");
+    expect(titleTier("Cragbreaker")).toBe("rare");
+    expect(titleTier("Broken")).toBe("common");
+    expect(titleTier("Odd")).toBe("common");
+    // A new list replaces the old one; nonsense clears it.
+    setStoredTitleTiers({ Helper: "epic" });
+    expect(titleTier("Friend of the Owner")).toBe("common");
+    expect(titleTier("Helper")).toBe("epic");
+    setStoredTitleTiers("nonsense");
+    expect(titleTier("Helper")).toBe("common");
+  } finally {
+    setStoredTitleTiers({});
+  }
+});
+
+it("a saved title's tier must be one of the five, or left out", () => {
+  const title = {
+    id: null,
+    name: "Founder",
+    description: "Here from the start",
+    color: "#ffd65b",
+    active: true,
+  };
+  expect(titleUpdateSchema.safeParse(title).success).toBe(true);
+  for (const tier of TITLE_TIER_VALUES)
+    expect(titleUpdateSchema.parse({ ...title, tier }).tier).toBe(tier);
+  for (const tier of ["godlike", "Legendary", "", 5, null])
+    expect(
+      titleUpdateSchema.safeParse({ ...title, tier }).success,
+      String(tier),
+    ).toBe(false);
 });

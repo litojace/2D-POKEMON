@@ -122,5 +122,5 @@ export function xpPending(
   status?: "saving" | "saved" | "unavailable",
   eligible = true,
 ) {
-  return `<p class="journey-xp-pending" role="status">${status === "saved" && !eligible ? "No XP earned · finish at least 20 seconds of active play to qualify." : status === "unavailable" ? "XP could not be saved. Check your connection and database update." : "Updating your XP…"}</p>`;
+  return `<p class="journey-xp-pending${status === "unavailable" ? " is-error" : ""}" role="status">${status === "saved" && !eligible ? "No XP earned · finish at least 20 seconds of active play to qualify." : status === "unavailable" ? "XP could not be saved. Check your connection and database update." : "Updating your XP…"}</p>`;
 }

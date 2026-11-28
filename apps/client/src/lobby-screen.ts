@@ -1165,6 +1165,12 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
         $("lobby-fighter-name").textContent = fighter.name;
         $("lobby-fighter-element").innerHTML =
           `${elementIcon(fighter.element)}${fighter.element}`;
+        // Its element's own colour (ui/tokens.css --el-*), for the look
+        // that marks the element (Poster: an element square for the icon).
+        $("lobby-fighter-element").style.setProperty(
+          "--el",
+          `var(--el-${fighter.element.toLowerCase()})`,
+        );
         art.classList.toggle("is-still", options.reduced);
         // New artwork: the rig re-attaches its canvas and poses the new look.
         if (rig) rig.update($("lobby-fighter"), "selection");
