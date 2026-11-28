@@ -13,6 +13,7 @@
  */
 import type { RaidBossId } from "../../../packages/shared/src/raid";
 import {
+  SPIRE_REWARDS,
   spireZoneStart,
   type SpireProgress,
 } from "../../../packages/shared/src/spire";
@@ -96,6 +97,37 @@ export interface SpireLobbyCard {
   note: string;
   /** Something new (spireNudge): the card glows and Raids gets a dot. */
   fresh: boolean;
+  /**
+   * The climb to the next title, when one is within the floors released:
+   * the floors after the last title floor up to the next, and how far the
+   * player has cleared. The card draws them as a small ladder.
+   */
+  ladder?: SpireLadder;
+}
+export interface SpireLadder {
+  /** The first floor after the last title floor (or floor 1). */
+  from: number;
+  /** The next floor that gives a title. */
+  to: number;
+  /** The highest floor cleared. */
+  cleared: number;
+}
+/** The next title floor above `highest`, with the floors that lead to it. */
+export function spireLadder(
+  highest: number,
+  season: number,
+  top: number,
+): SpireLadder | undefined {
+  const floors = SPIRE_REWARDS.filter(
+    (r) => r.kind === "title" && r.season === season,
+  )
+    .map((r) => r.floor)
+    .sort((a, b) => a - b);
+  const to = floors.find((f) => f > highest);
+  // None left, or it sits above the floors that can be climbed yet.
+  if (to === undefined || to > top) return undefined;
+  const last = floors.filter((f) => f <= highest).pop() ?? 0;
+  return { from: last + 1, to, cleared: highest };
 }
 /**
  * The card once the Spire is open (a Cragmuff clear), every time: the news
@@ -107,12 +139,21 @@ export function spireLobbyCard(
   catalogue: SpireCatalogue = SPIRE_CATALOGUE,
 ): SpireLobbyCard | null {
   const nudge = spireNudge(f, catalogue);
+  const ladder = f.spire
+    ? spireLadder(
+        spireStanding({ spire: f.spire }, catalogue).highest,
+        f.spire.season ?? catalogue.season,
+        catalogue.builtTop,
+      )
+    : undefined;
   if (nudge)
     return {
       key: `new:${nudge.key}`,
       title: nudge.title,
-      note: nudge.note,
+      // The news keeps the headline; the next title is the reason to go.
+      note: ladder ? `Floor ${ladder.to} → new title` : nudge.note,
       fresh: true,
+      ladder,
     };
   if (!f.spire) return null;
   const entry = spireEntryBoss(catalogue).id;
@@ -131,8 +172,17 @@ export function spireLobbyCard(
       : highest > 0
         ? `Best: floor ${highest}`
         : "Start your climb";
-  const note = `Climb from floor ${start}${name ? ` · ${name}` : ""}`;
-  return { key: `${title}|${note}`, title, note, fresh: false };
+  const climb = `Climb from floor ${start}${name ? ` · ${name}` : ""}`;
+  // A title within reach is the headline (a reason to tap, where "Best:
+  // floor 9" was only a fact), with how far it is and the best floor.
+  if (ladder && highest > 0) {
+    const left = ladder.to - highest;
+    const note = `${left} floor${left === 1 ? "" : "s"} to go · best ${highest}`;
+    const goal = `Floor ${ladder.to} → title`;
+    return { key: `${goal}|${note}`, title: goal, note, fresh: false, ladder };
+  }
+  const note = ladder ? `Floor ${ladder.to} → new title` : climb;
+  return { key: `${title}|${note}`, title, note, fresh: false, ladder };
 }
 
 const KEY = (account: string) => `arena-spire-seen:${account}`;

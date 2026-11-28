@@ -144,6 +144,33 @@ island inset and desktop, looked at box by box; `battle-style-budget` and
 Ink black, cream paper, the game's gold and a hot red; nothing rounded,
 hard offset shadows; Anton capitals and Archivo text.
 
+**The Lobby's Today cards** (owner, 27 Nov 2026: "A, the sticker, with the
+motion pack"; `themes/poster/lobby.css`, `tests/visual/poster-today-cards.spec.ts`):
+
+- Each card wears a tilted **sticker** on its top right corner with a
+  picture of its own (a star for the Journey, a flag for Getting started, a
+  target for Missions, two heads for Friends), drawn in CSS on the card's
+  `::before`, so the markup is unchanged. A kicker takes its card's colour.
+- Bars are an ink trough with a gold fill. **Today's six missions are six
+  pips**: the same `<progress>`, cut into sixths by a mask. With all six
+  done the card turns gold with a tick and says "All 6 done" (`.is-complete`;
+  rewards are paid as each mission is done, so there is nothing to claim).
+- **The Spire's card stands apart**: ink with gold words and a Spire-violet
+  edge, the tower larger and breaking out of the frame. Its headline is the
+  next title within reach ("Floor 10 → title", `spireLadder` in
+  `spire-nudge.ts`, from the real title floors in `SPIRE_REWARDS`), with the
+  floors to it as a small ladder and how far it is. While a zone is new the
+  headline is the news, with a red NEW tag and a glint about every 5 s
+  (`glint.ts`, as PLAY's); on an ordinary day nothing on it moves.
+- **Motion, once:** when the Lobby appears the cards slide in one after
+  another, the bars fill and the stickers pop, and a pressed card sinks
+  into its hard shadow. No animation here runs for ever, and none plays
+  with Reduce motion or on Low graphics.
+- On a phone the column keeps two cards above the mode box. Nothing in it
+  ends in "…": once the cards that must step aside have, the mode's hint
+  and then the cards' lines take their two lines back if they fit
+  (`fitCards` in `lobby-screen.ts`: `.lobby-mode-tight`, `.lobby-cards-tight`).
+
 **One chrome for every fighter** (owner, 27 Nov 2026, "direction G"; the
 chrome used to be the Lobby fighter's colour, and with Voltkit the whole
 game was yellow):
