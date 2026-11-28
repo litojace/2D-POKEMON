@@ -185,6 +185,47 @@
 :root[data-ui="poster"] .title-tag[data-tier="mythic"] > i {
   color: #fff3c4;
 }
+/* Where it sits in a line that has its own type (the Lobby's corner, the
+   Profile's card and title picker): the font, size, case and spacing are
+   that line's; only the tier's paint and its stars are added. */
+/* It is plain inline text there, so the line's own cutting ("…") works as
+   it did for the bare title. */
+:root[data-ui="poster"] .title-tag.is-fit {
+  display: inline;
+  max-width: none;
+  min-height: 0;
+  overflow: visible;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+}
+:root[data-ui="poster"] .title-tag.is-fit > span {
+  overflow: visible;
+}
+:root[data-ui="poster"] .title-tag.is-fit > i {
+  display: inline-block;
+  margin-right: 0.4em;
+  font-size: 0.8em;
+  line-height: 1;
+  vertical-align: 0.08em;
+}
+:root[data-ui="poster"] .title-tag.is-fit > i:last-child {
+  margin: 0 0 0 0.4em;
+}
+/* Never moving: where a title is always on screen (the Lobby's corner) or
+   one of many (the title picker); and the Plaza's card on Low graphics. */
+:root[data-ui="poster"] .title-tag.is-still[data-tier] > span,
+:root[data-ui="poster"] .title-tag.is-still[data-tier] > i,
+:root[data-ui="poster"]
+  .plaza-layer[data-graphics="low"]
+  .title-tag[data-tier]
+  > span,
+:root[data-ui="poster"]
+  .plaza-layer[data-graphics="low"]
+  .title-tag[data-tier]
+  > i {
+  animation: none;
+}
 /* On a player's card it has a row to itself, tucked under the name, so the
    longest title reads in full. */
 :root[data-ui="poster"] .plaza-layer .pz-card > .title-tag {

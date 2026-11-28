@@ -165,7 +165,10 @@ describe("the card", () => {
   it("shows your fighter, title, name, level, rank and best mastery", () => {
     const page = every();
     expect(page).toContain('data-fighter="voltkit"');
-    expect(page).toContain(">Mountain Conqueror</small>");
+    // The title, in its tier's lettering (title-tag.ts): Epic here.
+    expect(page).toMatch(
+      /<small class="pf-card-title"><span class="title-tag is-fit" data-tier="epic"[^>]*><span>Mountain Conqueror<\/span><\/span><\/small>/,
+    );
     expect(page).toContain('<b class="pf-card-name">tester</b>');
     expect(page).toContain(">Lv 12<");
     expect(page).toContain("Flare III · 1,110");

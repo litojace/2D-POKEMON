@@ -29,6 +29,19 @@ files: paste each one into **Supabase → Authentication → Emails → Template
 - Images load from the live site: `/icons/arena-192.png` and
   `/email/hero.jpg` (in `apps/client/public`). **Deploy them before pasting
   the templates**, or the banner shows as a broken image.
+- **In Poster, the game's one look** (owner, 27 Nov; `docs/ui-themes.md`),
+  as the website and the Support and Privacy pages: an ink page (`#0d0d0f`),
+  the card on ink-2 (`#1e1e22`) with a hard red offset shadow (`#e0143a`),
+  the title in black capitals on the yellow (`#ffd84a`) under the painting,
+  a small ink sticker above it, a yellow button on a red shadow, square
+  markers, no rounded corners. Mail apps load no web fonts, so the capitals
+  are `Arial Black` (Windows, Mac), then the phone's bold sans (Helvetica
+  Neue on iPhone, Roboto on Android). The hard shadows are table cells, not
+  `box-shadow`, which Gmail and Outlook drop: a red column and row, each
+  starting with a page-coloured notch. Under 480 px wide, a media query
+  takes the side padding from 32 to 20 px so the code and button labels
+  keep one line on a 375 px phone (on a 320 px one the two longest labels
+  wrap, centred).
 - **Always dark, like the game** (owner, 25 Nov), also in mail apps that
   recolour emails in dark mode. Gmail on iPhone inverts the whole email,
   dark backgrounds included (a dark email turned light lavender with olive
@@ -49,19 +62,21 @@ files: paste each one into **Supabase → Authentication → Emails → Template
     from email-bugs #68). Gmail keeps `<style>` only for Gmail and Google
     Workspace accounts; with another account in the Gmail app it may still
     invert.
-  - No borders: lines and frames (the card's edge, dividers, the code box)
-    are 1–2 px of a `bg-*` background around the content.
+  - No borders: lines, frames and shadows (the divider, the code's yellow
+    frame, the red shadows) are a few px of a `bg-*` background.
   - `color-scheme: dark` (meta and CSS) tells Apple Mail and other apps that
     read it not to recolour. Outlook's apps recolour and mark what they
-    changed (`data-ogsc`, `data-ogsb`); `<style>` sets the gold button and
-    its dark text back.
+    changed (`data-ogsc`, `data-ogsb`); `<style>` sets the surfaces, the
+    yellow and white words and the button's black text back.
   - Support data: [caniemail](https://www.caniemail.com/) (linear-gradient,
     background-clip, color-scheme, prefers-color-scheme rows).
   - `tests/unit/email-templates.test.ts` checks each colour has its class.
     A new colour needs both a `bg-*`/`t-*` rule in every template's
     `<style>` and the class on the element.
-  - Contrast (WCAG AA): body text `#a9b4c9` on the card 8.3:1, footer
-    `#8a95ad` on the page 6.3:1, dark text on the gold button 13.5:1.
+  - Contrast (WCAG AA): body text `#c8c8d0` on the card 10.0:1, bold
+    words `#f2f2f5` 14.9:1, links and the code in yellow 12.0:1 (14.0:1 on
+    the code's ink), the red warning words `#ff6b81` 6.1:1, black capitals
+    on the yellow 14.0:1, footer `#9a9aa3` on the page 7.0:1.
 - The banner is the loading-screen painting **rest-market**
   (`apps/client/src/art/loading-art/startup-art-rest-market.webp`, chosen by
   the owner on 25 Nov), cropped to 2.5:1 a little below the middle and saved

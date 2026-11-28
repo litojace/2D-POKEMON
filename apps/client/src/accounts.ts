@@ -103,6 +103,7 @@ import {
 } from "./screens/friends";
 import type { FriendsData, FriendsRoom } from "./screens/friends-view";
 import { noteServerTime } from "./server-clock";
+import { titleTag } from "./title-tag";
 import {
   authRedirectUrl,
   authErrorMessage,
@@ -920,7 +921,7 @@ export class AccountUI {
     const root = element("account-nav");
     if (!root) return;
     root.innerHTML = this.account
-      ? `<button class="quiet coin-button" id="account-coins" aria-label="Shop: ${this.economy?.unlimitedCoins ? "unlimited" : this.economy ? coins(this.economy.balance) : "your"} coins">${coinChip(this.economy?.balance, "", this.economy?.unlimitedCoins, true)}</button><button class="quiet" id="account-profile"><span class="account-avatar" data-champion="${this.hooks.selectedCharacter?.() ?? "voltkit"}" aria-hidden="true"></span><span class="account-name">${escape(this.account.displayName)}</span>${this.economy?.journey ? `<small class="nav-level">Lv ${playerLevel(this.economy.journey.xp).level}</small><span class="nav-xp" aria-hidden="true"><i style="width:${Math.round(playerLevel(this.economy.journey.xp).percent)}%"></i></span>` : ""}${this.account.title ? `<small class="nav-title" style="color:${escape(this.account.titleColor ?? "#ffe58f")}">${escape(this.account.title)}</small>` : ""}</button>${this.account.isAdmin ? `<button class="quiet" id="account-admin" aria-label="Admin" title="Admin">${iconLabel("admin", "Admin")}</button>` : ""}<button class="quiet" id="account-logout" aria-label="Log out" title="Log out">${iconLabel("leave", "Log out")}</button>`
+      ? `<button class="quiet coin-button" id="account-coins" aria-label="Shop: ${this.economy?.unlimitedCoins ? "unlimited" : this.economy ? coins(this.economy.balance) : "your"} coins">${coinChip(this.economy?.balance, "", this.economy?.unlimitedCoins, true)}</button><button class="quiet" id="account-profile"><span class="account-avatar" data-champion="${this.hooks.selectedCharacter?.() ?? "voltkit"}" aria-hidden="true"></span><span class="account-name">${escape(this.account.displayName)}</span>${this.economy?.journey ? `<small class="nav-level">Lv ${playerLevel(this.economy.journey.xp).level}</small><span class="nav-xp" aria-hidden="true"><i style="width:${Math.round(playerLevel(this.economy.journey.xp).percent)}%"></i></span>` : ""}${this.account.title ? `<small class="nav-title" style="color:${escape(this.account.titleColor ?? "#ffe58f")}">${titleTag(this.account.title, this.account.titleColor ?? "#ffe58f", { fit: true, still: true })}</small>` : ""}</button>${this.account.isAdmin ? `<button class="quiet" id="account-admin" aria-label="Admin" title="Admin">${iconLabel("admin", "Admin")}</button>` : ""}<button class="quiet" id="account-logout" aria-label="Log out" title="Log out">${iconLabel("leave", "Log out")}</button>`
       : `<button class="quiet" id="account-login">${iconLabel("enter", "Log in")}</button><button class="secondary" id="account-signup">${iconLabel("add-friend", "Sign up")}</button>`;
     this.syncAvatar();
     if (this.account) {
