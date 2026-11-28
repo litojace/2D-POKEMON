@@ -10,10 +10,18 @@
    - A friend who is here has a green edge, the presence dot's own colour
      (--st-online); the dot and the words still say it. */
 
-/* New (a Shop item, a raid, your level on the Profile) */
+/* New (a Shop item, a raid, the Spire) */
 :root[data-ui="poster"] .ui-tag.is-new {
   background: var(--badge-news);
   color: var(--ink);
+}
+/* A highlight that isn't news ("You" on Ranks and in raid results, your
+   level on the Profile): the accent's cream with its ink, as the tag kind
+   gives it. Said here in Poster's weight, or cards.css's plain-tag ink
+   block covers it, and on the pinned Ranks row (ink words) it vanished. */
+:root[data-ui="poster"] .ui-tag.is-mark {
+  background: var(--ui-accent);
+  color: var(--ui-accent-ink);
 }
 
 /* The Lobby's cards: Journey's tier and today's missions */

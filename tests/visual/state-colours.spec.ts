@@ -71,8 +71,14 @@ test("new is one violet, a highlight is not news, a friend who is here has a gre
   expect(
     await rgb(page, '[data-badge-for="raids"]', "background-color"),
   ).toEqual(news);
-  // "You" is a highlight, not news.
-  expect(await rgb(page, "#p-you", "background-color")).not.toEqual(news);
+  // "You" is a highlight, not news, and its words read on it (cards.css's
+  // plain-tag ink block once covered it: ink on ink on the pinned Ranks row).
+  const you = await rgb(page, "#p-you", "background-color");
+  expect(you).not.toEqual(news);
+  expect(you).toEqual(await token(page, "--ui-accent"));
+  expect(ratio(await rgb(page, "#p-you", "color"), you)).toBeGreaterThanOrEqual(
+    4.5,
+  );
   // Who is here: the presence dot's green; who isn't: no green.
   const online = await token(page, "--st-online");
   expect(await rgb(page, "#p-on", "border-left-color")).toEqual(online);
