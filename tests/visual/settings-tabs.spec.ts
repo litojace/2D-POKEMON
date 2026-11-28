@@ -83,8 +83,13 @@ async function sameSizes(page: Page) {
           : c.classList.contains("prefs-choice")
             ? "strip"
             : "button",
-        w: r.width,
-        h: r.height,
+        // Layout sizes, not the box on screen: a dialog grows in (a scale
+        // under 1 while it opens), and on CI's slow renderer the check
+        // could land mid-way (43.05 px for a 44 px switch in a match).
+        // The edge is a difference within one row, so the scale can't
+        // move it off its 0.
+        w: c.offsetWidth,
+        h: c.offsetHeight,
         edge: row.right - r.right,
         whole: c.scrollWidth <= c.clientWidth + 1,
       };
