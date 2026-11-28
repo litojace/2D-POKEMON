@@ -20,8 +20,8 @@ import {
   MAX_TURN,
   MIN_WIDTH,
   SETTLED,
-  TURNS,
   VICTORIES,
+  keepHeadRigid,
   type MoveAccent,
   type MoveStage,
 } from "./champion-moves";
@@ -371,29 +371,7 @@ export class FighterRig {
     this.lastY = y;
     const speed = CHARACTERS[this.character].speed;
     const state = this.controller.update(pose, now, speed * 0.65);
-    // A champion's own move may turn it round for a moment (Wombolder
-    // shows its rump): never under Reduce motion.
-    const turn =
-      reduced ||
-      (state === "victory" && pose.look?.victory === "rockslide-flex")
-        ? undefined
-        : state === "wave" || state === "victory"
-          ? TURNS[this.character]?.[state]
-          : undefined;
-    const own = facing(pose.angle);
-    const turned = turn
-      ? turn((now - this.controller.started) / 1000, own)
-      : own;
-    // Only into a facing whose art this rig holds (the Shop's stage loads
-    // the front view alone): otherwise it plays the move facing as it is.
-    const dir =
-      turned === own ||
-      (this.layer(turned, "body") &&
-        this.scene.textures.exists(
-          rigKey(this.character, turned, "body", this.suffix),
-        ))
-        ? turned
-        : own;
+    const dir = facing(pose.angle);
     if (dir !== this.dir) {
       this.dir = dir;
       const order = (
@@ -1093,6 +1071,16 @@ export class FighterRig {
       }
     }
     this.carriedRotation = dir === "down" ? 0 : body.rotation;
+    // A champion's own move never flattens the face: the squash or stretch
+    // is the body's, and the head with all it carries keeps its size and
+    // shape, riding on top (owner, 28 Nov 2026).
+    if (ownMove && (sx !== 1 || sy !== 1))
+      keepHeadRigid(
+        PROFILE_FACE_PARTS.flatMap((part) => this.images.get(part) ?? []),
+        { x: head.x, y: head.y },
+        sx,
+        sy,
+      );
     for (const image of this.images.values()) image.setVisible(true);
     // Shell Up: head, limbs and sprout tuck away; only the mossy shell shows.
     if (pose.shell)

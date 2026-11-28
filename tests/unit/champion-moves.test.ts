@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
+import * as championMoves from "../../apps/client/src/animation/champion-moves";
 import {
   ENTRANCES,
   MAX_TURN,
   MIN_WIDTH,
   SETTLED,
-  TURNS,
   VICTORIES,
+  keepHeadRigid,
   type Move,
   type MovePart,
   type MovePartName,
@@ -129,6 +130,27 @@ describe("champion moves", () => {
         );
       }
     });
+    it(`${name}: never scales the head (the face keeps its shape)`, () => {
+      for (let t = 0; t <= 8; t += 1 / 60) {
+        const head = play(move, t).p.head;
+        expect(
+          [head.scaleX, head.scaleY],
+          `${name} at ${t.toFixed(2)}s`,
+        ).toEqual([0.5, 0.5]);
+      }
+    });
+    it(`${name}: the legs move, and settle still under Reduce motion`, () => {
+      let most = 0;
+      for (let t = 0; t <= 3; t += 1 / 60) {
+        const { legL, legR } = play(move, t).p;
+        most = Math.max(
+          most,
+          Math.abs(legL.rotation) + Math.abs(legL.y) / 10,
+          Math.abs(legR.rotation) + Math.abs(legR.y) / 10,
+        );
+      }
+      expect(most, name).toBeGreaterThan(0.25);
+    });
     it(`${name}: the head never lifts off the neck`, () => {
       for (let t = 0; t <= 8; t += 1 / 60)
         expect(
@@ -153,17 +175,42 @@ describe("champion moves", () => {
       expect(total).toBeLessThanOrEqual(16);
     });
   }
-  it("a move that turns the fighter round ends in its own facing", () => {
-    const facings = ["up", "down", "left", "right"] as const;
-    for (const [id, turns] of Object.entries(TURNS))
-      for (const turn of [turns!.wave, turns!.victory])
-        for (const own of facings) {
-          if (!turn) continue;
-          expect(turn(0, own), `${id} starts`).toBeDefined();
-          for (let t = 0; t <= 8; t += 1 / 60)
-            expect(facings).toContain(turn(t, own));
-          expect(turn(1.7, own), `${id} facing ${own}`).toBe(own);
-          expect(turn(8, own)).toBe(own);
-        }
+  it("keeps the head its own size while the body squashes", () => {
+    const part = (x: number, y: number) => {
+      const q: MovePart = {
+        x,
+        y,
+        rotation: 0.1,
+        scaleX: 0.5,
+        scaleY: 0.5,
+        setScale(a, b = a) {
+          q.scaleX = a;
+          q.scaleY = b;
+        },
+      };
+      return q;
+    };
+    const head = part(0, -20),
+      eyes = part(3, -32);
+    const [sx, sy] = [1.2, 0.74];
+    keepHeadRigid([head, eyes], { x: head.x, y: head.y }, sx, sy);
+    // On screen (the fighter is scaled by sx, sy) each part is its own size,
+    for (const q of [head, eyes]) {
+      expect(q.scaleX * sx).toBeCloseTo(0.5, 9);
+      expect(q.scaleY * sy).toBeCloseTo(0.5, 9);
+    }
+    // the eyes sit where they sat on the head, and the neck rides the body.
+    expect((eyes.x - head.x) * sx).toBeCloseTo(3, 9);
+    expect((eyes.y - head.y) * sy).toBeCloseTo(-12, 9);
+    expect([head.x, head.y]).toEqual([0, -20]);
+  });
+  it("has no way to turn a fighter round (owner: no turning, the art is flat)", () => {
+    // A move poses parts and leans the fighter; its facing is given to it.
+    // The table of turns (Wombolder showing its back) is gone for good.
+    expect("TURNS" in championMoves).toBe(false);
+    expect(Object.keys(ENTRANCES).sort()).toEqual(
+      Object.keys(VICTORIES).sort(),
+    );
+    expect(Object.keys(ENTRANCES)).toHaveLength(18);
   });
 });
