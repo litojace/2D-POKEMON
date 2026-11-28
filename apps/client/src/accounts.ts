@@ -2426,7 +2426,11 @@ export class AccountUI {
             titles: (this.account?.ownedTitles ?? []).map((t) => t.name),
           },
         }),
-        load: (scope) => this.loadRanks(scope, accountId),
+        // The Friends board is asked for again each time it is picked (it
+        // shows the copy it has meanwhile): friends' ratings move between
+        // matches, and it was never older than the pick before #681.
+        load: (scope) =>
+          this.loadRanks(scope, accountId, scope === "friends" ? 0 : undefined),
         reportPhoto: (photo, name) =>
           void this.hooks.reportPhoto?.(photo, name),
         friends: () => void this.showFriends(),
@@ -2438,7 +2442,11 @@ export class AccountUI {
     // Opened again on the board it already shows: nothing to redraw.
     if (this.ranksData !== shown) this.ranksScreen?.refresh();
   }
-  private async loadRanks(scope: "everyone" | "friends", accountId?: string) {
+  private async loadRanks(
+    scope: "everyone" | "friends",
+    accountId?: string,
+    maxAge?: number,
+  ) {
     const fresh = () => this.account?.id === accountId;
     if (scope === "everyone") {
       if (this.ranksData.problem)
@@ -2465,7 +2473,7 @@ export class AccountUI {
       if (this.ranksData.friendsProblem)
         this.ranksData = { ...this.ranksData, friendsProblem: "" };
       try {
-        const raw = await this.fetchCopy("/api/leaderboard/friends");
+        const raw = await this.fetchCopy("/api/leaderboard/friends", maxAge);
         if (fresh() && raw !== this.friendsBoardRaw) {
           this.friendsBoardRaw = raw;
           const friends = friendsBoardSchema.parse(raw);
