@@ -1137,6 +1137,23 @@
 :root[data-ui="poster"] .title-brand h1 span {
   color: var(--el);
 }
+/* "Open beta" after ARENA, web only (title-screen.ts, betaTag): a red
+   sticker like the Lobby's level badge, on the ink slab clear of its edge. */
+:root[data-ui="poster"] .title-beta {
+  display: inline-block;
+  margin-left: 0.5em;
+  padding: 0.3em 0.55em 0.22em;
+  vertical-align: 0.35em;
+  background: var(--hot-fill);
+  color: #fff;
+  font: 400 calc(clamp(13px, 1.55vw, 22px) * var(--text-scale, 1)) / 1
+    var(--font-display);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transform: rotate(-4deg);
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.45);
+}
 /* The prompt lines up with the name on the slab (title-screen.spec.ts). */
 :root[data-ui="poster"] .title-tap {
   align-items: flex-start;
