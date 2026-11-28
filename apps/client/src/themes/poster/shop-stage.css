@@ -61,6 +61,26 @@
     color: var(--bare-hot);
   }
 
+  /* Revert (it shows once something is tried on) stands in the stage's
+     other top corner. As a fourth icon in the rail it ran into the
+     III / II / I bars on every phone under 400 px tall. */
+  :root[data-ui="poster"] .fit-plays > [data-fit-revert] {
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+
+  /* The chosen card: its cream frame goes around the card, not inside it,
+     where it lay over the first letter of the name (the frame is 3 px, the
+     card's padding 4). */
+  :root[data-ui="poster"]
+    .fit-grid
+    .ui-tile:is([aria-pressed="true"], .is-selected, [aria-current="true"]) {
+    box-shadow:
+      0 0 0 3px var(--el),
+      5px 5px 0 var(--el);
+  }
+
   /* Three cards a row, and a card's picture wider than tall: a row with
      its name and price is about 160 px, which shows whole above the action
      bar on a 390 px-tall phone. */
