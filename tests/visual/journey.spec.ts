@@ -287,6 +287,32 @@ for (const size of SIZES)
       await expect(room.locator(".journey-arcade .ui-timer")).toHaveText(
         "Ends in 4 d 12 h",
       );
+      // The week's colour marks the card (its left edge and the star); the
+      // card is a flat ink block and the tagline cream
+      // (themes/poster/journey-arcade.css; a gradient with a glow before).
+      const arcade = await room.locator(".journey-arcade").evaluate((card) => {
+        const c = getComputedStyle(card);
+        const probe = document.createElement("i");
+        probe.style.color = "var(--arcade)";
+        card.append(probe);
+        const week = getComputedStyle(probe).color;
+        probe.remove();
+        const art = card.querySelector(".journey-arcade-art")!;
+        return {
+          edge: c.borderLeftColor === week,
+          card: [c.backgroundColor, c.backgroundImage],
+          glow: getComputedStyle(art).backgroundImage,
+          star: getComputedStyle(art.querySelector("span")!).color === week,
+          tagline: getComputedStyle(art.querySelector("b")!).color,
+        };
+      });
+      expect(arcade).toEqual({
+        edge: true,
+        card: ["rgb(30, 30, 34)", "none"],
+        glow: "none",
+        star: true,
+        tagline: "rgb(244, 234, 213)",
+      });
       expect(await layoutProblems(page, { inset, phone: size.phone })).toEqual(
         [],
       );
