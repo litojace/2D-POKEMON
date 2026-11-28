@@ -827,6 +827,9 @@ export class FighterRig {
         shut: (amount) => {
           eyes.scaleY = Math.max(0.055, 0.5 * (1 - amount));
         },
+        fade: (k) => {
+          this.root.setAlpha(this.root.alpha * Math.max(0, Math.min(1, k)));
+        },
         sway: (speed, phase = 0) =>
           reduced ? 0 : Math.sin(at * speed + phase),
         passed: (moment) => !reduced && before < moment && at >= moment,

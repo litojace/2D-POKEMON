@@ -64,6 +64,7 @@ function play(move: Move, t: number, calm = false, before = -1) {
     },
     mood: () => {},
     shut: () => {},
+    fade: () => {},
     sway: (speed, phase = 0) => (calm ? 0 : Math.sin(t * speed + phase)),
     passed: (at) => !calm && before < at && t >= at,
     accent: (_kind, count) => {
