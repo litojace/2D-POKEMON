@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   ENTRANCES,
+  MAX_TURN,
+  MIN_WIDTH,
   SETTLED,
   VICTORIES,
+  keepHeadRigid,
   type Move,
   type MovePart,
   type MovePartName,
@@ -64,6 +67,7 @@ function play(move: Move, t: number, calm = false, before = -1) {
     },
     mood: () => {},
     shut: () => {},
+    fade: () => {},
     sway: (speed, phase = 0) => (calm ? 0 : Math.sin(t * speed + phase)),
     passed: (at) => !calm && before < at && t >= at,
     accent: (_kind, count) => {
@@ -113,6 +117,39 @@ describe("champion moves", () => {
         expect(o.dy).toBeGreaterThanOrEqual(-60);
       }
     });
+    it(`${name}: leans, never spins (the art is flat)`, () => {
+      for (let t = 0; t <= 8; t += 1 / 60) {
+        const o = play(move, t);
+        expect(
+          Math.abs(o.spin),
+          `${name} at ${t.toFixed(2)}s`,
+        ).toBeLessThanOrEqual(MAX_TURN);
+        expect(o.sx, `${name} at ${t.toFixed(2)}s`).toBeGreaterThanOrEqual(
+          MIN_WIDTH,
+        );
+      }
+    });
+    it(`${name}: never scales the head (the face keeps its shape)`, () => {
+      for (let t = 0; t <= 8; t += 1 / 60) {
+        const head = play(move, t).p.head;
+        expect(
+          [head.scaleX, head.scaleY],
+          `${name} at ${t.toFixed(2)}s`,
+        ).toEqual([0.5, 0.5]);
+      }
+    });
+    it(`${name}: the legs move, and settle still under Reduce motion`, () => {
+      let most = 0;
+      for (let t = 0; t <= 3; t += 1 / 60) {
+        const { legL, legR } = play(move, t).p;
+        most = Math.max(
+          most,
+          Math.abs(legL.rotation) + Math.abs(legL.y) / 10,
+          Math.abs(legR.rotation) + Math.abs(legR.y) / 10,
+        );
+      }
+      expect(most, name).toBeGreaterThan(0.25);
+    });
     it(`${name}: the head never lifts off the neck`, () => {
       for (let t = 0; t <= 8; t += 1 / 60)
         expect(
@@ -137,4 +174,33 @@ describe("champion moves", () => {
       expect(total).toBeLessThanOrEqual(16);
     });
   }
+  it("keeps the head its own size while the body squashes", () => {
+    const part = (x: number, y: number) => {
+      const q: MovePart = {
+        x,
+        y,
+        rotation: 0.1,
+        scaleX: 0.5,
+        scaleY: 0.5,
+        setScale(a, b = a) {
+          q.scaleX = a;
+          q.scaleY = b;
+        },
+      };
+      return q;
+    };
+    const head = part(0, -20),
+      eyes = part(3, -32);
+    const [sx, sy] = [1.2, 0.74];
+    keepHeadRigid([head, eyes], { x: head.x, y: head.y }, sx, sy);
+    // On screen (the fighter is scaled by sx, sy) each part is its own size,
+    for (const q of [head, eyes]) {
+      expect(q.scaleX * sx).toBeCloseTo(0.5, 9);
+      expect(q.scaleY * sy).toBeCloseTo(0.5, 9);
+    }
+    // the eyes sit where they sat on the head, and the neck rides the body.
+    expect((eyes.x - head.x) * sx).toBeCloseTo(3, 9);
+    expect((eyes.y - head.y) * sy).toBeCloseTo(-12, 9);
+    expect([head.x, head.y]).toEqual([0, -20]);
+  });
 });

@@ -3,9 +3,10 @@
    a token can't say: the masthead in the element colour, the skewed blocks,
    the hard offset shadows. */
 
-/* ── panels: an ink board with a masthead in the element colour ── */
+/* ── panels: an ink board; its masthead is ink too, with cream words and a
+   cream rule under it (tokens.css, --head-*) ── */
 :root[data-ui="poster"] :is(.ui-panel, .ui-modal, .ui-sheet) {
-  background: var(--ink);
+  background: var(--board-dots), var(--board);
   /* The 1 px frame stays, unseen (its colour token is transparent): what
      is placed against a panel's edge keeps its place to the pixel. */
   border-color: transparent;
@@ -13,12 +14,13 @@
   box-shadow: 8px 8px 0 rgba(0, 0, 0, 0.45);
 }
 :root[data-ui="poster"] .ui-panel-head {
-  background: var(--el);
-  color: var(--ink);
+  background: var(--head-bg);
+  color: var(--head-ink);
   border-bottom: 0;
+  box-shadow: inset 0 -3px 0 var(--head-ink);
 }
 :root[data-ui="poster"] .ui-panel-head :is(h1, h2, h3, .ui-title, .ui-h) {
-  color: var(--ink);
+  color: var(--head-ink);
   font-family: var(--font-display);
   font-weight: 400;
   letter-spacing: 0.03em;
@@ -33,22 +35,22 @@
   line-height: 1.35;
 }
 :root[data-ui="poster"] .ui-panel-head :is(.ui-kicker, small, p) {
-  color: var(--on-el-dim);
+  color: var(--head-dim);
 }
 /* The masthead's other quiet words, on the element colour too: a raid
    boss's line beside All bosses and the Fighters' "Sort" label were the
    old look's pale grey on yellow, about 1.5:1 (audit A22). */
 :root[data-ui="poster"] .ui-panel-head > span.ui-note,
 :root[data-ui="poster"] .ui-panel-head .roster-sort > span {
-  color: var(--on-el-dim);
+  color: var(--head-dim);
 }
 /* The Fighters' order: a square ink box like the masthead's switches, not
    the old look's rounded grey field (audit C36). */
 :root[data-ui="poster"] .roster-sort select {
   border: 0;
   border-radius: 0;
-  background-color: var(--ink);
-  color: #fff;
+  background-color: var(--head-box);
+  color: var(--paper);
   font-weight: 700;
 }
 
@@ -114,7 +116,7 @@
   padding-top: 0;
   padding-bottom: 0;
   border-bottom: 0;
-  color: var(--on-el-dim);
+  color: var(--head-dim);
 }
 :root[data-ui="poster"] .ui-panel-head .ui-tabs > button::before {
   content: "";
@@ -122,8 +124,9 @@
   inset: -8px 0 100%;
 }
 :root[data-ui="poster"] .ui-panel-head .ui-tabs > button[aria-selected="true"] {
-  color: var(--el);
-  background: var(--ink);
+  /* A cream block, ink words: it stands on the masthead's cream rule. */
+  color: var(--ink);
+  background: var(--head-ink);
   transform: skewX(-10deg);
 }
 :root[data-ui="poster"]
@@ -145,7 +148,7 @@
   outline: 1px solid transparent;
 }
 /* The look underneath marks the chosen tab with a 3 px bar under it
-   (ui/components.css); here the ink block marks it. */
+   (ui/components.css); here the cream block marks it. */
 :root[data-ui="poster"]
   .ui-panel-head
   .ui-tabs
@@ -153,16 +156,16 @@
   display: none;
 }
 
-/* ── what sits on the masthead: ink blocks ── */
+/* ── what sits on the masthead: blocks of a lighter ink ── */
 :root[data-ui="poster"] .ui-panel-head .ui-icon-btn {
-  background: var(--ink);
-  color: #fff;
+  background: var(--head-box);
+  color: var(--paper);
   border: 0;
   border-radius: 0;
   box-shadow: none;
 }
 :root[data-ui="poster"] .ui-panel-head .ui-icon-btn svg {
-  color: #fff;
+  color: var(--paper);
 }
 /* Leaving a room is red wherever it is (owner, 6 Nov; components.css):
    on the masthead's ink block, a red icon and a red outline drawn inside
@@ -174,23 +177,23 @@
   color: var(--hot);
 }
 :root[data-ui="poster"] .ui-panel-head .ui-seg {
-  background: var(--ink);
+  background: var(--head-box);
   border: 0;
   padding: 3px;
 }
 :root[data-ui="poster"] .ui-panel-head .ui-seg > button {
-  color: #fff;
+  color: var(--paper);
 }
 :root[data-ui="poster"] .ui-panel-head .ui-chip {
-  background: var(--ink);
-  color: #fff;
+  background: var(--head-box);
+  color: var(--paper);
   border: 0;
 }
 :root[data-ui="poster"] .ui-panel-head .ui-chip svg {
-  color: #fff;
+  color: var(--paper);
 }
 :root[data-ui="poster"] .ui-panel-head .ui-chip[aria-pressed="true"] {
-  background: #fff;
+  background: var(--paper);
   color: var(--ink);
 }
 :root[data-ui="poster"] .ui-panel-head .ui-chip[aria-pressed="true"] svg {
@@ -202,7 +205,7 @@
   border: 0;
   border-radius: 0;
   background: var(--ink-3);
-  color: #fff;
+  color: var(--paper);
   box-shadow: none;
   font-family: var(--font-display);
   font-weight: 400;
@@ -215,8 +218,8 @@
 :root[data-ui="poster"] .ui-btn > span {
   margin-right: calc(-1 * var(--btn-tracking));
 }
-/* The primary button: a slanted block in the element colour with a hot-red
-   offset shadow. The slant is drawn behind the button (::before); the
+/* The primary button: a slanted gold block with a hot-red offset shadow
+   (gold is what to press). The slant is drawn behind the button (::before); the
    button's own box stays square, so it measures the same as the buttons
    beside it and its label isn't slanted. */
 :root[data-ui="poster"] .ui-btn.is-primary {
@@ -233,7 +236,7 @@
      counts as overflow (a button "wider than its label's room"). */
   inset: 0 8px 4px 4px;
   z-index: -1;
-  background: var(--el);
+  background: var(--gold);
   box-shadow: 4px 4px 0 var(--hot);
   transform: skewX(-8deg);
 }
@@ -345,7 +348,7 @@
   border-radius: 0;
 }
 :root[data-ui="poster"] .ui-panel-foot {
-  background: var(--ink-1);
+  background: var(--ink);
   border-top: 0;
 }
 
@@ -365,7 +368,7 @@
 /* ── toast ── */
 :root[data-ui="poster"] #toast {
   background: var(--ink);
-  color: #fff;
+  color: var(--paper);
   border: 0;
   border-left: 6px solid var(--el);
   border-radius: 0;
@@ -395,7 +398,7 @@
    owner's option B, 20 Nov), its title flat. ── */
 :root[data-ui="poster"] #pwa-banner {
   background: var(--ink);
-  color: #fff;
+  color: var(--paper);
   border: 0;
   border-left: 6px solid var(--el);
   border-radius: 0;
@@ -449,7 +452,7 @@
   position: absolute;
   inset: 0;
   z-index: -1;
-  background: var(--ink);
+  background: var(--head-box);
   clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
 }
 :root[data-ui="poster"] .ui-panel-head .ui-seg > button[aria-pressed="true"] {

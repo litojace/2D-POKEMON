@@ -108,6 +108,7 @@ import { ServerCopies } from "./server-copies";
 import { featureLocked } from "./feature-unlocks";
 import { curtainWaitsFor } from "./startup-curtain";
 import { historyState } from "./screens/match-history-view";
+import { setStoredTitleTiers } from "../../../packages/shared/src/title-tier";
 import {
   authRedirectUrl,
   authErrorMessage,
@@ -540,6 +541,9 @@ export class AccountUI {
         if (version !== this.generation) return;
         freshAccount = true;
         this.account = account;
+        // The tiers administrators gave the titles they made (migration
+        // 20261128060000): none before it, and never in the way.
+        void this.loadTitleTiers();
         // Every Lobby panel's data and code, while the loading screen is
         // up (owner, 28 Nov): a tap on any of them opens it complete.
         if (!samePlayer) {
@@ -988,6 +992,16 @@ export class AccountUI {
       raidClears: this.raidClears,
     });
     avatar.dataset.avatarLook = key;
+  }
+  /** The tiers of admin-made titles, for every place a title shows
+   *  (title-tier.ts); the corner is drawn again once they are here. */
+  async loadTitleTiers() {
+    try {
+      setStoredTitleTiers(await this.api("/api/title-tiers"));
+      this.renderNav();
+    } catch {
+      // An older server, or offline: admin-made titles stay Common.
+    }
   }
   renderNav() {
     const root = element("account-nav");
@@ -2518,6 +2532,7 @@ export class AccountUI {
       }
       this.adminPanel ??= new panel.AdminPanel({
         api: (path, body) => this.api(path, body),
+        titlesChanged: () => void this.loadTitleTiers(),
         openDialog: (html) => this.hooks.openDialog(html),
         fighterName: (id) => CHARACTERS[id as CharacterId]?.name ?? id,
       });
