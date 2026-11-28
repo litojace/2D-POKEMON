@@ -528,6 +528,66 @@ test.describe("website", () => {
       );
       expect(small).toEqual([]);
     });
+  // Support and Privacy (the game's pages, copied by legal-pages.mjs) in
+  // Poster, as the rest of the site (owner, 28 Nov): every word at AA, no
+  // sideways scroll, every control a finger wide, with a question open.
+  test.describe("Support and Privacy", () => {
+    test.use({ bypassCSP: true });
+    for (const [w, h] of [
+      [390, 844],
+      [667, 375],
+      [1440, 900],
+    ])
+      for (const name of ["support", "privacy"])
+        test(`${name} reads and fits at ${w}x${h}`, async ({ page }) => {
+          test.setTimeout(120_000);
+          await page.setViewportSize({ width: w, height: h });
+          await openSite(page, `${name}/`);
+          await page.evaluate(() => document.fonts.ready);
+          await page.evaluate(() =>
+            document
+              .querySelectorAll("details")
+              .forEach((d) => (d.open = true)),
+          );
+          expect(
+            await page.evaluate(
+              () => document.documentElement.scrollWidth - innerWidth,
+            ),
+          ).toBeLessThanOrEqual(0);
+          const small = await page.evaluate(() =>
+            [
+              ...document.querySelectorAll<HTMLElement>(
+                ".bar a, .btn, summary, .tile, .toc ol a, .foot a",
+              ),
+            ]
+              .filter((el) => el.offsetParent)
+              .map((el) => {
+                const r = el.getBoundingClientRect();
+                return {
+                  what: el.textContent?.trim().slice(0, 30),
+                  w: Math.round(r.width),
+                  h: Math.round(r.height),
+                };
+              })
+              .filter((b) => b.w < 44 || b.h < 44),
+          );
+          expect(small).toEqual([]);
+          const low: string[] = [];
+          const height = await page.evaluate(
+            () => document.documentElement.scrollHeight,
+          );
+          for (let y = 0; y < height; y += Math.round(h * 0.7)) {
+            await page.evaluate(
+              (y) => scrollTo({ top: y, behavior: "instant" }),
+              y,
+            );
+            await page.waitForTimeout(100);
+            low.push(...(await lowContrast(page, `${name}@${y}`)));
+          }
+          expect(low).toEqual([]);
+        });
+  });
+
   // Scroll-driven motion (owner, 27 Nov): the reading stripe, the hero
   // leaving, titles and cards in and out, the boss faces and the phone.
   // CSS timelines only; none of it where they are missing or motion is
