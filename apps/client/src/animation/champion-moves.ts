@@ -20,8 +20,22 @@ import type { Facing } from "./controller";
  * - At most a few particles that belong to the move (dust on a landing).
  * - Nothing leaves the body (owner, 28 Nov 2026: a head that looked cut off).
  *   The head never lifts off the neck and barely tilts (the rig clamps both);
- *   "head thrown back" is a lean of the whole fighter. A somersault turns the
- *   fighter as one piece about its middle (`flip`), limbs kept close.
+ *   "head thrown back" is a lean of the whole fighter.
+ * - The face never flattens (owner, 28 Nov 2026). A move never scales the
+ *   head, and a squash or stretch of the fighter is the body's alone: the rig
+ *   keeps the head, and all it carries, at its own size and shape, riding on
+ *   top (`keepHeadRigid`).
+ * - The legs move too (owner, 28 Nov 2026: "to make it lively"): steps, a
+ *   stomp, a kick, a tuck in a hop, happy feet (`lift`, `tap`, `kick`). A
+ *   foot that isn't lifted stays on the ground line. Tentacles and tails do
+ *   the same job for those who have them.
+ * - No spins (owner, 28 Nov 2026: "the champions aren't 3D; a spin looks
+ *   like a sheet of paper flipping over, Glacelle above all"). The whole
+ *   fighter leans (`tilt`), never turns past MAX_TURN, and is never narrowed
+ *   below MIN_WIDTH to fake turning edge-on. A ball bounces; it doesn't roll.
+ *   Nor does a move change the facing: no turning round, no showing the back.
+ *   The rig clamps both, and tests/unit/champion-moves.test.ts fails on a
+ *   move that asks for more.
  *
  * A champion without a move here keeps its older pose in rig.ts.
  */
@@ -65,6 +79,8 @@ export interface MoveStage {
   mood(mood: Mood): void;
   /** How closed the eyes are, 0 to 1. */
   shut(amount: number): void;
+  /** See-through for a moment (a ghost fading in): 0 to 1 of its own alpha. */
+  fade(alpha: number): void;
   /** sin(t × speed), still under `calm`. */
   sway(speed: number, phase?: number): number;
   /** True on the frame the move passes `at` seconds: fire one-off accents. */
@@ -88,16 +104,62 @@ export const arc = (t: number, a: number, b: number) => {
   const k = (t - a) / (b - a);
   return 4 * k * (1 - k);
 };
+/** The furthest a move turns the whole fighter (radians): a lean, no more. */
+export const MAX_TURN = 0.45;
+/** The narrowest a move squashes the fighter (its width, times its own). */
+export const MIN_WIDTH = 0.7;
 /**
- * Turn the whole fighter in the air about its middle (between head and
- * hips), not about the hips: turned about the hips, the big head swings wide
- * round a small body and reads as a head on its own.
+ * Lean the whole fighter about its middle (between head and hips), not
+ * about the hips: leaned about the hips, the big head swings wide round a
+ * small body and reads as a head on its own.
  */
 const MIDDLE = 22;
-const flip = (s: MoveStage, angle: number) => {
+const tilt = (s: MoveStage, angle: number) => {
   s.spin(angle);
   s.move(-MIDDLE * Math.sin(angle), -MIDDLE * (1 - Math.cos(angle)));
 };
+/**
+ * Lift one leg by `k` (0 to 1): a step, a stomp's wind-up, a kick. `swing`
+ * is where the foot goes (radians; positive carries the left foot outward,
+ * negative the right), `up` how far it leaves the ground (rig units).
+ */
+const lift = (leg: MovePart, k: number, swing: number, up = 3) => {
+  leg.rotation += swing * k;
+  leg.y -= up * Math.abs(k);
+};
+/** Happy feet: the two feet tap in turn, `k` strong (still under calm). */
+const tap = (s: MoveStage, k: number, speed: number, swing = 0.3, up = 3) => {
+  const beat = s.sway(speed);
+  lift(s.p.legL, Math.max(0, beat) * k, swing, up);
+  lift(s.p.legR, Math.max(0, -beat) * k, -swing, up);
+};
+/** Dangling feet (or tentacles) kick in the air, one after the other. */
+const kick = (s: MoveStage, k: number, speed: number, swing = 0.3) => {
+  s.p.legL.rotation += s.sway(speed) * swing * k;
+  s.p.legR.rotation += s.sway(speed, 2) * swing * k;
+};
+/** Both feet out to the sides by `k`: a star, a wide stance, a startle. */
+const spread = (s: MoveStage, k: number) => {
+  s.p.legL.rotation += k;
+  s.p.legR.rotation -= k;
+};
+/**
+ * The head keeps its size and shape while the fighter squashes or stretches
+ * by (sx, sy): each head part is scaled back, and kept where it sits on the
+ * head. The head's own pivot (the neck) still rides the body up and down.
+ */
+export function keepHeadRigid(
+  headParts: Iterable<MovePart>,
+  neck: { x: number; y: number },
+  sx: number,
+  sy: number,
+) {
+  for (const part of headParts) {
+    part.x = neck.x + (part.x - neck.x) / sx;
+    part.y = neck.y + (part.y - neck.y) / sy;
+    part.setScale(part.scaleX / sx, part.scaleY / sy);
+  }
+}
 /** A landing: squash at `at`, springing back over `len` seconds. */
 const land = (s: MoveStage, at: number, depth = 0.14, len = 0.22) => {
   const k = s.t < at ? 0 : Math.max(0, 1 - (s.t - at) / len);
@@ -144,6 +206,9 @@ const voltkitEntrance: Move = (s) => {
   p.armR.rotation += (-0.5 - s.sway(11) * 0.12) * ready;
   p.ears.rotation += s.sway(11, 0.6) * 0.1 * ready;
   p.tail.rotation += s.sway(7) * 0.2 * ready;
+  // Legs.
+  kick(s, shiver, 46, 0.16);
+  tap(s, ready, 11, 0.3, 3);
 };
 const voltkitVictory: Move = (s) => {
   const { t, p } = s;
@@ -189,6 +254,10 @@ const voltkitVictory: Move = (s) => {
   p.armR.rotation += (-2.4 - s.sway(18) * 0.25) * hold;
   p.ears.rotation += s.sway(30) * 0.07 * hold;
   p.tail.rotation += s.sway(9, 1) * 0.25 * hold;
+  // Legs.
+  p.legL.rotation += travel * 0.4 * zig;
+  p.legR.rotation += travel * 0.4 * zig;
+  spread(s, 0.4 * Math.max(0, s.sway(9)) * hold);
 };
 
 // --------------------------------------------------------------- Cindrake
@@ -240,6 +309,9 @@ const cindrakeEntrance: Move = (s) => {
   p.armL.rotation += (0.85 + s.sway(6.4) * 0.08) * ready;
   p.armR.rotation += (-0.85 + s.sway(6.4) * 0.08) * ready;
   p.head.y += 1.5 * ready;
+  // Legs.
+  spread(s, 0.3 * roar);
+  tap(s, ready, 6.4, 0.25, 2.5);
 };
 const cindrakeVictory: Move = (s) => {
   const { t, p } = s;
@@ -273,6 +345,9 @@ const cindrakeVictory: Move = (s) => {
     crest * 1.12 + 0.05 * proud + s.sway(10) * 0.05,
   );
   p.wings.setScale(0.5 + 0.1 * Math.max(punch, proud), 0.5 + 0.04 * proud);
+  // Legs.
+  p.legL.rotation += 0.2 * proud;
+  lift(p.legR, Math.max(0, s.sway(8)) * proud, -0.25, 2.5);
 };
 
 // ---------------------------------------------------------------- Tidefin
@@ -329,6 +404,9 @@ const tidefinEntrance: Move = (s) => {
   p.legR.rotation += 0.3 * guard;
   p.tail.rotation += (0.35 + s.sway(5) * 0.12) * guard;
   p.scarf.rotation += s.sway(5, 1) * 0.12 * guard;
+  // Legs.
+  spread(s, -0.35 * click);
+  tap(s, guard, 10, 0.15, 2);
 };
 const tidefinVictory: Move = (s) => {
   const { t, p } = s;
@@ -340,7 +418,7 @@ const tidefinVictory: Move = (s) => {
   const down = ease(t, 0.56, 0.72) * (1 - ease(t, 0.86, 0.94));
   const air = ease(t, 0.24, 0.34) * (1 - ease(t, 0.84, 0.94));
   s.move(0, -arc(t, 0.24, 0.92) * 40);
-  flip(s, s.side * (-0.34 * up + 0.34 * down));
+  tilt(s, s.side * (-0.34 * up + 0.34 * down));
   if (air > 0) s.squash(1 - 0.05 * air, 1 + 0.08 * air);
   p.legL.rotation = 0.3 * air;
   p.legR.rotation = -0.3 * air;
@@ -379,17 +457,420 @@ const tidefinVictory: Move = (s) => {
   p.ears.rotation = 0.2 * bow;
   p.tail.rotation += (0.4 + s.sway(3) * 0.15) * hold;
   p.scarf.rotation += s.sway(5) * 0.14 * hold;
+  // Legs.
+  p.legL.rotation += Math.sin(t * 26) * 0.3 * air;
+  p.legR.rotation -= Math.sin(t * 26) * 0.3 * air;
+  p.legR.rotation += 0.4 * bow;
+  lift(p.legL, Math.max(0, s.sway(5.2)) * hold, 0.2, 2);
+};
+
+// --------------------------------------------------------------- Auralynx
+// Serene and disciplined: slow, slow, then one exact strike.
+const auralynxEntrance: Move = (s) => {
+  const { t, p } = s;
+  // Rises into a lotus and holds perfectly composed.
+  const lotus = ease(t, 0, 0.45) * (1 - ease(t, 0.95, 1.15));
+  s.move(0, -12 * lotus);
+  p.legL.rotation = 0.5 * lotus;
+  p.legR.rotation = -0.5 * lotus;
+  p.armL.rotation = -0.3 * lotus;
+  p.armR.rotation = 0.3 * lotus;
+  s.mood(t < 0.95 ? "normal" : t < 1.9 ? "focus" : "happy");
+  s.shut(lotus);
+  // Settles, and bows from the waist.
+  land(s, 1.15, 0.06, 0.2);
+  const bow = ease(t, 1.15, 1.4) * (1 - ease(t, 1.6, 1.8));
+  p.head.y += 6 * bow;
+  s.spin(s.side * 0.1 * bow);
+  if (bow > 0) s.squash(1 + 0.02 * bow, 1 - 0.07 * bow);
+  // Snaps into a guard: one sharp step, leaning in, a fist forward.
+  const snap = ease(t, 1.82, 1.9);
+  const guard = snap * (1 - bump(t, 1.82, 2.0) * 0.4);
+  s.move(s.side * 6 * bump(t, 1.82, 2.1), 0);
+  s.spin(s.side * 0.07 * guard);
+  p.armR.rotation += 1.0 * guard;
+  p.armL.rotation += -0.7 * guard;
+  p.legL.rotation += -0.2 * guard;
+  p.legR.rotation += 0.25 * guard;
+  s.move(0, -(1 + s.sway(1.6)) * 1.2 * snap);
+  // Legs.
+  lift(p.legR, bump(t, 1.8, 2.0), -0.5, 4);
+  kick(s, snap, 3.2, 0.12);
+};
+const auralynxVictory: Move = (s) => {
+  const { t, p } = s;
+  // One, two: a strike to each side, each a clean stop.
+  const one = bump(t, 0, 0.38),
+    two = bump(t, 0.38, 0.76);
+  s.move(s.side * (8 * two - 8 * one), 0);
+  s.spin(s.side * (0.13 * two - 0.13 * one));
+  if (one + two > 0) s.squash(1 + 0.05 * (one + two), 1 - 0.04 * (one + two));
+  p.armL.rotation = 1.3 * one;
+  p.armR.rotation = -1.3 * two;
+  s.mood(t < 0.8 ? "focus" : "happy");
+  // Then palms together, rising cross-legged while the ring whirls.
+  const lotus = ease(t, 0.85, 1.4);
+  s.move(0, -(16 + s.sway(1.6) * 2) * lotus);
+  p.legL.rotation = 0.5 * lotus;
+  p.legR.rotation = -0.5 * lotus;
+  p.armL.rotation += -0.5 * lotus;
+  p.armR.rotation += 0.5 * lotus;
+  p.head.y += bump(t, 1.4, 1.8) * 4;
+  s.spin(s.sway(0.8) * 0.03 * lotus);
+  // Legs.
+  p.legL.rotation += 0.5 * one;
+  p.legR.rotation -= 0.5 * two;
+  kick(s, lotus, 1.6, 0.08);
+};
+
+// ----------------------------------------------------------------- Lumoth
+// Dreamy and easily distracted: "Ooh, is that a lamp? No. Focus."
+const lumothEntrance: Move = (s) => {
+  const { t, p } = s;
+  // Flutters up, then drifts down like a falling leaf.
+  const leaf = bump(t, 0, 1.15);
+  const swing = Math.sin(t * 7.5) * (1 - ease(t, 0.7, 1.15));
+  s.move(swing * 13 * ease(t, 0, 0.3), -18 * leaf);
+  s.spin(swing * 0.16 * ease(t, 0, 0.3));
+  const flutter = leaf > 0 ? 1 : 0;
+  p.wings.setScale(
+    0.5 + Math.sin(t * 42) * 0.07 * flutter,
+    0.5 + Math.sin(t * 42) * 0.03 * flutter,
+  );
+  // Something glows over there... it drifts toward it, gazing up.
+  const gaze = ease(t, 1.2, 1.45) * (1 - ease(t, 1.72, 1.8));
+  s.move(-s.side * 8 * gaze, -5 * gaze);
+  s.spin(-s.side * 0.13 * gaze);
+  p.head.rotation = -0.12 * gaze;
+  s.mood(gaze > 0.3 ? "normal" : "happy");
+  // ...and startles back to the fight: a hop, wings snapping wide.
+  const startle = bump(t, 1.76, 2.1);
+  s.move(0, -9 * startle);
+  const wide = ease(t, 1.76, 1.84) * (1 - ease(t, 2.0, 2.3));
+  // Shy: wings half closed, head tilted, a small bob.
+  const shy = ease(t, 2.1, 2.4);
+  p.wings.setScale(
+    p.wings.scaleX + 0.14 * wide - (0.05 - s.sway(2.2) * 0.03) * shy,
+    p.wings.scaleY + 0.06 * wide,
+  );
+  p.head.rotation += 0.1 * shy;
+  p.armR.rotation = (-1.6 + s.sway(9) * 0.3) * shy;
+  s.move(0, -(1 + s.sway(2.2)) * 1.5 * shy);
+  // Legs.
+  p.legL.rotation += -swing * 0.4 * ease(t, 0, 0.3);
+  p.legR.rotation += -swing * 0.4 * ease(t, 0, 0.3);
+  spread(s, 0.6 * startle);
+  p.legL.rotation -= 0.15 * shy;
+  p.legR.rotation += s.sway(4.4) * 0.3 * shy;
+};
+const lumothVictory: Move = (s) => {
+  const { t, p } = s;
+  // A figure of eight in the air.
+  const eight = ease(t, 0, 0.2) * (1 - ease(t, 1.1, 1.3));
+  s.move(Math.sin(t * 5) * 15 * eight, -(9 + Math.sin(t * 10) * 6) * eight);
+  s.spin(Math.cos(t * 5) * 0.14 * eight);
+  p.wings.setScale(
+    0.5 + Math.sin(t * 42) * 0.07 * eight,
+    0.5 + Math.sin(t * 42) * 0.03 * eight,
+  );
+  // Then the wings burst wide open, with a happy shimmy.
+  const open = ease(t, 1.3, 1.4);
+  const pop = bump(t, 1.3, 1.6);
+  s.squash(1 + 0.06 * pop, 1 + 0.06 * pop);
+  s.move(
+    Math.sin(t * 34) * 1.6 * bump(t, 1.4, 1.9),
+    -(8 + s.sway(2.4) * 2) * open,
+  );
+  p.wings.setScale(
+    p.wings.scaleX + (0.15 + s.sway(2.4) * 0.03) * open,
+    p.wings.scaleY + 0.07 * open,
+  );
+  p.armL.rotation = 1.6 * open;
+  p.armR.rotation = -1.6 * open;
+  if (s.passed(1.34)) s.accent("spark", 4);
+  // Legs.
+  p.legL.rotation += -Math.cos(t * 5) * 0.35 * eight;
+  p.legR.rotation += -Math.cos(t * 5) * 0.35 * eight;
+  kick(s, open, 9, 0.4);
+};
+
+// ---------------------------------------------------------------- Mystowl
+// Aloof and theatrical: it already knew you would be here.
+const mystowlEntrance: Move = (s) => {
+  const { t, p } = s;
+  // Wrapped in its cloak, eyes closed, quite still.
+  const wrapped = 1 - ease(t, 1.2, 1.75);
+  s.mood(t < 0.55 ? "normal" : t < 1.9 ? "focus" : "happy");
+  s.shut(1 - ease(t, 0.5, 0.6));
+  // An owl's slow tilt one way, then the other (the whole bird leans).
+  const left = bump(t, 0.55, 0.95),
+    right = bump(t, 0.9, 1.3);
+  p.head.rotation = 0.16 * left - 0.16 * right;
+  s.spin(0.09 * left - 0.09 * right);
+  // The third eye opens; the cloak sweeps wide as it rises.
+  const open = ease(t, 1.2, 1.75);
+  const flourish = bump(t, 1.2, 2.1);
+  // (The gem swells a little: more, and it floats off the brow.)
+  p.flame.setScale(0.5 + 0.08 * open * (1 + s.sway(4) * 0.25));
+  p.wings.setScale(
+    0.5 - 0.09 * wrapped + (0.1 + 0.06 * flourish + s.sway(1.4) * 0.02) * open,
+    0.5 + 0.05 * open,
+  );
+  s.move(0, -(7 + 4 * flourish + s.sway(1.4) * 1.5) * open);
+  p.head.rotation += s.sway(0.9) * 0.1 * ease(t, 2.1, 2.5);
+  // Legs.
+  spread(s, 0.4 * flourish);
+  kick(s, ease(t, 2.1, 2.5), 1.4, 0.15);
+};
+const mystowlVictory: Move = (s) => {
+  const { t, p } = s;
+  // "As foreseen": eyes closed, one slow nod.
+  const nod = bump(t, 0.05, 0.75);
+  p.head.y += 5 * nod;
+  s.mood(t < 0.8 ? "normal" : "happy");
+  s.shut(ease(t, 0, 0.1) * (1 - ease(t, 0.7, 0.8)));
+  p.wings.setScale(0.5 - 0.07 * nod, 0.5);
+  // Rises slowly, cloak spread to its full width, the third eye ablaze.
+  const rise = ease(t, 0.8, 1.7);
+  s.move(0, -(18 + s.sway(1.3) * 2) * rise);
+  s.spin(s.sway(1.3, 1) * 0.05 * rise);
+  p.wings.setScale(
+    p.wings.scaleX + (0.17 + s.sway(1.3) * 0.02) * rise,
+    0.5 + 0.08 * rise,
+  );
+  p.flame.setScale(0.5 + (0.09 + s.sway(5) * 0.03) * rise);
+  p.head.rotation = s.sway(0.9) * 0.12 * ease(t, 1.7, 2.2);
+  // Legs.
+  lift(p.legL, bump(t, 0.1, 0.4), 0.3, 3);
+  lift(p.legR, bump(t, 0.4, 0.7), -0.3, 3);
+  p.legL.rotation += s.sway(1.3, 1) * 0.25 * rise;
+  p.legR.rotation += s.sway(1.3, 1) * 0.25 * rise;
+};
+
+// --------------------------------------------------------------- Terradon
+// Sleepy and unhurried: "Mmm... five more minutes..."
+const terradonEntrance: Move = (s) => {
+  const { t, p } = s;
+  // Asleep on its feet: head sunk, the sapling drooping, slow breaths.
+  const asleep = 1 - ease(t, 0.66, 0.74);
+  p.head.y += 8 * asleep;
+  p.flame.rotation = 0.5 * asleep;
+  if (asleep > 0)
+    s.squash(1 + (0.06 + Math.sin(t * 5) * 0.02) * asleep, 1 - 0.09 * asleep);
+  // A jolt awake: a little jump, eyes wide, the sapling springing upright.
+  s.move(0, -5 * arc(t, 0.68, 0.94));
+  land(s, 0.94, 0.08, 0.18);
+  p.flame.rotation += Math.sin((t - 0.7) * 22) * 0.3 * bump(t, 0.7, 1.3);
+  // A huge yawning stretch, arms high, leaning back.
+  const yawn = ease(t, 1.0, 1.3) * (1 - ease(t, 1.75, 2.05));
+  if (yawn > 0) s.squash(1 - 0.05 * yawn, 1 + 0.09 * yawn);
+  p.armL.rotation = 2.2 * yawn;
+  p.armR.rotation = -2.2 * yawn;
+  s.spin(-s.side * 0.07 * yawn);
+  // Settles with a heavy plop; half-lidded, breathing slow.
+  land(s, 2.05, 0.1, 0.3);
+  if (s.passed(2.05)) s.accent("dust", 3);
+  const awake = ease(t, 2.05, 2.4);
+  if (awake > 0)
+    s.squash(1 + s.sway(1.6) * 0.015 * awake, 1 - s.sway(1.6) * 0.015 * awake);
+  s.mood("normal");
+  s.shut(
+    Math.max(0.92 * asleep, 0.95 * yawn, 0.45 * awake) *
+      (1 - bump(t, 0.7, 1.0)),
+  );
+  // Legs.
+  spread(s, 0.5 * arc(t, 0.68, 0.94));
+  lift(p.legR, bump(t, 1.2, 1.9), -0.35, 3);
+  lift(p.legL, Math.max(0, s.sway(1.6)) * awake * 0.6, 0.2, 2);
+};
+const terradonVictory: Move = (s) => {
+  const { t, p } = s;
+  // One slow, satisfied stomp.
+  s.move(0, -4 * arc(t, 0.1, 0.5));
+  land(s, 0.5, 0.12, 0.3);
+  if (s.passed(0.5)) s.accent("dust", 4);
+  p.armL.rotation = 0.8 * bump(t, 0.1, 0.7);
+  p.armR.rotation = -0.8 * bump(t, 0.1, 0.7);
+  // ...and it nods off where it stands: the head sinks, sinks, jolts up,
+  // and sinks again.
+  const drowsy = ease(t, 0.9, 1.2);
+  const loop = s.calm ? 0.55 : (Math.max(0, t - 0.9) % 2.6) / 2.6;
+  const sink = loop < 0.8 ? ease(loop, 0, 0.8) : 1 - ease(loop, 0.8, 0.88);
+  p.head.y += 8 * sink * drowsy;
+  p.flame.rotation = 0.45 * sink * drowsy + s.sway(2) * 0.05;
+  s.squash(1 + 0.05 * sink * drowsy, 1 - 0.07 * sink * drowsy);
+  const jolt = s.calm ? 0 : bump(loop, 0.8, 0.94);
+  s.move(0, -3 * jolt * drowsy);
+  s.mood(t < 0.9 ? "happy" : "normal");
+  s.shut(drowsy * (0.5 + 0.45 * sink) * (1 - jolt));
+  // Legs.
+  lift(p.legR, bump(t, 0.1, 0.5), -0.5, 5);
+  spread(s, 0.2 * sink * drowsy);
+  p.legL.y -= 2 * jolt * drowsy;
+  p.legR.y -= 2 * jolt * drowsy;
+};
+
+// --------------------------------------------------------------- Duskveil
+// A spook who wants to scare you and is far too cute: "Boo! ...Did I?"
+const duskveilEntrance: Move = (s) => {
+  const { t, p } = s;
+  // Hides: small, hunched, half faded.
+  const hide = 1 - ease(t, 0.52, 0.6);
+  if (hide > 0) s.squash(1 - 0.12 * hide, 1 - 0.2 * hide);
+  s.fade(1 - 0.6 * hide * ease(t, 0, 0.12));
+  p.head.rotation = 0.12 * bump(t, 0.15, 0.5);
+  // BOO: springs up tall, arms flung high, the lantern swinging wild.
+  const boo = ease(t, 0.54, 0.62) * (1 - ease(t, 0.95, 1.15));
+  s.move(Math.sin(t * 60) * 1.5 * boo, -13 * boo);
+  if (boo > 0) s.squash(1 - 0.05 * boo, 1 + 0.16 * boo);
+  p.armL.rotation = 2.3 * boo;
+  p.armR.rotation = -2.3 * boo;
+  p.tail.rotation = 0.9 * bump(t, 0.54, 0.8) - 0.6 * bump(t, 0.8, 1.1);
+  // A giggle: shoulders bobbing, head to one side.
+  const giggle = bump(t, 1.15, 1.75);
+  s.move(0, -Math.abs(Math.sin(t * 22)) * 2.5 * giggle);
+  p.head.rotation += -0.12 * giggle;
+  p.armL.rotation += 0.6 * giggle;
+  p.armR.rotation += -0.6 * giggle;
+  // Drifting side to side, lantern swaying.
+  const drift = ease(t, 1.75, 2.1);
+  s.move(s.sway(1.8) * 4 * drift, -(1 + s.sway(3.6)) * 1.2 * drift);
+  s.spin(s.sway(1.8) * 0.05 * drift);
+  p.tail.rotation += s.sway(1.8, 1) * 0.35 * drift;
+  // Legs.
+  spread(s, 0.5 * boo);
+  kick(s, giggle, 22, 0.3);
+  p.legL.rotation += s.sway(1.8, 1) * 0.25 * drift;
+  p.legR.rotation += s.sway(1.8, 1) * 0.25 * drift;
+};
+const duskveilVictory: Move = (s) => {
+  const { t, p } = s;
+  // Swings the lantern in great arcs, drifting round with it.
+  const swing = ease(t, 0, 0.2) * (1 - ease(t, 1.0, 1.2));
+  p.tail.rotation = Math.sin(t * 9) * 1.0 * swing;
+  s.move(Math.sin(t * 4.5) * 9 * swing, -(5 - Math.cos(t * 9) * 4) * swing);
+  s.spin(Math.sin(t * 4.5) * 0.1 * swing);
+  // Blinks out...
+  const gone = bump(t, 1.15, 1.6);
+  s.fade(1 - 0.85 * gone);
+  if (gone > 0) s.squash(1 - 0.12 * gone, 1 - 0.12 * gone);
+  // ...and is back with a boo: tall, arms up, floating high.
+  const back = ease(t, 1.56, 1.66);
+  const pop = bump(t, 1.56, 1.9);
+  if (pop > 0) s.squash(1 - 0.04 * pop, 1 + 0.14 * pop);
+  s.move(s.sway(1.8) * 4 * back, -(9 + s.sway(3.6) * 1.5) * back);
+  s.spin(s.sway(1.8) * 0.05 * back);
+  p.armL.rotation = (2.0 + s.sway(7) * 0.15) * back;
+  p.armR.rotation = (-2.0 - s.sway(7) * 0.15) * back;
+  p.tail.rotation += s.sway(1.8, 1) * 0.5 * back;
+  // Legs.
+  p.legL.rotation += -Math.sin(t * 4.5) * 0.4 * swing;
+  p.legR.rotation += -Math.sin(t * 4.5) * 0.4 * swing;
+  kick(s, back, 7, 0.3);
+};
+
+// --------------------------------------------------------------- Coilemur
+// Cheeky, swaggering, a wrestler: "Once I grab you, I don't let go."
+const coilemurEntrance: Move = (s) => {
+  const { t, p } = s;
+  // A wrestler's swagger: three rolling steps, shoulder first.
+  const strut = 1 - ease(t, 0.75, 0.85);
+  const roll = Math.sin(t * Math.PI * 4) * strut;
+  s.move(roll * 9, -Math.abs(Math.sin(t * Math.PI * 4)) * 6 * strut);
+  s.spin(roll * 0.17);
+  p.armL.rotation = (0.5 + roll * 0.4) * strut;
+  p.armR.rotation = (-0.5 + roll * 0.4) * strut;
+  // The tail curls up high and cracks like a whip.
+  const curl = ease(t, 0.3, 0.8);
+  const crack = bump(t, 0.86, 1.04);
+  p.tail.rotation = 0.5 * curl - 1.0 * crack;
+  s.move(0, -8 * arc(t, 0.84, 1.08));
+  land(s, 1.08, 0.1, 0.16);
+  if (s.passed(0.95)) s.accent("spark", 3);
+  // "Come here": two beckoning dips, leaning in.
+  const beckon = bump(t, 1.1, 1.4) + bump(t, 1.4, 1.7);
+  s.spin(s.side * 0.14 * beckon);
+  s.move(s.side * 4 * beckon, 0);
+  p.head.y += 3 * beckon;
+  p.armR.rotation +=
+    -1.0 * ease(t, 1.05, 1.15) * (1 - ease(t, 1.7, 1.85)) + 0.5 * beckon;
+  // Ready: a low grappler's crouch, paws wide, rocking, tail swishing.
+  const ready = ease(t, 1.8, 2.05);
+  if (ready > 0) s.squash(1 + 0.08 * ready, 1 - 0.1 * ready);
+  s.move(s.sway(5) * 5 * ready, 0);
+  s.spin(s.sway(5) * 0.07 * ready);
+  p.armL.rotation += 1.0 * ready;
+  p.armR.rotation += -1.0 * ready;
+  p.tail.rotation += s.sway(5, 1) * 0.3 * ready;
+  // Legs.
+  lift(p.legL, Math.max(0, roll), 0.4, 4);
+  lift(p.legR, Math.max(0, -roll), -0.4, 4);
+  spread(s, 0.4 * arc(t, 0.84, 1.08));
+  lift(p.legR, beckon, -0.3, 3);
+  tap(s, ready, 10, 0.3, 3);
+};
+const coilemurVictory: Move = (s) => {
+  const { t, p } = s;
+  // Grab and yank: a lunge out, a hard pull back.
+  const grab = bump(t, 0, 0.3),
+    yank = bump(t, 0.26, 0.6);
+  s.move(s.side * (14 * grab - 9 * yank), -5 * arc(t, 0.0, 0.26));
+  s.spin(s.side * (0.2 * grab - 0.16 * yank));
+  p.armL.rotation = 1.4 * grab + 0.3 * yank;
+  p.armR.rotation = -1.4 * grab - 0.3 * yank;
+  // Beats its chest: four quick thumps.
+  const beat = ease(t, 0.62, 0.7) * (1 - ease(t, 1.3, 1.4));
+  const thump = Math.sin(t * 28) * beat;
+  if (beat > 0) {
+    s.squash(1 + 0.06 * Math.abs(thump), 1 - 0.05 * Math.abs(thump));
+    s.move(thump * 2.5, 0);
+    s.spin(thump * 0.06);
+  }
+  p.armL.rotation += (0.5 + thump * 0.5) * beat;
+  p.armR.rotation += (-0.5 + thump * 0.5) * beat;
+  s.spin(-s.side * 0.05 * beat);
+  // Flexes tall, tail whirling, with a bounce.
+  crouch(s, 1.3, 1.44, 0.1);
+  const flex = ease(t, 1.44, 1.56);
+  s.move(
+    0,
+    -(arc(t, 1.44, 1.9) * 20 + Math.max(0, s.sway(7)) * 4 * ease(t, 2.0, 2.2)),
+  );
+  land(s, 1.9, 0.12);
+  p.armL.rotation += (2.2 + s.sway(14) * 0.1) * flex;
+  p.armR.rotation += (-2.2 - s.sway(14) * 0.1) * flex;
+  p.tail.rotation = (0.4 + s.sway(16) * 0.5) * flex;
+  if (s.passed(1.9)) s.accent("spark", 4);
+  // Legs.
+  p.legR.rotation -= 0.5 * grab;
+  p.legL.rotation += 0.4 * yank;
+  lift(p.legL, Math.max(0, thump), 0.3, 3);
+  lift(p.legR, Math.max(0, -thump), -0.3, 3);
+  spread(s, 0.6 * arc(t, 1.44, 1.9));
+  tap(s, ease(t, 2.0, 2.2), 7, 0.3, 3);
 };
 
 export const ENTRANCES: Partial<Record<CharacterId, Move>> = {
   voltkit: voltkitEntrance,
   cindrake: cindrakeEntrance,
   tidefin: tidefinEntrance,
+  auralynx: auralynxEntrance,
+  lumoth: lumothEntrance,
+  mystowl: mystowlEntrance,
+  terradon: terradonEntrance,
+  duskveil: duskveilEntrance,
+  coilemur: coilemurEntrance,
 };
 export const VICTORIES: Partial<Record<CharacterId, Move>> = {
   voltkit: voltkitVictory,
   cindrake: cindrakeVictory,
   tidefin: tidefinVictory,
+  auralynx: auralynxVictory,
+  lumoth: lumothVictory,
+  mystowl: mystowlVictory,
+  terradon: terradonVictory,
+  duskveil: duskveilVictory,
+  coilemur: coilemurVictory,
 };
 /** The moment Reduce motion shows: every move has settled into its hold. */
 export const SETTLED = 12;
