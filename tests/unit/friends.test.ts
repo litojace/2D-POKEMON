@@ -89,6 +89,16 @@ const view = (extra: Partial<FriendsView> = {}): FriendsView => ({
 const markup = (v = view(), d = data()) => friendsMarkup(v, d, now);
 afterEach(() => vi.unstubAllGlobals());
 
+describe("a friend's portrait", () => {
+  it("wears their fighter's element colour (a token that exists)", () => {
+    // The element is "Fire" in the data, the token --el-fire: a capital
+    // named one that doesn't exist, and the ring fell back to grey.
+    const html = markup();
+    expect(html).toContain("--el:var(--el-fire)");
+    expect(html).not.toMatch(/--el-[A-Z]/);
+  });
+});
+
 describe("one action per friend", () => {
   it("joins open rooms and watches matches only for online friends", () => {
     expect(canJoinFriend(list.friends[0])).toBe(false);
