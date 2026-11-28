@@ -633,7 +633,7 @@ function howtoDone(size, phone) {
       `<div class="chip">Done</div><h1>Tap the icon. Turn it sideways. Play.</h1>`,
       // Narrower in the feed: the last slide's words take three lines.
       iconAndGame(phone, size, HOWTO_SHOTS.done, 720),
-      `<p>Fullscreen, no browser bars. On Android: Chrome's menu, then <b>Install app</b>. Found a bug? Tap the gear, then <b>Report a problem</b>.</p>${PLAY}`,
+      `<p>Fullscreen, no browser bars. On Android: Chrome's menu, then <b>Install app</b>. Found a bug? Report it from the gear <b>(⚙)</b> in the game.</p>${PLAY}`,
       PAIR_CSS + `h1 { font-size: ${size === "story" ? 110 : 96}px; }`,
     )
   );
