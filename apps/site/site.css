@@ -1609,6 +1609,12 @@ body::before {
   letter-spacing: 0;
   text-transform: none;
 }
+/* The game's Instagram: its glyph beside the word. */
+.foot-nav .foot-ig {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
 .foot-nav a:hover {
   color: var(--brand);
 }
