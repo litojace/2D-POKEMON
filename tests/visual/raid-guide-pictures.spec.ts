@@ -1,4 +1,8 @@
 import { expect, test } from "@playwright/test";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // The briefing's boss pictures (boss-*-guide): Lumiwick's and Tidelotl's crops
 // are tables measured once (no pixel is read back in the game). Here the

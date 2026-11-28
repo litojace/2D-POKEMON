@@ -1,5 +1,9 @@
 import { expect, test } from "@playwright/test";
 import { createRoom, openHub, openPlayPanel, pushUntilBattle } from "./helpers";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 /**
  * Down in a raid, the revive card and the touch buttons are written once,
