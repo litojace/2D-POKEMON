@@ -15,6 +15,7 @@ import { photoIdOf } from "../../../../packages/shared/src/avatars";
 import { avatarSrc } from "../portraits";
 import { bubbleLines } from "../chat/bubble-text";
 import { iconLabel } from "../menu-icons";
+import { titleTag } from "../title-tag";
 /** A chat bubble's text is at most this wide; longer lines wrap. */
 const BUBBLE_TEXT_W = 150;
 import { syncHubGraphics } from "../hub-graphics";
@@ -101,6 +102,11 @@ import {
   tuft,
 } from "./plaza-ground-art";
 import { GFX } from "../hub-art/gfx";
+import {
+  drawPlazaTitle,
+  plazaTitleArt,
+  PLAZA_TITLE_LIFT,
+} from "./plaza-title-art";
 import {
   hubIcon as I,
   hubIconImage as ICON_IMG,
@@ -2186,7 +2192,7 @@ export function openPlaza(options) {
     const card = $("pz-card");
     // Who they are: their avatar (docs/hidden-picks.md, "Avatars").
     const photo = photoIdOf(p.avatar);
-    card.innerHTML = `<div class="pc-h"><img class="pc-avatar" src="${avatarSrc(p.avatar)}" alt=""><div><b>${esc(p.name)}</b><small>${p.level ? `Lv ${p.level}` : ""}${p.title ? ` · <span style="color:${esc(p.titleColor ?? "#ffd65b")}">${esc(p.title)}</span>` : ""}</small></div><button type="button" class="x" data-pc="close" aria-label="Close">✕</button></div><div class="pc-acts pc-pair">${PLAZA_PAIR_EMOTES.map((e) => `<button type="button" data-pc="pair" data-kind="${e.id}"><span class="pc-emo" aria-hidden="true">${e.icon}</span>${e.label}</button>`).join("")}</div><div class="pc-acts"><button type="button" data-pc="friend">${iconLabel("add-friend", "Add friend")}</button><button type="button" data-pc="party">${iconLabel("friends", "Invite to party")}</button></div><div class="pc-acts pc-safety">${photo ? `<button type="button" data-pc="report-photo">${iconLabel("report", "Report picture")}</button>` : ""}<button type="button" data-pc="report">${iconLabel("report", "Report")}</button><button type="button" data-pc="block" class="pc-block">${iconLabel("block", "Block")}</button></div>`;
+    card.innerHTML = `<div class="pc-h"><img class="pc-avatar" src="${avatarSrc(p.avatar)}" alt=""><div><b>${esc(p.name)}</b><small>${p.level ? `Lv ${p.level}` : ""}</small></div><button type="button" class="x" data-pc="close" aria-label="Close">✕</button></div>${p.title ? titleTag(p.title, p.titleColor) : ""}<div class="pc-acts pc-pair">${PLAZA_PAIR_EMOTES.map((e) => `<button type="button" data-pc="pair" data-kind="${e.id}"><span class="pc-emo" aria-hidden="true">${e.icon}</span>${e.label}</button>`).join("")}</div><div class="pc-acts"><button type="button" data-pc="friend">${iconLabel("add-friend", "Add friend")}</button><button type="button" data-pc="party">${iconLabel("friends", "Invite to party")}</button></div><div class="pc-acts pc-safety">${photo ? `<button type="button" data-pc="report-photo">${iconLabel("report", "Report picture")}</button>` : ""}<button type="button" data-pc="report">${iconLabel("report", "Report")}</button><button type="button" data-pc="block" class="pc-block">${iconLabel("block", "Block")}</button></div>`;
     card.hidden = false;
   }
   function hideCard() {
@@ -3157,6 +3163,8 @@ export function openPlaza(options) {
       if (b) {
         Object.assign(b, {
           name: p.name,
+          title: p.title ?? null,
+          titleColor: p.titleColor ?? null,
           bot: !!p.bot,
           character: p.character,
           skin: p.skin,
@@ -3171,7 +3179,11 @@ export function openPlaza(options) {
       }
       // Your own fighter and skins come from your saved wardrobe (look()), at
       // once: the server's copy starts bare until it has read the wardrobe.
-      if (p.id === meId) P.name = p.name;
+      if (p.id === meId) {
+        P.name = p.name;
+        P.title = p.title ?? null;
+        P.titleColor = p.titleColor ?? null;
+      }
     }
   }
   socket.on("plaza-state", onState);
@@ -3182,6 +3194,15 @@ export function openPlaza(options) {
   function onState(s) {
     stateAt = performance.now();
     meId = s.me;
+    {
+      // Your own title, as the server verified it (the profiles can come
+      // before the first snapshot says which one is you).
+      const mine = profiles.get(meId);
+      if (mine) {
+        P.title = mine.title ?? null;
+        P.titleColor = mine.titleColor ?? null;
+      }
+    }
     offset = s.now - Date.now();
     net.clock.sample(s.now, performance.now());
     {
@@ -3255,6 +3276,8 @@ export function openPlaza(options) {
           x,
           y,
           name: p?.name ?? "",
+          title: p?.title ?? null,
+          titleColor: p?.titleColor ?? null,
           bot: !!p?.bot,
           character: p?.character ?? "voltkit",
           skin: p?.skin ?? null,
@@ -4514,13 +4537,28 @@ export function openPlaza(options) {
     g.lineJoin = "round";
     g.strokeText(b.name, b.x, ny);
     g.fillText(b.name, b.x, ny);
+    // Their title, over the name (plaza-title-art.ts): painted once, then
+    // stamped. What moves in a high tier's plays for you and the nearest
+    // few only, never on Low graphics or with Reduce motion.
+    let lift = 0;
+    if (b.title) {
+      lift = PLAZA_TITLE_LIFT;
+      const art = plazaTitleArt(b.title, b.titleColor, photo ? 2 : PS * Z),
+        moving = !photo && !low && !reduced && fullFx.has(b);
+      drawPlazaTitle(g, art, b.x, ny - 16.5, time, moving);
+      // What was drawn (tests).
+      b.titleTier = art.tier;
+      b.titleMoving = moving;
+      b.titleY = ny - 16.5;
+      b.titleW = art.pw;
+    } else if (b.titleTier) b.titleTier = null;
     if (b.emoteT > 0) {
       const a = Math.max(
         0,
         Math.min(1, b.emoteT / 0.3, (2.6 - b.emoteT) / 0.15),
       );
       g.globalAlpha = a;
-      const by = ny - 26;
+      const by = ny - 26 - lift;
       g.font =
         b.emote.length > 2
           ? "800 17px 'Barlow Condensed', sans-serif"

@@ -84,6 +84,171 @@
 :root[data-ui="poster"] .plaza-layer .pz-card .pc-h img {
   border-radius: 0;
 }
+/* A player's title, in its tier's look (title-tag.ts; the same steps as
+   over heads in the Plaza, plaza-title-art.ts). Common: the title in its own
+   colour. Rare: an ink plate. Epic: the plate edged in the title's colour,
+   and a slow glint. Legendary: gold-edged, notched ends, stars that twinkle.
+   Mythical: a ribbon whose colours drift under ink lettering. What moves is
+   a transform or an opacity, and holds still with Reduce motion. */
+:root[data-ui="poster"] .title-tag {
+  --plate: var(--ink-3);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  justify-self: start;
+  box-sizing: border-box;
+  max-width: 100%;
+  min-height: 18px;
+  overflow: hidden;
+  color: var(--title);
+  font: 700 11px/16px var(--font-body);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+:root[data-ui="poster"] .title-tag > span {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+:root[data-ui="poster"] .title-tag > i {
+  position: relative;
+  font-style: normal;
+  font-size: 9px;
+  line-height: 16px;
+}
+:root[data-ui="poster"] .title-tag:not([data-tier="common"]) {
+  padding: 0 7px;
+  background: var(--plate);
+}
+:root[data-ui="poster"] .title-tag[data-tier="epic"] {
+  box-shadow: inset 0 0 0 1px var(--title);
+}
+:root[data-ui="poster"] .title-tag[data-tier="legendary"] {
+  padding: 0 10px;
+  background: var(--r-legendary);
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    calc(100% - 4px) 50%,
+    100% 100%,
+    0 100%,
+    4px 50%
+  );
+}
+/* Its gold edge: the plate again, a pixel inside the notched outline. */
+:root[data-ui="poster"] .title-tag[data-tier="legendary"]::before {
+  content: "";
+  position: absolute;
+  inset: 1px 2px;
+  background: var(--plate);
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    calc(100% - 3.5px) 50%,
+    100% 100%,
+    0 100%,
+    3.5px 50%
+  );
+}
+:root[data-ui="poster"] .title-tag[data-tier="legendary"] > i {
+  color: #ffe9a8;
+  animation: title-tag-twinkle 2.4s ease-in-out infinite;
+}
+:root[data-ui="poster"] .title-tag[data-tier="legendary"] > i:last-child {
+  animation-delay: -1.2s;
+}
+/* The glint: a slanted band of light that crosses now and then. */
+:root[data-ui="poster"]
+  .title-tag:is([data-tier="epic"], [data-tier="legendary"])::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 14px;
+  background: rgba(255, 255, 255, 0.32);
+  transform: translateX(-30px) skewX(-24deg);
+  animation: title-tag-glint 5.5s ease-in-out infinite;
+}
+:root[data-ui="poster"] .title-tag[data-tier="legendary"]::after {
+  animation-duration: 4s;
+}
+:root[data-ui="poster"] .title-tag[data-tier="mythic"] {
+  padding: 0 10px;
+  color: var(--ink);
+  font-weight: 800;
+  background: var(--r-mythic);
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    calc(100% - 4px) 50%,
+    100% 100%,
+    0 100%,
+    4px 50%
+  );
+}
+/* The ribbon: twice the tag wide, its second half the first again, so it
+   loops as it slides. */
+:root[data-ui="poster"] .title-tag[data-tier="mythic"]::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 400%;
+  background: linear-gradient(
+    90deg,
+    var(--title),
+    var(--r-mythic),
+    #fff3c4,
+    var(--r-mythic),
+    var(--title),
+    var(--r-mythic),
+    #fff3c4,
+    var(--r-mythic),
+    var(--title)
+  );
+  animation: title-tag-drift 6s linear infinite;
+}
+/* On a player's card it has a row to itself, tucked under the name, so the
+   longest title reads in full. */
+:root[data-ui="poster"] .plaza-layer .pz-card > .title-tag {
+  margin-top: -0.25em;
+}
+@keyframes title-tag-glint {
+  0%,
+  70% {
+    transform: translateX(-30px) skewX(-24deg);
+  }
+  100% {
+    transform: translateX(260px) skewX(-24deg);
+  }
+}
+@keyframes title-tag-twinkle {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: scale(0.7);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+@keyframes title-tag-drift {
+  to {
+    transform: translateX(-50%);
+  }
+}
+:root[data-ui="poster"]:where([data-motion="reduced"]) .title-tag::before,
+:root[data-ui="poster"]:where([data-motion="reduced"]) .title-tag::after,
+:root[data-ui="poster"]:where([data-motion="reduced"]) .title-tag > i {
+  animation: none;
+}
 :root[data-ui="poster"]
   .plaza-layer
   :is(
