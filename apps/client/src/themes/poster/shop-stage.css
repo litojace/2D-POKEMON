@@ -83,3 +83,11 @@
     padding-inline: 0;
   }
 }
+/* The Wardrobe's six slots: with the wider stage a sixth of the right side
+   is under 80 px on phones up to 900 px wide, and "ENTRANCE" was cut to
+   "ENTRA…" (852×393). Three a row there, as the narrowest phones have. */
+@media (max-height: 500px) and (max-width: 900px) {
+  :root[data-ui="poster"] .fit-room .fit-slots {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
