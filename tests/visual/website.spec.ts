@@ -526,6 +526,11 @@ test.describe("website", () => {
           .map((a) => ({
             name: (a as CSSAnimation).animationName,
             active: a.currentTime !== null,
+            // The page's own scroller, not a band that clips with
+            // overflow: hidden (a scroller that never moves: frozen).
+            page:
+              (a.timeline as ScrollTimeline).source ===
+              document.scrollingElement,
             progress: a.effect?.getComputedTiming().progress ?? null,
           })),
       );
@@ -555,24 +560,32 @@ test.describe("website", () => {
         expect(names.has("word-drift")).toBe(w >= 600);
         // Each follows the page, not a box of its own that never scrolls (a
         // band with overflow: hidden is a scroller: its timeline sat still).
+        // Polled, scrolling again each time: lazy pictures above can still
+        // load and push the box down after the first jump (CI is slow).
         const at = async (sel: string, name: string) => {
-          await page.evaluate((sel) => {
-            const el = document.querySelector(sel)!;
-            const r = el.getBoundingClientRect();
-            scrollTo({
-              top: scrollY + r.top + r.height / 2 - innerHeight * 0.75,
-              behavior: "instant",
-            });
-          }, sel);
-          await page.waitForTimeout(200);
-          const list = (await scrollDriven(page)).filter(
-            (a) => a.name === name,
-          );
-          expect(list.length, name).toBeGreaterThan(0);
-          for (const a of list) {
-            expect(a.active, name).toBe(true);
-            expect(a.progress ?? 0, name).toBeGreaterThan(0);
-          }
+          await expect
+            .poll(
+              async () => {
+                await page.evaluate((sel) => {
+                  const el = document.querySelector(sel)!;
+                  const r = el.getBoundingClientRect();
+                  scrollTo({
+                    top: scrollY + r.top + r.height / 2 - innerHeight * 0.75,
+                    behavior: "instant",
+                  });
+                }, sel);
+                await page.waitForTimeout(100);
+                const list = (await scrollDriven(page)).filter(
+                  (a) => a.name === name,
+                );
+                return (
+                  list.length > 0 &&
+                  list.every((a) => a.active && a.page && (a.progress ?? 0) > 0)
+                );
+              },
+              { message: name, timeout: 15_000 },
+            )
+            .toBe(true);
         };
         await at(".ticker", "tape-push");
         await at(".raid-picks", "face-up");
@@ -672,13 +685,21 @@ test.describe("website", () => {
       const height = await page.evaluate(
         () => document.documentElement.scrollHeight,
       );
-      for (let y = 0; y < height; y += 600) {
+      for (let y = 0; y < height; y += 300) {
         await page.evaluate(
           (y) => scrollTo({ top: y, behavior: "instant" }),
           y,
         );
-        await page.waitForTimeout(60);
+        await page.waitForTimeout(80);
       }
+      // Every card the fallback dimmed has been seen, and its fade is over.
+      await expect
+        .poll(() =>
+          page.evaluate(
+            () => document.querySelectorAll(".reveal:not(.in)").length,
+          ),
+        )
+        .toBe(0);
       await page.waitForTimeout(800);
       await still(page);
     });
