@@ -7,8 +7,7 @@ import { ISLAND, setInsets } from "./ui-measure";
 onPlayersLook();
 
 /**
- * Poster's title screen (owner, 27 Nov 2026): the quick buttons are square
- * ink tiles, and the cover's sunburst turns once in 100 s. That turn is the
+ * Poster's title screen (owner, 27 Nov 2026): one compact MENU keeps the four tools, and the cover's sunburst turns once in 100 s. That turn is the
  * one animation in Poster that runs for ever (docs/ui-themes.md), so these
  * tests say where it runs and where it stops: on the title screen only, on
  * a layer of its own that only turns, still with Reduce motion and on Low
@@ -95,7 +94,7 @@ const SIZES = [
 ];
 
 for (const size of SIZES)
-  test(`Poster title at ${size.name}: square quick buttons, the sunburst turns`, async ({
+  test(`Poster title at ${size.name}: compact MENU, the sunburst turns`, async ({
     browser,
   }, info) => {
     const context = await browser.newContext({
@@ -109,34 +108,18 @@ for (const size of SIZES)
       const errors = await openTitle(page);
       await connect(page);
 
-      // Quick buttons: square ink tiles a finger wide, their labels ink on
-      // the cover with no outline.
-      const tiles = await page
-        .locator("[data-gate-quick]")
-        .evaluateAll((buttons) =>
-          buttons.map((button) => {
-            const icon = button.querySelector(".title-quick-icon")!;
-            const box = icon.getBoundingClientRect();
-            const style = getComputedStyle(icon);
-            const label = getComputedStyle(button);
-            return {
-              radius: style.borderTopLeftRadius,
-              ground: style.backgroundColor,
-              size: [Math.round(box.width), Math.round(box.height)],
-              label: label.color,
-              outline: label.textShadow,
-            };
-          }),
-        );
-      expect(tiles).toHaveLength(4);
-      for (const tile of tiles)
-        expect(tile).toEqual({
-          radius: "0px",
-          ground: "rgb(13, 13, 15)",
-          size: size.phone ? [44, 44] : [52, 52],
-          label: "rgb(13, 13, 15)",
-          outline: "none",
-        });
+      // Four tools live behind one compact, finger-sized disclosure.
+      const menu = page.locator(".quick-menu-trigger");
+      await expect(menu).toHaveAttribute("aria-expanded", "false");
+      await expect(page.locator(".title-quick")).toBeHidden();
+      await menu.click();
+      await expect(page.locator("[data-gate-quick]")).toHaveCount(4);
+      for (const tool of await page.locator("[data-gate-quick]").all()) {
+        const r = (await tool.boundingBox())!;
+        expect(r.width).toBeGreaterThanOrEqual(44);
+        expect(r.height).toBeGreaterThanOrEqual(44);
+      }
+      await page.keyboard.press("Escape");
 
       // The sunburst: one turn in 100 s, for ever, on a layer that reaches
       // every corner at any angle.
@@ -201,7 +184,7 @@ test("Poster title on Low graphics: the sunburst stands still", async ({
 });
 
 for (const size of SIZES)
-  test(`Poster sign-in at ${size.name}: square quick buttons on the slab, a still cover`, async ({
+  test(`Poster sign-in at ${size.name}: compact MENU on the slab, a still cover`, async ({
     browser,
   }, info) => {
     const context = await browser.newContext({
@@ -226,27 +209,15 @@ for (const size of SIZES)
       await page.goto("/");
       await expect(page.locator(".auth-panel")).toBeVisible();
       await expect(page.locator("#server-startup")).toHaveCount(0);
-      const tiles = await page
-        .locator("[data-gate-quick] .title-quick-icon")
-        .evaluateAll((icons) =>
-          icons.map((icon) => {
-            const box = icon.getBoundingClientRect();
-            const style = getComputedStyle(icon);
-            return {
-              radius: style.borderTopLeftRadius,
-              size: [Math.round(box.width), Math.round(box.height)],
-              // The cover's colour along the bottom edge.
-              edge: /inset/.test(style.boxShadow),
-            };
-          }),
-        );
-      expect(tiles).toHaveLength(4);
-      for (const tile of tiles)
-        expect(tile).toEqual({
-          radius: "0px",
-          size: size.phone ? [44, 44] : [52, 52],
-          edge: true,
-        });
+      const menu = page.locator(".quick-menu-trigger");
+      await expect(page.locator(".gate-quick")).toBeHidden();
+      await menu.click();
+      for (const tool of await page.locator("[data-gate-quick]").all()) {
+        const r = (await tool.boundingBox())!;
+        expect(r.width).toBeGreaterThanOrEqual(44);
+        expect(r.height).toBeGreaterThanOrEqual(44);
+      }
+      await page.keyboard.press("Escape");
       // Behind the form the rays never move: no turning layer at all.
       const cover = await rays(page);
       expect(cover.there).toBe(false);

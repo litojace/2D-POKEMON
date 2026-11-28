@@ -20,6 +20,19 @@ test("the illustrated grips stay on the panel through resizes and form changes",
   await page.goto("/");
   await expect(page.locator(".auth-panel")).toBeVisible();
   await expect(page.locator("#server-startup")).toHaveCount(0);
+  await page.locator(".gate-action").evaluateAll(async (elements) => {
+    await Promise.all(
+      elements.map(async (el) => {
+        const url = getComputedStyle(el).backgroundImage.match(
+          /url\(["']?([^"')]+)["']?\)/,
+        )?.[1];
+        if (!url) throw new Error("Missing welcome illustration");
+        const image = new Image();
+        image.src = url;
+        await image.decode();
+      }),
+    );
+  });
 
   for (const [width, height] of [
     [1440, 900],
@@ -59,36 +72,39 @@ test("the illustrated grips stay on the panel through resizes and form changes",
           card: { left: card.left, right: card.right, bottom: card.bottom },
           stage: { left: stage.left, right: stage.right, bottom: stage.bottom },
           voltkit: read("voltkit"),
-          pyranda: read("pyranda"),
-          tidefin: read("tidefin"),
+          terradon: read("terradon"),
+          reaction: read("reaction"),
           overflow: document.documentElement.scrollWidth > innerWidth,
         };
       });
       // These contact lines are measured on the source illustrations:
-      // Voltkit's paws/foot and Pyranda's grip/soles. Tidefin is freestanding.
-      const { card, stage, voltkit, pyranda, tidefin } = placement;
+      // Voltkit's grip and the ground beneath Terradon and the reacting pair.
+      const { card, stage, voltkit, terradon, reaction } = placement;
       expect(stage).toEqual(card);
       expect(
         Math.abs(voltkit.x + voltkit.width * 0.835 - card.left),
       ).toBeLessThan(1);
       expect(
-        Math.abs(pyranda.x + pyranda.width * 0.09 - card.right),
+        Math.abs(terradon.bottom - terradon.height * 0.045 - card.bottom),
       ).toBeLessThan(1);
       expect(
-        Math.abs(pyranda.bottom - pyranda.height * 0.02 - card.bottom),
+        Math.abs(reaction.bottom - reaction.height * 0.09 - card.bottom),
       ).toBeLessThan(1);
+      for (const art of [voltkit, terradon, reaction]) {
+        expect(art.x).toBeGreaterThanOrEqual(0);
+        expect(art.x + art.width).toBeLessThanOrEqual(width);
+      }
       if (width > height) {
         // The shared floor stays near the safe bottom of the screen.
         expect(height - card.bottom).toBeLessThanOrEqual(48);
       }
-      expect(Math.abs(tidefin.bottom - card.bottom)).toBeLessThan(1);
       expect(placement.overflow, `${width}×${height}, ${mode}`).toBe(false);
 
       // The decorative layers cannot steal input. Even when a form scrolls,
       // each field, submit and quick button remains reachable and unobscured.
       for (const control of await page
         .locator(
-          '.auth-panel input:not([type="checkbox"]), .auth-submit, [data-gate-quick]',
+          '.auth-panel input:not([type="checkbox"]), .auth-submit, .quick-menu-trigger',
         )
         .all()) {
         await control.scrollIntoViewIfNeeded();
@@ -158,4 +174,49 @@ test("the group illustration is centred on the rays at each screen size", async 
     expect(at.top).toBeGreaterThanOrEqual(0);
     expect(at.bottom).toBeLessThanOrEqual(height);
   }
+});
+
+test("MENU supports keyboard, dismissal and actions without starting the game", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    (window as any).__showTitle = true;
+  });
+  await page.goto("/");
+  await expect(page.locator("[data-title-card]")).toBeVisible();
+  await expect(page.locator("#server-startup")).toHaveCount(0);
+  await expect
+    .poll(async () => {
+      await page.evaluate(() => (window as any).__sock.fire("connect"));
+      return page.locator("#title-start").isEnabled();
+    })
+    .toBe(true);
+  const menu = page.locator(".quick-menu-trigger");
+  const actions = page.locator("#welcome-tools-actions");
+  await expect(actions).toBeHidden();
+  await menu.focus();
+  await page.keyboard.press("Enter");
+  await expect(menu).toHaveAttribute("aria-expanded", "true");
+  for (const button of await page.locator("[data-gate-quick]").all()) {
+    const r = (await button.boundingBox())!;
+    expect(r.width).toBeGreaterThanOrEqual(44);
+    expect(r.height).toBeGreaterThanOrEqual(44);
+  }
+  // The first background click dismisses the disclosure, without starting.
+  await page.locator("#title-start").click({ position: { x: 600, y: 350 } });
+  await expect(actions).toBeHidden();
+  await expect(page.locator("[data-title-card]")).toBeVisible();
+  await menu.click();
+  await page.keyboard.press("Escape");
+  await expect(menu).toBeFocused();
+  await expect(menu).toHaveAttribute("aria-expanded", "false");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Tab");
+  await expect(page.locator('[data-gate-quick="settings"]')).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#dialog .settings-screen")).toBeVisible();
+  await expect(menu).toHaveAttribute("aria-expanded", "false");
+  await page.keyboard.press("Escape");
+  await expect(menu).toBeFocused();
+  await expect(page.locator("[data-title-card]")).toBeVisible();
 });
