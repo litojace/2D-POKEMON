@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import * as championMoves from "../../apps/client/src/animation/champion-moves";
 import {
   ENTRANCES,
   MAX_TURN,
@@ -202,5 +203,14 @@ describe("champion moves", () => {
     expect((eyes.x - head.x) * sx).toBeCloseTo(3, 9);
     expect((eyes.y - head.y) * sy).toBeCloseTo(-12, 9);
     expect([head.x, head.y]).toEqual([0, -20]);
+  });
+  it("has no way to turn a fighter round (owner: no turning, the art is flat)", () => {
+    // A move poses parts and leans the fighter; its facing is given to it.
+    // The table of turns (Wombolder showing its back) is gone for good.
+    expect("TURNS" in championMoves).toBe(false);
+    expect(Object.keys(ENTRANCES).sort()).toEqual(
+      Object.keys(VICTORIES).sort(),
+    );
+    expect(Object.keys(ENTRANCES)).toHaveLength(18);
   });
 });

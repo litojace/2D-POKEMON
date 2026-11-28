@@ -1,0 +1,48 @@
+/* Poster audit, slice 2 (28 Nov 2026): what Fighters, the Shop and the
+   Wardrobe still took from the look underneath. Their stages and cards keep
+   the fighter's own colour (owner, 27 Nov: the fighter's colour on its own
+   things); these are the leftovers around them. roster.css and
+   fitting-room.css keep their rules for the look underneath. */
+
+/* A fighter's range (close or long): the glyph says which, so the badge is
+   one ink square with a cream glyph. It was a round badge in a blue or an
+   orange tint, a colour that meant nothing else in the game. */
+:root[data-ui="poster"] .roster-range-badge {
+  border-radius: 0;
+  background: var(--ink-3);
+}
+:root[data-ui="poster"] .roster-range-badge:is(.is-long, .is-close) {
+  color: var(--paper);
+}
+
+/* A skill's key cap and its picture: square, no soft shadow. */
+:root[data-ui="poster"] .roster-key {
+  border: 0;
+  border-radius: 0;
+  background: var(--ink-3);
+}
+:root[data-ui="poster"] :is(.roster-skill-icon, .roster-skill-art) .skill-icon {
+  box-shadow: none;
+}
+
+/* Today's deal: flat ink inside its cream frame, not a sheen from the
+   corner, and a hard shadow in place of a halo. */
+:root[data-ui="poster"] .fit-deal {
+  background: var(--ink-1);
+  box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.4);
+}
+:root[data-ui="poster"] .fit-deal[aria-pressed="true"] {
+  box-shadow:
+    0 0 0 2px var(--paper),
+    5px 5px 0 rgba(0, 0, 0, 0.4);
+}
+
+/* A collection's set: flat ink, its rarity as one thick edge on the left
+   (a thin sheen and a thin outline in the rarity's colour before). */
+:root[data-ui="poster"] .fit-bundle,
+:root[data-ui="poster"]
+  .fit-bundle:is([data-rarity="legendary"], [data-rarity="mythical"]) {
+  border: 0;
+  border-left: 6px solid var(--r);
+  background: var(--ink-1);
+}

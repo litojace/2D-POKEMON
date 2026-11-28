@@ -132,7 +132,13 @@ export const UPRIGHT_PROP_ARM: Partial<
     { front: number; side: number; swing: number; sideSwing?: number }
   >
 > = {
-  astrabun: { front: -0.35, side: 0.35, swing: 0.4 },
+  // (Measured by sweeping the arm, 28 Nov 2026. The owner: "the mallet arm
+  // can't move, it looks paralysed". Seen from the front or back the mallet
+  // clears the body from held high beside the head (-0.55) to swung out
+  // level (1.15); side on it sits behind the back, clear from over the
+  // shoulder (0.45) down to the ground behind (-1.25). So the arm swings
+  // freely in that range; `front` and `side` are its middle.)
+  astrabun: { front: 0.3, side: -0.4, swing: 0.85 },
   // Tidefin's blade is painted on the near paw too. Seen from the front it
   // clears the body only while that arm turns outward (about -0.4 to 1.6
   // rad): turned inward, the blade lies across the chest (owner, 28 Nov
@@ -856,30 +862,7 @@ export class FighterRig {
       );
       sx = Math.max(MIN_WIDTH, sx);
       this.moveT = at;
-    } else if (state === "wave" && !reduced)
-      this.wave(
-        t,
-        { head, body, armL, armR, legL, legR, tail, wings, flame, ears },
-        (dx, dy) => {
-          offsetX += dx;
-          offsetY += dy;
-        },
-      );
-    else if (state === "wave") armR.rotation = -2.4;
-    else if (
-      state === "victory" &&
-      !reduced &&
-      t < 2.2 &&
-      pose.look?.victory !== "rockslide-flex"
-    )
-      this.victory(
-        t,
-        { head, body, armL, armR, legL, legR, tail, wings, flame, ears },
-        (dx, dy) => {
-          offsetX += dx;
-          offsetY += dy;
-        },
-      );
+    }
     this.moveState = ownMove ? state : "idle";
     for (const [kind, count] of accents) this.moveAccent(kind, count, x, y);
     // Rockslide Flex (a Victory reward): a pile of rocks rises under the
@@ -934,7 +917,10 @@ export class FighterRig {
     if (prop !== undefined && attack && (dir === "down" || dir === "up")) {
       const inner = prop - UPRIGHT_PROP_ARM[this.character]!.swing;
       if (armR.rotation < inner)
-        armR.rotation = Math.min(prop + 1.4, 2 * inner - armR.rotation);
+        armR.rotation = Math.min(
+          prop + UPRIGHT_PROP_ARM[this.character]!.swing,
+          2 * inner - armR.rotation,
+        );
     }
     // Side drawings are mirrored; their local limb poses must mirror too.
     // World-space lean, lunge and wind already use the aiming direction.
@@ -1351,282 +1337,6 @@ export class FighterRig {
           shape:
             kind === "spark" ? "spark" : kind === "drop" ? "bubble" : "dot",
         });
-    }
-  }
-
-  /** Each champion's own greeting at the start of a round. */
-  private wave(
-    t: number,
-    p: Record<
-      | "head"
-      | "body"
-      | "armL"
-      | "armR"
-      | "legL"
-      | "legR"
-      | "tail"
-      | "wings"
-      | "flame"
-      | "ears",
-      Phaser.GameObjects.Image
-    >,
-    move: (dx: number, dy: number) => void,
-  ) {
-    const hand = -2.4 + Math.sin(t * 14) * 0.4;
-    switch (this.character) {
-      case "voltkit":
-        // A bouncy hop-and-wave.
-        p.armR.rotation = hand;
-        move(0, -Math.max(0, Math.sin(t * 9)) * 5);
-        p.ears.rotation = Math.sin(t * 9) * 0.1;
-        break;
-      case "cindrake":
-        // Fist up, crest blazing.
-        p.armR.rotation = -2.7;
-        p.armL.rotation = 0.3;
-        p.flame.setScale(0.6, 0.66);
-        p.head.rotation = -0.06;
-        break;
-      case "tidefin":
-        // Blade salute.
-        p.armR.rotation = -2.2;
-        p.head.rotation = -0.1;
-        p.legR.rotation = 0.3;
-        break;
-      case "auralynx":
-        // A calm bow, palms together.
-        p.head.y += 3 + Math.sin(Math.min(1, t / 0.5) * Math.PI) * 2;
-        p.armL.rotation = -0.6;
-        p.armR.rotation = 0.6;
-        p.armL.x += 5;
-        p.armR.x -= 5;
-        break;
-      case "lumoth":
-        // A shy wave with a flutter.
-        p.armR.rotation = hand;
-        p.wings.setScale(0.5 + Math.abs(Math.sin(t * 10)) * 0.06, 0.5);
-        p.head.rotation = 0.1;
-        break;
-      case "mystowl":
-        // One wing raised, head tilted.
-        p.wings.rotation = Math.sin(t * 10) * 0.1;
-        p.head.rotation = 0.22;
-        move(0, -Math.sin(t * 3) * 2);
-        break;
-      case "terradon":
-        // A slow, sleepy wave.
-        p.armR.rotation = -2.2 + Math.sin(t * 5) * 0.3;
-        p.flame.rotation = Math.sin(t * 8) * 0.18;
-        p.head.rotation = -0.08;
-        break;
-      case "duskveil":
-        // Lifts its lantern.
-        p.armR.rotation = -1.6;
-        p.tail.rotation = -0.4 + Math.sin(t * 6) * 0.3;
-        break;
-      case "coilemur":
-        // A cheeky wave, tail crackling.
-        p.armR.rotation = hand;
-        p.tail.rotation = Math.sin(t * 12) * 0.2;
-        p.head.rotation = 0.08;
-        break;
-      case "pyranda":
-        // Peeks out from behind its tail, then a tiny wave.
-        p.armL.rotation = hand * 0.5;
-        p.tail.rotation = -0.25;
-        p.head.rotation = -0.12;
-        break;
-      case "glacelle":
-        // A slow bob, both wing-flaps sweeping.
-        p.armL.rotation = Math.sin(t * 6) * 0.5;
-        p.armR.rotation = -Math.sin(t * 6) * 0.5;
-        move(0, -Math.sin(t * 3) * 3);
-        break;
-      case "halcyra":
-        // A crisp salute with one wing.
-        p.armR.rotation = -2.4;
-        p.head.rotation = -0.06;
-        p.ears.rotation = -0.08;
-        break;
-      case "sunbara":
-        // A calm nod.
-        p.head.y += Math.max(0, Math.sin(t * 4)) * 3;
-        p.armR.rotation = -0.6;
-        break;
-      case "astrabun":
-        // Mallet up, ears perked.
-        p.armR.rotation = this.propHold()! - 0.3;
-        p.ears.rotation = Math.sin(t * 10) * 0.08;
-        move(0, -Math.max(0, Math.sin(t * 8)) * 4);
-        break;
-      case "wombolder":
-        // A gruff paw up.
-        p.armR.rotation = -2;
-        p.head.rotation = -0.05;
-        break;
-      case "shadopus":
-        // A tentacle wave from behind the mask.
-        p.armR.rotation = -1.2 + Math.sin(t * 9) * 0.4;
-        p.armL.rotation = 0.3;
-        break;
-      case "pangrove":
-        // A claw raised, the leafy tail swishing.
-        p.armR.rotation = -1.8 + Math.sin(t * 8) * 0.25;
-        p.tail.rotation = Math.sin(t * 6) * 0.15;
-        p.flame.rotation = Math.sin(t * 6) * 0.12;
-        break;
-      case "mossloth":
-        // A very, very slow wave.
-        p.armR.rotation = -1.6 + Math.sin(t * 2.5) * 0.35;
-        p.head.rotation = 0.08;
-        break;
-    }
-  }
-
-  /** Each champion's own celebration. */
-  private victory(
-    t: number,
-    p: Record<
-      | "head"
-      | "body"
-      | "armL"
-      | "armR"
-      | "legL"
-      | "legR"
-      | "tail"
-      | "wings"
-      | "flame"
-      | "ears",
-      Phaser.GameObjects.Image
-    >,
-    move: (dx: number, dy: number) => void,
-  ) {
-    switch (this.character) {
-      case "voltkit":
-        p.armL.rotation = 2.4 + Math.sin(t * 15) * 0.3;
-        p.armR.rotation = -2.4 - Math.sin(t * 15) * 0.3;
-        move(0, -Math.max(0, Math.sin(t * 8)) * 8);
-        break;
-      case "cindrake":
-        p.wings.setScale(0.62, 0.55);
-        p.flame.setScale(0.62, 0.7);
-        p.head.y -= 4;
-        p.armL.rotation = -0.9;
-        p.armR.rotation = 0.9;
-        break;
-      case "tidefin":
-        this.root.rotation = t < 0.65 ? (t / 0.65) * Math.PI * 2 : 0;
-        p.armL.rotation = -0.8;
-        p.armR.rotation = t < 0.65 ? 0.8 : -2.3;
-        p.legL.rotation = 0.5;
-        p.legR.rotation = -0.5;
-        break;
-      case "auralynx":
-        p.armL.rotation = 1.2;
-        p.armR.rotation = -1.2;
-        p.body.setScale(0.5 + Math.sin(t * 8) * 0.02);
-        move(0, -Math.min(1, t / 0.4) * 6);
-        break;
-      case "lumoth":
-        // A spin with a burst of wing flaps.
-        this.root.rotation = t < 0.8 ? (t / 0.8) * Math.PI * 2 : 0;
-        p.wings.setScale(0.5 + Math.abs(Math.sin(t * 14)) * 0.08, 0.5);
-        move(0, -Math.max(0, Math.sin(t * 7)) * 6);
-        break;
-      case "mystowl":
-        // Rises with cloak spread, head bobbing.
-        move(0, -Math.min(1, t / 0.5) * 10);
-        p.wings.setScale(0.62, 0.56);
-        p.head.rotation = Math.sin(t * 5) * 0.16;
-        p.flame.setScale(0.6);
-        break;
-      case "terradon":
-        // A big stretch and yawn.
-        p.armL.rotation = 2.2;
-        p.armR.rotation = -2.2;
-        p.head.rotation = -0.12;
-        p.body.setScale(
-          0.5 + Math.sin(t * 3) * 0.03,
-          0.5 - Math.sin(t * 3) * 0.02,
-        );
-        break;
-      case "duskveil":
-        // Lantern held high and swung in a circle.
-        p.armR.rotation = -1.8;
-        p.tail.rotation = -0.6 + Math.sin(t * 5) * 0.35;
-        move(0, -Math.sin(t * 4) * 3);
-        break;
-      case "coilemur":
-        // Both fists up, the magnet tail spinning.
-        p.armL.rotation = 2.3;
-        p.armR.rotation = -2.3;
-        p.tail.rotation = Math.sin(t * 16) * 0.35;
-        move(0, -Math.max(0, Math.sin(t * 8)) * 6);
-        break;
-      case "pyranda":
-        // A bashful hop, tail flame flaring.
-        p.armL.rotation = 0.9;
-        p.armR.rotation = -0.9;
-        p.tail.setScale(0.52, 0.55);
-        move(0, -Math.max(0, Math.sin(t * 6)) * 5);
-        break;
-      case "glacelle":
-        // A twirl in the current.
-        this.root.rotation = t < 0.9 ? (t / 0.9) * Math.PI * 2 : 0;
-        p.armL.rotation = -0.7;
-        p.armR.rotation = 0.7;
-        move(0, -Math.min(1, t / 0.5) * 8);
-        break;
-      case "halcyra":
-        // Wings flung wide, crest up.
-        p.armL.rotation = 1.9;
-        p.armR.rotation = -1.9;
-        p.ears.setScale(0.5, 0.56);
-        move(0, -Math.min(1, t / 0.4) * 5);
-        break;
-      case "sunbara":
-        // Lies back and soaks it up.
-        p.head.rotation = -0.1;
-        p.armL.rotation = 0.5;
-        p.armR.rotation = -0.5;
-        p.body.setScale(0.52, 0.49);
-        break;
-      case "astrabun":
-        // Free paw waved high between hops, the mallet shaken upright (the
-        // mallet is painted on the near paw: overhead it would hang upside
-        // down onto the belly; see UPRIGHT_PROP_ARM).
-        p.armL.rotation = 2.4 + Math.sin(t * 14) * 0.3;
-        p.armR.rotation = this.propHold()! + Math.sin(t * 14) * 0.25;
-        move(0, -Math.max(0, Math.sin(t * 9)) * 9);
-        break;
-      case "wombolder":
-        // Flexes, then thumps the ground.
-        p.armL.rotation = 1.4;
-        p.armR.rotation = -1.4;
-        p.body.setScale(
-          0.5 + Math.sin(t * 4) * 0.03,
-          0.5 - Math.sin(t * 4) * 0.02,
-        );
-        break;
-      case "pangrove":
-        // Curls into a ball and rolls a full turn, then pops up, arms wide.
-        this.root.rotation = t < 0.7 ? (t / 0.7) * Math.PI * 2 : 0;
-        p.armL.rotation = t < 0.7 ? 0.6 : 1.3;
-        p.armR.rotation = t < 0.7 ? -0.6 : -1.3;
-        break;
-      case "mossloth":
-        // Arms up, slowly swaying like a sloth on a branch.
-        p.armL.rotation = 2.6 + Math.sin(t * 2) * 0.15;
-        p.armR.rotation = -2.6 + Math.sin(t * 2) * 0.15;
-        move(Math.sin(t * 2) * 3, 0);
-        break;
-      case "shadopus":
-        // All tentacles up in a flourish.
-        p.armL.rotation = 1.8 + Math.sin(t * 10) * 0.2;
-        p.armR.rotation = -1.8 - Math.sin(t * 10) * 0.2;
-        p.legL.rotation = -0.3;
-        p.legR.rotation = 0.3;
-        break;
     }
   }
 
