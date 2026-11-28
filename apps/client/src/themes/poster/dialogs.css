@@ -40,3 +40,57 @@
   border-color: transparent;
   box-shadow: 10px 10px 0 rgba(0, 0, 0, 0.5);
 }
+
+/* Words in a dialog's forms in the kit's greys, not the look underneath's
+   blue-greys (style.css: `dialog label` #c1cfe4, `.auth-check` #c9d4e8).
+   - A field's caption (Report a problem's "What kind of problem?", the
+     admin confirm's "Type the name", "Tier") is --ui-dim: quieter than
+     what you type, 9:1 on the board.
+   - An option's own name beside its tick or radio (Controls' casting
+     choices and aim assist, the admin's push switch, "Remember me") is
+     the text cream, as a Settings row's name is; its note stays --ui-dim.
+   Parts that already have Poster colours (the sliders' names and values,
+   the sign-in fields' captions) keep them: they set their own colour. */
+:root[data-ui="poster"] dialog label {
+  color: var(--ui-dim);
+}
+:root[data-ui="poster"] dialog label:is(.choice, .adm-check),
+:root[data-ui="poster"] .auth-panel .auth-check {
+  color: var(--ui-text);
+}
+
+/* A form's drop-down (Report a problem's "What kind of problem?") is the
+   text field beside it: ink-2, an ink-3 edge, square, cream words, the
+   accent edge while it has focus. It was the look underneath's navy box
+   with a blue edge (style.css, `.account-form select`), Poster's field
+   rule (screens.css) naming inputs and text areas only. The admin
+   panel's drop-downs keep their own Poster rule (admin.css), which
+   outweighs this one. */
+:root[data-ui="poster"] :is(dialog, .account-form) select {
+  background: var(--ink-2);
+  color: var(--paper);
+  border-color: var(--ink-3);
+  border-radius: 0;
+  box-shadow: inset 0 0 0 1px var(--ink-3);
+}
+:root[data-ui="poster"] :is(dialog, .account-form) select:focus {
+  border-color: var(--el);
+  box-shadow: inset 0 0 0 1px var(--el);
+  outline: none;
+}
+/* A link on a dialog's masthead (Controls' "Back to settings") reads as
+   the masthead's other words do, like Settings' tabs: --head-dim, the
+   masthead's cream under a finger. It was #b8cce8 (style.css), whose
+   framed-dialog rule outweighed Poster's secondary button. */
+:root[data-ui="poster"]
+  dialog.framed-dialog
+  > .dialog-toolbar
+  > button:not(.close) {
+  color: var(--head-dim, var(--ui-dim));
+}
+:root[data-ui="poster"]
+  dialog.framed-dialog
+  > .dialog-toolbar
+  > button:not(.close):is(:hover, :focus-visible) {
+  color: var(--head-ink, var(--paper));
+}
