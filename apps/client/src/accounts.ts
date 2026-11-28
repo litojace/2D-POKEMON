@@ -42,6 +42,7 @@ import { iconLabel } from "./menu-icons";
 import { coinChip, coins } from "./shop-ui";
 import { openMissions, type MissionsScreen } from "./screens/missions";
 import type { Economy } from "../../../packages/shared/src/shop";
+import type { DailyGiftState } from "../../../packages/shared/src/daily-gifts";
 import { noteSeenRewards } from "./reward-reveal";
 import {
   pacificDate,
@@ -198,6 +199,10 @@ function remember(value: boolean) {
 }
 type Hooks = {
   openDialog: (html: string) => void;
+  /** The daily gift's calendar for this account, once loaded (Missions). */
+  giftState?: () => DailyGiftState | null;
+  /** Missions' Claim or Calendar: the daily gift's dialog (main.ts). */
+  openGift?: () => void;
   /** Join or watch a friend's room from the friends list. */
   joinRoom?: (code: string) => void;
   watchRoom?: (code: string) => void;
@@ -1851,6 +1856,10 @@ export class AccountUI {
       dialog.querySelector<HTMLButtonElement>("#close-dialog")?.click();
     if (dialog?.open) dialog.close();
   }
+  /** Missions open: draw them again (the daily gift was taken or loaded). */
+  refreshMissions() {
+    if (this.missionsScreen?.isOpen) this.missionsScreen.refresh();
+  }
   /**
    * Daily missions: a sheet inside the Lobby. It opens at once with what is
    * known, then shows the server's fresh copy.
@@ -1867,7 +1876,9 @@ export class AccountUI {
           economy: this.economy ?? null,
           problem: this.missionsProblem,
           loading: this.missionsLoading,
+          gift: this.hooks.giftState?.() ?? null,
         }),
+        openGift: () => this.hooks.openGift?.(),
         change: async (slot) => {
           if (this.account?.id !== accountId)
             throw new Error("Your session changed. Reopen Missions.");
@@ -2491,7 +2502,7 @@ export class AccountUI {
       return;
     }
     this.hooks.openDialog(
-      `<div class="eyebrow">Help us fix it</div><h2>${context.playerName ? `Report ${escape(context.playerName)}` : "Report a problem"}</h2><p>Tell the admins what happened. Your current screen${context.playerName ? " and who you're reporting" : ""}${context.room ? ` and room code ${escape(context.room)}` : ""} ${context.playerName || context.room ? "are" : "is"} included automatically.</p><form id="report-form" class="account-form"><label>What kind of problem?<select name="category" required>${Object.entries(
+      `<div class="eyebrow">Help us fix it</div><h2>${context.playerName ? `Report ${escape(context.playerName)}` : "Report a problem"}</h2><p>Tell the admins what happened. Your current screen${context.playerName ? " and who you're reporting" : ""}${context.room ? ` and room code ${escape(context.room)}` : ""} ${context.playerName || context.room ? "are" : "is"} included automatically.</p><form id="report-form" class="account-form" data-dialog-size="m"><label>What kind of problem?<select name="category" required>${Object.entries(
         REPORT_CATEGORIES,
       )
         .map(

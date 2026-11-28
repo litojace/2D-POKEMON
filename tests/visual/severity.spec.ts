@@ -290,7 +290,15 @@ test("the guest's two choices share one size, Log out anyway in red", async ({
       '<div class="eyebrow">Guest account</div><h2>Log out of your guest pass?</h2><p>Guest accounts can\'t be recovered.</p><div class="dialog-actions is-even"><button class="primary" id="guest-save">Save my account</button><button class="secondary is-danger" id="guest-leave">Log out anyway</button></div>',
     );
     d.showModal();
-    await new Promise((r) => setTimeout(r, 400));
+    // Measure once the dialog has eased in: its open (ea-pop, style.css)
+    // scales it from 0.97, and a box read mid-way is a pixel short (CI's
+    // slower renderer was still scaling it 400 ms in).
+    await Promise.all(
+      d
+        .getAnimations({ subtree: true })
+        .filter((a) => a.effect?.getComputedTiming().endTime !== Infinity)
+        .map((a) => a.finished),
+    );
     return ["guest-save", "guest-leave"].map((id) => {
       const r = document.getElementById(id)!.getBoundingClientRect();
       return {

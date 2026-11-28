@@ -15,8 +15,9 @@ champions, skins and features. So the posts:
 - say "open beta", and that it's free in the browser now;
 - say the iPhone and Android apps come later, with more, but never give a
   date or promise a particular champion, skin or feature;
-- ask players to report bugs: in the game, **Report a problem** under the
-  gear at the top of the Lobby (it needs a free account), or in the
+- ask players to report bugs: in the game, the gear at the top of the
+  Lobby, then **Help**, then **Report a problem** (it needs a free
+  account), or in the
   comments, which the scheduled runs thank and pass on to the owner;
 - teach adding the game to the home screen early (the owner: friends keep
   asking how), with screenshots from a real phone, never drawings. The
@@ -139,7 +140,7 @@ shows, retake it, look at it, and ship it before its time. The pictures in
 | 3 Roster                                                             | the fighters' drawings, names and elements (packages/shared)                                 | `make-posts.mjs`                                     |
 | 6 Pyranda (champion spotlights)                                      | the drawing, and each skill's button as a phone shows it in battle (owner, 28 Nov)           | `CHAMP=pyranda` `kit.spec.ts`, then `make-posts.mjs` |
 | 8 Skins (Reel)                                                       | the Shop's fitting room in Poster, the Mythical skins                                        | `skins.spec.ts`, `make-reel.py`                      |
-| 10 Found a bug?                                                      | the gear menu in Poster and Report a problem                                                 | `report.spec.ts`, then `make-posts.mjs`              |
+| 10 Found a bug?                                                      | Settings in Poster: the gear, the Help tab and Report a problem                              | `report.spec.ts`, then `make-posts.mjs`              |
 | 11 Play it like an app                                               | the app icon, and Safari's steps (iOS, not the game)                                         | `HOWTO=1 make-posts.mjs`; new iOS: new screenshots   |
 | 12 Plaza, 13 Friends                                                 | the Plaza (made-up players placed by world coordinates), the Friends sheet (made-up friends) | `screens.spec.ts`, then pick the frame again by eye  |
 | 1 Welcome, 4 Lumiwick                                                | paintings only                                                                               | `make-posts.mjs`                                     |
@@ -147,11 +148,9 @@ shows, retake it, look at it, and ship it before its time. The pictures in
 Every post's frame copies Poster (colours, fonts, slabs: the CSS in
 `make-posts.mjs`), and captions name places in the game: when Poster's
 palette or the gear changes, check the frames and the captions too. The
-gear is being remodelled (phone-fixes session, 28 Nov): it will open
-Settings, with Report a problem on its Help tab. Until that is on main,
-captions say only "report it from the gear (⚙)", true before and after;
-post 10 and `report.spec.ts` move to gear → Help → Report a problem once it
-merges. The sessions changing
+gear opens Settings (#674, 28 Nov), with Report a problem on its Help tab:
+post 10 rings all three (gear, Help, Report), and other captions say only
+"report it from the gear (⚙)". The sessions changing
 the game's look were asked (28 Nov) to tell the Instagram session when
 they merge.
 
@@ -198,7 +197,7 @@ hashtags; five works under either rule.
 | 7. Free-for-all             | a real four-way fight in the Ember Forge                                   |
 | 8. The Shop: Mythical skins | a Reel (below)                                                             |
 | 9. The Spire                | a real Spire floor                                                         |
-| 10. Found a bug? Tell us.   | the game's Menu, rings on the gear and Report a problem (report.spec.ts)   |
+| 10. Found a bug? Tell us.   | Settings' Help tab, rings on the gear, Help and Report (report.spec.ts)    |
 | 11. Play it like an app     | a carousel from a real iPhone: Safari's steps to the home screen (above)   |
 | 12. The Plaza               | the Plaza in an Orb Shower, made-up players with their titles (every tier) |
 | 13. Bring your friends      | the Friends sheet: a request, Invite, Join and Watch, the friend code      |

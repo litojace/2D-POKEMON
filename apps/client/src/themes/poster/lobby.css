@@ -77,9 +77,7 @@
 /* header */
 :root[data-ui="poster"] body.hub-active #account-profile,
 :root[data-ui="poster"] body.hub-active #account-coins > *,
-:root[data-ui="poster"] body.hub-active .header-menu > summary,
-:root[data-ui="poster"] .hub-scenes,
-:root[data-ui="poster"] body.hub-active .chat-button {
+:root[data-ui="poster"] .hub-scenes {
   background: var(--ink);
   border: 0;
   border-radius: 4px;
@@ -131,9 +129,44 @@
   font-variant-numeric: tabular-nums;
   letter-spacing: 0;
 }
-:root[data-ui="poster"] body.hub-active .header-menu > summary svg,
-:root[data-ui="poster"] body.hub-active .chat-button svg {
-  color: var(--paper);
+/* The top bar's chat and gear: bare icons on the scene (docs/ui-themes.md,
+   "Bare icons"; owner, 28 Nov), as the battle's corner icons and the
+   Plaza's are: no ink square, the icon cream with the ink outline and a
+   size up, gold under a finger or while the chat is open. The button keeps
+   its box (42 px, 36 px on a short phone, with phone-fit.css's 44 px hit
+   area), so nothing beside it moves. The player card and the coin pill
+   stay blocks: a card and a count, not icons. (An id and its class: the
+   old look's glass rules, ui/aero.css, list these in :is() with ids, and
+   its Low graphics rule doubles a class.) */
+:root[data-ui="poster"]
+  body.hub-active
+  :is(#home-settings.home-settings, #chat-button.chat-button) {
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  color: var(--bare-ink);
+}
+:root[data-ui="poster"]
+  body.hub-active
+  :is(#home-settings.home-settings, #chat-button.chat-button)
+  > svg {
+  width: 28px;
+  height: 28px;
+  color: inherit;
+  opacity: 1;
+  filter: var(--bare-icon-edge);
+}
+:root[data-ui="poster"]
+  body.hub-active
+  :is(#home-settings.home-settings, #chat-button.chat-button):is(
+    :hover,
+    :focus-visible,
+    [aria-expanded="true"]
+  ) {
+  color: var(--bare-hot);
 }
 :root[data-ui="poster"] .hub-scenes {
   padding: 4px;
@@ -308,12 +341,43 @@
   border-radius: 0;
   box-shadow: none;
 }
+/* The arrows either side of the fighter's name: bare chevrons on the
+   field (docs/ui-themes.md, "Bare icons"), drawn (--bare-chevron) in the
+   button's 44 px box (32 px on a short phone, with phone-fit.css's hit
+   area); the typed ‹ › stays for nothing but its place, at no size. The
+   ink outline goes round the drawn chevron: the button has nothing else
+   to draw. */
 :root[data-ui="poster"] .lobby-layer .lobby-step {
-  background: var(--ink);
-  color: var(--paper);
   border: 0;
-  border-radius: 2px;
-  transform: skewX(-10deg);
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  color: var(--bare-ink);
+  font-size: 0;
+  filter: var(--bare-icon-edge);
+}
+:root[data-ui="poster"] .lobby-layer .lobby-step::before {
+  content: "";
+  width: 16px;
+  height: 28px;
+  background: currentColor;
+  clip-path: var(--bare-chevron);
+}
+:root[data-ui="poster"] .lobby-layer .lobby-step[data-lobby-step="1"]::before {
+  transform: scaleX(-1);
+}
+:root[data-ui="poster"]
+  .lobby-layer
+  .lobby-step:is(:hover, :focus-visible, :active) {
+  color: var(--bare-hot);
+}
+@media (max-height: 500px) {
+  :root[data-ui="poster"] .lobby-layer .lobby-step::before {
+    width: 13px;
+    height: 22px;
+  }
 }
 /* cards: white clippings */
 :root[data-ui="poster"] .lobby-layer .lobby-cards {
@@ -354,20 +418,363 @@
   font-family: var(--font-body);
   font-weight: 600;
 }
+/* The Today cards, livelier (owner, 27 Nov 2026, "A, the sticker, with the
+   motion pack"): each card wears a tilted sticker on its corner with a
+   picture of its own, its kicker takes the card's colour, bars are thicker
+   and today's six missions are six pips. With all six done the card turns
+   gold with a tick. The cards keep their words and their boxes.
+   When the Lobby appears the cards slide in one after another, the bars
+   fill and the stickers pop, once (no animation here runs for ever), and a
+   pressed card sinks into its hard shadow. None of it with Reduce motion
+   or on Low graphics (the last block). */
+:root[data-ui="poster"] .lobby-layer .lobby-card {
+  position: relative;
+}
+:root[data-ui="poster"] .lobby-layer .lobby-card::before {
+  content: "";
+  position: absolute;
+  top: -9px;
+  right: -9px;
+  width: 28px;
+  height: 28px;
+  box-sizing: border-box;
+  border: 2.5px solid var(--ink);
+  box-shadow: 2px 2px 0 var(--ink);
+  background: var(--gold) center / 17px 17px no-repeat;
+  transform: rotate(9deg);
+  pointer-events: none;
+}
+/* The kicker stops short of the sticker. */
+:root[data-ui="poster"] .lobby-layer .lobby-card > .lobby-card-kicker {
+  max-width: calc(100% - 10px);
+}
+/* The narrowest phones: the kicker needs the card's whole width
+   ("Journey · Ember Festival"), so the sticker hangs further out and just
+   clears it. */
+@media (max-width: 700px) {
+  :root[data-ui="poster"] .lobby-layer .lobby-card::before {
+    top: -13px;
+    right: -13px;
+  }
+  :root[data-ui="poster"] .lobby-layer .lobby-card > .lobby-card-kicker {
+    max-width: 100%;
+  }
+}
+/* Journey: a star on gold. */
+:root[data-ui="poster"] .lobby-layer #lobby-journey-card::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%230d0d0f'%3E%3Cpath d='m12 2 2.9 6.6 7.1.7-5.4 4.7 1.6 7L12 17.3 5.8 21l1.6-7L2 9.3l7.1-.7Z'/%3E%3C/svg%3E");
+}
+:root[data-ui="poster"] .lobby-layer #lobby-journey-card .lobby-card-kicker {
+  background: var(--gold);
+  color: var(--ink);
+}
+/* Getting started, in the Journey's place: a flag. */
+:root[data-ui="poster"] .lobby-layer #lobby-journey-card.is-guide::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%230d0d0f'%3E%3Cpath d='M5 2h2.6v20H5zM9 3.5h11l-3.4 4.2L20 12H9Z'/%3E%3C/svg%3E");
+}
+/* Missions: a target on red; a tick once all six are done. */
+:root[data-ui="poster"] .lobby-layer .lobby-missions-card::before {
+  background-color: var(--hot-fill);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ffffff'%3E%3Cpath fill-rule='evenodd' d='M12 1.7a10.3 10.3 0 1 0 0 20.6 10.3 10.3 0 0 0 0-20.6Zm0 2.6a7.7 7.7 0 1 1 0 15.4 7.7 7.7 0 0 1 0-15.4Z'/%3E%3Ccircle cx='12' cy='12' r='3.6'/%3E%3C/svg%3E");
+}
+:root[data-ui="poster"] .lobby-layer .lobby-missions-card .lobby-card-kicker {
+  background: var(--hot-fill);
+  color: #fff;
+}
+:root[data-ui="poster"] .lobby-layer .lobby-missions-card.is-complete {
+  background: var(--gold);
+}
+:root[data-ui="poster"] .lobby-layer .lobby-missions-card.is-complete::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ffffff'%3E%3Cpath d='M9.9 19.5 3 12.6l2.800-2.800 4.1 4.1 8.3-9.400 3 2.6Z'/%3E%3C/svg%3E");
+}
+:root[data-ui="poster"]
+  .lobby-layer
+  .lobby-missions-card.is-complete
+  .lobby-card-kicker {
+  background: var(--ink);
+  color: var(--paper);
+}
+:root[data-ui="poster"] .lobby-layer .lobby-missions-card.is-complete small {
+  color: var(--ink);
+}
+/* Friends: two heads, gold on ink. */
+:root[data-ui="poster"] .lobby-layer .lobby-friends-card::before {
+  background-color: var(--ink);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ffd65b'%3E%3Ccircle cx='8.5' cy='7.5' r='3.7'/%3E%3Cpath d='M1.5 21c0-4.3 3-7 7-7s7 2.7 7 7Z'/%3E%3Ccircle cx='17.2' cy='8.5' r='2.9'/%3E%3Cpath d='M16.8 13.300c3.3 0 5.7 2.3 5.7 6.200h-5.100c-.2-2.4-1-4.3-2.5-5.7.6-.3 1.2-.5 1.9-.5Z'/%3E%3C/svg%3E");
+}
+/* The Spire's card stands apart (owner, 27 Nov 2026: it should catch the
+   eye): ink among the cream cards, gold words, a Spire-violet edge and
+   hard shadow, and the tower larger, breaking out of the frame as a
+   cut-out. Under the headline, the floors to the next title as a small
+   ladder (cleared ones filled, the title's floor gold). */
+:root[data-ui="poster"] .lobby-layer .lobby-card.lobby-spire-card {
+  grid-template-columns: minmax(0, 1fr);
+  padding-left: 48px;
+  border-color: #a98bf0;
+  background: var(--ink);
+  box-shadow: 6px 6px 0 #5b3fa0;
+}
+:root[data-ui="poster"] .lobby-layer .lobby-card.lobby-spire-card:active {
+  box-shadow: 2px 2px 0 #5b3fa0;
+}
+:root[data-ui="poster"] .lobby-layer .lobby-spire-card .lobby-spire-art {
+  position: absolute;
+  left: -9px;
+  bottom: -3px;
+  width: 52px;
+  height: calc(100% + 13px);
+  background: none;
+  pointer-events: none;
+}
+:root[data-ui="poster"] .lobby-layer .lobby-spire-card .lobby-spire-art svg {
+  filter: drop-shadow(2px 2px 0 var(--ink)) drop-shadow(-1px 0 0 var(--ink));
+}
+:root[data-ui="poster"] .lobby-layer .lobby-spire-card .lobby-card-kicker {
+  background: #a98bf0;
+  color: var(--ink);
+}
+:root[data-ui="poster"] .lobby-layer .lobby-spire-card b {
+  color: var(--gold);
+}
+/* Its caption shows at every size here (the look underneath drops it on
+   short phones), a little larger than the other cards' small print. */
+:root[data-ui="poster"] .lobby-layer .lobby-spire-card .lobby-spire-text small {
+  display: block;
+  color: var(--paper);
+  font-size: calc(11px * var(--text-scale, 1));
+}
+:root[data-ui="poster"] .lobby-layer .lobby-spire-ladder {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 13px;
+}
+:root[data-ui="poster"] .lobby-layer .lobby-spire-ladder i {
+  flex: 1;
+  min-width: 0;
+  height: calc(4px + 9px * var(--n) / var(--steps, 1));
+  box-sizing: border-box;
+  border: 2px solid var(--paper);
+}
+:root[data-ui="poster"] .lobby-layer .lobby-spire-ladder i.is-done {
+  background: var(--paper);
+}
+:root[data-ui="poster"] .lobby-layer .lobby-spire-ladder i.is-goal {
+  height: 13px;
+  border-color: var(--gold);
+  background: var(--gold);
+}
+/* Where the whole card would cost another card its place (a large phone
+   that fits three), fitCards sets .lobby-spire-tight: the headline and the
+   tower stay, the ladder and the caption step aside. */
+:root[data-ui="poster"]
+  .lobby-layer.lobby-spire-tight
+  .lobby-spire-card
+  :is(.lobby-spire-ladder, .lobby-spire-text small) {
+  display: none;
+}
+/* News (a zone new to climb): a red NEW tag in the sticker's place, and a
+   glint across the card about every 5 s while it is news (glint.ts, as
+   PLAY's: one sweep, then rest). Still on an ordinary day. */
+:root[data-ui="poster"] .lobby-layer .lobby-spire-card::before {
+  display: none;
+}
+:root[data-ui="poster"] .lobby-layer .lobby-spire-card.is-new::before {
+  display: block;
+  content: "NEW";
+  top: -10px;
+  right: -8px;
+  width: auto;
+  height: auto;
+  padding: 3px 7px 2px;
+  background: var(--hot-fill);
+  color: #fff;
+  font: 400 13px/1 var(--font-display);
+  letter-spacing: 0.08em;
+  transform: rotate(7deg);
+}
+:root[data-ui="poster"] .lobby-layer .lobby-spire-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+      105deg,
+      transparent 0 42%,
+      rgba(255, 255, 255, 0.5) 42% 56%,
+      transparent 56%
+    )
+    100% 0 / 300% 100% no-repeat;
+}
+:root[data-ui="poster"] .lobby-layer .lobby-spire-card.is-glinting::after {
+  animation: poster-card-glint 0.7s linear 1;
+}
+@keyframes poster-card-glint {
+  100% {
+    background-position: 0% 0;
+  }
+}
+/* Bars: an ink trough with a gold fill. */
+:root[data-ui="poster"] .lobby-layer .lobby-card progress {
+  height: 9px;
+  border: 2px solid var(--ink);
+  border-radius: 0;
+  background: var(--ink);
+}
 :root[data-ui="poster"]
   .lobby-layer
   .lobby-card
   progress::-webkit-progress-bar {
-  /* A wash of ink on the cream card. */
-  background: rgba(13, 13, 15, 0.14);
-  border-radius: 0;
+  background: var(--ink);
 }
 :root[data-ui="poster"]
   .lobby-layer
   .lobby-card
   progress::-webkit-progress-value {
-  background: #ff2e4d;
+  background: var(--gold);
+}
+:root[data-ui="poster"] .lobby-layer .lobby-card progress::-moz-progress-bar {
+  background: var(--gold);
   border-radius: 0;
+}
+/* Today's six missions: six pips, a done one filled with ink. The bar is
+   cut into sixths by a mask, so the markup stays a progress bar. */
+:root[data-ui="poster"] .lobby-layer .lobby-missions-card progress[max="6"] {
+  border: 0;
+  background: rgba(13, 13, 15, 0.16);
+  -webkit-mask: repeating-linear-gradient(
+    90deg,
+    #000 0 calc(100% / 6 - 4px),
+    transparent calc(100% / 6 - 4px) calc(100% / 6)
+  );
+  mask: repeating-linear-gradient(
+    90deg,
+    #000 0 calc(100% / 6 - 4px),
+    transparent calc(100% / 6 - 4px) calc(100% / 6)
+  );
+}
+:root[data-ui="poster"]
+  .lobby-layer
+  .lobby-missions-card
+  progress[max="6"]::-webkit-progress-bar {
+  background: transparent;
+}
+:root[data-ui="poster"]
+  .lobby-layer
+  .lobby-missions-card
+  progress[max="6"]::-webkit-progress-value {
+  background: var(--ink);
+}
+:root[data-ui="poster"]
+  .lobby-layer
+  .lobby-missions-card
+  progress[max="6"]::-moz-progress-bar {
+  background: var(--ink);
+}
+/* Square ends, as everything here. */
+:root[data-ui="poster"] .lobby-layer .lobby-card progress::-webkit-progress-bar,
+:root[data-ui="poster"]
+  .lobby-layer
+  .lobby-card
+  progress::-webkit-progress-value {
+  border-radius: 0;
+}
+/* A locked card's padlock: ink on the cream card (it took the accent,
+   which is the cream itself since the chrome is fixed). */
+:root[data-ui="poster"] .lobby-layer .lobby-card.is-locked b svg {
+  color: var(--ink);
+}
+/* Getting started's three steps, as pips too. */
+:root[data-ui="poster"] .lobby-layer .lobby-card .guide-dots {
+  gap: 4px;
+}
+:root[data-ui="poster"] .lobby-layer .lobby-card .guide-dots i {
+  flex: 1;
+  width: auto;
+  height: 9px;
+  box-sizing: border-box;
+  border: 2px solid var(--ink);
+  border-radius: 0;
+  background: none;
+}
+:root[data-ui="poster"] .lobby-layer .lobby-card .guide-dots i.is-done {
+  background: var(--ink);
+}
+/* The next step: a wash of ink (red is for danger and what waits on you;
+   progress on a cream card is ink). */
+:root[data-ui="poster"] .lobby-layer .lobby-card .guide-dots i.is-next {
+  background: rgba(13, 13, 15, 0.3);
+}
+/* Pressed: into its shadow. */
+:root[data-ui="poster"] .lobby-layer .lobby-card:active {
+  translate: 4px 4px;
+  box-shadow: 2px 2px 0 var(--ink);
+}
+/* The entrance, once each time the cards are shown. */
+:root[data-ui="poster"] .lobby-layer .lobby-card {
+  animation: poster-card-in 0.44s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+:root[data-ui="poster"] .lobby-layer .lobby-card:nth-child(2) {
+  animation-delay: 0.11s;
+}
+:root[data-ui="poster"] .lobby-layer .lobby-card:nth-child(3) {
+  animation-delay: 0.22s;
+}
+:root[data-ui="poster"] .lobby-layer .lobby-card:nth-child(4) {
+  animation-delay: 0.33s;
+}
+@keyframes poster-card-in {
+  0% {
+    translate: 118% 0;
+  }
+  62% {
+    translate: -7px 0;
+  }
+  82% {
+    translate: 2px 0;
+  }
+}
+:root[data-ui="poster"] .lobby-layer .lobby-card::before {
+  animation: poster-card-pop 0.32s ease-out 0.42s backwards;
+}
+@keyframes poster-card-pop {
+  0% {
+    transform: rotate(-40deg) scale(0);
+  }
+  70% {
+    transform: rotate(16deg) scale(1.22);
+  }
+}
+:root[data-ui="poster"] .lobby-layer .lobby-card progress,
+:root[data-ui="poster"] .lobby-layer .lobby-card .guide-dots {
+  transform-origin: left;
+  animation: poster-card-fill 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) 0.48s
+    backwards;
+}
+@keyframes poster-card-fill {
+  0% {
+    transform: scaleX(0);
+  }
+}
+:root[data-ui="poster"]:where([data-motion="reduced"])
+  .lobby-layer
+  :is(.lobby-card, .lobby-card progress, .lobby-card .guide-dots),
+:root[data-ui="poster"]:where([data-motion="reduced"])
+  .lobby-layer
+  .lobby-card::before,
+:root[data-ui="poster"][data-ui-effects="light"]
+  .lobby-layer
+  :is(.lobby-card, .lobby-card progress, .lobby-card .guide-dots),
+:root[data-ui="poster"][data-ui-effects="light"]
+  .lobby-layer
+  .lobby-card::before,
+:root[data-ui="poster"]:where([data-motion="reduced"])
+  .lobby-layer
+  .lobby-spire-card::after,
+:root[data-ui="poster"][data-ui-effects="light"]
+  .lobby-layer
+  .lobby-spire-card::after {
+  animation: none;
 }
 /* mode + play */
 :root[data-ui="poster"] .lobby-layer .lobby-mode {
@@ -425,9 +832,48 @@
   background: color-mix(in srgb, var(--ai) 35%, transparent);
 }
 
-:root[data-ui="poster"] .lobby-layer .lobby-play::before,
-:root[data-ui="poster"] .lobby-layer .lobby-play-button::after {
+:root[data-ui="poster"] .lobby-layer .lobby-play::before {
   display: none;
+}
+/* PLAY's glint (owner, 27 Nov 2026: "give the important buttons a light
+   sheen again", then: for as long as the button shows): a hard-edged bar of
+   light that crosses the button behind its word, in place of the look
+   underneath's soft shine and glow. It lies inside the button, so it leans
+   as the button does and needs no clipping; it fades in at one end and out
+   at the other. Only its transform and opacity move.
+   At rest the bar is unseen and nothing animates: glint.ts puts
+   .is-glinting on the button for one sweep about every 5 s while PLAY
+   shows, instead of an animation that runs for ever (docs/ui-themes.md).
+   ui/light-effects.css stops it on Low graphics and with Reduce motion, as
+   it stops the shine underneath. */
+:root[data-ui="poster"] .lobby-layer .lobby-play-button::after {
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 16%;
+  background: rgba(255, 255, 255, 0.2);
+  opacity: 0;
+  transform: none;
+  animation: none;
+}
+:root[data-ui="poster"] .lobby-layer .lobby-play-button.is-glinting::after {
+  animation: poster-glint 0.7s linear 1;
+}
+/* The bar is 16% of the button: 525% of its own width takes it from the
+   left edge to the right one. */
+@keyframes poster-glint {
+  0% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  14%,
+  86% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(525%);
+    opacity: 0;
+  }
 }
 :root[data-ui="poster"] .lobby-layer .lobby-play-button {
   background: var(--ink);

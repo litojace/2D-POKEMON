@@ -1572,14 +1572,17 @@
    here instead. The mode button grows from 42 to 46 px to hold two lines
    of the 11 px floor (ui/phone-fit.css), a finger tall as well. Where that
    would cost a card (the Spire card shown, a shorter phone), fitCards in
-   lobby-screen.ts sets .lobby-cards-tight and they keep one line.
+   lobby-screen.ts sets .lobby-cards-tight (the cards' lines) and
+   .lobby-mode-tight (the mode's hint) and they keep one line; it gives
+   each back when it fits again once a card has stepped aside, the mode's
+   hint first.
    Every phone held sideways, not only the narrowest: at 844 x 390 the
    196 px column still cut the 27-letter hints ("A fair fight · best of …",
    "Private room · best of …", "Choose a boss · 1–4 …": UI audit, 27 Nov
    2026). */
 @media (max-height: 500px) {
-  .lobby-layer:not(.lobby-cards-tight)
-    :is(.lobby-mode-text small, .lobby-card > small) {
+  .lobby-layer:not(.lobby-mode-tight) .lobby-mode-text small,
+  .lobby-layer:not(.lobby-cards-tight) .lobby-card > small {
     display: -webkit-box;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
@@ -1589,7 +1592,7 @@
     /* Two even lines, not "… at tier" over a lone "5". */
     text-wrap: balance;
   }
-  .lobby-layer:not(.lobby-cards-tight) .lobby-mode {
+  .lobby-layer:not(.lobby-mode-tight) .lobby-mode {
     height: 46px;
   }
 }

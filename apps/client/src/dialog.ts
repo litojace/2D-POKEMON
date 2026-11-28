@@ -30,8 +30,15 @@ export function setDialogContent(dialog: HTMLDialogElement, html: string) {
     if (heading) {
       heading.classList.add("dialog-heading");
       toolbar.prepend(heading);
-    }
-  }
+      // A screen's own tabs go on the masthead after its title (Settings):
+      // the row stays put while the tab under it scrolls.
+      const headTabs = content.querySelector<HTMLElement>(
+        "[data-dialog-head-tabs]",
+      );
+      if (headTabs) heading.after(headTabs);
+      dialog.classList.toggle("has-head-tabs", !!headTabs);
+    } else dialog.classList.remove("has-head-tabs");
+  } else dialog.classList.remove("has-head-tabs");
   const footer = document.createElement("div");
   footer.className = "dialog-footer";
   footer.setAttribute("role", "group");
@@ -44,7 +51,6 @@ export function setDialogContent(dialog: HTMLDialogElement, html: string) {
       ".fullscreen-actions",
       ".settings-actions",
       "#controls-reset",
-      "#open-controls",
       "#report-form > button[type=submit]",
     ].join(","),
   );
@@ -56,6 +62,16 @@ export function setDialogContent(dialog: HTMLDialogElement, html: string) {
     footer.append(action);
   }
   dialog.classList.toggle("has-dialog-footer", footer.childElementCount > 0);
+  // How wide the dialog may be, as its content asks (data-dialog-size="s" or
+  // "m" on any element in it): a short dialog sizes to what it holds instead
+  // of spanning a phone held sideways. On the dialog itself, so a look's CSS
+  // needs no :has() on a dialog (CLAUDE.md, battle style).
+  const size = (
+    content.querySelector<HTMLElement>("[data-dialog-size]") ??
+    toolbar.querySelector<HTMLElement>("[data-dialog-size]")
+  )?.dataset.dialogSize;
+  if (size) dialog.dataset.size = size;
+  else delete dialog.dataset.size;
   dialog.replaceChildren(
     toolbar,
     ...(tabs && !inlineTabs ? [tabs] : []),

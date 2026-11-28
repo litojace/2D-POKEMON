@@ -1,9 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
 import { openLobby, snap } from "./helpers";
 
-// Thick glass carries text: the header menu, the chat, dialogs. Unblurred,
-// the scene behind it kept its edges and its text read through the menu's
-// rows (the Lobby's cards) and the chat (the fighter), seen on an iPhone.
+// Thick glass carries text: dialogs (Settings, which the gear opens), the
+// chat. Unblurred, the scene behind it kept its edges and its text read
+// through the rows (the Lobby's cards) and the chat (the fighter), seen on
+// an iPhone.
 // Now it is blurred where blur is on, and solid where it is off (Low
 // graphics, battles): ui/aero.css, ui/light-effects.css, ui/tokens.css.
 
@@ -14,7 +15,7 @@ const look = (page: Page, selector: string) =>
   });
 
 for (const mode of ["full", "light"] as const)
-  test(`the menu and the chat are readable over the Lobby (${mode} effects)`, async ({
+  test(`Settings and the chat are readable over the Lobby (${mode} effects)`, async ({
     browser,
   }, info) => {
     const context = await browser.newContext({
@@ -29,11 +30,12 @@ for (const mode of ["full", "light"] as const)
         await page.evaluate(
           () => (document.documentElement.dataset.uiEffects = "light"),
         );
-      await page.click(".header-menu > summary");
-      await expect(page.locator(".header-menu-panel")).toBeVisible();
-      const menu = await look(page, ".header-menu-panel");
-      await snap(page, info, `glass-readability-${mode}-menu`);
-      await page.click(".header-menu > summary");
+      await page.click("#home-settings");
+      await expect(page.locator("dialog[open]")).toBeVisible();
+      const menu = await look(page, "dialog[open]");
+      await snap(page, info, `glass-readability-${mode}-settings`);
+      await page.locator("dialog[open] #close-dialog").click();
+      await expect(page.locator("dialog[open]")).toHaveCount(0);
       // The chat button is a HUD pill like the player card beside it: the
       // same glass, blur and gold hairline (ui/aero.css), in either mode.
       const pill = (sel: string) =>

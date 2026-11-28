@@ -15,7 +15,7 @@ const HEADER = [
   "#account-profile",
   "#hub-scenes",
   "#account-coins > *",
-  ".header-menu > summary",
+  "#home-settings",
 ];
 
 /** Header boxes, and every placed box in the scene that runs into one (or into the bar). */

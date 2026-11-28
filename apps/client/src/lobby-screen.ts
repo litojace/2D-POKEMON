@@ -15,6 +15,7 @@ import type { RaidLoadout } from "../../../packages/shared/src/raid";
 import { iconLabel, menuIcon } from "./menu-icons";
 import { fighterStageArt, wornSkin } from "./fighter-selection";
 import { lowGraphics } from "./graphics-quality";
+import { wakeGlint, watchGlint } from "./glint";
 import type { ShopPreviewHandle } from "./shop-preview";
 import { QUIP_MOVE_MS, pickQuip } from "./lobby-quips";
 import { elementIcon } from "./element-icons";
@@ -297,6 +298,8 @@ export interface LobbyView {
   /** The party's members as themselves (avatars), for its bar. */
   partyFaces?: { name: string; avatar: string | null; leader: boolean }[];
   economy?: Economy;
+  /** Today's daily gift is there to claim (on top of Missions). */
+  giftWaiting?: boolean;
   /** Your equipped raid look (colours, aura...), shown on your fighter. */
   look?: RaidLoadout;
   /** Friend requests waiting for an answer. */
@@ -414,12 +417,31 @@ export function journeyCard(j: Journey | undefined) {
     next = rules.itemTiers.find((t) => t > tier),
     item = next ? seasonReward(next, sid, rules).item : null,
     spark = sparkLeft(j);
-  return `<span class="lobby-card-kicker">Journey<span class="lobby-kicker-more"> · ${escape(theme.name)}</span></span><span class="lobby-card-row"><b>Tier ${tier} / ${rules.tiers}</b><small>Lv ${playerLevel(j.xp).level}</small></span><progress max="${rules.tierXp}" value="${into}" aria-label="Season tier progress"></progress><small>${item ? `Next: ${escape(JOURNEY_ITEM_BY_ID[item]?.name ?? "reward")} at tier ${next}` : "Every season cosmetic earned"}</small>${j.spark ? `<small class="lobby-spark${spark ? "" : " is-spent"}">Daily Spark · ${spark ? `${spark} XP left at ×2` : "used up today"}</small>` : ""}`;
+  return `<span class="lobby-card-kicker">Journey<span class="lobby-kicker-more"> · ${escape(theme.name)}</span></span><span class="lobby-card-row"><b>Tier ${tier} / ${rules.tiers}</b><small>Lv ${playerLevel(j.xp).level}</small></span><progress max="${rules.tierXp}" value="${into}" aria-label="Season tier progress"></progress><small>${item ? `Tier ${next}: ${escape(JOURNEY_ITEM_BY_ID[item]?.name ?? "reward")}` : "Every season cosmetic earned"}</small>${j.spark ? `<small class="lobby-spark${spark ? "" : " is-spent"}">Daily Spark · ${spark ? `${spark} XP left at ×2` : "used up today"}</small>` : ""}`;
 }
 /** The Spire card's words (its tower art stays as it is). */
-export function spireCard(n: Pick<SpireLobbyCard, "title" | "note">) {
-  return `<span class="lobby-card-kicker">The Spire</span><b>${escape(n.title)}</b><small>${escape(n.note)}</small>`;
+export function spireCard(
+  n: Pick<SpireLobbyCard, "title" | "note" | "ladder">,
+) {
+  // The floors to the next title as a small ladder: cleared ones filled,
+  // the title's floor marked. The words beside it say the same.
+  const ladder = n.ladder
+    ? `<span class="lobby-spire-ladder" aria-hidden="true" style="--steps:${Math.max(1, n.ladder.to - n.ladder.from)}">${Array.from(
+        { length: n.ladder.to - n.ladder.from + 1 },
+        (_, i) => {
+          const floor = n.ladder!.from + i;
+          return `<i class="${floor === n.ladder!.to ? "is-goal" : floor <= n.ladder!.cleared ? "is-done" : ""}" style="--n:${i}"></i>`;
+        },
+      ).join("")}</span>`
+    : "";
+  return `<span class="lobby-card-kicker">The Spire</span><b>${escape(n.title)}</b>${ladder}<small>${escape(n.note)}</small>`;
 }
+/** Every mission of today done (Poster turns the card gold: the day's work
+ * is over; rewards were paid as each was done, missions-view.ts). */
+export const missionsComplete = (e: Economy | undefined, level?: number) =>
+  !featureLocked("missions", level) &&
+  !!e?.missions.length &&
+  e.missions.every((m) => m.done);
 /** The Missions card: how many are done and when new ones arrive. */
 export function missionsCard(e: Economy | undefined, level?: number) {
   // Still locked at this level: when it opens, in the card's own place.
@@ -429,7 +451,7 @@ export function missionsCard(e: Economy | undefined, level?: number) {
     return `<span class="lobby-card-kicker"><span class="lobby-kicker-more">Daily </span>missions</span><b>Six a day</b><small>Open to see today's missions</small>`;
   const done = e.missions.filter((m) => m.done).length,
     total = e.missions.length;
-  return `<span class="lobby-card-kicker"><span class="lobby-kicker-more">Daily </span>missions</span><span class="lobby-card-row"><b>${done} / ${total} done</b><small>New in ${picksCountdown()}</small></span><progress max="${Math.max(1, total)}" value="${done}" aria-label="Missions done today"></progress>`;
+  return `<span class="lobby-card-kicker"><span class="lobby-kicker-more">Daily </span>missions</span><span class="lobby-card-row"><b>${done === total ? `All ${total} done` : `${done} / ${total} done`}</b><small>New in ${picksCountdown()}</small></span><progress max="${Math.max(1, total)}" value="${done}" aria-label="Missions done today"></progress>`;
 }
 
 export function openLobby(options: LobbyOptions): LobbyHandle {
@@ -739,6 +761,8 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
     layer.classList.toggle("is-covered", covered);
     rig?.suspend(covered);
     for (const seat of seatRigs) seat?.suspend(covered);
+    // PLAY's glint rests while the Lobby is covered (glint.ts).
+    if (!covered) wakeGlint();
   };
   /** A friend in a seat moves like your fighter (not on Low graphics). */
   const mountSeatRig = (seat: number) => {
@@ -897,7 +921,9 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
    * is still a tap away on Raids).
    * On a narrow phone the cards' lines and the mode's hint take two lines
    * (lobby.css); before any card steps aside they go back to one, cut
-   * with "…" (lobby-cards-tight): a whole line is worth less than Missions.
+   * with "…" (lobby-cards-tight, lobby-mode-tight): a whole line is worth
+   * less than Missions. Once the cards that must step aside have, each
+   * takes its two lines back if they fit.
    * Measured once after an update or a resize, never per frame.
    */
   let fitFrame = 0;
@@ -922,7 +948,11 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       spireCardEl,
     ])
       card.classList.remove("is-squeezed");
-    layer.classList.remove("lobby-cards-tight");
+    layer.classList.remove(
+      "lobby-cards-tight",
+      "lobby-mode-tight",
+      "lobby-spire-tight",
+    );
     // The mode button's height moves PLAY's block, so read it each time.
     const limit = () =>
       layer.querySelector(".lobby-play")!.getBoundingClientRect().top - 8;
@@ -934,10 +964,26 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
           (c) => c.getBoundingClientRect().bottom,
         ),
       );
-    if (bottom() > limit()) layer.classList.add("lobby-cards-tight");
+    const over = () => bottom() > limit();
+    if (over()) layer.classList.add("lobby-cards-tight", "lobby-mode-tight");
+    // The Spire's card gives up its ladder and caption before any card
+    // steps aside (its headline and tower still say it).
+    if (over()) layer.classList.add("lobby-spire-tight");
     for (const card of order) {
-      if (bottom() <= limit()) break;
+      if (!over()) break;
       card.classList.add("is-squeezed");
+    }
+    // With a card aside there may be room again: for the Spire card whole,
+    // then two lines for the mode's hint (every mode's is cut on one
+    // line), then for the cards' lines.
+    for (const tight of [
+      "lobby-spire-tight",
+      "lobby-mode-tight",
+      "lobby-cards-tight",
+    ]) {
+      if (!layer.classList.contains(tight)) continue;
+      layer.classList.remove(tight);
+      if (over()) layer.classList.add(tight);
     }
   };
   const fitSoon = () => {
@@ -955,6 +1001,21 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
     attributeFilter: ["open", "hidden", "data-ui-leaving"],
   });
   syncCovered();
+  // A bar of light crosses PLAY now and then while it shows (glint.ts).
+  const unwatchGlint = watchGlint(
+    $("lobby-play"),
+    () => !layer.classList.contains("is-covered"),
+  );
+  // The Spire's card glints too, only while it carries news.
+  const spireNews = $("lobby-spire-card");
+  const unwatchSpireGlint = watchGlint(
+    spireNews,
+    () =>
+      spireNews.classList.contains("is-new") &&
+      !spireNews.hidden &&
+      !spireNews.classList.contains("is-squeezed") &&
+      !layer.classList.contains("is-covered"),
+  );
   // The frame-rate read-out (perf-hud.ts): your fighter's frames, our own
   // drawing time (median and slowest) and its canvas, while the Lobby shows.
   const perfSource = () => {
@@ -1165,6 +1226,10 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
         missionsCard(view.economy, view.level),
       );
       $("lobby-missions-card").classList.toggle(
+        "is-complete",
+        missionsComplete(view.economy, view.level),
+      );
+      $("lobby-missions-card").classList.toggle(
         "is-locked",
         featureLocked("missions", view.level),
       );
@@ -1184,9 +1249,11 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
         '[data-badge-for="missions"]',
       )!;
       // A plain red dot, no count: missions come back every day, so a
-      // number would sit there all day and teach players to skip red.
+      // number would sit there all day and teach players to skip red. It
+      // also says today's gift is waiting on top of Missions.
       missionBadge.hidden =
-        !missions.length || !left || featureLocked("missions", view.level);
+        ((!missions.length || !left) && !view.giftWaiting) ||
+        featureLocked("missions", view.level);
       missionBadge.classList.add("is-dot");
       // The Spire, once open: its card above Missions (a shortcut past the
       // Raid Hub), glowing with a dot on Raids while something is new.
@@ -1226,6 +1293,8 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       clearTimeout(hopTimer);
       clearTimeout(armTimer);
       coverWatch.disconnect();
+      unwatchGlint();
+      unwatchSpireGlint();
       setPerfSource("lobby", undefined);
       document.removeEventListener("ea-graphics-change", syncGraphics);
       document.removeEventListener(UI_THEME_EVENT, fitSoon);

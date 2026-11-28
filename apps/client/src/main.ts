@@ -191,7 +191,8 @@ import {
   type TourEnd,
   type TourHandle,
 } from "./hub-tour";
-import { buttonIcon, iconLabel, menuIcon } from "./menu-icons";
+import { buttonIcon, iconLabel, menuIcon, type IconName } from "./menu-icons";
+import { OPEN_BETA } from "./open-beta";
 import type { RaidBossId, RaidSlot } from "../../../packages/shared/src/raid";
 import type { RaidTab } from "./screens/raid-hall-view";
 import type { SpireTab } from "./screens/spire-view";
@@ -227,8 +228,14 @@ import { battleAuraScale } from "./shop-preview-layout";
 import { footprintScale, groundDrop } from "./ground";
 import { colourPreview } from "./colour-preview";
 import { stadiumCrowd } from "./stadium";
-import { setupPWA } from "./pwa";
 import {
+  installAvailable,
+  runningStandalone,
+  setupPWA,
+  showFullscreenHelp,
+} from "./pwa";
+import {
+  INSTAGRAM_URL,
   PRIVACY_URL,
   SUPPORT_URL,
   isNativeApp,
@@ -246,6 +253,7 @@ import {
   titleDue,
   type QuickAction,
 } from "./title-screen";
+import { watchGlint } from "./glint";
 import { PROFILE_COPY_KEY } from "./profile-copy";
 import { appIconCardHTML, bindAppIconCard } from "./app-icon-setting";
 import { abilityIcon } from "./ability-icons";
@@ -930,7 +938,7 @@ const escape = (s: string) =>
       ]!,
   );
 document.querySelector("#app")!.innerHTML =
-  `<header class="topbar"><nav class="hub-scenes" id="hub-scenes" role="group" aria-label="Scene" hidden></nav><a class="brand" href="#"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><defs><linearGradient id="element-crest" x2="0" y2="1"><stop stop-color="#fff1a3"/><stop offset="1" stop-color="#d9a340"/></linearGradient></defs><path fill="url(#element-crest)" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span> ELEMENT<span>ARENA</span></a><div class="top-links"><div id="account-nav" class="account-nav"></div><button type="button" class="quiet home-settings" id="home-settings" aria-label="Settings" title="Settings">${menuIcon("settings")}</button><details class="header-menu" id="header-menu"><summary><i class="menu-burger" aria-hidden="true">☰</i><i class="menu-gear" aria-hidden="true">${menuIcon("settings")}</i> <span>Menu</span></summary><div class="header-menu-panel"><button class="quiet" id="help">${menuIcon("help")}<span>How to play</span></button><button class="quiet" id="guide-open">${menuIcon("sparkle")}<span>Getting started</span></button><button class="quiet" id="daily-gift">${menuIcon("star")}<span>Daily gift</span></button><button class="quiet" id="settings">${menuIcon("settings")}<span>Settings</span></button><button class="quiet" id="leaderboard">${menuIcon("leaderboard")}<span>Leaderboard</span></button><button class="quiet" id="install-app">${menuIcon("fullscreen")}<span>Want fullscreen?</span></button><button class="quiet" id="report-problem">${menuIcon("report")}<span>Report a problem</span></button><button class="quiet" id="privacy-policy">${menuIcon("help")}<span>Privacy policy</span></button><button class="quiet" id="menu-logout">${menuIcon("leave")}<span>Log out</span></button><span class="connection" id="connection">Connecting</span></div></details></div></header><main><section id="menu"></section><section id="battle" hidden>${stadiumCrowd()}<div id="practice-controls" class="practice-controls" hidden></div><div id="hud" class="hud"></div><div class="arena-stage"><div class="arena-frame"><div id="game"></div><div id="arena-overlay"></div><div id="spectate" class="spectate-banner" role="status" hidden></div><span class="map-label">ELEMENTAL COLISEUM <span>01 / CHAMPIONS COURT</span></span></div></div><div id="mobile-controls"></div><div id="abilities" class="ability-bar"></div><div class="battle-footer"><span id="control-hints"></span><span id="network">AUTHORITATIVE ONLINE MATCH</span><button class="quiet" id="battle-menu" aria-label="Battle settings" title="Battle settings (Esc / controller Menu)">${menuIcon("settings")}</button></div></section></main><div id="toast" role="status"></div><dialog id="dialog"></dialog>`;
+  `<header class="topbar"><nav class="hub-scenes" id="hub-scenes" role="group" aria-label="Scene" hidden></nav><a class="brand" href="#"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><defs><linearGradient id="element-crest" x2="0" y2="1"><stop stop-color="#fff1a3"/><stop offset="1" stop-color="#d9a340"/></linearGradient></defs><path fill="url(#element-crest)" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span> ELEMENT<span>ARENA</span></a><div class="top-links"><div id="account-nav" class="account-nav"></div><button type="button" class="quiet home-settings" id="home-settings" aria-label="Settings" title="Settings">${menuIcon("settings")}</button></div></header><main><section id="menu"></section><section id="battle" hidden>${stadiumCrowd()}<div id="practice-controls" class="practice-controls" hidden></div><div id="hud" class="hud"></div><div class="arena-stage"><div class="arena-frame"><div id="game"></div><div id="arena-overlay"></div><div id="spectate" class="spectate-banner" role="status" hidden></div><span class="map-label">ELEMENTAL COLISEUM <span>01 / CHAMPIONS COURT</span></span></div></div><div id="mobile-controls"></div><div id="abilities" class="ability-bar"></div><div class="battle-footer"><span id="control-hints"></span><span id="network">AUTHORITATIVE ONLINE MATCH</span><button class="quiet" id="battle-menu" aria-label="Battle settings" title="Battle settings (Esc / controller Menu)">${menuIcon("settings")}</button></div></section></main><div id="toast" role="status"></div><dialog id="dialog"></dialog>`;
 // Measure wrapped HUDs for phone spacing and desktop boss-specific controls.
 let measuredRaidHud: HTMLElement | null = null;
 let battleLayoutFrame = 0;
@@ -1063,17 +1071,8 @@ $("hub-scenes").onclick = (event) => {
   );
   if (button) setHubScene(button.dataset.hubScene as HubScene);
 };
-const headerMenu = $("header-menu") as HTMLDetailsElement;
-// A dropdown-to-dialog transition keeps the same page position throughout.
-lockScrollWhileOpen($<HTMLDialogElement>("dialog"), headerMenu);
-watchMenuMotion($("menu"), $<HTMLDialogElement>("dialog"), headerMenu);
-headerMenu.addEventListener("click", (event) => {
-  if ((event.target as Element).closest("button")) headerMenu.open = false;
-});
-// A swipe outside the menu must not unlock the page halfway through the gesture.
-document.addEventListener("click", (event) => {
-  if (!headerMenu.contains(event.target as Node)) headerMenu.open = false;
-});
+lockScrollWhileOpen($<HTMLDialogElement>("dialog"));
+watchMenuMotion($("menu"), $<HTMLDialogElement>("dialog"));
 document.addEventListener(
   "keydown",
   (event) => {
@@ -1081,13 +1080,6 @@ document.addEventListener(
     if (event.key === "Escape" && practice?.open) {
       practice.open = false;
       practice.querySelector("summary")!.focus();
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      return;
-    }
-    if (event.key === "Escape" && headerMenu.open) {
-      headerMenu.open = false;
-      headerMenu.querySelector("summary")!.focus();
       event.preventDefault();
       event.stopImmediatePropagation();
     }
@@ -1999,7 +1991,7 @@ function onRoomClick(event: MouseEvent) {
   if (d.roomMenu) {
     setRoomMenu(false);
     if (d.roomMenu === "settings") showSettings();
-    else if (d.roomMenu === "help") $("help").click();
+    else if (d.roomMenu === "help") showHowToPlay();
     else if (d.roomMenu === "invite") void accountsUI.showFriends();
     else if (d.roomMenu === "leave") void leave();
     else if (d.roomMenu === "stop-watching") void stopWatching();
@@ -2525,7 +2517,7 @@ async function showPartyInvite() {
       ? party.members.find((m) => m.id === party!.leader)?.name
       : undefined;
   dialog(
-    `<div class="party-invite"><span class="eyebrow">Party</span><h2>Invite a friend</h2><p class="muted">${lead ? `Friends join ${escape(lead)}'s party on the Lobby stage and follow your leader into each room.` : "Friends join you on the Lobby stage. When you press PLAY, they follow you into the room, and you stay a party after the match."}</p><div id="party-invite-list"><p class="muted">Loading your friends…</p></div></div>`,
+    `<div class="party-invite" data-dialog-size="s"><span class="eyebrow">Party</span><h2>Invite a friend</h2><p class="muted">${lead ? `Friends join ${escape(lead)}'s party on the Lobby stage and follow your leader into each room.` : "Friends join you on the Lobby stage. When you press PLAY, they follow you into the room, and you stay a party after the match."}</p><div id="party-invite-list"><p class="muted">Loading your friends…</p></div></div>`,
   );
   try {
     const list = await accountsUI.nearbyFriends();
@@ -2815,6 +2807,11 @@ function renderGate() {
     });
   const start = document.getElementById("title-start");
   if (start) start.onclick = leaveTitle;
+  // "Tap to start" glints while the title waits for the tap (glint.ts);
+  // a title drawn again is a new element, and the old one is forgotten.
+  const prompt = start?.querySelector<HTMLElement>(".title-prompt");
+  if (prompt && !(start as HTMLButtonElement).disabled)
+    watchGlint(prompt, () => !prompt.closest("[hidden]"));
   const change = document.getElementById("title-switch");
   if (change) change.onclick = () => void accountsUI.logOut();
   const login = document.getElementById("gate-login"),
@@ -3271,6 +3268,7 @@ function lobbyView() {
     })),
     look: accountsUI.raidLook ?? {},
     economy: accountsUI.economy ?? undefined,
+    giftWaiting: giftState()?.claimed === false,
     friendRequests: lobbyFriends.requests,
     friendsOnline: lobbyFriends.online,
     guide: guide.view(),
@@ -3368,6 +3366,7 @@ function loadGift() {
     .then((value) => {
       if (accountsUI.account?.id !== account) return;
       gift = { account, state: dailyGiftStateSchema.parse(value) };
+      giftChanged();
       maybeShowGift();
       if (state?.phase === "finished") renderBattle();
     })
@@ -3377,8 +3376,22 @@ function loadGift() {
       giftLoading = "";
     });
 }
-/** Open the calendar: to claim, or to look at it (the Menu's Daily gift). */
-function showGift() {
+/** The gift's state changed: Missions' card and its rail dot follow. */
+function giftChanged() {
+  accountsUI?.refreshMissions();
+  if (lobby) lobby.update(lobbyView());
+}
+/** This account's calendar, once loaded (Missions' card). */
+function giftState() {
+  const account = accountsUI?.account?.id;
+  return account && gift?.account === account ? gift.state : null;
+}
+/**
+ * Open the calendar: to claim, or to look at it. On its own once a day on
+ * the Lobby (maybeShowGift), and from the card on top of Missions, whose
+ * Claim takes it as the calendar opens.
+ */
+function showGift(claimNow = false) {
   const account = accountsUI?.account?.id;
   if (!account || giftDialog?.open) return;
   if (gift?.account !== account) {
@@ -3387,12 +3400,14 @@ function showGift() {
   }
   giftDialog = openGiftDialog({
     state: gift.state,
+    claimNow: claimNow && !gift.state.claimed,
     claim: async () => {
       try {
         const claim = dailyGiftClaimSchema.parse(
           await accountsUI.api("/api/gift/claim", {}),
         );
         gift = { account, state: claim };
+        giftChanged();
         // Coins, XP and the cosmetic are in the account now.
         void accountsUI.loadEconomy();
         return claim;
@@ -3408,7 +3423,7 @@ function showGift() {
     },
     onClose: (after) => {
       giftDialog = undefined;
-      // Later: not again this visit (the Menu still opens it).
+      // Later: not again this visit (Missions still opens it).
       if (!after.claimed)
         try {
           sessionStorage.setItem(giftLaterKey(account), after.today);
@@ -3588,7 +3603,7 @@ function lobbyAction(action: LobbyAction) {
     void accountsUI.showRaids(undefined, undefined, "climb");
   else if (action === "journey") void accountsUI.showJourney();
   else if (action === "missions") void accountsUI.showMissions();
-  else if (action === "ranks") $("leaderboard").click();
+  else if (action === "ranks") openRanks();
   else if (action === "invite") void showPartyInvite();
   else if (action === "leave-party") void request("party-leave");
   else if (action === "party-room") void followPartyRoom(undefined, true);
@@ -5076,8 +5091,7 @@ socket.on("connect", () => {
     renderMenu();
   }
   syncHub();
-  $("connection").textContent = "SERVER CONNECTED";
-  $("connection").classList.add("online");
+  setConnection("Connected", true);
   const token = sessionStorage.getItem("arena-token");
   // After a move to a new server (server-update): its own words, not the
   // resume's "Room expired." (the room stayed on the old server).
@@ -5115,10 +5129,7 @@ socket.on("disconnect", (reason: string) => {
     screen = "";
     renderMenu();
   }
-  $("connection").textContent = replacedAccount
-    ? "SESSION PAUSED"
-    : "RECONNECTING…";
-  $("connection").classList.remove("online");
+  setConnection(replacedAccount ? "Session paused" : "Reconnecting…");
   pending = [];
   owedSteps = 0;
   const message = dropMessage(drop);
@@ -5155,18 +5166,19 @@ socket.on(
   "connect_error",
   (error: Error & { data?: { code?: string; status?: number } }) => {
     if (replacedAccount) return;
-    $("connection").classList.remove("online");
+    setConnection();
     if (error.data?.code === "ACCOUNT_ERROR") {
       // An expired login: get a fresh token (onToken connects with it). Only
       // a second refusal soon after says something is really wrong.
       if (error.data.status === 401 && renewLogin()) return;
       toast(error.message);
-      $("connection").textContent =
-        error.data.status === 401 ? "LOGIN REQUIRED" : "SIGN-IN UNAVAILABLE";
+      setConnection(
+        error.data.status === 401 ? "Login required" : "Sign-in unavailable",
+      );
     } else {
       // Socket.IO retries temporary transport failures. During sign-in these
       // are not evidence that the account login failed.
-      $("connection").textContent = "RECONNECTING…";
+      setConnection("Reconnecting…");
     }
   },
 );
@@ -5836,12 +5848,64 @@ function syncPrefOutputs(root: ParentNode) {
 }
 const syncDialogPrefs = () => syncPrefOutputs($<HTMLDialogElement>("dialog"));
 /**
- * Settings: Sound on the left; on the right, Display in the hub (graphics,
- * full screen, motion) or This match in a battle (practice tools, leave,
- * motion). Rows of a label and its control, the same everywhere. Controls,
- * Report and Credits sit in the footer. Fits a phone held sideways without
- * scrolling (settings-screen.css).
+ * Settings: the gear opens it (owner, 28 Nov 2026: the gear's menu went).
+ * Four tabs on its masthead, so each fits a phone held sideways without
+ * scrolling (settings-screen.css):
+ *
+ * - Game: Sound on the left; on the right, Display in the hub (graphics,
+ *   full screen where it applies, motion) or This match in a room or battle
+ *   (practice tools, your skills, motion).
+ * - Help: How to play, Controls, Getting started (in the hub) and Report a
+ *   problem.
+ * - Account (in the hub, signed in): your player card and Log out.
+ * - About: the server while it isn't connected, the version, the open beta
+ *   (web builds only), Credits and the privacy policy.
+ *
+ * Leaving a room or a match stays in the footer, whatever the tab.
  */
+type SettingsTab = "game" | "help" | "account" | "about";
+const SETTINGS_TAB_LABEL: Record<SettingsTab, string> = {
+  game: "Game",
+  help: "Help",
+  account: "Account",
+  about: "About",
+};
+/** The tab Settings opens on: the last one used this visit. */
+let settingsTab: SettingsTab = "game";
+function settingsTabs(): SettingsTab[] {
+  // Logging out isn't for the middle of a match, nor before you are in.
+  return !state && accountsUI?.account
+    ? ["game", "help", "account", "about"]
+    : ["game", "help", "about"];
+}
+/** A row of Settings: what it is, a line about it, and its button. The
+ *  button shows one of the game's line icons, or a brand's own mark. */
+function settingsAction(
+  id: string,
+  title: string,
+  note: string,
+  icon: IconName | { html: string },
+  label: string,
+) {
+  const content =
+    typeof icon === "string"
+      ? iconLabel(icon, label)
+      : `${icon.html}<span>${label}</span>`;
+  return `<div class="st-row"><span class="st-row-text"><b>${title}</b><small>${note}</small></span><button type="button" id="${id}" class="secondary btn-secondary st-action">${content}</button></div>`;
+}
+/** Instagram's own mark in its own colours, so the row is known at a glance
+ *  (owner, 28 Nov). Drawn as the website's Instagram link is, so the two
+ *  match; its gradient's id is one nothing else in the page uses. */
+const INSTAGRAM_ICON = `<svg class="button-icon st-brand-icon" viewBox="0 0 24 24" aria-hidden="true"><defs><radialGradient id="settings-ig-app" cx="0.3" cy="1.07" r="1.3"><stop offset="0" stop-color="#fdf497"/><stop offset="0.05" stop-color="#fdf497"/><stop offset="0.45" stop-color="#fd5949"/><stop offset="0.6" stop-color="#d6249f"/><stop offset="0.9" stop-color="#285aeb"/></radialGradient></defs><rect width="24" height="24" rx="6" fill="url(#settings-ig-app)"/><g fill="none" stroke="#fff" stroke-width="1.8"><rect x="5" y="5" width="14" height="14" rx="4"/><circle cx="12" cy="12" r="3.3"/></g><circle cx="16.4" cy="7.6" r="1.1" fill="#fff"/></svg>`;
+/** A row that says something and has nothing to press. */
+const settingsFact = (id: string, title: string, value: string) =>
+  `<div class="st-row st-fact" id="${id}"><span class="st-row-text"><b>${title}</b></span><span class="st-value">${value}</span></div>`;
+/** The server's line in About: there only while it isn't connected. */
+function serverRow() {
+  return connection.online
+    ? ""
+    : `<div class="st-row st-server" id="settings-server" role="status"><span class="st-row-text"><b>Server</b><small>The game keeps trying on its own.</small></span><span class="st-value">${escape(connection.text)}</span></div>`;
+}
 function settingsMarkup(reduced: boolean) {
   // The game's own switch, off by default (reduced-motion.ts): the device's
   // accessibility setting no longer decides it (owner, 27 Nov 2026).
@@ -5852,7 +5916,7 @@ function settingsMarkup(reduced: boolean) {
     // In a room: what this match offers, then motion.
     const practiceTools =
       state.practice && touch.enabled
-        ? `<div class="st-row settings-quick-actions"><span class="st-row-text"><b>Solo test</b><small>Fighter, cooldowns, target and your numbers.</small></span><button id="settings-practice" class="secondary btn-secondary">${iconLabel("target", "Practice tools")}</button></div>`
+        ? `<div class="st-row settings-quick-actions"><span class="st-row-text"><b>Solo test</b><small>Fighter, cooldowns, target and your numbers.</small></span><button id="settings-practice" class="secondary btn-secondary">${iconLabel("target", "Tools")}</button></div>`
         : "";
     const note = state.practice
       ? ""
@@ -5864,14 +5928,75 @@ function settingsMarkup(reduced: boolean) {
       : "";
     side = `<section class="prefs-card st-card" aria-labelledby="prefs-match"><h3 id="prefs-match">${menuIcon("battle")}This match</h3>${note}${practiceTools}${skills}${motion}</section>`;
   } else
-    side = `<section class="prefs-card st-card" aria-labelledby="prefs-display"><h3 id="prefs-display">${menuIcon("fullscreen")}Display</h3>${graphicsRow()}${isNativeApp() ? "" : fullscreenRow()}${motion}</section>`;
+    side = `<section class="prefs-card st-card" aria-labelledby="prefs-display"><h3 id="prefs-display">${menuIcon("fullscreen")}Display</h3>${graphicsRow()}${fullscreenRow()}${motion}</section>`;
   const appIcon = !state && isNativeApp() ? appIconCardHTML() : "";
+  const game = `<div class="st-cols">${sound}${side}${appIcon}</div>`;
+  const help = `<section class="prefs-card st-card st-list" aria-label="Help">${settingsAction("settings-howto", "How to play", "Fighters, skills, modes and the Plaza.", "help", "Open")}${settingsAction("open-controls", touch.enabled ? "Controls" : "Controls &amp; keys", touch.enabled ? "Move and resize your buttons." : "Keys, mouse, controller and touch.", touch.enabled ? "settings" : "keyboard", "Open")}${!state ? settingsAction("settings-guide", "Getting started", "Your first steps, each with a reward.", "sparkle", "Open") : ""}${settingsAction("settings-report", "Report a problem", "Tell us what went wrong. We read every report.", "report", "Report")}</section>`;
+  const account = accountsUI?.account;
+  const you = account
+    ? `<section class="prefs-card st-card st-list" aria-label="Account">${settingsAction("settings-profile", escape(account.displayName), account.guest ? "Playing as a guest: your player card can save your progress to an email." : "Your name, frame, titles and account are on your player card.", "user", "Player card")}${settingsAction("settings-logout", "Log out", account.guest ? "A guest's progress stays only on this device." : "Log in again any time with your email.", "leave", "Log out")}</section>`
+    : "";
+  const about = `<section class="prefs-card st-card st-list" aria-label="About">${serverRow()}${settingsFact("settings-version", "Version", BUILD_ID ? escape(BUILD_ID) : "Development build")}${OPEN_BETA ? settingsAction("settings-beta", "Open beta", "The game is still growing, and things may change. Tell us what you think.", "help", "Support") : ""}${settingsAction("settings-instagram", "Instagram", "@elementarena.usa: news, new fighters and clips.", { html: INSTAGRAM_ICON }, "Open")}${settingsAction("settings-credits", "Credits", "Who and what made the game.", "star", "Open")}${settingsAction("settings-privacy", "Privacy policy", "What the game keeps, and why.", "help", "Open")}</section>`;
+  const panes: Record<SettingsTab, string> = {
+    game,
+    help,
+    account: you,
+    about,
+  };
+  const tabs = settingsTabs();
+  if (!tabs.includes(settingsTab)) settingsTab = "game";
+  const tabRow = `<div class="settings-tabs" role="tablist" aria-label="Settings" data-dialog-head-tabs>${tabs.map((t) => `<button type="button" role="tab" class="settings-tab" id="settings-tab-${t}" data-settings-tab="${t}" aria-controls="settings-${t}" aria-selected="${t === settingsTab}" tabindex="${t === settingsTab ? 0 : -1}">${SETTINGS_TAB_LABEL[t]}</button>`).join("")}</div>`;
+  const body = tabs
+    .map(
+      (t) =>
+        `<div class="settings-pane" id="settings-${t}" role="tabpanel" aria-labelledby="settings-tab-${t}"${t === settingsTab ? "" : " data-pane-off inert"}>${panes[t]}</div>`,
+    )
+    .join("");
   const leave = myId
     ? leaveButton()
     : watching
       ? `<button id="exit-room" class="secondary btn-secondary leave-button">${iconLabel("stop-watching", "Stop watching")}</button>`
       : "";
-  return `<div class="settings-screen st"><h2>Settings</h2><div class="st-cols">${sound}${side}${appIcon}</div><div class="settings-actions"><button id="open-controls" class="secondary btn-secondary">${iconLabel(touch.enabled ? "settings" : "keyboard", touch.enabled ? "Controls" : "Controls &amp; keys")}</button>${leave}<button id="settings-report" class="quiet">${iconLabel("report", "Report a problem")}</button><button id="settings-credits" class="quiet">${iconLabel("star", "Credits")}</button></div></div>`;
+  return `<div class="settings-screen st" data-tab="${settingsTab}"><h2>Settings</h2>${tabRow}${body}${leave ? `<div class="settings-actions">${leave}</div>` : ""}</div>`;
+}
+/** Show one of Settings' tabs (and remember it for the next time). */
+function showSettingsTab(tab: SettingsTab, focus = false) {
+  const box = $<HTMLDialogElement>("dialog");
+  const screen = box.querySelector<HTMLElement>(".settings-screen");
+  if (!screen) return;
+  settingsTab = tab;
+  screen.dataset.tab = tab;
+  for (const b of Array.from(
+    box.querySelectorAll<HTMLButtonElement>("[data-settings-tab]"),
+  )) {
+    const on = b.dataset.settingsTab === tab;
+    b.setAttribute("aria-selected", String(on));
+    b.tabIndex = on ? 0 : -1;
+    if (on && focus) b.focus();
+  }
+  for (const pane of Array.from(
+    box.querySelectorAll<HTMLElement>(".settings-pane"),
+  )) {
+    // Out of sight but still taking room (settings-screen.css), and out of
+    // reach of taps, the keyboard and screen readers.
+    const off = pane.id !== `settings-${tab}`;
+    pane.toggleAttribute("data-pane-off", off);
+    pane.inert = off;
+  }
+  box.querySelector(".dialog-content")?.scrollTo({ top: 0 });
+}
+/** The server's state, for Settings → About (there only while it's off). */
+const connection = { text: "Connecting…", online: false };
+function setConnection(text = connection.text, online = false) {
+  connection.text = text;
+  connection.online = online;
+  // About open: its line comes, goes or changes in place.
+  const about = document.querySelector<HTMLElement>(
+    "#settings-about > .st-list",
+  );
+  if (!about) return;
+  about.querySelector("#settings-server")?.remove();
+  about.insertAdjacentHTML("afterbegin", serverRow());
 }
 /**
  * Settings → Sound → Vibration (owner, 25 Nov 2026): the buzz when hits land
@@ -5927,24 +6052,73 @@ function showSettings() {
   bindDisplayCard();
   bindVibrationRow();
   bindMotionRow();
-  $("open-controls").onclick = showControls;
-  $("settings-report").onclick = () => accountsUI.showReport(reportContext());
-  $("settings-credits").onclick = showCredits;
-  const skills = document.getElementById("settings-skills");
-  if (skills) skills.onclick = showSkills;
-  const exitRoom = $("exit-room");
-  if (exitRoom) exitRoom.onclick = () => void leave();
+  const tabs = box.querySelector<HTMLElement>(".settings-tabs");
+  if (tabs) {
+    tabs.onclick = (event) => {
+      const tab = (event.target as Element).closest<HTMLElement>(
+        "[data-settings-tab]",
+      );
+      if (tab) showSettingsTab(tab.dataset.settingsTab as SettingsTab);
+    };
+    // Arrow keys move between the tabs (the tablist pattern).
+    tabs.onkeydown = (event) => {
+      const step =
+        event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
+      if (!step) return;
+      event.preventDefault();
+      const all = settingsTabs();
+      const next =
+        all[(all.indexOf(settingsTab) + step + all.length) % all.length];
+      showSettingsTab(next, true);
+    };
+  }
+  const on = (id: string, run: () => void) => {
+    const button = document.getElementById(id);
+    if (button) button.onclick = run;
+  };
+  on("open-controls", showControls);
+  on("settings-howto", () => showHowToPlay());
+  on("settings-guide", openGuide);
+  on("settings-report", () => accountsUI.showReport(reportContext()));
+  on("settings-profile", () => {
+    $<HTMLDialogElement>("dialog").close();
+    void accountsUI.showProfile();
+  });
+  // The header's own log-out button asks a guest first (accounts.ts).
+  on("settings-logout", () => {
+    $<HTMLDialogElement>("dialog").close();
+    document.getElementById("account-logout")?.click();
+  });
+  on("settings-beta", () => window.open(SUPPORT_URL, "_blank", "noopener"));
+  on("settings-instagram", () =>
+    window.open(INSTAGRAM_URL, "_blank", "noopener"),
+  );
+  on("settings-credits", showCredits);
+  on("settings-privacy", () => window.open(PRIVACY_URL, "_blank", "noopener"));
+  on("settings-skills", showSkills);
+  on("exit-room", () => void leave());
 }
 /**
- * Settings → Display: full screen on and off (where the browser allows it).
- * Not in the iPhone app, which is always full screen: App icon takes its place.
+ * Settings → Display → Full screen, only where it applies (owner, 28 Nov
+ * 2026): a switch where the browser can hide its bars; on an iPhone's
+ * browser, which can't, the way to the Home Screen ("Want fullscreen?",
+ * pwa.ts). Nothing in the app or when opened from the Home Screen: those
+ * are full screen already (the app shows App icon instead).
  */
 const fullscreenSupported = () =>
   !!document.documentElement.requestFullscreen &&
   document.fullscreenEnabled !== false;
 function fullscreenRow() {
+  if (isNativeApp() || runningStandalone()) return "";
+  if (!fullscreenSupported())
+    return `<div class="st-row"><span class="st-row-text"><b id="prefs-fullscreen">Full screen</b><small>Add the game to your Home Screen to play without the browser's bars.</small></span><button type="button" id="settings-fullscreen-how" class="secondary btn-secondary st-action" aria-describedby="prefs-fullscreen">${iconLabel("fullscreen", "How")}</button></div>`;
   const on = !!document.fullscreenElement;
-  return `<div class="st-row"><span class="st-row-text"><b id="prefs-fullscreen">Full screen</b><small>${fullscreenSupported() ? "Hide the browser's bars while you play." : "On iPhone, add the game to your Home Screen to play full screen."}</small></span><button type="button" class="prefs-switch" id="settings-fullscreen" role="switch" aria-labelledby="prefs-fullscreen" aria-checked="${on}" ${fullscreenSupported() ? "" : "disabled"}><span>${on ? "On" : "Off"}</span></button></div>`;
+  // Where the browser offers to install the game (Chrome), the way to the
+  // home screen too: it then opens like an app ("Want fullscreen?").
+  const install = installAvailable()
+    ? `<div class="st-row"><span class="st-row-text"><b id="prefs-install">Home screen</b><small>Add the game: it opens like an app, full screen.</small></span><button type="button" id="settings-install" class="secondary btn-secondary st-action" aria-describedby="prefs-install">${iconLabel("fullscreen", "Add")}</button></div>`
+    : "";
+  return `<div class="st-row"><span class="st-row-text"><b id="prefs-fullscreen">Full screen</b><small>Hide the browser's bars while you play.</small></span><button type="button" class="prefs-switch" id="settings-fullscreen" role="switch" aria-labelledby="prefs-fullscreen" aria-checked="${on}"><span>${on ? "On" : "Off"}</span></button></div>${install}`;
 }
 function syncDisplayCard() {
   const button = document.getElementById("settings-fullscreen");
@@ -5955,6 +6129,10 @@ function syncDisplayCard() {
 }
 document.addEventListener("fullscreenchange", syncDisplayCard);
 function bindDisplayCard() {
+  for (const id of ["settings-fullscreen-how", "settings-install"]) {
+    const how = document.getElementById(id);
+    if (how) how.onclick = showFullscreenHelp;
+  }
   const button = document.getElementById("settings-fullscreen");
   if (!button) return;
   button.onclick = async () => {
@@ -5995,7 +6173,7 @@ function showSkills() {
 /** Who and what made the game (opened from Settings, with a way back). */
 function showCredits() {
   dialog(
-    `<div class="credits-screen"><button type="button" class="quiet" id="credits-back">${iconLabel("back", "Settings")}</button><h2>Credits</h2><div class="credits-hero"><span class="credits-crest" aria-hidden="true"><svg viewBox="0 0 64 64"><defs><linearGradient id="credits-crest" x2="0" y2="1"><stop stop-color="#fff1a3"/><stop offset="1" stop-color="#d9a340"/></linearGradient></defs><path fill="url(#credits-crest)" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span><div><b>Element Arena</b><small>Real-time creature duels from Elemental Plaza.</small></div></div><div class="credits-grid"><section class="prefs-card"><h3>${menuIcon("user")}Creatures &amp; world</h3><p>${Object.keys(CHARACTERS).length} original creatures, each an articulated shaded-vector rig with front, back and side views, plus the Plaza and the coliseum.</p></section><section class="prefs-card"><h3>${menuIcon("sound")}Music</h3><p>Original music played on instrument recordings from the <a href="https://github.com/sgossner/VCSL" target="_blank" rel="noopener noreferrer">Versilian Community Sample Library</a> and <a href="https://github.com/sgossner/VSCO-2-CE" target="_blank" rel="noopener noreferrer">VSCO 2 Community Edition</a> (CC0 public domain).</p></section><section class="prefs-card"><h3>${menuIcon("keyboard")}Built with</h3><ul class="credits-tags">${["Phaser", "Socket.IO", "Express", "TypeScript", "Vite", "Supabase"].map((t) => `<li>${t}</li>`).join("")}</ul></section></div></div>`,
+    `<div class="credits-screen" data-dialog-size="m"><button type="button" class="quiet" id="credits-back">${iconLabel("back", "Settings")}</button><h2>Credits</h2><div class="credits-hero"><span class="credits-crest" aria-hidden="true"><svg viewBox="0 0 64 64"><defs><linearGradient id="credits-crest" x2="0" y2="1"><stop stop-color="#fff1a3"/><stop offset="1" stop-color="#d9a340"/></linearGradient></defs><path fill="url(#credits-crest)" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span><div><b>Element Arena</b><small>Real-time creature duels from Elemental Plaza.</small></div></div><div class="credits-grid"><section class="prefs-card"><h3>${menuIcon("user")}Creatures &amp; world</h3><p>${Object.keys(CHARACTERS).length} original creatures, each an articulated shaded-vector rig with front, back and side views, plus the Plaza and the coliseum.</p></section><section class="prefs-card"><h3>${menuIcon("sound")}Music</h3><p>Original music played on instrument recordings from the <a href="https://github.com/sgossner/VCSL" target="_blank" rel="noopener noreferrer">Versilian Community Sample Library</a> and <a href="https://github.com/sgossner/VSCO-2-CE" target="_blank" rel="noopener noreferrer">VSCO 2 Community Edition</a> (CC0 public domain).</p></section><section class="prefs-card"><h3>${menuIcon("keyboard")}Built with</h3><ul class="credits-tags">${["Phaser", "Socket.IO", "Express", "TypeScript", "Vite", "Supabase"].map((t) => `<li>${t}</li>`).join("")}</ul></section></div></div>`,
   );
   $("credits-back").onclick = showSettings;
 }
@@ -6011,7 +6189,6 @@ function showControls() {
   });
 }
 $("mobile-settings").onclick = showSettings;
-$("settings").onclick = showSettings;
 $("battle-menu").onclick = showSettings;
 /** Details attached to problem reports so admins can reproduce them. */
 function reportContext(): Record<string, string> {
@@ -6030,25 +6207,17 @@ function reportContext(): Record<string, string> {
   if (me) context.fighter = CHARACTERS[me.character].name;
   return context;
 }
-$("report-problem").onclick = () => accountsUI.showReport(reportContext());
-$("privacy-policy").onclick = () => {
-  headerMenu.open = false;
-  window.open(PRIVACY_URL, "_blank", "noopener");
-};
-$("leaderboard").onclick = () => {
+/** Ranks (the Lobby rail, How to play): the season's leaderboard. */
+function openRanks() {
   if (!tellLocked("ranks")) void accountsUI.showLeaderboard();
-};
-// In the hub the header's log-out button is folded into this menu.
-$("menu-logout").onclick = () => {
-  headerMenu.open = false;
-  document.getElementById("account-logout")?.click();
-};
-$("guide-open").onclick = () => {
-  $<HTMLDetailsElement>("header-menu").open = false;
+}
+/** Getting started again (Settings → Help, How to play's footer). */
+function openGuide() {
   if (!accountsUI.ensurePlayer()) return;
   if (myId) return toast("Finish or leave this room first.", "warn");
+  $<HTMLDialogElement>("dialog").close();
   guide.reopen();
-};
+}
 function helpControls(): HelpControls {
   const bindings = controlPrefs().bindings;
   const pad = (a: PadAction) => PAD_LABELS[a];
@@ -6117,7 +6286,7 @@ $<HTMLDialogElement>("dialog").addEventListener("click", (event) => {
   menuOpen = false;
   if (t.dataset.htpGo) helpGo(t.dataset.htpGo as HelpGo);
   else if (t.hasAttribute("data-htp-tour")) startTour(true);
-  else $("guide-open").click();
+  else openGuide();
 });
 /** Arrow keys move between How to play's tabs. */
 $<HTMLDialogElement>("dialog").addEventListener("keydown", (event) => {
@@ -6150,8 +6319,6 @@ function helpGo(to: HelpGo) {
   if (to === "controls") return showControls();
   lobbyAction(to);
 }
-$("help").onclick = () => showHowToPlay();
-$("daily-gift").onclick = () => showGift();
 /** Start it now (replay), or when it is due for a new account. */
 function startTour(replay = false) {
   const account = accountsUI?.account?.id;
@@ -10088,6 +10255,8 @@ function startupStage(): StartupStage {
 startStartupCurtain(startupStage);
 accountsUI = new AccountUI({
   selectedCharacter: () => selected,
+  giftState,
+  openGift: () => showGift(true),
   reportPhoto: (photo, name) => reportPhoto(photo, name),
   // Match history's "Play the Hard bot again": the bot bar's own start.
   playBot: (level) => void lobbyPlay(`bot-${level}`),

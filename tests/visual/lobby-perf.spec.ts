@@ -30,7 +30,7 @@ test("five taps on Graphics show the frame-rate table over every screen", async 
   ).toBe("transform");
 
   const toggle = async (to: "on" | "off") => {
-    await page.evaluate(() => document.getElementById("settings")!.click());
+    await page.evaluate(() => document.getElementById("home-settings")!.click());
     const dialog = page.locator("#dialog");
     const title = dialog.locator("#prefs-graphics");
     const count = await line.count();

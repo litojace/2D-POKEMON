@@ -173,6 +173,7 @@ export const battlePerfSchema = z
     pressToSendP50: z.number().min(0).max(60_000).optional(),
     pressToSendP95: z.number().min(0).max(60_000).optional(),
     pressToSendP99: z.number().min(0).max(60_000).optional(),
+    pressStale: z.number().int().min(0).max(1_000_000).optional(),
     eventToHandlerP95: z.number().min(0).max(60_000).optional(),
     handlerToSendP95: z.number().min(0).max(60_000).optional(),
     sendGapP50: z.number().min(0).max(60_000).optional(),

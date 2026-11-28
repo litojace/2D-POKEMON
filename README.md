@@ -17,7 +17,7 @@ Free in your browser, on a phone (best in landscape) or a computer, in open beta
 
 ## What's in the game
 
-- **18 original fighters across 9 elements**: Electric, Fire, Water, Aura, Light, Psychic, Earth, Shadow and Nature, two of each, every one with its own kit of a basic attack, three skills and an ultimate.
+- **18 original fighters across 9 elements**: Electric, Fire, Water, Aura, Light, Psychic, Earth, Shadow and Nature, two of each, every one with its own kit of a basic attack, three skills and an ultimate, and its own way of walking on and of celebrating a win.
 - **Duels**: best-of-five 1v1 against a player or a bot (Easy, Normal or Hard), from Quick match or a private room with a code.
 - **2v2 teams and free-for-all**: team up with a friend, or fight three or four players at once; bots fill the empty seats when you search alone. Hosts of private rooms can turn on party rules like Turbo, Glass cannon or Crown Hill.
 - **Co-op raids**: 1 to 4 players against seven giant bosses, each with its own phases, attacks to read and dodge, and cosmetic rewards.

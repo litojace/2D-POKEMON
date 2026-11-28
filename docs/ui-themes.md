@@ -106,6 +106,30 @@ battle canvas, which no look touches) and the frame-rate profiles
     (`ui/light-effects.css`). The unit test names this one animation and
     fails on any other; `tests/visual/poster-title.spec.ts` checks where it
     runs and where it stops.
+  - **A second motion that never ends, also by the owner's leave (27 Nov
+    2026):** the glint on the Lobby's PLAY and the title's "Tap to start",
+    a hard-edged bar of light that crosses the button behind its word about
+    every 5 s for as long as the button shows. It is **not** a CSS
+    animation that runs for ever, and the unit test still fails on one:
+    `glint.ts` puts `.is-glinting` on the button for one 0.7 s sweep
+    (`poster-glint` in `lobby.css`, `poster-glint-prompt` in `screens.css`)
+    and takes it off again, so between sweeps nothing of it animates. Its
+    timer stops when the button does not show (the Lobby covered by a
+    panel, or closed for a battle or the Plaza; the title gone), while the
+    page is hidden, with Reduce motion and on Low graphics. Only transform
+    and opacity move. Keep it to those two buttons, so the shine still
+    means "press here". `tests/unit/glint.test.ts`,
+    `tests/visual/poster-glint.spec.ts`.
+    Measured over 30 s at 4× CPU (28 Nov 2026, headless Chrome, 844×390).
+    On a screen where nothing else moves, the timed sweeps cost 264 drawn
+    frames and 271 style recalculations; the same sweep as a CSS `infinite`
+    costs 258 and 1,793 on PLAY (a running animation is restyled on every
+    frame, through its still part too) and 642 and 1,799 on the title's
+    prompt. In the Lobby on High graphics the fighter already keeps the
+    main thread busy and the glint adds about 190 drawn frames in 30 s
+    either way; on the title the sunburst already draws every frame and the
+    glint adds nothing measurable. On Low graphics and with Reduce motion,
+    the only settings where those screens rest, there is no glint.
 - Fonts are self-hosted woff2 (latin and Vietnamese subsets) with their OFL
   licence files, inside the folder (`font-src 'self'` is already allowed).
 - Markup Poster needs that the look underneath doesn't goes into the shared
@@ -119,6 +143,33 @@ island inset and desktop, looked at box by box; `battle-style-budget` and
 
 Ink black, cream paper, the game's gold and a hot red; nothing rounded,
 hard offset shadows; Anton capitals and Archivo text.
+
+**The Lobby's Today cards** (owner, 27 Nov 2026: "A, the sticker, with the
+motion pack"; `themes/poster/lobby.css`, `tests/visual/poster-today-cards.spec.ts`):
+
+- Each card wears a tilted **sticker** on its top right corner with a
+  picture of its own (a star for the Journey, a flag for Getting started, a
+  target for Missions, two heads for Friends), drawn in CSS on the card's
+  `::before`, so the markup is unchanged. A kicker takes its card's colour.
+- Bars are an ink trough with a gold fill. **Today's six missions are six
+  pips**: the same `<progress>`, cut into sixths by a mask. With all six
+  done the card turns gold with a tick and says "All 6 done" (`.is-complete`;
+  rewards are paid as each mission is done, so there is nothing to claim).
+- **The Spire's card stands apart**: ink with gold words and a Spire-violet
+  edge, the tower larger and breaking out of the frame. Its headline is the
+  next title within reach ("Floor 10 → title", `spireLadder` in
+  `spire-nudge.ts`, from the real title floors in `SPIRE_REWARDS`), with the
+  floors to it as a small ladder and how far it is. While a zone is new the
+  headline is the news, with a red NEW tag and a glint about every 5 s
+  (`glint.ts`, as PLAY's); on an ordinary day nothing on it moves.
+- **Motion, once:** when the Lobby appears the cards slide in one after
+  another, the bars fill and the stickers pop, and a pressed card sinks
+  into its hard shadow. No animation here runs for ever, and none plays
+  with Reduce motion or on Low graphics.
+- On a phone the column keeps two cards above the mode box. Nothing in it
+  ends in "…": once the cards that must step aside have, the mode's hint
+  and then the cards' lines take their two lines back if they fit
+  (`fitCards` in `lobby-screen.ts`: `.lobby-mode-tight`, `.lobby-cards-tight`).
 
 **One chrome for every fighter** (owner, 27 Nov 2026, "direction G"; the
 chrome used to be the Lobby fighter's colour, and with Voltkit the whole
@@ -159,6 +210,37 @@ game was yellow):
   (what single screens, the battle HUD, the result and raid sheets and the
   raid room need). Sweep: `tests/visual/poster.spec.ts`.
 
+- **Bare icons on scenes, blocks in panels** (owner, 27–28 Nov 2026: "drop
+  the black circle, keep just the icon a little bigger, with a bit of
+  shadow"; then "this icon style fits, where else does it apply?"):
+  - **Bare:** a control drawn straight on a scene (the playfield, the
+    Plaza, the Lobby's field, a fighter's stage) has no block behind it.
+    Its icon is cream with an ink outline and a hard drop, a size up from
+    its block version. Its word (if it has one) is cream with an ink
+    stroke, and it turns gold under a finger or while it is open. Today:
+    the battle's chat and gear, the Plaza's HUD (Map, Gifts, Album, Today,
+    the clock, the fishing count), the top bar's chat and gear, and the ‹ ›
+    beside the Lobby fighter and on the Fighters stage.
+  - **One recipe** (`tokens.css`): `--bare-ink` (cream), `--bare-hot`
+    (gold), `--bare-icon-edge` (the outline, a `filter` for an icon),
+    `--bare-word-edge` (the same as a `text-shadow` for words) and
+    `--bare-chevron` (a drawn ‹, as a `clip-path`). A new bare control
+    reads these: no copies of the shadows.
+  - **The box stays:** a bare button keeps its box, so its tap area stays
+    44 px (with `phone-fit.css`'s reach on a phone) and nothing beside it
+    moves.
+  - **Blocks stay** for what is not an icon on a scene: menus, panels and
+    dialogs (ink blocks), the touch controls in a fight, currency (the coin
+    pill), counters and cards, and calls to action (PLAY, Buy). An icon
+    beside its word on a stage on a desktop (Entrance, Victory) is a text
+    button, and stays a block.
+  - **Badges** on a bare icon are Poster's one indicator (the red square
+    with an ink edge, as on the Plaza); this recipe doesn't style them.
+  - **The Lobby's rail stays on its ink slab** (coordinator for the owner,
+    28 Nov): its icons and words already stand bare on the slab, with no
+    block per button, and the slab with its cream stripe is G's main shape.
+    The open screen keeps its slanted cream block, the clearest "you are
+    here".
 - The Lobby's ink slab and its white stripe are pseudo-elements; the only
   markup the look adds is `.lobby-bigname` in the Lobby's backdrop (the
   fighter's name, hidden in the look underneath).
@@ -203,7 +285,9 @@ game was yellow):
   word is, or a state. Body copy stays ink or cream. The roles of the look's
   own colours: cream is what is chosen; gold is what to press and coins,
   and progress on ink only (gold on cream is about 1.2:1); red is the level
-  badge, a sale, leaving and danger.
+  badge, a sale, leaving and danger. One exception: the loading screen's
+  bar fills in cream, because its page is gold and a gold fill read as a
+  hole in the ink bar (`server-connection.css`; over a painting it is gold).
   - **How serious** (`severity.css`): neutral and info have no colour of
     their own (info shows an ⓘ); highlight is weight, not colour; success
     is green (`--sev-ok`), warning amber (`--sev-warn`), danger the look's

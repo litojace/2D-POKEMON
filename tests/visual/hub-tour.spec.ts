@@ -228,8 +228,9 @@ test("the tour runs to the end, and How to play replays it", async ({
     await expect
       .poll(ends)
       .toEqual([{ result: "done", reached: 6, steps: 6, replay: false }]);
-    await page.click(".header-menu > summary");
-    await page.click("#help");
+    await page.click("#home-settings");
+    await page.click('[data-settings-tab="help"]');
+    await page.click("#settings-howto");
     await page.click("[data-htp-tour]");
     await expect(page.locator("#dialog")).not.toHaveAttribute("open");
     await expect(tour(page)).toBeVisible();
@@ -291,8 +292,9 @@ for (const size of SIZES.slice(0, 2))
     try {
       const page = await context.newPage();
       const errors = await openHub(page);
-      await page.click(".header-menu > summary");
-      await page.click("#help");
+      await page.click("#home-settings");
+      await page.click('[data-settings-tab="help"]');
+      await page.click("#settings-howto");
       const dialog = page.locator("#dialog");
       await expect(dialog.locator(".htp")).toBeVisible();
       for (const topic of [

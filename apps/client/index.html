@@ -106,13 +106,13 @@
         justify-items: center;
         gap: clamp(8px, 2vh, 18px);
       }
+      /* No block behind the name: an ink outline and a hard ink shadow,
+         as the curtain's (server-connection.css). */
       #app-boot .boot-brand {
         display: grid;
         justify-items: center;
         padding: clamp(6px, 1.6vh, 12px) clamp(12px, 2.6vh, 20px)
           clamp(4px, 1.2vh, 9px);
-        background: #0d0d0f;
-        box-shadow: 5px 5px 0 #ff2e4d;
       }
       #app-boot h1 {
         margin: 0;
@@ -123,6 +123,16 @@
           "Arial Narrow",
           sans-serif;
         text-transform: uppercase;
+        text-shadow:
+          0.05em 0 0 #0d0d0f,
+          -0.05em 0 0 #0d0d0f,
+          0 0.05em 0 #0d0d0f,
+          0 -0.05em 0 #0d0d0f,
+          0.035em 0.035em 0 #0d0d0f,
+          -0.035em 0.035em 0 #0d0d0f,
+          0.035em -0.035em 0 #0d0d0f,
+          -0.035em -0.035em 0 #0d0d0f,
+          0.1em 0.1em 0 #0d0d0f;
       }
       #app-boot h1 span {
         display: block;
@@ -232,6 +242,7 @@
         flex: none;
         width: clamp(34px, 10vh, 76px);
         height: clamp(34px, 10vh, 76px);
+        filter: drop-shadow(0 0 1.5px #0d0d0f) drop-shadow(4px 4px 0 #0d0d0f);
       }
       .boot-art #app-boot h1 {
         font-size: clamp(24px, 7vh, 54px);
@@ -340,6 +351,7 @@
       }
       #app-boot.is-failed h1 {
         color: #0d0d0f;
+        text-shadow: none;
         font:
           700 28px/1.2 system-ui,
           sans-serif;
