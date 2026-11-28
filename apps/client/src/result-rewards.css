@@ -116,6 +116,10 @@
 #arena-overlay#arena-overlay .rw-value i {
   font-style: normal;
 }
+/* A mastery tier's name in its tier's colour (the tile's --rw-mark). */
+#arena-overlay#arena-overlay .rw-tile.has-mark .rw-tier {
+  color: var(--rw-mark);
+}
 #arena-overlay#arena-overlay .rw-value small {
   margin-left: 4px;
   font: 500 calc(12px * var(--text-scale, 1))/1 var(--font-body);

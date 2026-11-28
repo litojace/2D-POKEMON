@@ -8,6 +8,8 @@ import {
   startPractice,
 } from "./helpers";
 import { onPlayersLook } from "./players-look";
+import { SEASON_THEMES, seasonTheme } from "../../packages/shared/src/journey";
+import { MASTERY_TIERS } from "../../packages/shared/src/accounts";
 
 // In the look players have (players-look.ts).
 onPlayersLook();
@@ -235,6 +237,53 @@ for (const size of SIZES) {
             1.5,
           );
       await snap(page, info, `rewards-win-${name}`);
+      // Each reward in its resource's colour (themes/poster/sheets.css):
+      // coins gold, the season its own colour, mastery its tier's, on the
+      // icon and the news block; the tier's name cream.
+      const hex = (h: string) =>
+        [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+      const look = await page.evaluate(() => {
+        const ctx = document.createElement("canvas").getContext("2d", {
+          willReadFrequently: true,
+        })!;
+        const rgb = (css: string) => {
+          ctx.clearRect(0, 0, 1, 1);
+          ctx.fillStyle = "#000";
+          ctx.fillStyle = css;
+          ctx.fillRect(0, 0, 1, 1);
+          return Array.from(ctx.getImageData(0, 0, 1, 1).data.slice(0, 3));
+        };
+        const of = (sel: string, prop = "color") => {
+          const el = document.querySelector(sel);
+          return el ? rgb(getComputedStyle(el).getPropertyValue(prop)) : [];
+        };
+        return {
+          coinIcon: of('.rw-tile[data-rw="coins"] .rw-icon svg'),
+          coinValue: of('.rw-tile[data-rw="coins"] .rw-value'),
+          seasonIcon: of('.rw-tile[data-rw="season"] .rw-icon svg'),
+          seasonNews: of(
+            '.rw-tile[data-rw="season"] .rw-burst',
+            "background-color",
+          ),
+          masteryIcon: of('.rw-tile[data-rw="mastery"] .rw-icon svg'),
+          masteryNews: of(
+            '.rw-tile[data-rw="mastery"] .rw-burst',
+            "background-color",
+          ),
+          tierName: of('.rw-tile[data-rw="mastery"] .rw-tier'),
+        };
+      });
+      const season = hex(SEASON_THEMES[seasonTheme("2026-11")].color);
+      const bronze = hex(MASTERY_TIERS[0].color);
+      expect(look).toEqual({
+        coinIcon: [255, 214, 91],
+        coinValue: [255, 214, 91],
+        seasonIcon: season,
+        seasonNews: season,
+        masteryIcon: bronze,
+        masteryNews: bronze,
+        tierName: [244, 234, 213],
+      });
       // The middle's edges fade where more is hidden past them (audit
       // A06-A08: a line cut by the foot read as broken): taller than the
       // screen, its bottom fades at the top and its top at the bottom;

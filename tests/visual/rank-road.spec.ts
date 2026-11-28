@@ -291,6 +291,23 @@ for (const size of SIZES)
       await centred(page, ".rk-tier.is-cur .ui-tag", "You tag");
       if (!size.phone)
         await centred(page, ".rk-rules > summary", "How ranks work");
+      // Your rank's card: a flat ink block with a thick top edge in the
+      // tier's colour, not a wash of it (themes/poster/ranks-card.css).
+      expect(
+        await page.locator(".rk-card").evaluate((card) => {
+          const c = getComputedStyle(card);
+          const probe = document.createElement("i");
+          probe.style.color = "var(--rank)";
+          card.append(probe);
+          const tier = getComputedStyle(probe).color;
+          probe.remove();
+          return {
+            wash: c.backgroundImage,
+            fill: c.backgroundColor,
+            edge: c.borderTopColor === tier && c.borderTopWidth === "6px",
+          };
+        }),
+      ).toEqual({ wash: "none", fill: "rgb(30, 30, 34)", edge: true });
       await snap(page, info, `rank-road-${size.name}`);
 
       // The boards are one tap away, and the road comes back.

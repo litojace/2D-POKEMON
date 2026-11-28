@@ -1,0 +1,11 @@
+/* Poster: your rank's card on Ranks (the audit, 28 Nov). It was a soft
+   wash of the tier's colour (--rank) fading into the panel, with a thin
+   tinted rim. A tier is treated as a rarity: its colour marks its own
+   thing. The card is a flat ink block with a thick top edge in the tier's
+   colour; the badge and the bar keep theirs. */
+:root[data-ui="poster"] .rk-card {
+  border: 0;
+  border-top: 6px solid var(--rank);
+  border-radius: 0;
+  background: var(--ink-2);
+}

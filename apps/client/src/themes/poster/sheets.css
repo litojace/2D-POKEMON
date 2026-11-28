@@ -474,6 +474,41 @@
 :root[data-ui="poster"] #arena-overlay#arena-overlay .rw-tile.has-burst {
   border-color: var(--ui-line);
 }
+/* Each reward in its resource's colour (docs/ui-themes.md, "Colour that
+   means something"; the colour standard's leftover from slice C):
+   - Coins are gold, the look's colour for coins: their mark and amount.
+   - Mastery is its tier's colour (Bronze, Silver, Gold, Crystal) and the
+     Season the season's own (SEASON_THEMES), each on a mark: the tile's
+     icon and its news block (BRONZE, TIER UP), with ink words on it. The
+     words stay cream: Mastery's tier name was in its colour.
+   result-rewards.ts gives the tile its colour as --rw-mark (has-mark); a
+   mastery before Bronze has none and keeps the cream icon. The icon's
+   svg is named too: a rule of its own colours it cream. */
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay
+  .rw-tile[data-rw="coins"]
+  :is(.rw-icon, .rw-icon svg, .rw-value) {
+  color: var(--gold);
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay
+  .rw-tile.has-mark
+  :is(.rw-icon, .rw-icon svg) {
+  color: var(--rw-mark);
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay
+  .rw-tile.has-mark
+  .rw-burst {
+  background: var(--rw-mark);
+  color: var(--ink);
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay
+  .rw-tile.has-mark
+  .rw-tier {
+  color: var(--paper);
+}
 /* A bot match's XP (journey-result-xp, adventure-ui.ts): an ink block,
    the level a square in the element colour, the bar flat, and the level-up
    line readable Anton capitals, not 8 px words (C09). */
