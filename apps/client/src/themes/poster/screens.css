@@ -196,6 +196,17 @@
     min-height: 44px;
   }
 }
+/* Join or watch's words in the kit's greys, not the look underneath's
+   blue-grey (#c1cfe4 labels, a #8092b4 "ABC123"; audit W05): the field
+   labels in --ui-dim (9:1 or more on the panel), the placeholder in
+   --ui-faint (5.4:1 in the field), as the sign-in panel's is. What you
+   type stays cream. */
+:root[data-ui="poster"] .room-panel label {
+  color: var(--ui-dim);
+}
+:root[data-ui="poster"] .room-panel input::placeholder {
+  color: var(--ui-faint);
+}
 /* play drawer */
 :root[data-ui="poster"]
   :is(.play-drawer, .home-screen .play-panel, #play-panel) {
