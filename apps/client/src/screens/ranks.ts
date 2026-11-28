@@ -59,7 +59,9 @@ export function openRanks(hooks: RanksHooks): RanksScreen {
     root()
       .querySelector<HTMLElement>("[data-ranks-list], [data-ranks-road]")
       ?.scrollTo({ top: 0 });
-    if (scope === "friends" && !hooks.data().friends) void load("friends");
+    // Shown at once on the copy it has (warmed at startup), and asked for
+    // again behind it; redrawn only where the answer changed.
+    if (scope === "friends") void load("friends");
   }
 
   const onClick = (event: MouseEvent) => {
