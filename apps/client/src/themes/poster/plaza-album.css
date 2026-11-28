@@ -25,9 +25,12 @@
 }
 
 /* A photo's buttons (Save to album, Save picture, Delete, Back, Close):
-   square, one size already. The main one is gold; Delete is red words on
-   ink, and a red block once it asks "Delete?"; the rest are ink blocks. */
+   square, one size, 44 px tall for a finger (they were 40). The main one is
+   gold; Delete is red words on ink, and a red block once it asks
+   "Delete?"; the rest are ink blocks. */
 :root[data-ui="poster"] .plaza-layer :where(.pz) .polaroid .acts > * {
+  height: 44px;
+  line-height: 44px;
   border-radius: 0;
   background: var(--ink-3);
   color: var(--paper);
