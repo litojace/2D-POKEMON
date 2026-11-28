@@ -223,7 +223,7 @@ test("your zone counts down on the snapshot's clock, an opponent's on yours", as
         response,
         body: body.replace(
           marker,
-          "export function drawZone(...a) { (window.__zoneProgress ??= {})[a[1].id] = a[2]; return drawZoneNow(...a); }\nfunction drawZoneNow(",
+          "export function drawZone(...a) { (window.__zoneProgress ??= {})[a[1].id] = a[2]; (window.__zoneDrawnAt ??= {})[a[1].id] = performance.now(); return drawZoneNow(...a); }\nfunction drawZoneNow(",
         ),
       });
     },
@@ -261,10 +261,28 @@ test("your zone counts down on the snapshot's clock, an opponent's on yours", as
       });
       // The same timer: one yours, one your opponent's.
       w.__snap.zones = [zone(970, "me", 400), zone(971, "p2", 1200)];
-      w.__zoneProgress = {};
-      w.__push();
-      await new Promise((r) => setTimeout(r, 250));
-      const seen = { ...w.__zoneProgress };
+      // Snapshots keep coming at 15 Hz, as from a server, until a frame
+      // drew both zones soon after one arrived. A frame 0.3 s or more after
+      // its snapshot puts both clocks at LEAD.max, where they agree: one
+      // push and a fixed wait failed that way on a slow CI runner (main's
+      // full run, 28 Nov), where no frame drew them in time. Both values
+      // are the last frame's (a frame draws every zone).
+      let seen: Record<number, number> = {};
+      for (let i = 0; i < 30; i++) {
+        w.__zoneProgress = {};
+        w.__zoneDrawnAt = {};
+        const pushed = performance.now();
+        w.__push();
+        await new Promise((r) => setTimeout(r, 1000 / 15));
+        const p = w.__zoneProgress,
+          at = w.__zoneDrawnAt;
+        if (
+          [970, 971].every((id) => p[id] !== undefined && at[id] - pushed < 200)
+        ) {
+          seen = { ...p };
+          break;
+        }
+      }
       w.__snap.zones = [];
       w.__push();
       return seen;

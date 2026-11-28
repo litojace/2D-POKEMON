@@ -83,6 +83,31 @@ for (const size of [
       width: Math.round(size.width * 0.4),
       height: Math.round(size.height * 0.4),
     };
+    // Keep this background sample clear of the decorative cutouts. SwiftShader
+    // dithers the scaled, transparent water-ball edge by one channel level
+    // (77 pixels at 844x390), even though the source WebP is a single still.
+    // The art's attachment and controls are checked in welcome-art.spec.ts;
+    // keep the background's existing strict motion threshold unchanged.
+    const actors = await page.locator(".gate-action").evaluateAll((elements) =>
+      elements.map((el) => {
+        const r = el.getBoundingClientRect();
+        return {
+          left: r.left,
+          top: r.top,
+          bottom: r.bottom,
+          animation: getComputedStyle(el).animationName,
+        };
+      }),
+    );
+    for (const actor of actors) {
+      expect(actor.animation).toBe("none");
+      if (actor.bottom > clip.y && actor.top < clip.y + clip.height)
+        clip.width = Math.min(clip.width, Math.floor(actor.left - 8));
+    }
+    expect(
+      clip.width,
+      "a useful foreground-free background sample",
+    ).toBeGreaterThan(40);
     // A decoded CSS background may still be uploading to the compositor on a
     // busy GPU. Wait for a still pair rather than treating that first paint as
     // continuous animation; keep ordinary animation preferences enabled.
