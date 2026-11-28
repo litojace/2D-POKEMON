@@ -1,0 +1,23 @@
+/* Poster: the Spire's last violet words (the audit, 28 Nov). The Spire's
+   violet (--boss on its page) is its identity, not an element, a rarity, a
+   severity or a state, so it colours no words or numbers. A blessing's
+   stacks line ("Damage · stacks 3× · 10% → 18% → 25%") is the kit's grey;
+   a floor's number is cream; the next floor is marked as the route's next
+   step is (raids-spire.css): a cream rim, its state in cream. "/ 70" under
+   the floors cleared is grey. */
+:root[data-ui="poster"] .sp-stacks {
+  color: var(--ui-dim);
+}
+:root[data-ui="poster"] .sp-floor-num {
+  color: var(--ui-text);
+}
+:root[data-ui="poster"] .sp-floor.is-next {
+  border-color: var(--paper);
+  background: var(--ink-2);
+}
+:root[data-ui="poster"] .sp-floor.is-next .sp-floor-state {
+  color: var(--ui-text);
+}
+:root[data-ui="poster"] .sp-ascent .sp-stat b small {
+  color: var(--ui-dim);
+}
