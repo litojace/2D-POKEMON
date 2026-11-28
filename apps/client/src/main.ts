@@ -747,10 +747,13 @@ const chat = mountChat({
   block: async (accountId, name) => {
     try {
       const done = await accountsUI.block(accountId, name);
-      if (done) toast(`${name} is blocked.`);
+      if (done) toast(`${name} is blocked.`, "ok");
       return done;
     } catch (error) {
-      toast(error instanceof Error ? error.message : "Couldn't block them.");
+      toast(
+        error instanceof Error ? error.message : "Couldn't block them.",
+        "error",
+      );
       return false;
     }
   },
@@ -1108,19 +1111,30 @@ document.addEventListener("pointerdown", (event) => {
  */
 let toastTimer = 0;
 let toastWaiting = "";
+let toastWaitingKind: "ok" | "warn" | "error" | undefined;
 let toastWait = 0;
-function toast(message: string) {
+/**
+ * How serious a toast is (owner, 27 Nov 2026: colour by how dangerous or
+ * important it is). Poster gives each its own edge and mark, a tick or a
+ * warning sign, so the colour never carries the meaning alone
+ * (themes/poster/severity.css). None: a plain note.
+ */
+type ToastKind = "ok" | "warn" | "error";
+function toast(message: string, kind?: ToastKind) {
   if (curtainCovers()) {
     toastWaiting = message;
+    toastWaitingKind = kind;
     if (!toastWait)
       toastWait = window.setInterval(() => {
         if (curtainCovers()) return;
         clearInterval(toastWait);
         toastWait = 0;
-        toast(toastWaiting);
+        toast(toastWaiting, toastWaitingKind);
       }, 100);
     return;
   }
+  if (kind) $("toast").dataset.kind = kind;
+  else delete $("toast").dataset.kind;
   $("toast").textContent = message;
   $("toast").classList.add("show");
   // A newer toast keeps its whole time (an older one's timer hid it early).
@@ -1147,10 +1161,11 @@ function request(
         if (!socket.connected || socket.id !== connectionId)
           return resolve({ ok: false });
         if (error) {
-          if (!quiet) toast("Server did not respond. Check your connection.");
+          if (!quiet)
+            toast("Server did not respond. Check your connection.", "error");
           resolve({ ok: false });
         } else {
-          if (!reply.ok && reply.error && !quiet) toast(reply.error);
+          if (!reply.ok && reply.error && !quiet) toast(reply.error, "error");
           resolve(reply);
         }
       }),
@@ -1412,7 +1427,7 @@ function chooseRite(id: string) {
   ritePending = id;
   void request("rite", { id }).then((reply) => {
     ritePending = "";
-    if (!reply.ok && reply.error) toast(reply.error);
+    if (!reply.ok && reply.error) toast(reply.error, "error");
   });
 }
 document.addEventListener("click", (e) => {
@@ -1867,10 +1882,11 @@ async function reportPhoto(photo: string, name: string) {
   if (!sure) return;
   try {
     await accountsUI.reportPhoto(photo);
-    toast("Thanks. The picture was reported.");
+    toast("Thanks. The picture was reported.", "ok");
   } catch (error) {
     toast(
       error instanceof Error ? error.message : "That didn't work. Try again.",
+      "error",
     );
   }
 }
@@ -2307,11 +2323,11 @@ function teamUpNote(me: Fighter) {
 async function joinByCode(code: string) {
   if (!accountsUI.ensurePlayer()) return false;
   if (myId) {
-    toast("Leave your current room first.");
+    toast("Leave your current room first.", "warn");
     return false;
   }
   if (!connected) {
-    toast("Waiting for the server connection.");
+    toast("Waiting for the server connection.", "warn");
     return false;
   }
   if (watching) await stopWatching();
@@ -2461,17 +2477,18 @@ async function kickFromParty(playerId: string) {
     reply.ok
       ? `${name} was removed from the party.`
       : (reply.error ?? "Couldn't remove them."),
+    reply.ok ? "ok" : "error",
   );
 }
 async function acceptParty(code: string) {
   if (!accountsUI.ensurePlayer()) return false;
   if (myId) {
-    toast("Leave your current room first.");
+    toast("Leave your current room first.", "warn");
     return false;
   }
   const reply = await request("party-accept", { code, character: selected });
   if (!reply.ok) {
-    toast(reply.error ?? "That party is no longer open.");
+    toast(reply.error ?? "That party is no longer open.", "error");
     return false;
   }
   partyCharacterSent = selected;
@@ -2547,7 +2564,8 @@ async function showPartyInvite() {
           delete button.dataset.busy;
           if (reply.ok) partyCharacterSent = selected;
           if (inviteStands(reply)) noteInviteSent(id, false);
-          if (!reply.ok) toast(reply.error ?? "Couldn't send this invitation.");
+          if (!reply.ok)
+            toast(reply.error ?? "Couldn't send this invitation.", "error");
           if (inviteStands(reply) && !invitedFriends().has(id)) {
             // The party's own list arrives a moment later.
             button.innerHTML = iconLabel("check", "Invited");
@@ -2599,7 +2617,7 @@ async function watchRoom(raw: string) {
   const code = raw.trim().toUpperCase();
   const reply = await request("watch", { code });
   if (!reply.ok) {
-    toast(reply.error ?? "Couldn't watch that room.");
+    toast(reply.error ?? "Couldn't watch that room.", "error");
     return;
   }
   watching = code;
@@ -2654,8 +2672,8 @@ let botLevel: BotLevel = (() => {
 })();
 async function startAdventure(mode: string) {
   if (!accountsUI.ensurePlayer()) return;
-  if (myId) return toast("Leave your current room first.");
-  if (!connected) return toast("Waiting for the server connection.");
+  if (myId) return toast("Leave your current room first.", "warn");
+  if (!connected) return toast("Waiting for the server connection.", "warn");
   if (watching) await stopWatching();
   audio.unlock();
   $<HTMLDialogElement>("dialog").close();
@@ -3095,7 +3113,7 @@ function syncPlaza(want: boolean, hub = want) {
     // Emotes go through chat's Nearby channel (docs/chat-plan.md).
     quickChat: (quick: ChatQuick) =>
       void request("chat-send", { channel: "place", quick }).then((r) => {
-        if (!r.ok && r.error) toast(r.error);
+        if (!r.ok && r.error) toast(r.error, "error");
       }),
     myAccountId: () => accountsUI.account?.id,
     onPlayer: async (action, playerId, name, avatar) => {
@@ -3118,11 +3136,12 @@ function syncPlaza(want: boolean, hub = want) {
       if (action === "block") {
         try {
           const done = await accountsUI.block(playerId, name);
-          if (done) toast(`${name} is blocked.`);
+          if (done) toast(`${name} is blocked.`, "ok");
           return done;
         } catch (error) {
           toast(
             error instanceof Error ? error.message : "Couldn't block them.",
+            "error",
           );
           return false;
         }
@@ -3137,6 +3156,7 @@ function syncPlaza(want: boolean, hub = want) {
         reply.ok
           ? "Party invitation sent."
           : (reply.error ?? "Couldn't send this invitation."),
+        reply.ok ? "ok" : "error",
       );
     },
     toast,
@@ -3619,7 +3639,7 @@ async function quickMatch() {
       if (room.ok) {
         socket.off("quick-found");
         identity(room);
-      } else if (!paired) toast(room.error ?? "Try again.");
+      } else if (!paired) toast(room.error ?? "Try again.", "error");
     },
   });
 }
@@ -3674,7 +3694,7 @@ async function fillMatch(mode: FillMode) {
         quickSearch.close();
         quickSearch = undefined;
         void request("quick-leave", {}, true);
-        toast(filled.error ?? "Try again.");
+        toast(filled.error ?? "Try again.", "error");
       }
     },
   });
@@ -3683,7 +3703,7 @@ async function fillMatch(mode: FillMode) {
 async function lobbyPlay(chosen: LobbyMode) {
   audio.unlock();
   if (!accountsUI.ensurePlayer()) return;
-  if (!connected) return toast("Waiting for the server connection.");
+  if (!connected) return toast("Waiting for the server connection.", "warn");
   const size = party?.members.length ?? 0;
   const mode = partyLobbyMode(chosen, size);
   if (size > 1) {
@@ -3739,8 +3759,8 @@ async function startRaid(
   options: { solo?: boolean; returnTab?: RaidTab },
 ) {
   if (!accountsUI.ensurePlayer()) return;
-  if (myId) return toast("Leave your current room first.");
-  if (!connected) return toast("Waiting for the server connection.");
+  if (myId) return toast("Leave your current room first.", "warn");
+  if (!connected) return toast("Waiting for the server connection.", "warn");
   if (watching) await stopWatching();
   audio.unlock();
   $<HTMLDialogElement>("dialog").close();
@@ -3796,8 +3816,8 @@ async function startSpire(options: {
 }) {
   const zone = SPIRE_ZONES[options.zone ?? 1] ? (options.zone ?? 1) : 1;
   if (!accountsUI.ensurePlayer()) return;
-  if (myId) return toast("Leave your current room first.");
-  if (!connected) return toast("Waiting for the server connection.");
+  if (myId) return toast("Leave your current room first.", "warn");
+  if (!connected) return toast("Waiting for the server connection.", "warn");
   if (watching) await stopWatching();
   audio.unlock();
   $<HTMLDialogElement>("dialog").close();
@@ -3949,7 +3969,8 @@ function renderMenu(revealSelection = false) {
   {
     const play = async (event: "create" | "join") => {
       if (!accountsUI.ensurePlayer()) return;
-      if (!connected) return toast("Waiting for the server connection.");
+      if (!connected)
+        return toast("Waiting for the server connection.", "warn");
       audio.unlock();
       const name = $<HTMLInputElement>("name").value.trim();
       localStorage.setItem("arena-name", name);
@@ -4030,7 +4051,8 @@ function renderMenu(revealSelection = false) {
     );
     $("bot-match").onclick = async () => {
       if (!accountsUI.ensurePlayer()) return;
-      if (!connected) return toast("Waiting for the server connection.");
+      if (!connected)
+        return toast("Waiting for the server connection.", "warn");
       audio.unlock();
       const button = $<HTMLButtonElement>("bot-match");
       button.disabled = true;
@@ -4047,7 +4069,8 @@ function renderMenu(revealSelection = false) {
     if ($("practice"))
       $("practice").onclick = async () => {
         if (!accountsUI.ensurePlayer()) return;
-        if (!connected) return toast("Waiting for the server connection.");
+        if (!connected)
+          return toast("Waiting for the server connection.", "warn");
         const button = $<HTMLButtonElement>("practice");
         button.disabled = true;
         const name = $<HTMLInputElement>("name").value.trim() || "Trainer";
@@ -4103,7 +4126,7 @@ async function leave(returnToHub = true) {
     if (socket.id === leavingConnection && myId === leavingPlayer)
       inputSessionReady = inputBeforeLeave;
     scene?.syncInputClock();
-    toast("Could not leave the room yet. Reconnect and try again.");
+    toast("Could not leave the room yet. Reconnect and try again.", "error");
     return;
   }
   // You stepped out of your party's room: you stay in the party, and the
@@ -4456,11 +4479,20 @@ function renderBattle() {
     badge && state.phase === "playing" && phaseText.startsWith("LIVE ·");
   if ($("phase-label").hidden !== quietPhase)
     $("phase-label").hidden = quietPhase;
-  $("timer").classList.toggle(
-    "ring-on",
-    !state.practice &&
-      state.phase === "playing" &&
-      ringRadius(state.remaining, state.overtime) !== null,
+  // How urgent the clock is (themes/poster/severity.css): "ring" while the
+  // ring closes (a warning: stay inside), "low" in a round's last 10 seconds
+  // (danger). Written through hud-dom: only when it changes.
+  const clockLive = !state.practice && state.phase === "playing";
+  setHudAttribute(
+    $("timer"),
+    "data-clock",
+    !clockLive
+      ? ""
+      : !state.overtime && seconds <= 10
+        ? "low"
+        : ringRadius(state.remaining, state.overtime) !== null
+          ? "ring"
+          : "",
   );
   // Sound/state feedback is shared by both control layouts. Only the hidden
   // desktop button's decoration is omitted on touch screens.
@@ -5000,7 +5032,7 @@ function renderBattle() {
         // The picture opens large to share or save (share-preview.ts).
         void shareResult(state, myId).then((how) => {
           if (how === "failed")
-            toast("Couldn’t make the result card on this browser.");
+            toast("Couldn’t make the result card on this browser.", "error");
         });
       };
       // A bot room has no lobby to return to: go back to the menu.
@@ -5200,12 +5232,16 @@ socket.on("server-update", (data: unknown) => {
     const left = Math.max(0, notice.left ?? 0);
     toast(
       `Update: the server restarts in about ${Math.max(1, Math.round(left / 60000))}\u00a0min. Finish your match, then update.`,
+      "warn",
     );
     clearTimeout(restartReminder);
     if (left > 75_000)
       restartReminder = setTimeout(() => {
         if (state && state.phase !== "finished")
-          toast("The server restarts in under a minute: finish your match.");
+          toast(
+            "The server restarts in under a minute: finish your match.",
+            "warn",
+          );
       }, left - 60_000);
   } else if (!updateSaid.moving) {
     updateSaid.moving = true;
@@ -5616,7 +5652,10 @@ async function reportMatch(matchId: string, attempt = 0) {
     }
     for (const name of reply.achievements)
       if (!seen.includes(name))
-        toast(`Achievement unlocked: ${name}. Its title is yours to wear.`);
+        toast(
+          `Achievement unlocked: ${name}. Its title is yours to wear.`,
+          "ok",
+        );
     // Rank up: say so once, when the rating change first arrives.
     const rating = reply.rating;
     const wasRated =
@@ -5682,7 +5721,7 @@ function showFighterPicker() {
       $<HTMLDialogElement>("dialog").close();
       menuOpen = false;
       const reply = await request("rematch", { character: id });
-      if (!reply.ok) return toast(reply.error ?? "Try again.");
+      if (!reply.ok) return toast(reply.error ?? "Try again.", "error");
       // It is your fighter from now on, in the Lobby too.
       selected = id;
       rememberHomeFighter(id);
@@ -5923,7 +5962,7 @@ function bindDisplayCard() {
       if (document.fullscreenElement) await document.exitFullscreen();
       else await document.documentElement.requestFullscreen();
     } catch {
-      toast("Full screen isn't available in this browser.");
+      toast("Full screen isn't available in this browser.", "warn");
     }
     syncDisplayCard();
   };
@@ -6007,7 +6046,7 @@ $("menu-logout").onclick = () => {
 $("guide-open").onclick = () => {
   $<HTMLDetailsElement>("header-menu").open = false;
   if (!accountsUI.ensurePlayer()) return;
-  if (myId) return toast("Finish or leave this room first.");
+  if (myId) return toast("Finish or leave this room first.", "warn");
   guide.reopen();
 };
 function helpControls(): HelpControls {
@@ -6100,7 +6139,7 @@ $<HTMLDialogElement>("dialog").addEventListener("keydown", (event) => {
 });
 /** A How to play card's Go: the screen it is about, from the hub. */
 function helpGo(to: HelpGo) {
-  if (myId) return toast("Finish or leave this room first.");
+  if (myId) return toast("Finish or leave this room first.", "warn");
   if (to === "plaza") return setHubScene("plaza");
   if (to === "practice") return void lobbyPlay("practice");
   if (hubScene !== "lobby") setHubScene("lobby");
@@ -10135,7 +10174,7 @@ accountsUI = new AccountUI({
       renderRoom(false);
   },
   watchRoom: (code) => {
-    if (myId) return toast("Leave your current room first.");
+    if (myId) return toast("Leave your current room first.", "warn");
     void watchRoom(code);
   },
   notify: toast,
