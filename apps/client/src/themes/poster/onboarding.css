@@ -298,87 +298,109 @@
   background: var(--ink-3);
 }
 
-/* Demo art direction A + C: independent cutouts, never baked-in controls.
-   Their stage stays outside the card's scrollport and ignores all input. */
+/* B's full plaza vignette; C's actors attach to the card, not the viewport.
+   Each cutout's contact line is measured in the original art. Resizing only
+   changes its size: the same paw/foot stays on the same edge in every layout.
+   The actors are outside the card scrollport, so typing and form scrolling
+   cannot drag the scenery into the fields. */
 :root[data-ui="poster"] .title-illustration {
   display: block;
   position: absolute;
   z-index: 1;
   inset: max(84px, 12dvh) max(24px, var(--safe-right, 0px))
-    max(36px, calc(var(--safe-bottom, 0px) + 24px)) 45%;
-  background: url("/assets/welcome/title-high-five.webp") center / contain
+    max(36px, calc(var(--safe-bottom, 0px) + 24px)) 44%;
+  background: url("/assets/welcome/title-plaza-mischief.webp") center / contain
     no-repeat;
   pointer-events: none;
 }
 :root[data-ui="poster"] .welcome-gate:not(.is-title) .gate-layout {
-  padding-right: max(120px, calc(var(--safe-right, 0px) + 8vw));
+  grid-template-columns: minmax(0, 1fr) clamp(292px, 36vw, 440px);
+  padding-right: max(130px, calc(var(--safe-right, 0px) + 9vw));
 }
 :root[data-ui="poster"] .gate-account-stage {
   position: relative;
   min-inline-size: 0;
-  margin-block: 100px 36px;
 }
 :root[data-ui="poster"] .gate-account-stage .gate-card {
   position: relative;
   z-index: 1;
-  /* Leave room for the top cutout, stage margins and viewport padding. */
-  max-block-size: calc(100dvh - 184px);
 }
-:root[data-ui="poster"] .gate-peek {
+:root[data-ui="poster"] .gate-action {
   display: block;
   position: absolute;
   z-index: 2;
   background: center / contain no-repeat;
   pointer-events: none;
 }
-:root[data-ui="poster"] .gate-peek-voltkit {
-  inline-size: clamp(120px, 18dvh, 160px);
-  block-size: clamp(120px, 18dvh, 160px);
-  inset: auto auto calc(100% - 20px) 12px;
-  background-image: url("/assets/welcome/peek-voltkit.webp");
+:root[data-ui="poster"] .gate-action-voltkit {
+  inline-size: clamp(110px, 16vw, 200px);
+  aspect-ratio: 1;
+  left: 0;
+  top: 22%;
+  /* The grip and braced foot lie on x=83.5% of the source image. */
+  transform: translate(-83.5%, -30%);
+  background-image: url("/assets/welcome/signup-voltkit-climb.webp");
 }
-:root[data-ui="poster"] .gate-peek-pyranda {
-  inline-size: 130px;
-  block-size: 195px;
-  inset: 18% auto auto calc(100% - 12px);
+:root[data-ui="poster"] .gate-action-pyranda {
+  inline-size: clamp(76px, 10vw, 130px);
+  aspect-ratio: 2 / 3;
+  left: 100%;
+  top: 35%;
+  /* Both paws hold the left edge of this cutout. */
+  transform: translate(-9%, -35%);
   background-image: url("/assets/welcome/peek-pyranda.webp");
 }
-:root[data-ui="poster"] .gate-peek-terradon {
-  inline-size: 170px;
-  block-size: 116px;
-  inset: auto calc(100% - 14px) -12px auto;
-  background-image: url("/assets/welcome/peek-terradon.webp");
+:root[data-ui="poster"] .gate-action-tidefin {
+  inline-size: clamp(120px, 20vw, 230px);
+  aspect-ratio: 4 / 3;
+  left: 0;
+  bottom: 0;
+  /* The reaching paw hugs the panel; the rock shares its bottom baseline. */
+  transform: translateX(-84%);
+  background-image: url("/assets/welcome/signup-tidefin-splash.webp");
 }
 @media (max-height: 700px) and (orientation: landscape) {
   :root[data-ui="poster"] .welcome-gate:not(.is-title) .gate-layout {
-    padding-right: max(30px, calc(var(--safe-right, 0px) + 14px));
+    grid-template-columns: minmax(0, 1fr) clamp(280px, 38vw, 360px);
+    padding-right: max(80px, calc(var(--safe-right, 0px) + 76px));
   }
-  :root[data-ui="poster"] .gate-account-stage {
-    margin-block: 0;
+  :root[data-ui="poster"] .welcome-gate .gate-intro h1 {
+    font-size: clamp(40px, 7.2vw, 70px);
   }
-  :root[data-ui="poster"] .gate-account-stage .gate-card {
-    max-block-size: calc(100dvh - 24px);
+  :root[data-ui="poster"] .gate-action-voltkit {
+    inline-size: clamp(96px, 17vw, 150px);
   }
-  :root[data-ui="poster"] .gate-peek-voltkit {
-    inline-size: clamp(90px, 15vw, 140px);
-    block-size: clamp(90px, 15vw, 140px);
-    inset: 6px calc(100% + 4px) auto auto;
+  :root[data-ui="poster"] .gate-action-tidefin {
+    inline-size: clamp(96px, 17vw, 145px);
   }
-  :root[data-ui="poster"] .gate-peek-pyranda {
-    inline-size: 84px;
-    block-size: 126px;
-    inset: auto calc(100% - 8px) 8px auto;
+}
+/* Two short columns leave a clear ground for Tidefin beside the card. */
+@media (max-width: 950px) and (orientation: landscape) {
+  :root[data-ui="poster"] .welcome-gate .gate-quick {
+    display: grid;
+    grid-template-columns: repeat(2, max-content);
+    gap: 6px 12px;
+    inline-size: max-content;
   }
-  :root[data-ui="poster"] .gate-peek-terradon {
-    display: none;
+}
+@media (max-width: 600px) and (orientation: landscape) {
+  :root[data-ui="poster"] .welcome-gate .gate-intro h1 {
+    font-size: 32px;
+  }
+  :root[data-ui="poster"] .welcome-gate .gate-kicker {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+  }
+  :root[data-ui="poster"] .gate-action-tidefin {
+    inline-size: 80px;
   }
 }
 @media (max-width: 640px) and (orientation: portrait) {
   :root[data-ui="poster"] .welcome-gate:not(.is-title) .gate-layout {
     grid-template-columns: minmax(0, 1fr);
     block-size: auto;
-    gap: 0;
-    padding: max(24px, var(--safe-top, 0px)) 24px
+    gap: 28px;
+    padding: max(24px, var(--safe-top, 0px)) 16px
       max(28px, var(--safe-bottom, 0px));
   }
   :root[data-ui="poster"] .welcome-gate:not(.is-title)::before {
@@ -397,25 +419,25 @@
     display: none;
   }
   :root[data-ui="poster"] .gate-account-stage {
-    margin-block: 130px 12px;
+    margin-inline: 52px 40px;
   }
   :root[data-ui="poster"] .gate-account-stage .gate-card {
     max-block-size: none;
-    padding: 22px;
+    padding: 20px 16px;
   }
-  :root[data-ui="poster"] .gate-peek-voltkit {
-    inline-size: 145px;
-    block-size: 145px;
-    left: 0;
+  :root[data-ui="poster"] .gate-action-voltkit,
+  :root[data-ui="poster"] .gate-action-tidefin {
+    inline-size: clamp(64px, 20vw, 90px);
   }
-  :root[data-ui="poster"] .gate-peek-pyranda {
-    inline-size: 95px;
-    block-size: 143px;
-    inset: auto 8px calc(100% - 22px) auto;
-    transform: rotate(-10deg);
+  :root[data-ui="poster"] .gate-action-pyranda {
+    inline-size: clamp(40px, 13vw, 60px);
   }
-  :root[data-ui="poster"] .gate-peek-terradon {
-    display: none;
+  :root[data-ui="poster"] .gate-account-stage .auth-guest {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /* Labels remain readable where the diagonal slab meets the yellow cover. */
+  :root[data-ui="poster"] .gate-quick .title-quick-btn {
+    background: var(--ink);
   }
   :root[data-ui="poster"] .title-brand {
     left: 24px;
