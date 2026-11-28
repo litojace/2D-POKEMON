@@ -9,7 +9,7 @@ onPlayersLook();
 // Short dialogs are as wide as what they hold (themes/poster/dialogs.css,
 // audit W01–W04, owner 27 Nov: "Invite a friend" spanned a phone held
 // sideways for two lines and a button). A dialog's content names its size
-// (data-dialog-size, dialog.ts): "s" up to 440 px, "m" up to 560 px; the
+// (data-dialog-size, dialog.ts): "s" up to 440 px, "m" up to 560 px (Credits, Report a problem); the
 // rest (Settings here) keep their width. Behind any dialog the dim is flat:
 // no blur.
 const SIZES = [
@@ -91,6 +91,15 @@ for (const size of SIZES)
       expect(m.width).toBeLessThanOrEqual(440);
       onScreen(m);
       await snap(page, info, `dialog-fullscreen-${label(size)}`);
+      await close(page);
+
+      // Report a problem: a short form, a medium dialog.
+      await menu(page, "report-problem");
+      m = await measure(page);
+      expect(m.size).toBe("m");
+      expect(m.width).toBeLessThanOrEqual(560);
+      onScreen(m);
+      await snap(page, info, `dialog-report-${label(size)}`);
       await close(page);
 
       // Settings keeps its width; its Credits page is a medium dialog.
