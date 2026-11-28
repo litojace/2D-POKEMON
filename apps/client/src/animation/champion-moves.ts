@@ -20,8 +20,13 @@ import type { Facing } from "./controller";
  * - At most a few particles that belong to the move (dust on a landing).
  * - Nothing leaves the body (owner, 28 Nov 2026: a head that looked cut off).
  *   The head never lifts off the neck and barely tilts (the rig clamps both);
- *   "head thrown back" is a lean of the whole fighter. A somersault turns the
- *   fighter as one piece about its middle (`flip`), limbs kept close.
+ *   "head thrown back" is a lean of the whole fighter.
+ * - No spins (owner, 28 Nov 2026: "the champions aren't 3D; a spin looks
+ *   like a sheet of paper flipping over, Glacelle above all"). The whole
+ *   fighter leans (`tilt`), never turns past MAX_TURN, and is never narrowed
+ *   below MIN_WIDTH to fake turning edge-on. A ball bounces; it doesn't roll.
+ *   The rig clamps both, and tests/unit/champion-moves.test.ts fails on a
+ *   move that asks for more.
  *
  * A champion without a move here keeps its older pose in rig.ts.
  */
@@ -90,13 +95,17 @@ export const arc = (t: number, a: number, b: number) => {
   const k = (t - a) / (b - a);
   return 4 * k * (1 - k);
 };
+/** The furthest a move turns the whole fighter (radians): a lean, no more. */
+export const MAX_TURN = 0.45;
+/** The narrowest a move squashes the fighter (its width, times its own). */
+export const MIN_WIDTH = 0.7;
 /**
- * Turn the whole fighter in the air about its middle (between head and
- * hips), not about the hips: turned about the hips, the big head swings wide
- * round a small body and reads as a head on its own.
+ * Lean the whole fighter about its middle (between head and hips), not
+ * about the hips: leaned about the hips, the big head swings wide round a
+ * small body and reads as a head on its own.
  */
 const MIDDLE = 22;
-const flip = (s: MoveStage, angle: number) => {
+const tilt = (s: MoveStage, angle: number) => {
   s.spin(angle);
   s.move(-MIDDLE * Math.sin(angle), -MIDDLE * (1 - Math.cos(angle)));
 };
@@ -342,7 +351,7 @@ const tidefinVictory: Move = (s) => {
   const down = ease(t, 0.56, 0.72) * (1 - ease(t, 0.86, 0.94));
   const air = ease(t, 0.24, 0.34) * (1 - ease(t, 0.84, 0.94));
   s.move(0, -arc(t, 0.24, 0.92) * 40);
-  flip(s, s.side * (-0.34 * up + 0.34 * down));
+  tilt(s, s.side * (-0.34 * up + 0.34 * down));
   if (air > 0) s.squash(1 - 0.05 * air, 1 + 0.08 * air);
   p.legL.rotation = 0.3 * air;
   p.legR.rotation = -0.3 * air;
@@ -798,29 +807,37 @@ const glacelleEntrance: Move = (s) => {
 };
 const glacelleVictory: Move = (s) => {
   const { t, p } = s;
-  // A skater's spin, faster and faster, arms drawn in. (The fighter turns
-  // edge-on and round again as one piece.)
-  const spin = ease(t, 0, 0.15) * (1 - ease(t, 1.18, 1.26));
-  const turns = t < 1.26 ? Math.pow(Math.min(t, 1.26) / 1.26, 2) * 3 : 3;
-  const edge = Math.abs(Math.cos(turns * Math.PI));
-  if (spin > 0) s.squash(1 - 0.62 * (1 - edge) * spin, 1 + 0.06 * spin);
-  s.move(0, -10 * spin);
-  p.armL.rotation = -0.4 * spin;
-  p.armR.rotation = 0.4 * spin;
-  // Stops dead: arms flung wide, and holds it, frozen.
-  const stop = ease(t, 1.24, 1.32);
-  const pop = bump(t, 1.24, 1.5);
-  if (pop > 0) s.squash(1 + 0.08 * pop, 1 + 0.06 * pop);
-  p.armL.rotation += 1.9 * stop;
-  p.armR.rotation -= 1.9 * stop;
-  s.move(0, -8 * stop);
-  // A tiny shiver, then a slow drift, arms wide.
+  // Two long skating strokes: out to one side, across to the other, and
+  // home, leaning into each glide with the arms held wide. (A glide, never a
+  // spin: the art is flat, and a spin reads as paper turning over.)
+  const out = ease(t, 0, 0.42),
+    across = ease(t, 0.42, 0.92),
+    home = ease(t, 0.92, 1.2);
+  s.move(s.side * (14 * out - 28 * across + 14 * home), 0);
+  const glide = ease(t, 0, 0.15) * (1 - ease(t, 1.1, 1.24));
+  s.move(0, -7 * glide);
+  const lean =
+    bump(t, 0, 0.46) - bump(t, 0.42, 0.96) + 0.6 * bump(t, 0.92, 1.22);
+  s.spin(s.side * 0.2 * lean);
+  p.armL.rotation = (1.0 + 0.4 * lean) * glide;
+  p.armR.rotation = (-1.0 + 0.4 * lean) * glide;
+  // Then rises into a dancer's pose, one arm high, the other low and wide,
+  // and holds it, frozen.
+  const pose = ease(t, 1.22, 1.34);
+  const pop = bump(t, 1.22, 1.5);
+  if (pop > 0) s.squash(1 - 0.03 * pop, 1 + 0.08 * pop);
+  s.move(0, -10 * pose);
+  s.spin(s.side * 0.07 * pose);
+  p.armL.rotation += 2.4 * pose;
+  p.armR.rotation -= 0.8 * pose;
+  p.head.rotation = -0.08 * pose;
+  if (s.passed(1.28)) s.accent("spark", 4);
+  // A tiny shiver, then a slow drift, arms swaying.
   s.move(Math.sin(t * 60) * 1.4 * bump(t, 1.85, 2.15), 0);
   const drift = ease(t, 2.2, 2.5);
   s.move(0, -s.sway(1.8) * 2 * drift);
   p.armL.rotation += s.sway(1.8) * 0.12 * drift;
   p.armR.rotation -= s.sway(1.8) * 0.12 * drift;
-  if (s.passed(1.28)) s.accent("spark", 4);
 };
 
 // ---------------------------------------------------------------- Halcyra

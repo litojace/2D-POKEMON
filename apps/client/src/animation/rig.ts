@@ -17,6 +17,8 @@ import { CHARACTERS, type CharacterId } from "@arena/shared";
 import { moodFor, squashFor } from "./expression";
 import {
   ENTRANCES,
+  MAX_TURN,
+  MIN_WIDTH,
   SETTLED,
   TURNS,
   VICTORIES,
@@ -868,6 +870,13 @@ export class FighterRig {
       head.y = Math.max(neck, head.y);
       head.rotation = Math.max(-0.16, Math.min(0.16, head.rotation));
       ears.scaleX = Math.min(0.54, ears.scaleX);
+      // No spins: the art is flat, so a turn past a lean, or a squash that
+      // narrows it to fake turning edge-on, reads as paper flipping over.
+      this.root.rotation = Math.max(
+        -MAX_TURN,
+        Math.min(MAX_TURN, this.root.rotation),
+      );
+      sx = Math.max(MIN_WIDTH, sx);
       this.moveT = at;
     } else if (state === "wave" && !reduced)
       this.wave(
