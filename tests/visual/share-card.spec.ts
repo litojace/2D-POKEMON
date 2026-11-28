@@ -390,7 +390,16 @@ test("every card variant carries a readable code", async ({
             raids: { clears: 88888, totalClears: 88888 },
           },
         };
-        const out: Record<string, { data: string | null; png: string }> = {};
+        const out: Record<
+          string,
+          { data: string | null; png: string; corner: number[] }
+        > = {};
+        // The page's corner: Poster's element colour (it was the old
+        // look's navy, audit C11, C12).
+        const corner = (c: HTMLCanvasElement) =>
+          Array.from(
+            c.getContext("2d")!.getImageData(2, 2, 1, 1).data.slice(0, 3),
+          );
         const read = (c: HTMLCanvasElement) => {
           const g = c.getContext("2d")!;
           const px = g.getImageData(0, 0, c.width, c.height);
@@ -404,7 +413,11 @@ test("every card variant carries a readable code", async ({
             "https://elementarenausa.com",
             name !== "card-no-title-no-art",
           );
-          out[name] = { data: read(c), png: c.toDataURL("image/png") };
+          out[name] = {
+            data: read(c),
+            png: c.toDataURL("image/png"),
+            corner: corner(c),
+          };
         }
         const players = ["Ana", "Benedetta the Unbroken", "Cy", "Dee"].map(
           (name, i) => ({
@@ -430,7 +443,11 @@ test("every card variant carries a readable code", async ({
           "p0",
           "https://elementarenausa.com",
         );
-        out["result-2v2"] = { data: read(c), png: c.toDataURL("image/png") };
+        out["result-2v2"] = {
+          data: read(c),
+          png: c.toDataURL("image/png"),
+          corner: corner(c),
+        };
         return out;
       },
       { root: ROOT, progress: PROGRESS },
@@ -440,6 +457,7 @@ test("every card variant carries a readable code", async ({
       expect(r.data, name).toBe(
         name.startsWith("result") ? RESULT_LINK : CARD_LINK,
       );
+      expect(r.corner, `${name}: Poster's page`).toEqual([255, 214, 91]);
       const body = Buffer.from(r.png.split(",")[1], "base64");
       await info.attach(name, { body, contentType: "image/png" });
       if (dir) {
