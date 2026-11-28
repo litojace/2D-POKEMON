@@ -16,8 +16,9 @@
  * What each loop plays is the fitting room's own showcase, one 4.4 s cycle
  * of it (shop-preview.ts): a Mythical casts its ultimate at Stage III, a
  * Legendary plays its victory, a victory item plays on its fighter, and the
- * Classic look stands in its idle. Writes site-clips/skins/<name>/NNN.jpg and
- * meta.json (the action, the stage's internal clock at each frame).
+ * Classic look plays the champion's own entrance and then its victory.
+ * Writes site-clips/skins/<name>/NNN.jpg and meta.json (each action's
+ * frames, the stage's internal clock at each frame).
  */
 import { expect, test, type Page } from "@playwright/test";
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -40,12 +41,26 @@ const CYCLE_MS = 4400;
 const STEP_MS = 16;
 /** Frames past the loop, blended into its start where the loop wraps. */
 const TAIL = 8;
-/** The idle has no cycle: record more and let the encoder find the loop. */
-const IDLE_MS = 6600;
-/** The square cut round the fighter, as shares of the stage (CSS pixels). */
-const CUT = { cx: 0.5, cy: 0.375, side: 0.72 };
+/**
+ * The square cut round the fighter, as shares of the stage (CSS pixels):
+ * room above the head for a move that hops (Voltkit's glide rises a third
+ * of its height).
+ */
+const CUT = { cx: 0.5, cy: 0.365, side: 0.78 };
 
-type Action = "idle" | "victory" | "ultimate";
+/**
+ * Champions (or one look) whose moves need a taller picture:
+ * Cindrake's crest flame and Astrabun's ears stand a head above them, and
+ * their victory hops put the tips past the top.
+ */
+const TALL: Record<string, Partial<typeof CUT>> = {
+  cindrake: { cy: 0.315, side: 0.96 },
+  astrabun: { cy: 0.331, side: 0.9 },
+  // One look: Sunbara's Mythical raises an eclipse over its head.
+  "sunbara-daybreak": { cy: 0.331, side: 0.9 },
+};
+
+type Action = "entrance" | "victory" | "ultimate";
 interface Clip {
   /** File name on the website. */
   name: string;
@@ -54,7 +69,8 @@ interface Clip {
   item?: string;
   /** The Shop tab the piece is on (default: skins). */
   section?: "skins" | "collections";
-  action: Action;
+  /** What the loop plays, one showcase cycle each, in this order. */
+  actions: Action[];
   /** Another cut (a victory that fills the sky above the fighter). */
   cut?: Partial<typeof CUT>;
 }
@@ -69,8 +85,8 @@ const champions = JSON.parse(
     "utf8",
   ),
 ) as { id: string; skins: { id: string; rarity: string }[] }[];
-const actionFor = (rarity: string): Action =>
-  rarity === "mythical" ? "ultimate" : "victory";
+const actionsFor = (rarity: string): Action[] =>
+  rarity === "mythical" ? ["ultimate"] : ["victory"];
 
 /**
  * The Shop spotlight's pieces (gen-data.ts SHOWCASE) that are not featured
@@ -81,7 +97,7 @@ export const SPOTLIGHT_EXTRA: Clip[] = [
     name: "sunbara-sun-dynasty",
     champion: "sunbara",
     item: "sunbara-sun-dynasty",
-    action: "victory",
+    actions: ["victory"],
   },
   // A victory for every fighter, shown on Voltkit: it fills the sky above
   // the fighter, so its square is cut wider and higher.
@@ -90,19 +106,25 @@ export const SPOTLIGHT_EXTRA: Clip[] = [
     champion: "voltkit",
     item: "borealis-victory",
     section: "collections",
-    action: "victory",
+    actions: ["victory"],
     cut: { cy: 0.33, side: 1 },
   },
 ];
 
 export const CLIPS: Clip[] = [
   ...champions.flatMap((c) => [
-    { name: c.id, champion: c.id, action: "idle" as const },
+    // The Classic look shows the champion's own moves: its entrance, then
+    // its victory (apps/client/src/animation/champion-moves.ts).
+    {
+      name: c.id,
+      champion: c.id,
+      actions: ["entrance", "victory"] as Action[],
+    },
     ...c.skins.map((s) => ({
       name: s.id,
       champion: c.id,
       item: s.id,
-      action: actionFor(s.rarity),
+      actions: actionsFor(s.rarity),
     })),
   ]),
   ...SPOTLIGHT_EXTRA,
@@ -142,9 +164,6 @@ async function open(page: Page, clip: Clip) {
         .scrollIntoViewIfNeeded();
     await page.click(`.fit-room [data-ui-item="${clip.item}"]`);
   }
-  // A victory item plays its victory as soon as it is tried on.
-  if (clip.action !== "idle" && clip.section !== "collections")
-    await page.click(`[data-fit-play=${clip.action}]`);
   // The picture is the stage alone: no buttons, name or price.
   await page.addStyleTag({
     content:
@@ -167,7 +186,11 @@ for (const clip of CLIPS.filter((c) => !ONLY || ONLY.includes(c.name)))
       const page = await context.newPage();
       await open(page, clip);
       const box = (await page.locator(".fit-stage").boundingBox())!;
-      const c = { ...CUT, ...clip.cut };
+      const c = {
+        ...CUT,
+        ...(TALL[clip.name] ?? TALL[clip.champion]),
+        ...clip.cut,
+      };
       const side = Math.round(box.width * c.side);
       const cut = {
         x: Math.round(box.x + box.width * c.cx - side / 2),
@@ -180,30 +203,41 @@ for (const clip of CLIPS.filter((c) => !ONLY || ONLY.includes(c.name)))
       mkdirSync(dir, { recursive: true });
       await page.clock.pauseAt(Date.now() + 1000);
       const step = () => page.clock.runFor(STEP_MS);
-      // Two frames first, so the first recorded step is a whole one.
-      await step();
-      await step();
-      // Start where the showcase starts: the stage's clock crossing a cycle.
-      if (clip.action !== "idle") {
-        const cycleOf = async () =>
-          Math.floor((await animationTime(page)) / CYCLE_MS);
-        const from = await cycleOf();
-        for (let i = 0; i < 400 && (await cycleOf()) === from; i++)
-          await step();
-      }
-      const frames =
-        Math.ceil((clip.action === "idle" ? IDLE_MS : CYCLE_MS) / STEP_MS) +
-        TAIL;
+      const cycleOf = async () =>
+        Math.floor((await animationTime(page)) / CYCLE_MS);
+      const perCycle = Math.ceil(CYCLE_MS / STEP_MS);
       const clocks: number[] = [];
-      for (let f = 0; f < frames; f++) {
-        await page.screenshot({
-          path: `${dir}/${String(f).padStart(3, "0")}.jpg`,
-          clip: cut,
-          type: "jpeg",
-          quality: 95,
-        });
-        clocks.push(await animationTime(page));
-        await step();
+      const segments: { action: Action; start: number; length: number }[] = [];
+      let f = 0;
+      for (const action of clip.actions) {
+        // A victory item plays its victory as soon as it is tried on. The
+        // buttons are hidden from the picture, so the click is sent to them
+        // (a pointer would find nothing to press).
+        if (clip.section !== "collections")
+          await page
+            .locator(`[data-fit-play=${action}]`)
+            .dispatchEvent("click");
+        // A few frames for the stage to take the move up, then on to where
+        // its showcase starts: the stage's clock crossing a cycle.
+        const ready = () =>
+          stage(page).evaluate((h) => h.classList.contains("is-ready"));
+        for (let i = 0; i < 6 || (i < 120 && !(await ready())); i++)
+          await step();
+        expect(await ready(), `${action} never drew`).toBe(true);
+        const from = await cycleOf();
+        for (let i = 0; i < 2 * perCycle && (await cycleOf()) === from; i++)
+          await step();
+        segments.push({ action, start: f, length: perCycle });
+        for (let n = 0; n < perCycle + TAIL; n++, f++) {
+          await page.screenshot({
+            path: `${dir}/${String(f).padStart(3, "0")}.jpg`,
+            clip: cut,
+            type: "jpeg",
+            quality: 95,
+          });
+          clocks.push(await animationTime(page));
+          await step();
+        }
       }
       writeFileSync(
         `${dir}/meta.json`,
@@ -212,6 +246,7 @@ for (const clip of CLIPS.filter((c) => !ONLY || ONLY.includes(c.name)))
           stepMs: STEP_MS,
           tail: TAIL,
           cycleMs: CYCLE_MS,
+          segments,
           cut,
           clocks,
         }),

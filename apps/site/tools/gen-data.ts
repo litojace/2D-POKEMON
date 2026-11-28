@@ -23,6 +23,12 @@ import {
 } from "../../../packages/shared/src/shop";
 import { CHARACTERS } from "../../../packages/shared/src/index";
 import {
+  PLAZA_FISH,
+  PLAZA_FISH_RARITY,
+  PLAZA_FISH_TITLE,
+} from "../../../packages/shared/src/plaza";
+import { fishArt } from "../../client/src/plaza/plaza-fish-art";
+import {
   RAID_BOSSES,
   RAID_BOSS_ORDER,
   RAID_REWARDS,
@@ -284,3 +290,48 @@ for (const [name, markup] of [
     `$1\n${markup}$2`,
   );
 writeFileSync(indexPath, page3);
+
+// The Plaza's pond (index.html, between the fish markers, and the numbers
+// between the pond markers): the Fish book as the game shows it to a new
+// angler. Common and Uncommon fish are drawn in their colours (the game's
+// own drawings, img/fish/); Rare and Legendary ones are the shadow and the
+// "???" the game's Fish book shows until you catch them, with when they
+// bite, so the page leaves them to find. No word of what a catch pays.
+const fishDir = path.join(site, "img/fish");
+mkdirSync(fishDir, { recursive: true });
+const WHEN = { day: "Day only", night: "Night only" } as const;
+const fishCards = PLAZA_FISH.map((f) => {
+  const known = f.rarity === "common" || f.rarity === "uncommon";
+  const file = known ? f.id : `unknown-${f.shape}`;
+  writeFileSync(
+    path.join(fishDir, `${file}.svg`),
+    fishArt(f, known).replace(
+      "<svg ",
+      '<svg xmlns="http://www.w3.org/2000/svg" ',
+    ) + "\n",
+  );
+  const when = f.time ? `<span class="fish-when">${WHEN[f.time]}</span>` : "";
+  return `<li class="fish r-${f.rarity}${known ? "" : " unknown"}"${known ? ` style="--el: var(--el-${f.element.toLowerCase()})"` : ""}>
+  <img src="img/fish/${file}.svg" alt="" width="128" height="80" loading="lazy" decoding="async" />
+  <b>${known ? esc(f.name) : "???"}</b>
+  <small>${PLAZA_FISH_RARITY[f.rarity].name}</small>${known ? `\n  <small class="fish-el">${f.element}</small>` : ""}
+  ${when}
+</li>`;
+}).join("\n");
+const timed = (t: "day" | "night") =>
+  PLAZA_FISH.filter((f) => f.time === t).length;
+const pondFacts = `<li><b>${PLAZA_FISH.length}</b><span>fish in the pond</span></li>
+<li><b>${timed("day")}</b><span>bite by day only</span></li>
+<li><b>${timed("night")}</b><span>bite by night only</span></li>`;
+const pondTitle = `Catch every fish in the book and the title <b>${esc(PLAZA_FISH_TITLE.name)}</b> is yours.`;
+let page4 = readFileSync(indexPath, "utf8");
+for (const [name, markup] of [
+  ["fish", fishCards],
+  ["pond", pondFacts],
+  ["angler", pondTitle],
+] as const)
+  page4 = page4.replace(
+    new RegExp(`(<!-- ${name}:start -->)[\\s\\S]*?(\\s*<!-- ${name}:end -->)`),
+    `$1\n${markup}$2`,
+  );
+writeFileSync(indexPath, page4);

@@ -157,14 +157,25 @@ python3 apps/site/tools/make-skin-clips.py        # -> media/skins/, img/skins/
 - **What each loop plays** is the fitting room's own showcase cycle
   (4.4 s, `shop-preview.ts`): a Mythical casts its ultimate at Stage III
   (the "Ultimate" button), a Legendary plays its victory, a victory item
-  plays on Voltkit, and the Classic look stands in its idle. The recording
-  starts where the stage's clock (`data-animation-time`) crosses a cycle,
-  so the loop is one whole cycle; the idle has no cycle, so
-  `make-skin-clips.py` finds where it comes back round (the stretches closer
-  to the first frame than their neighbours) and takes the shortest nearly
-  as close as the best: one breath, 2.6 to 3.4 s (Lumoth's and Terradon's
-  ambient effects turn slower, so theirs are about 5.5 to 6 s). Eight frames past the end are blended into the start, so
-  nothing jumps where the loop wraps.
+  plays on Voltkit, and the Classic look plays the champion's own entrance
+  and then its victory, two cycles (owner, 27 Nov: every champion has its
+  own entrance and victory moves, `animation/champion-moves.ts`, so the
+  loops were recorded again from 07bdf35; the Classic look stood in its idle
+  before). Each action's recording starts where the stage's clock
+  (`data-animation-time`) crosses a cycle, so it is one whole cycle. Its
+  first eight frames are faded in from what comes before them (the same
+  action's next cycle, or the action before it), so nothing jumps where the
+  loop wraps or one action follows another.
+- **The cut** leaves room above the head: a move that hops (Voltkit's glide
+  rises a third of its height) stays in the picture. Cindrake (its crest
+  flame), Astrabun (its ears) and Sunbara's Mythical (the eclipse over its
+  head) get a taller one (`TALL` in skins.spec.ts). After recording, each
+  loop's frames were checked for the fighter touching the picture's edge,
+  and every champion's moves looked at on a sheet of frames against the
+  owner's rules (nothing leaves the body, the head on the neck, no spin, no
+  flattened face, the legs move). What still crosses the top is a skin's own
+  effect leaving the stage: a Sky lantern drifting up, a Mythical's lightning
+  coming down.
 - **How 60 frames a second come off a machine that draws a few:** the
   stage runs on Playwright's clock. Time is paused and moved on 16 ms
   between screenshots, so a frame takes as long as the CPU renderer needs
@@ -174,9 +185,10 @@ python3 apps/site/tools/make-skin-clips.py        # -> media/skins/, img/skins/
   60 frames a second the loop plays 4% slower than the game, which no one
   can see.
 - **One file per loop, H.264 MP4**, 720 x 720, CRF 28 tuned for animation,
-  fast start, no sound: an idle 42 to 299 KB (most under 110), a
-  Legendary 154 to 391 KB (median 230), a Mythical 253 to 363 KB (median
-  296); 21 MB for all 92, and 2.9 MB of posters and thumbnails. VP9 and
+  fast start, no sound: a Classic look (two actions, 9.2 s) 179 to 443 KB
+  (median 251), a Legendary 160 to 315 KB (median 252), a Mythical 211 to
+  340 KB (median 271); 24 MB for all 92, and 2.6 MB of posters and
+  thumbnails. VP9 and
   AV1 (WebM) came out larger than H.264 on these stages, and older iPhones
   play no AV1, so there is no WebM. (Playwright's own Chromium has no H.264;
   the cloud container's Chrome for Testing plays it.)
@@ -279,6 +291,30 @@ Settings screen to turn it on; the website's first visit has none, so it
 follows the device until the reader presses play. `tests/unit/reduced-motion.test.ts`
 covers `apps/client` only. When Low Power Mode refuses to start a loop
 (`NotAllowedError`), the switch shows play, and a tap starts it.
+
+### The Plaza and its pond (owner, 27 Nov)
+
+"Merge the Plaza intro into the fishing feature, for fun": the Plaza is one
+place on the page, where you hang out and fish together. Its card in Ways
+to play ("Hang out & fish") links to its own band, `#plaza`, in Water's
+blue: the words, how fishing goes in three steps (cast; wait, the bobber
+nibbles first; reel, rarer fish fight harder: `plaza-fishing.ts`,
+`plaza-fight.ts`), a real moment at the pond, three numbers and the Fish
+book.
+
+- **The picture** is the game: `scripts/site-clips/plaza.spec.ts` walks the
+  player to the dock with two friends on the path, casts, and takes the
+  bite (the scene without its buttons); `make-scenes.py` cuts the card's
+  picture and the band's from it (`img/modes/plaza-*`, `img/plaza/pond-*`).
+- **The Fish book** is written by `gen-data.ts` from `PLAZA_FISH`, with the
+  game's own drawings (`plaza-fish-art.ts`, as `img/fish/*.svg`): Common and
+  Uncommon fish in their colours with their element, Rare and Legendary
+  ones as the shadow and "???" the game's book shows until they are caught,
+  with when they bite. The page never names them (`site.test.ts` fails if it
+  does, or when a fish, its rarity, element or hours change in the game).
+  The numbers (fish in the pond, by day only, by night only) and the title
+  for filling the book (`PLAZA_FISH_TITLE`) come from the same data.
+- No word of what a catch pays (no amounts of the game's money).
 
 ### Raid bosses
 
@@ -438,6 +474,15 @@ and Google Play badges linking to the listings (Apple and Google allow their
 badges only for a live listing), and add the app links to the hero.
 
 ## Progress (keep current)
+
+Round 6 (owner, 27 Nov, through the coordinator on 28 Nov: redo the clips
+with the champions' new moves; merge the Plaza intro into fishing, for fun):
+
+- [x] All 92 loops recorded again from main at 07bdf35; the Classic look
+      plays the champion's own entrance and victory; every loop looked at
+      against the owner's move rules
+- [x] The Plaza band: hang out and fish, the pond's picture, the Fish book
+      from the game's data and drawings; the Plaza card points to it
 
 Round 5 (owner, 27 Nov: the website in Poster, professional, today's panel
 transitions; no amounts of the game's money; skins with their full effects
