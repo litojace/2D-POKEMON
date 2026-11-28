@@ -26,7 +26,11 @@ import {
   type RaidProgress,
 } from "../../../../packages/shared/src/raid";
 import { raidGoals, type RaidGoal } from "../raid-presentation";
-import { raidPortraitImage, raidSplashImage } from "../raid-splash-art";
+import {
+  RAID_PORTRAIT,
+  raidPortraitImage,
+  raidSplashImage,
+} from "../raid-splash-art";
 import snoozakuMobile from "../art/raid-splash/somnara-mobile.webp";
 import { fighterAvatar, fighterPortrait } from "../fighter-art";
 import { friendStatus } from "./friends-view";
@@ -241,6 +245,19 @@ const presenceOf = (f: Friend): Presence =>
         ? "plaza"
         : "online";
 
+/** The picture on a boss's card in the hall (Snoozaku's is wider). */
+const cardPicture = (id: RaidBossId) =>
+  id === "somnara" ? snoozakuMobile : RAID_PORTRAIT[id];
+/**
+ * The cards the hall shows before any scrolling on a phone held sideways
+ * (844×390 and 852×393: four; 667×375: three and a part).
+ */
+export const HALL_FIRST_CARDS = 4;
+/** The pictures of those cards, in the hall's order (all bosses shown). */
+export function hallFirstPictures(p: RaidProgress | null) {
+  return hallBosses("all", p).slice(0, HALL_FIRST_CARDS).map(cardPicture);
+}
+
 function bossCard(id: RaidBossId, d: RaidData) {
   const b = RAID_BOSSES[id];
   const p = d.progress;
@@ -261,7 +278,7 @@ function bossCard(id: RaidBossId, d: RaidData) {
   const portrait = raidPortraitImage(id);
   const art =
     id === "somnara"
-      ? `<img class="raid-splash-image" src="${snoozakuMobile}" alt="" width="1536" height="1024" decoding="async" loading="lazy">`
+      ? `<img class="raid-splash-image" src="${cardPicture(id)}" alt="" width="1536" height="1024" decoding="async" loading="lazy">`
       : portrait;
   return `<button type="button" class="rh-card${locked ? " is-locked" : ""}${b.playable ? "" : " is-soon"}" style="--boss:${b.color}" data-raid-card="${id}" aria-label="${esc(label)}"><span class="rh-card-art">${art}</span><span class="rh-card-top">${corner}${stars(b.stars)}</span><span class="rh-card-text"><b class="rh-card-name">${esc(b.name)}</b><small class="ui-note rh-card-line">${esc(b.element)} · ${esc(b.signature)}</small><span class="rh-card-foot"><span class="rh-tricks" title="Fighters with a trick here">${tricks.map((t) => fighterChip(t.character)).join("")}</span><span class="ui-note">${p ? `${earned} / ${total} rewards` : `${total} rewards`}</span></span></span></button>`;
 }
