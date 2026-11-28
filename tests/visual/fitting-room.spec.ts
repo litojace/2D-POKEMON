@@ -676,8 +676,9 @@ for (const size of [SIZES[0], SIZES[2]])
           expect(r.down, "stage hit area down").toBeGreaterThanOrEqual(44);
           expect(r.across, "stage hit area across").toBeGreaterThanOrEqual(44);
         }
-        // Round icon buttons: each icon in the middle of its circle (the
-        // -3px nudge for an icon beside a label pulled them 1.5px left).
+        // Bare icon buttons (cream, an ink edge, no disc: owner, 28 Nov):
+        // each icon in the middle of its 40 px box (the -3px nudge for an
+        // icon beside a label pulled them 1.5px left), all one size.
         const centres = await page
           .locator(".fit-plays .ui-btn")
           .evaluateAll((els) =>
@@ -689,6 +690,9 @@ for (const size of [SIZES[0], SIZES[2]])
                 dy: s.top + s.height / 2 - (r.top + r.height / 2),
                 // Its CSS size: the panel still grows in (scale .985).
                 w: getComputedStyle(b.querySelector("svg")!).width,
+                box: getComputedStyle(b).width,
+                disc: getComputedStyle(b).backgroundColor,
+                edge: getComputedStyle(b.querySelector("svg")!).filter,
               };
             }),
           );
@@ -696,7 +700,10 @@ for (const size of [SIZES[0], SIZES[2]])
         for (const c of centres) {
           expect(Math.abs(c.dx), "icon centred across").toBeLessThan(0.5);
           expect(Math.abs(c.dy), "icon centred down").toBeLessThan(0.5);
-          expect(c.w, "icon size").toBe("18px");
+          expect(c.w, "icon size").toBe("26px");
+          expect(c.box, "one size for every stage button").toBe("40px");
+          expect(c.disc, "no disc behind the icon").toBe("rgba(0, 0, 0, 0)");
+          expect(c.edge, "the icon's ink edge").toContain("drop-shadow");
         }
       }
       if (!size.phone) {

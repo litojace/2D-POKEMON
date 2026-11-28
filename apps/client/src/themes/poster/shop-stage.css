@@ -1,0 +1,85 @@
+/* The Shop's and the Wardrobe's stage on a phone held sideways (owner,
+   28 Nov 2026: "on mobile the skin preview box is still cramped: make it a
+   bit wider and line up the right-hand side"). On an iPhone Pro Max
+   (932×430) the stage was 210 px wide with its buttons over the fighter,
+   four narrow cards a row with the second row cut off, and the tabs, the
+   portraits, the filters and the cards each starting on a different pixel.
+
+   - The stage takes 30% of the screen's width, from 210 px up to 290 px.
+   - Its buttons keep the right edge as a rail and the fighter stands in the
+     room left of it, so nothing sits over the fighter.
+   - Entrance, Victory and Ultimate are bare icons (cream, an ink outline, a
+     hard shadow; gold when chosen), one size, as the game's other icons in
+     the world.
+   - Three cards a row, each a little shorter, so a whole row shows above
+     the action bar with its name and price.
+   - One left and right edge for the tabs, the portraits, the filters, the
+     cards and the action bar. */
+@media (max-height: 500px) {
+  :root[data-ui="poster"] .ui-panel.is-split.fit-room {
+    --stage-w: clamp(210px, 30vw, 290px);
+    /* The rail: 40 px of buttons and the 8 px they stand in from the edge. */
+    --fit-rail: 48px;
+  }
+  :root[data-ui="poster"]
+    .fit-room
+    .fit-stage
+    > .shop-live-stage:not(.is-frame) {
+    left: calc(50% - var(--fit-rail) / 2);
+  }
+
+  /* Bare icons. The three values are the game's bare-icon tokens (the top
+     bar's chat and gear, the battle's corner icons); they are set here on
+     the stage's own buttons until those tokens are on every screen. */
+  :root[data-ui="poster"] .fit-plays {
+    --bare-ink: var(--paper);
+    --bare-hot: var(--gold);
+    --bare-icon-edge: drop-shadow(1px 0 0 var(--ink))
+      drop-shadow(-1px 0 0 var(--ink)) drop-shadow(0 1px 0 var(--ink))
+      drop-shadow(0 -1px 0 var(--ink))
+      drop-shadow(2px 3px 0 rgba(0, 0, 0, 0.55));
+  }
+  :root[data-ui="poster"] .fit-plays .ui-btn.is-s {
+    border: 0;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    color: var(--bare-ink);
+  }
+  :root[data-ui="poster"] .fit-plays .ui-btn.is-s > svg {
+    width: 26px;
+    height: 26px;
+    color: inherit;
+    filter: var(--bare-icon-edge);
+  }
+  :root[data-ui="poster"]
+    .fit-plays
+    .ui-btn.is-s:is([aria-pressed="true"], :hover, :focus-visible, :active) {
+    background: none;
+    color: var(--bare-hot);
+  }
+
+  /* Three cards a row, and a card's picture wider than tall: a row with
+     its name and price is about 160 px, which shows whole above the action
+     bar on a 390 px-tall phone. */
+  :root[data-ui="poster"] .fit-grid[style*="--cols:5"],
+  :root[data-ui="poster"] .fit-grid[style*="--cols:4"] {
+    --cols: 3 !important;
+  }
+  :root[data-ui="poster"] .fit-grid .ui-tile-art {
+    aspect-ratio: 5 / 3;
+  }
+
+  /* One edge, 8 px in from the panel's: the Shop | Wardrobe switch starts
+     where the cards do, and the portraits scroll between the cards' two
+     edges (they ran to the panel's own edge, past the cards). */
+  :root[data-ui="poster"] .fit-room .fit-head {
+    padding-left: 8px;
+  }
+  :root[data-ui="poster"] .fit-room .fit-fighters {
+    margin-inline: 0;
+    padding-inline: 0;
+  }
+}
