@@ -375,6 +375,27 @@ test.describe("website", () => {
     }
   });
 
+  // Open beta on the web (owner, 28 Nov), beside "Free to play", with one
+  // plain line on what it means. The App Store build carries no such mark
+  // (Apple, Guideline 2.2); that is the game's flag, not this page's.
+  test("the hero says the game is in open beta", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openSite(page);
+    const stickers = page.locator(".hero .stickers .sticker");
+    await expect(stickers).toHaveText(["Free to play", "Open beta"]);
+    await expect(stickers.nth(1)).toBeInViewport();
+    await expect(page.locator(".hero-in .fine").last()).toContainText(
+      "open beta",
+    );
+    // Both stickers sit on the painting, side by side, not on each other.
+    const [a, b] = await stickers.evaluateAll((els) =>
+      els.map((el) => el.getBoundingClientRect().toJSON()),
+    );
+    expect(a.right).toBeLessThanOrEqual(b.left);
+    const art = await page.locator(".hero-art").boundingBox();
+    expect(b.right).toBeLessThanOrEqual(art!.x + art!.width);
+  });
+
   test("a device asking for less motion starts paused; the switch plays", async ({
     page,
   }) => {
