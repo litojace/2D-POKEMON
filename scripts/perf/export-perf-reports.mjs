@@ -50,6 +50,7 @@ export const KEEP = {
     "pressToSendP50",
     "pressToSendP95",
     "pressToSendP99",
+    "pressStale",
     "eventToHandlerP95",
     "handlerToSendP95",
     "sendGapP50",

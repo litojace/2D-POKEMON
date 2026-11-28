@@ -3,7 +3,10 @@ import {
   SAME_DISPATCH_MS,
   TouchClock,
 } from "../../apps/client/src/touch-stamp";
-import { NetMeter } from "../../apps/client/src/battle-perf";
+import { BattlePerfMeter, NetMeter } from "../../apps/client/src/battle-perf";
+import { battlePerfSchema } from "../../packages/shared/src/connection";
+import { KEEP, toReport } from "../../scripts/perf/export-perf-reports.mjs";
+import { blankInput } from "../../packages/shared/src/index";
 
 /** An event with a given timeStamp (as the browser stamped it). */
 const ev = (timeStamp: number) => ({ timeStamp }) as Event;
@@ -64,5 +67,41 @@ describe("the meter keeps stale touches apart from the waits", () => {
     expect(s.pressStale).toBe(2);
     expect(s.pressSamples).toBe(1);
     expect(s.eventToHandlerP95).toBe(10);
+  });
+});
+
+describe("old and new clients' reports both reach the server and the export", () => {
+  const report = (meter: NetMeter) => ({
+    ...new BattlePerfMeter().summary(),
+    ...meter.summary(),
+    quality: "low",
+    setting: "low",
+    density: 1.25,
+  });
+  it("an old client's report (no pressStale) still parses: PWAs keep old builds for days", () => {
+    const meter = new NetMeter();
+    meter.press("skill0", 5, 7, 0, "touch-controls");
+    meter.input({ ...blankInput(), skill: 0 }, 33);
+    const old = report(meter);
+    expect(old).not.toHaveProperty("pressStale");
+    expect(battlePerfSchema.safeParse(old).success).toBe(true);
+  });
+  it("a new client's pressStale is accepted, bounded and exported", () => {
+    const meter = new NetMeter();
+    meter.press("dash", undefined, 900, 0, "touch-controls");
+    const fresh = report(meter);
+    expect(fresh.pressStale).toBe(1);
+    expect(battlePerfSchema.safeParse(fresh).success).toBe(true);
+    expect(
+      battlePerfSchema.safeParse({ ...fresh, pressStale: -1 }).success,
+    ).toBe(false);
+    expect(KEEP["arena-perf"]).toContain("pressStale");
+    expect(
+      toReport({
+        id: "sample",
+        timestamp: "2026-11-28T00:00:00Z",
+        message: `arena-perf ${JSON.stringify(fresh)}`,
+      }),
+    ).toMatchObject({ pressStale: 1 });
   });
 });
