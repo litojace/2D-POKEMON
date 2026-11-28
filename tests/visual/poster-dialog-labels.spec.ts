@@ -180,7 +180,71 @@ for (const size of SIZES)
         "background-color",
       );
       expect(pick, "the drop-down's fill is the text field's").toEqual(area);
+      // Its arrow is drawn, not the browser's, and it is a finger tall
+      // (audit I06).
+      expect(
+        await page.locator("#report-form select").evaluate((el) => ({
+          appearance: getComputedStyle(el).appearance,
+          h: (el as HTMLElement).offsetHeight,
+        })),
+      ).toEqual({ appearance: "none", h: 44 });
       await snap(page, info, `form-report-${size.name}`);
+      await closeDialog(page);
+
+      // How to play's topics: Poster's in-page tabs (audit F04), Anton
+      // capitals with no box, a finger tall; the open one cream.
+      await page.locator("#home-settings").click();
+      await page.locator('[data-settings-tab="help"]').click();
+      await page.locator("#settings-howto").click();
+      await expect(page.locator(".htp-tabs")).toBeVisible();
+      await settle(page);
+      const topics = await page.locator(".htp-tabs button").evaluateAll((els) =>
+        els.map((b) => {
+          const s = getComputedStyle(b);
+          return {
+            font: s.fontFamily.split(",")[0].replace(/"/g, ""),
+            upper: s.textTransform,
+            radius: s.borderRadius,
+            bg: s.backgroundColor,
+            h: (b as HTMLElement).offsetHeight,
+            open: b.getAttribute("aria-selected") === "true",
+          };
+        }),
+      );
+      expect(topics.length).toBeGreaterThan(3);
+      for (const t of topics) {
+        expect(t.font).toBe("Anton");
+        expect(t.upper).toBe("uppercase");
+        expect(t.radius).toBe("0px");
+        expect(t.bg).toBe("rgba(0, 0, 0, 0)");
+        expect(t.h).toBeGreaterThanOrEqual(44);
+      }
+      expect(topics.filter((t) => t.open)).toHaveLength(1);
+      await snap(page, info, `form-howto-${size.name}`);
+      await closeDialog(page);
+
+      // Credits' way back on the masthead reads light on the ink masthead
+      // (it was ink on ink, unseen), and the band and tags are square
+      // (audit C05).
+      await page.locator("#home-settings").click();
+      await page.locator('[data-settings-tab="about"]').click();
+      await page.locator("#settings-credits").click();
+      await expect(page.locator("#credits-back")).toBeVisible();
+      await settle(page);
+      const credits = await colourOf(page, "#credits-back", "color");
+      expect(
+        Math.min(...credits),
+        `Credits' back reads on the masthead: rgb(${credits})`,
+      ).toBeGreaterThan(150);
+      expect(
+        await page.evaluate(() =>
+          [".credits-hero", ".credits-crest", ".credits-tags > li"].map(
+            (sel) =>
+              getComputedStyle(document.querySelector(sel)!).borderRadius,
+          ),
+        ),
+      ).toEqual(["0px", "0px", "0px"]);
+      await snap(page, info, `form-credits-${size.name}`);
       await closeDialog(page);
 
       // Sign in, opened as a dialog from the hub (the welcome screen's

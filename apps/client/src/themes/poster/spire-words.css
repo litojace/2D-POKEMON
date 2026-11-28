@@ -1,0 +1,24 @@
+/* Poster: the Spire's last violet words (the audit, 28 Nov). The Spire's
+   violet (--boss on its page) is its identity, not an element, a rarity, a
+   severity or a state, so it colours no words or numbers: a blessing's
+   stacks line ("Damage · stacks 3× · 10% → 18% → 25%"), a floor's number
+   and "/ 70" under the floors cleared are cream. The violet stays on the
+   Spire's own art and marks (the tower, its trail, the blessing icons).
+   The next floor has a gold rim, gold being what's next (a cream rim
+   read like any outlined box beside the cream words); its state is cream. */
+:root[data-ui="poster"] .sp-stacks {
+  color: var(--ui-text);
+}
+:root[data-ui="poster"] .sp-floor-num {
+  color: var(--ui-text);
+}
+:root[data-ui="poster"] .sp-floor.is-next {
+  border-color: var(--gold);
+  background: var(--ink-2);
+}
+:root[data-ui="poster"] .sp-floor.is-next .sp-floor-state {
+  color: var(--ui-text);
+}
+:root[data-ui="poster"] .sp-ascent .sp-stat b small {
+  color: var(--ui-text);
+}

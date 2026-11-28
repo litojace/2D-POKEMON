@@ -219,9 +219,30 @@ for (const size of SIZES)
       await expect
         .poll(rowBright, { timeout: 10_000, message: "row 1 is painted" })
         .toBeGreaterThan(0.004);
+      // The Spire's violet is its identity, not a state: floor numbers are
+      // cream, the next floor has a gold rim, "/ 70" is cream
+      // (themes/poster/spire-words.css).
+      const CREAM = "rgb(244, 234, 213)";
+      expect(
+        await room.evaluate((r) => {
+          const c = (s: string) => getComputedStyle(r.querySelector(s)!);
+          return [
+            c(".sp-floor.is-next .sp-floor-num").color,
+            c(".sp-floor.is-next").borderTopColor,
+            c(".sp-ascent .sp-stat b small").color,
+          ];
+        }),
+      ).toEqual([CREAM, "rgb(255, 214, 91)", CREAM]);
       await snap(page, info, `spire-page-floors-${size.name}`);
       await room.locator('[data-ui-spire-tab="blessings"]').click();
       await expect(room.locator("[data-spire-blessing-info]")).toHaveCount(10);
+      // A blessing's stacks line is cream, not a phrase in violet.
+      expect(
+        await room
+          .locator(".sp-stacks")
+          .first()
+          .evaluate((e) => getComputedStyle(e).color),
+      ).toBe(CREAM);
       expect(
         await layoutProblems(page, { phone: size.phone, inset: size.inset }),
       ).toEqual([]);
