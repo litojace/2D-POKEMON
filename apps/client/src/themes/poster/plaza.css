@@ -1,7 +1,9 @@
-/* Poster on the Plaza's chrome and on the chat. The Plaza's own round
-   controls (Map, Gifts, Album, Today, Dash, Jump, the stick, the emote
-   wheel) stay round: they are the game's touch controls, as in battle.
-   Everything that is a label, a card or a panel becomes an ink block. */
+/* Poster on the Plaza's chrome and on the chat. The HUD's buttons in the
+   world (Map, Gifts, Album, Today, the clock) are bare icons, as the
+   battle's corner icons (end of this file); Dash, Jump, the stick and the
+   emote wheel stay round: they are the game's touch controls, as in
+   battle. Everything that is a label, a card or a panel becomes an ink
+   block. */
 
 /* ── Plaza: pills and labels over the scene ── */
 :root[data-ui="poster"]
@@ -451,4 +453,204 @@
 :root[data-ui="poster"] .battle-nameplate > .chat-bubble {
   border-radius: 0;
   box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.45);
+}
+
+/* ── Plaza: the round HUD buttons are bare icons ──
+   Map, the gift box, Album, the Fish book and Plaza today stand in the world, so they
+   are drawn like the battle's corner icons (#648): no dark disc, a cream
+   icon a size up with an ink outline and a hard shadow, its word under it
+   in cream with an ink stroke (owner, 28 Nov: "drop the black circle, keep
+   just the icon a little bigger, with a bit of shadow"). Bare icons in the
+   world, ink blocks on menus and panels. The button keeps its box, so the
+   tap area stays 44 px or more. The gift box's count is a red badge on the
+   icon's corner, and the word Gifts goes under it like the others; Plaza
+   today's count of quests left is the same badge (owner, 28 Nov: "the same
+   for Today and the clock"). */
+:root[data-ui="poster"]
+  .plaza-layer
+  :is(
+    #pz-map-btn,
+    #pz-treat,
+    #pz-album-btn,
+    #pz-fish-book2,
+    #pz-fish-today,
+    #pz-quests > .pz-qbtn
+  ) {
+  position: relative;
+  min-width: 48px;
+  min-height: 52px;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  color: #f4ead5;
+  gap: 2px;
+}
+:root[data-ui="poster"]
+  .plaza-layer
+  :is(
+    #pz-map-btn,
+    #pz-treat,
+    #pz-album-btn,
+    #pz-fish-book2,
+    #pz-quests > .pz-qbtn
+  )
+  > .ico {
+  width: 38px;
+  height: 38px;
+  color: inherit;
+  filter: drop-shadow(1px 0 0 var(--ink)) drop-shadow(-1px 0 0 var(--ink))
+    drop-shadow(0 1px 0 var(--ink)) drop-shadow(0 -1px 0 var(--ink))
+    drop-shadow(2px 3px 0 rgba(0, 0, 0, 0.55));
+}
+:root[data-ui="poster"]
+  .plaza-layer
+  :is(
+    #pz-map-btn,
+    #pz-album-btn,
+    #pz-fish-book2,
+    #pz-fish-today,
+    #pz-quests > .pz-qbtn
+  )
+  > small,
+:root[data-ui="poster"] .plaza-layer #pz-treat::after {
+  color: #f4ead5;
+  font: 400 calc(12px * var(--text-scale, 1)) / 1 var(--font-display);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-shadow:
+    1px 0 0 var(--ink),
+    -1px 0 0 var(--ink),
+    0 1px 0 var(--ink),
+    0 -1px 0 var(--ink),
+    1px 2px 0 rgba(0, 0, 0, 0.55);
+}
+:root[data-ui="poster"] .plaza-layer #pz-treat::after {
+  content: "Gifts";
+}
+/* The count: a small red badge on the box's top right corner. */
+:root[data-ui="poster"] .plaza-layer #pz-treat > small,
+:root[data-ui="poster"] .plaza-layer #pz-quests > .pz-qbtn > .pz-qbadge {
+  position: absolute;
+  top: 0;
+  right: 2px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  background: var(--hot-fill);
+  color: #fff;
+  font: 800 calc(11px * var(--text-scale, 1)) / 1 var(--font-body);
+  font-variant-numeric: tabular-nums;
+  /* Its own ink edge and hard shadow, so it sits on the icon, not afloat. */
+  box-shadow:
+    0 0 0 1.5px var(--ink),
+    2px 2px 0 1.5px rgba(0, 0, 0, 0.45);
+}
+/* A pressed or focused icon in the game's gold, as in battle. */
+:root[data-ui="poster"]
+  .plaza-layer
+  :is(
+    #pz-map-btn,
+    #pz-treat,
+    #pz-album-btn,
+    #pz-fish-book2,
+    #pz-quests > .pz-qbtn
+  ):is(:hover, :focus-visible, :active) {
+  color: #ffd65b;
+}
+/* No boxes left today: no badge, and the box a little faded. */
+:root[data-ui="poster"] .plaza-layer #pz-treat.empty > small {
+  display: none;
+}
+:root[data-ui="poster"] .plaza-layer #pz-treat.empty > .ico {
+  opacity: 0.6;
+}
+
+/* Plaza today: its quests left on the gift's red badge (above), all done a
+   green tick. The day's progress ring went with the disc it ran round: the
+   badge says what is left, the list says the rest. */
+:root[data-ui="poster"] .plaza-layer #pz-quests > .pz-qbtn > .pz-qbadge {
+  border-radius: 0;
+  text-shadow: none;
+}
+:root[data-ui="poster"] .plaza-layer #pz-quests > .pz-qbtn > .pz-qbadge.ok {
+  background: var(--ui-ok-deep);
+}
+:root[data-ui="poster"] .plaza-layer #pz-quests > .pz-qbtn > .pz-qring {
+  display: none;
+}
+
+/* The clock: no pill, its sun or moon and its time drawn on the world in
+   cream with an ink stroke, as the icons under it, against the screen's
+   right edge. Its box keeps its size (the HUD's rows don't move), and its
+   tap area reaches 44 px above and below on a phone, where the box is
+   34 px tall. */
+:root[data-ui="poster"] .plaza-layer #pz-clock {
+  justify-content: flex-end;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  color: #f4ead5;
+}
+:root[data-ui="poster"] .plaza-layer #pz-clock::before {
+  content: "";
+  position: absolute;
+  inset: min(0px, calc((var(--hud-clock-h) - 44px) / 2)) 0;
+}
+:root[data-ui="poster"] .plaza-layer #pz-clock > .ico {
+  width: 1.7em;
+  height: 1.7em;
+  filter: drop-shadow(1px 0 0 var(--ink)) drop-shadow(-1px 0 0 var(--ink))
+    drop-shadow(0 1px 0 var(--ink)) drop-shadow(0 -1px 0 var(--ink))
+    drop-shadow(2px 3px 0 rgba(0, 0, 0, 0.55));
+}
+:root[data-ui="poster"] .plaza-layer #pz-clock > span {
+  font: 400 1.35em / 1 var(--font-display);
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+  text-shadow:
+    1px 0 0 var(--ink),
+    -1px 0 0 var(--ink),
+    0 1px 0 var(--ink),
+    0 -1px 0 var(--ink),
+    1px 2px 0 rgba(0, 0, 0, 0.55);
+}
+:root[data-ui="poster"]
+  .plaza-layer
+  #pz-clock:is(:hover, :focus-visible, :active) {
+  color: #ffd65b;
+}
+
+/* Fishing: the day's count beside the bare Book is bare too, its number
+   in cream with an ink stroke in a row as tall as Book's fish, so "TODAY"
+   sits level with "BOOK". It is a count, not a button. */
+:root[data-ui="poster"] .plaza-layer #pz-fish-today > b {
+  height: 38px;
+  font: 400 calc(17px * var(--text-scale, 1)) / 1 var(--font-display);
+  letter-spacing: 0.02em;
+  text-shadow:
+    1px 0 0 var(--ink),
+    -1px 0 0 var(--ink),
+    0 1px 0 var(--ink),
+    0 -1px 0 var(--ink),
+    1px 2px 0 rgba(0, 0, 0, 0.55);
+}
+/* The pair's top rows drop by the same 4 px (the old look's 0.3em came
+   out different for a number and an icon). */
+:root[data-ui="poster"]
+  .plaza-layer
+  :is(#pz-fish-today, #pz-fish-book2)
+  > :first-child {
+  margin-top: 4px;
+}
+:root[data-ui="poster"] .plaza-layer #pz-fish-today > b > i {
+  color: inherit;
+  font-weight: 400;
 }
