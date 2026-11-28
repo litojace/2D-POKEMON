@@ -112,6 +112,41 @@ for (const size of [
         inside(await box(page, "#return"), await box(page, ".action-overlay")),
       ).toBe(true);
       await snap(page, info, `mobile-victory-${size.width}x${size.height}`);
+      // The level bar (a third full): a flat gold fill on an ink track
+      // (themes/poster/results-level.css; a teal gradient on navy before).
+      // Chromium paints a progress bar through its own parts, which
+      // computed styles don't show, so read its pixels.
+      const bar = page.locator(".journey-level progress");
+      await bar.scrollIntoViewIfNeeded();
+      const sample = async () => {
+        const png = await bar.screenshot();
+        return page.evaluate(async (data) => {
+          const img = new Image();
+          img.src = `data:image/png;base64,${data}`;
+          await img.decode();
+          const cv = document.createElement("canvas");
+          cv.width = img.width;
+          cv.height = img.height;
+          const ctx = cv.getContext("2d")!;
+          ctx.drawImage(img, 0, 0);
+          const at = (fx: number) =>
+            Array.from(
+              ctx
+                .getImageData(
+                  Math.round(img.width * fx),
+                  Math.floor(img.height / 2),
+                  1,
+                  1,
+                )
+                .data.slice(0, 3),
+            ).join(",");
+          return { fill: at(0.08), track: at(0.92) };
+        }, png.toString("base64"));
+      };
+      await expect.poll(sample).toEqual({
+        fill: "255,214,91",
+        track: "42,42,48",
+      });
       // Back to menu leaves the room: red, like every leave button (by its
       // hue: the old look's pink and Poster's red both are).
       expect(

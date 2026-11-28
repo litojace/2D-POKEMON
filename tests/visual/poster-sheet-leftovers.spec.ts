@@ -67,6 +67,11 @@ test("Poster's sheets: reward news, the XP block, the places and the solo warnin
           cs(".journey-level-badge").borderTopLeftRadius,
         ],
         levelUp: parseFloat(cs(".journey-level-up").fontSize),
+        badge: [
+          cs(".journey-level-badge").backgroundColor,
+          cs(".journey-level-badge b").color,
+          cs(".journey-level-badge small").color,
+        ],
         places: [
           cs(".standings-card").borderTopLeftRadius,
           cs(".standings li").borderTopLeftRadius,
@@ -93,6 +98,13 @@ test("Poster's sheets: reward news, the XP block, the places and the solo warnin
     // C09: square blocks, the level-up line a readable size.
     expect(look.xp).toEqual(["0px", "0px"]);
     expect(look.levelUp).toBeGreaterThanOrEqual(14);
+    // The level: a red square with white figures, as the header's "Lv"
+    // (themes/poster/results-level.css).
+    expect(look.badge).toEqual([
+      "rgb(224, 20, 58)",
+      "rgb(255, 255, 255)",
+      "rgb(255, 255, 255)",
+    ]);
     // C10: the places' card, plates and medals square.
     expect(look.places).toEqual(["0px", "0px", "0px"]);
     // C41: the Champion tricks a solid square plate, its words readable.
