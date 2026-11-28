@@ -4,22 +4,22 @@
 //   npx tsx apps/site/tools/gen-data.ts
 //
 // Writes apps/site/data/champions.json (stats, the basic attack, the three
-// skills and the ultimate, featured skins) and the featured skins' pictures
-// in apps/site/img/skins/. tests/unit/site.test.ts fails when the JSON no
-// longer matches the game, so a balance change can't leave the site stale:
-// run this again and commit.
+// skills and the ultimate, featured skins) and the page's markup made from
+// the game (index.html, between its markers). The skins' loops and stills
+// are recorded from the fitting room (scripts/site-clips/skins.spec.ts,
+// make-skin-clips.py). tests/unit/site.test.ts fails when the JSON no longer
+// matches the game, so a balance change can't leave the site stale: run this
+// again and commit.
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { siteChampions } from "./champion-data";
-import { creatureSvg } from "../../client/src/creature-design";
 import {
   CHAMPION_SKIN_BY_ID,
   COLLECTION_NAMES,
   LOOK_ITEM_BY_ID,
   MYTHIC_TRIAL_WINS,
   RARITY_NAMES,
-  itemListPrice,
 } from "../../../packages/shared/src/shop";
 import { CHARACTERS } from "../../../packages/shared/src/index";
 import {
@@ -38,19 +38,8 @@ writeFileSync(
   JSON.stringify(champions, null, 1) + "\n",
 );
 
-const skins = path.join(site, "img/skins");
-mkdirSync(skins, { recursive: true });
-for (const c of champions)
-  for (const s of c.skins)
-    writeFileSync(
-      path.join(skins, `${s.id}.svg`),
-      creatureSvg(c.id, "down", undefined, undefined, "normal", {
-        skin: s.id,
-        stage: 1,
-      }),
-    );
 console.log(
-  `wrote ${champions.length} champions and ${champions.reduce((n, c) => n + c.skins.length, 0)} skin pictures`,
+  `wrote ${champions.length} champions with ${champions.reduce((n, c) => n + c.skins.length, 0)} featured skins`,
 );
 
 // The roster's markup in index.html, between its markers: the page works
@@ -64,10 +53,12 @@ const cards = champions
       c,
     ) => `<li class="mon" data-el="${c.element}" style="--el: var(--el-${c.element.toLowerCase()})">
   <a class="mon-btn" href="#champion-${c.id}" data-champion="${c.id}" aria-haspopup="dialog">
-    <img src="img/creatures/${c.id}.svg" alt="" width="200" height="202" loading="lazy" />
-    <h3>${esc(c.name)}</h3>
-    <p class="el">${c.element}</p>
-    <p class="role">${esc(c.role)}</p>
+    <div class="mon-art"><img src="img/creatures/${c.id}.svg" alt="" width="200" height="202" loading="lazy" /></div>
+    <div class="mon-tx">
+      <h3>${esc(c.name)}</h3>
+      <p class="el">${c.element}</p>
+      <p class="role">${esc(c.role)}</p>
+    </div>
   </a>
 </li>`,
   )
@@ -150,8 +141,11 @@ const RAID_ART: Record<
 const lineup = RAID_BOSS_ORDER.map((id) => RAID_BOSSES[id]);
 const rewardsOf = (id: RaidBossId) =>
   RAID_REWARDS.filter((r) => r.boss === id).length;
+// Filled stars in the boss's colour, empty ones as outlines in grey that
+// still reads on ink (dimmed filled stars were 1.7:1); one picture with its
+// difficulty as its name.
 const stars = (n: number) =>
-  `<p class="stars" aria-label="Difficulty ${n} of 3">${"★".repeat(n)}${n < 3 ? `<span>${"★".repeat(3 - n)}</span>` : ""}</p>`;
+  `<p class="stars" role="img" aria-label="Difficulty ${n} of 3">${"★".repeat(n)}${n < 3 ? `<span>${"☆".repeat(3 - n)}</span>` : ""}</p>`;
 const raidPanels = lineup
   .map(
     (
@@ -196,9 +190,12 @@ for (const [name, html] of [
 writeFileSync(indexPath, page2);
 
 // The Shop spotlight (index.html, between the spotlight and picks markers):
-// six pieces from the Shop's catalog (names, rarities, lines, coin prices),
-// each a loop of the fitting room's own stage (scripts/site-clips/shop.spec.ts,
-// make-shop.py). The first is shown before any script runs.
+// six pieces from the Shop's catalog (names, rarities, lines), each the
+// fitting room's own stage playing it at 60 frames a second
+// (scripts/site-clips/skins.spec.ts, make-skin-clips.py: media/skins/<id>.mp4,
+// its poster and thumbnail in img/skins/). No prices: the website never
+// names an amount of the game's money (owner, 27 Nov). The first piece is
+// shown before any script runs.
 const SHOWCASE: [picture: string, item: string][] = [
   ["cinder-medic", "pyranda-nova-vanguard"],
   ["storm-corsair", "voltkit-sky-pirates"],
@@ -214,7 +211,13 @@ const SLOT_NAMES: Record<string, string> = {
   frame: "Portrait frame",
   colours: "Colours for every fighter",
 };
-const COIN = `<svg class="coin" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#ffd65b"/><circle cx="12" cy="12" r="6.5" fill="none" stroke="#b9861a" stroke-width="2"/><path d="M12 8.5v7" stroke="#b9861a" stroke-width="2" stroke-linecap="round"/></svg>`;
+/** What a loop plays, for its description (the fitting room's showcase). */
+const PLAYS: Record<string, string> = {
+  mythical: "casting its ultimate at Stage III",
+  legendary: "playing its victory",
+};
+/** The pause and play switch every stage carries (site.js). */
+const MOTION_BUTTON = `<button type="button" class="motion" data-motion-toggle aria-label="Pause motion"><svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zM13 5h4v14h-4z" fill="currentColor"/></svg><svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l11 7-11 7z" fill="currentColor"/></svg></button>`;
 const pieces = SHOWCASE.map(([pic, id]) => {
   const skin = CHAMPION_SKIN_BY_ID[id];
   const look = LOOK_ITEM_BY_ID[id];
@@ -233,7 +236,8 @@ const pieces = SHOWCASE.map(([pic, id]) => {
       : item.rarity === "legendary" && skin
         ? "Comes with its own entrance and victory."
         : "Every fighter can wear it.";
-  return { pic, id, item, kind, set, note, price: itemListPrice(id) };
+  const plays = skin ? (PLAYS[item.rarity] ?? "") : "playing on Voltkit";
+  return { pic, id, item, kind, set, note, plays };
 });
 const spotlight = pieces
   .map(
@@ -241,19 +245,18 @@ const spotlight = pieces
       x,
       i,
     ) => `<article class="spot r-${x.item.rarity}" id="spot-${x.pic}" role="tabpanel" aria-labelledby="pick-shop-${x.pic}"${i ? " hidden" : ""}>
-  <div class="spot-stage">
-    <span class="spot-rays" aria-hidden="true"></span>
-    <picture>
-      <source media="(prefers-reduced-motion: reduce)" srcset="img/shop/${x.pic}-still.webp" />
-      <img src="img/shop/${x.pic}.webp" alt="${esc(x.item.name)} in the game's Shop, trying it on" width="400" height="400" loading="lazy" decoding="async" />
-    </picture>
+  <div class="stage">
+    <span class="stage-rays" aria-hidden="true"></span>
+    <video muted loop playsinline preload="none" poster="img/skins/${x.id}.webp" width="720" height="720" aria-label="${esc(x.item.name)} in the game's fitting room${x.plays ? `, ${x.plays}` : ""}"><source src="media/skins/${x.id}.mp4" type="video/mp4" /></video>
+    <span class="stage-sparks" aria-hidden="true"></span>
+    <span class="stage-slash" aria-hidden="true"></span>
+    ${MOTION_BUTTON}
   </div>
   <div class="spot-tx">
     <p class="spot-r">${RARITY_NAMES[x.item.rarity]}${x.set ? ` · ${esc(x.set)}` : ""}</p>
     <h3>${esc(x.item.name)}</h3>
     <p class="spot-k">${esc(x.kind)}</p>
     <p class="spot-d">${esc(x.item.description)}</p>
-    <p class="spot-price">${COIN}<b>${x.price.toLocaleString("en-US")}</b> coins</p>
     <p class="spot-note">${esc(x.note)}</p>
     <a class="btn btn-play spot-go" href="https://play.elementarenausa.com/">Try it on in the Shop</a>
   </div>
@@ -266,7 +269,7 @@ const picks = pieces
       x,
       i,
     ) => `<button type="button" class="shop-pick r-${x.item.rarity}" role="tab" id="pick-shop-${x.pic}" aria-controls="spot-${x.pic}" aria-selected="${i === 0}" tabindex="${i ? -1 : 0}">
-  <img src="img/shop/${x.pic}-still.webp" alt="" width="400" height="400" loading="lazy" decoding="async" />
+  <img src="img/skins/${x.id}-thumb.webp" alt="" width="192" height="192" loading="lazy" decoding="async" />
   <span>${esc(x.item.name)}</span>
 </button>`,
   )

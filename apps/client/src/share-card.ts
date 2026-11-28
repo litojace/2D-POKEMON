@@ -14,6 +14,88 @@ export const RESULT_QR = { x: 1004, y: 22, size: 156 } as const;
 const QR = RESULT_QR;
 const hex = (n: number) => `#${n.toString(16).padStart(6, "0")}`;
 
+/**
+ * The pictures are in Poster, the look every player has (owner, 27 Nov
+ * 2026; themes/poster/tokens.css): the element colour's dotted page, square
+ * ink blocks with a hard shadow, Anton capitals. They were the old look's
+ * navy gradients, rounded cards and system type (audit C11, C12).
+ */
+export const POSTER = {
+  el: "#ffd65b",
+  ink: "#0d0d0f",
+  ink2: "#1e1e22",
+  dim: "#d6d5dc",
+  shadow: "rgba(0, 0, 0, 0.28)",
+} as const;
+export const DISPLAY = '"Anton", Impact, "Arial Narrow", sans-serif';
+export const BODY = '"Archivo", system-ui, sans-serif';
+
+/** Poster's two faces, loaded before drawing (a canvas draws with what is
+ * loaded); after 1.5 s the card draws with the fallbacks. */
+export async function posterFonts() {
+  if (typeof document === "undefined" || !document.fonts) return;
+  try {
+    await Promise.race([
+      Promise.all([
+        document.fonts.load('400 64px "Anton"'),
+        document.fonts.load('700 24px "Archivo"'),
+        document.fonts.load('500 20px "Archivo"'),
+      ]),
+      new Promise((r) => setTimeout(r, 1500)),
+    ]);
+  } catch {
+    /* the fallbacks draw it */
+  }
+}
+
+/** The page: the element colour with Poster's dots. */
+export function posterPage(g: CanvasRenderingContext2D, w: number, h: number) {
+  g.fillStyle = POSTER.el;
+  g.fillRect(0, 0, w, h);
+  g.fillStyle = "rgba(13, 13, 15, 0.1)";
+  for (let y = 11; y < h; y += 22)
+    for (let x = 11; x < w; x += 22) {
+      g.beginPath();
+      g.arc(x, y, 2.2, 0, Math.PI * 2);
+      g.fill();
+    }
+}
+
+/** A square block with Poster's hard shadow. */
+export function posterBlock(
+  g: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  fill: string = POSTER.ink,
+) {
+  g.fillStyle = POSTER.shadow;
+  g.fillRect(x + 8, y + 8, w, h);
+  g.fillStyle = fill;
+  g.fillRect(x, y, w, h);
+}
+
+/** A label in the element colour on an ink block ("ELEMENT ARENA"). */
+export function posterTag(
+  g: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+) {
+  g.save();
+  g.font = `400 24px ${DISPLAY}`;
+  g.letterSpacing = "3px";
+  g.textAlign = "left";
+  g.textBaseline = "alphabetic";
+  const w = g.measureText(text).width + 28;
+  posterBlock(g, x, y, w, 42);
+  g.fillStyle = POSTER.el;
+  g.fillText(text, x + 14, y + 31);
+  g.restore();
+  return w;
+}
+
 /** Sides as the card shows them: you (and your partner) first. */
 function sides(state: Snapshot, myId: string) {
   const me = state.players.find((p) => p.id === myId);
@@ -96,68 +178,77 @@ export async function drawShareCard(
   canvas.width = W;
   canvas.height = H;
   const g = canvas.getContext("2d")!;
-  const { won, headline } = shareSummary(state, myId);
-  const bg = g.createLinearGradient(0, 0, W, H);
-  bg.addColorStop(0, "#12213e");
-  bg.addColorStop(1, "#1b2e50");
-  g.fillStyle = bg;
-  g.fillRect(0, 0, W, H);
-  const glow = g.createRadialGradient(W * 0.25, 60, 10, W * 0.25, 60, 520);
-  glow.addColorStop(0, won ? "#ffd16655" : "#7fd3ff44");
-  glow.addColorStop(1, "#0000");
-  g.fillStyle = glow;
-  g.fillRect(0, 0, W, H);
+  const { headline } = shareSummary(state, myId);
+  await posterFonts();
+  posterPage(g, W, H);
   g.textBaseline = "alphabetic";
-  g.fillStyle = "#ffd65b";
-  g.font = "700 22px system-ui, sans-serif";
-  g.fillText("ELEMENT ARENA", 60, 70);
-  g.fillStyle = "#ffffff";
-  g.font = "800 68px system-ui, sans-serif";
-  g.fillText(headline, 60, 150);
-  // The fighters, each with their creature.
+  posterTag(g, "ELEMENT ARENA", 60, 34);
+  // The headline in Anton capitals, clear of the code's label on the right.
+  g.fillStyle = POSTER.ink;
+  g.textAlign = "left";
+  g.fillText(
+    fitFont(g, headline.toUpperCase(), QR.x - 200 - 60, 400, 84, 44, DISPLAY),
+    60,
+    160,
+  );
+  // The fighters, each on an ink block with their colour along its top.
   const list = sides(state, myId);
   const slot = (W - 120) / list.length;
   const mvp = mvpOf(state.players);
   for (const [i, p] of list.entries()) {
     const c = CHARACTERS[p.character];
     const x = 60 + i * slot,
-      cx = x + slot / 2;
-    g.fillStyle = `${hex(c.color)}22`;
-    g.beginPath();
-    g.roundRect(x + 8, 190, slot - 16, 330, 18);
-    g.fill();
+      cx = x + slot / 2,
+      bw = slot - 24;
+    posterBlock(g, x + 4, 196, bw, 330);
+    // The colour band inside the ink's edge, so a yellow fighter's (Voltkit)
+    // still reads on the yellow page.
+    g.fillStyle = hex(c.color);
+    g.fillRect(x + 10, 202, bw - 12, 6);
     if (p.id === myId) {
-      g.strokeStyle = "#ffffffaa";
-      g.lineWidth = 3;
-      g.stroke();
+      g.save();
+      g.font = `400 20px ${DISPLAY}`;
+      g.letterSpacing = "2px";
+      const tw = g.measureText("YOU").width + 20;
+      g.fillStyle = POSTER.el;
+      g.fillRect(x + 16, 220, tw, 30);
+      g.fillStyle = POSTER.ink;
+      g.fillText("YOU", x + 26, 243);
+      g.restore();
     }
     if (withArt) {
       try {
         const img = await loadImage(fighterTextureData(p.character));
-        const size = Math.min(200, slot - 40);
-        g.drawImage(img, cx - size / 2, 200, size, size);
+        const size = Math.min(190, bw - 40);
+        g.drawImage(img, cx - 2 - size / 2, 220, size, size);
       } catch {
         /* the card still works without the picture */
       }
     }
     g.textAlign = "center";
     g.fillStyle = "#ffffff";
-    g.fillText(fitFont(g, p.name, slot - 30, 700, 30, 20), cx, 440);
+    g.fillText(
+      fitFont(g, p.name.toUpperCase(), bw - 30, 400, 34, 22, DISPLAY),
+      cx - 2,
+      448,
+    );
     g.fillStyle = hex(c.color);
-    g.font = "600 20px system-ui, sans-serif";
-    g.fillText(c.name.toUpperCase(), cx, 470);
-    g.fillStyle = "#c1cfe4";
-    g.font = "500 18px system-ui, sans-serif";
+    g.font = `700 18px ${BODY}`;
+    g.fillText(c.name.toUpperCase(), cx - 2, 476);
+    g.fillStyle = POSTER.dim;
+    g.font = `500 18px ${BODY}`;
     g.fillText(
       `${state.mode === "ffa" ? `${state.scores[p.id] ?? 0} rounds · ` : ""}${Math.round(p.stats.dealt)} dmg · ${p.stats.kos ?? 0} KO${p.id === mvp?.id ? " · MVP" : ""}`,
-      cx,
-      500,
+      cx - 2,
+      506,
     );
     g.textAlign = "left";
   }
-  g.fillStyle = "#a0afc8";
-  g.font = "500 24px system-ui, sans-serif";
-  g.fillText(`Play free: ${shownSite(site)}`, 60, 585);
+  g.fillStyle = POSTER.ink;
+  g.font = `400 30px ${DISPLAY}`;
+  g.letterSpacing = "1px";
+  g.fillText(`PLAY FREE · ${shownSite(site).toUpperCase()}`, 60, 590);
+  g.letterSpacing = "0px";
   // Top right, clear of the headline and the fighters: a camera opens the
   // game from the picture.
   await drawScanToPlay(
@@ -189,12 +280,13 @@ export function fitFont(
   weight: number,
   max: number,
   min: number,
+  family = BODY,
 ) {
   let size = max;
-  g.font = `${weight} ${size}px system-ui, sans-serif`;
+  g.font = `${weight} ${size}px ${family}`;
   while (size > min && g.measureText(text).width > width) {
     size -= 2;
-    g.font = `${weight} ${size}px system-ui, sans-serif`;
+    g.font = `${weight} ${size}px ${family}`;
   }
   return fit(g, text, width);
 }
@@ -242,8 +334,9 @@ export async function drawScanToPlay(
   const { drawQr } = await import("./share-qr");
   g.save();
   g.textBaseline = "alphabetic";
-  g.fillStyle = "#ffd65b";
-  g.font = "800 20px system-ui, sans-serif";
+  // Ink on the element colour's page (Poster).
+  g.fillStyle = POSTER.ink;
+  g.font = `400 22px ${DISPLAY}`;
   g.letterSpacing = "2px";
   if (label === "above") {
     g.textAlign = "center";

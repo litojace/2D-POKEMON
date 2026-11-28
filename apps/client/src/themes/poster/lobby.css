@@ -476,10 +476,10 @@
     letter-spacing: 0.03em;
   }
 }
-/* The narrowest phones (667 px): the mode's hint takes two lines there, so
-   the box gives its 3 px frame back to the words; a card's count and its
-   timer stack when they don't fit side by side. */
-@media (max-width: 760px) and (max-height: 500px) {
+/* A phone held sideways: the mode's hint takes two lines there (lobby.css),
+   so the box gives its 3 px frame back to the words; a card's count and
+   its timer stack when they don't fit side by side. */
+@media (max-height: 500px) {
   :root[data-ui="poster"] .lobby-layer .lobby-mode {
     border-width: 2px;
   }

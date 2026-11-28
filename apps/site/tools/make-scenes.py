@@ -8,7 +8,7 @@ The combat scenes are frames from scripts/site-clips/scenes.spec.ts (the
 real client and server simulation, every fighter's ultimate going off),
 picked by eye and cropped to the fight. The Plaza is the App Store capture
 (scripts/app-store). Writes apps/site/img/modes/<name>-480/800.webp/avif. Needs Pillow 11+.
-(The Shop spotlight's loops are make-shop.py's.)
+(The skins' loops, the Shop spotlight's too, are make-skin-clips.py's.)
 """
 from pathlib import Path
 import sys
