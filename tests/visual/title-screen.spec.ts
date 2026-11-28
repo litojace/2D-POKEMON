@@ -173,7 +173,7 @@ for (const size of SIZES) {
             parseFloat(getComputedStyle(span).fontSize),
           ),
         ).toBeGreaterThanOrEqual(10);
-        // The label is centred under its round icon.
+        // The label is centred under its icon.
         const icon = (await q.locator(".title-quick-icon").boundingBox())!;
         const text = (await label.boundingBox())!;
         expect(
@@ -228,13 +228,16 @@ test("Switch account signs out to the log-in form, without a title screen after"
   await expect(page.locator("[data-title-card]")).toHaveCount(0);
   // The quick buttons stay on the sign-in screen too.
   await expect(page.locator("[data-gate-quick]")).toHaveCount(4);
-  // The same round buttons as on the title screen (owner: one shape on
-  // both screens, round), at the same size.
+  // The same buttons as on the title screen, at the same size: square ink
+  // tiles in Poster (owner, 27 Nov 2026), round in the look underneath.
+  const poster = await page.evaluate(
+    () => document.documentElement.dataset.ui === "poster",
+  );
   for (const icon of await page
     .locator("[data-gate-quick] .title-quick-icon")
     .all()) {
     expect(await icon.evaluate((e) => getComputedStyle(e).borderRadius)).toBe(
-      "50%",
+      poster ? "0px" : "50%",
     );
     const b = (await icon.boundingBox())!;
     expect(Math.round(b.width)).toBe(44);
