@@ -42,7 +42,7 @@
 
 /* ── fields ── */
 :root[data-ui="poster"] .auth-field > span:first-child {
-  color: #fff;
+  color: var(--paper);
   font-weight: 700;
 }
 :root[data-ui="poster"]
@@ -83,9 +83,14 @@
 
 /* ── buttons: the main one is a flat block in the element colour with the
    hot offset shadow (unskewed: its label is bare text) ── */
+/* The title and sign-in screens are the game's own gold, whoever the
+   fighter: the cover, the brand's accents, the quick buttons' edge. */
+:root[data-ui="poster"] .welcome-gate {
+  --el: var(--gold);
+}
 :root[data-ui="poster"] .auth-submit {
   border-radius: 0;
-  background: var(--el);
+  background: var(--gold);
   color: var(--ink);
   box-shadow: 4px 4px 0 var(--hot);
   font-family: var(--font-display);
@@ -102,7 +107,7 @@
   border: 0;
   border-radius: 0;
   background: var(--ink-3);
-  color: #fff;
+  color: var(--paper);
   font-weight: 700;
 }
 /* The guest button is the game's own, so it speaks as its other buttons do
@@ -123,7 +128,7 @@
 /* Sign in with Apple keeps Apple's own white button (their guidelines),
    squared like everything else. */
 :root[data-ui="poster"] .auth-apple {
-  background: #fff;
+  background: var(--paper);
   color: #000;
 }
 :root[data-ui="poster"] .auth-divider {
@@ -264,7 +269,7 @@
 }
 :root[data-ui="poster"] .welcome-gate.is-title::after,
 :root[data-ui="poster"] .welcome-gate:not(.is-title)::after {
-  background: #fff;
+  background: var(--paper);
   clip-path: polygon(
     calc(40% + 5px) 0,
     calc(40% + 11px) 0,

@@ -23,10 +23,15 @@ Code: `apps/client/src/ui-theme.ts`, `themes/poster/`. Tests:
   the attribute is set before the first frame.
 - It is not an inline script in `index.html`: those are allowed by hash in
   the Content-Security-Policy and in Render's headers.
-- `--el` on `:root` is the Lobby fighter's element colour (the Lobby keeps
-  it in step; gold before a Lobby has shown a fighter). `--ui-coin` and
-  `--ui-coin-deep` are the coins' own gold, so the accent can follow the
-  fighter without Tidefin's coins turning blue.
+- The Lobby fighter's element colour (`setUiElementColour`, which the
+  Lobby keeps in step). The look underneath draws its accents with it, as
+  `--el` on `:root`. Poster's chrome has colours of its own (`fixedChrome`,
+  below), so for Poster it is `--fighter`, written by one rule in
+  `<style id="ui-fighter-colour">` on the few places that still show it
+  (`FIGHTER_COLOUR_HOSTS`: the Lobby, the raid room, the battle's sheets)
+  and never on the root: a custom property on the root restyles every
+  element on the page at each fighter switch. `--ui-coin` and
+  `--ui-coin-deep` are the coins' own gold.
 - **The revert** is one line: `DEFAULT_UI_THEME = null` in `ui-theme.ts`
   puts every player back on the look underneath.
 
@@ -112,13 +117,47 @@ island inset and desktop, looked at box by box; `battle-style-budget` and
 
 ## Poster (`themes/poster/`)
 
-Ink black and the Lobby fighter's element colour, nothing rounded, hard
-offset shadows; Anton capitals and Archivo text. Files: `fonts.css` (and
-`fonts/`, with the two OFL licences), `tokens.css` (the shared tokens
-re-pointed: most of the look), `kit.css` (panels, tabs, buttons, tiles,
-rows, toast), `lobby.css` (the Lobby and the hub's top bar), `screens.css`
-(what single screens, the battle HUD, the result and raid sheets and the
-raid room need). Sweep: `tests/visual/poster.spec.ts`.
+Ink black, cream paper, the game's gold and a hot red; nothing rounded,
+hard offset shadows; Anton capitals and Archivo text.
+
+**One chrome for every fighter** (owner, 27 Nov 2026, "direction G"; the
+chrome used to be the Lobby fighter's colour, and with Voltkit the whole
+game was yellow):
+
+- **Cream** (`--paper`): words on ink, the Lobby's clippings, and `--el`,
+  the accent of every chosen thing (a chosen tab, the open screen on the
+  rail, a pressed chip, a picked tile's frame).
+- **Gold** (`--gold`): what to press (a primary button, PLAY), coins and
+  progress.
+- **Red** (`--hot`): the level badge, a sale, leaving. Nothing else.
+- **A masthead** is ink with cream words and a cream rule under it
+  (`--head-bg`, `--head-ink`, `--head-dim`; what sits on it is `--head-box`).
+  The chosen tab is a cream block standing on that rule.
+- **A fighter's element colour only where it means the fighter**: what
+  carries its own `--el` (a stage, a Fighters card, an element chip, a
+  boss's banner), and the Lobby fighter's (`--fighter`) on the Lobby's
+  field, name plate and seats, the raid room's backdrop and the battle's
+  sheets (a win is a sheet of it; their main button is gold all the same).
+  The title and sign-in screens are the game's gold.
+- **The field is softened**: where the Lobby fighter's colour fills a
+  whole screen (the Lobby, the raid room, a win's sheet) it is `--field`,
+  20% of the way to the cream (`color-mix(in oklab, …)`; in oklch the hue
+  travels an arc and Water's cyan turned green), so it sits calmer beside
+  the party's other fighters. The name plate and the seats keep `--fighter`
+  whole.
+- **Voltkit's field is a lemon of its own** (`POSTER_FIELD` in
+  `lobby-screen.ts`): its colour is the game's gold, and PLAY and the XP
+  bar sat on a field of the same gold. Its art, card and chip keep its own
+  colour; the look underneath is not touched.
+- **One white**: words on ink are the cream (`--ui-text`), as light
+  surfaces are. Pure white stays only on red fills, where cream misses AA.
+- **A panel's board** (`--board`, `--board-dots`) is a step lighter than
+  its masthead, with a faint halftone. Files: `fonts.css` (and
+  `fonts/`, with the two OFL licences), `tokens.css` (the shared tokens
+  re-pointed: most of the look), `kit.css` (panels, tabs, buttons, tiles,
+  rows, toast), `lobby.css` (the Lobby and the hub's top bar), `screens.css`
+  (what single screens, the battle HUD, the result and raid sheets and the
+  raid room need). Sweep: `tests/visual/poster.spec.ts`.
 
 - The Lobby's ink slab and its white stripe are pseudo-elements; the only
   markup the look adds is `.lobby-bigname` in the Lobby's backdrop (the
@@ -128,16 +167,17 @@ raid room need). Sweep: `tests/visual/poster.spec.ts`.
 - Three `!important`s, each with its reason beside it: PLAY's colour and
   font (the Lobby sets them so) and the rank's name on your own row of the
   ladder (its colour is inline).
-- **Contrast** (`tokens.css`): every element, boss and Spire colour is
-  light, so words on `--el` are ink, never white. `--on-el-dim` is the
-  quieter ink on `--el`, `--hot-fill` the red behind white words (`--hot`
-  stays for shadows and lines), and `--el-text` (behind `--ui-accent`) is
-  `--el` lifted to OKLCH lightness 0.72 for words on the panels' greys.
+- **Contrast** (`tokens.css`): cream, gold and every element, boss and
+  Spire colour are light, so words on them are ink, never white.
+  `--on-el-dim` is the quieter ink on an element colour (a win's sheet),
+  `--hot-fill` the red behind white words (`--hot` stays for shadows and
+  lines), and `--el-text` (behind `--ui-accent`) is `--el` lifted to OKLCH
+  lightness 0.72 for words on the panels' greys.
   `tests/visual/poster-contrast.spec.ts` measures every word on the Lobby,
-  the hub's screens and Settings in each element colour, against the pixels
-  really under it.
+  the hub's screens and Settings with the Lobby in each element colour,
+  against the pixels really under it.
 - Inside a Fighters card `--el` is that card's element colour
-  (`roster-view.ts` sets it), not the Lobby fighter's.
+  (`roster-view.ts` sets it), not the chrome's cream.
 - One screen, one file: `screens.css` has the title screen, the countdown
   and the round break; `sheets.css` the Reveal, the rite cards and the raid
   rites; `onboarding.css` the sign-in card; `plaza.css` the Plaza and the
