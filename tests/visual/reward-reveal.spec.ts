@@ -1,5 +1,9 @@
 import { expect, test } from "@playwright/test";
 import { openHub, snap } from "./helpers";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // A raid clear that earns new rewards turns each one over as a card.
 for (const size of [

@@ -8,6 +8,10 @@ import {
   snap,
 } from "./helpers";
 import { ISLAND, layoutProblems, setInsets, type Insets } from "./ui-measure";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // The checkpoint after a zone's elite: the Spire page marks floor 6 as the
 // checkpoint once floor 5 (zone 1's elite) is beaten, and a climb resumed
