@@ -77,7 +77,7 @@
 }
 :root[data-ui="poster"] .plaza-layer .pz-card .pc-acts button[data-pc="party"],
 :root[data-ui="poster"] .plaza-layer .pz-ask button[data-pa="yes"] {
-  background: var(--el);
+  background: var(--gold);
   color: var(--ink);
   box-shadow: 3px 3px 0 var(--hot);
 }

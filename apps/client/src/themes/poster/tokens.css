@@ -1,13 +1,35 @@
-/* Poster's tokens: ink black and the Lobby fighter's element colour (--el),
+/* Poster's tokens: ink black, cream paper, the game's gold and a hot red;
    nothing rounded, hard offset shadows instead of glass. The game's shared
    tokens (ui/tokens.css) are re-pointed here, so every screen built on them
-   follows before any rule of its own. */
+   follows before any rule of its own.
+
+   One chrome for every fighter (owner, 27 Nov 2026, "direction G"):
+   - --paper, cream: words on ink, the Lobby's clippings, and the accent
+     (--el) of every chosen thing: a chosen tab, the open screen on the
+     rail, a pressed chip, a picked tile's frame.
+   - --gold: what to press (the primary button, PLAY), coins, progress.
+   - --hot: the level badge, a sale, leaving. Nothing else.
+   - A fighter's element colour only where it means the fighter: what
+     carries its own --el (a stage, a card, an element chip, a boss's
+     banner), and the Lobby fighter's on the Lobby's field, name plate and
+     seats, the raid room's backdrop and the battle's sheets, which read
+     --fighter (ui-theme.ts writes it there, not on the root). */
 :root[data-ui="poster"] {
   --ink: #0d0d0f;
   --ink-1: #151518;
   --ink-2: #1e1e22;
   --ink-3: #2a2a30;
   --hot: #ff2e4d;
+  --paper: #f4ead5;
+  --gold: #ffd65b;
+  /* The chrome's accent. Not the fighter's colour: see above. */
+  --el: var(--paper);
+  /* A masthead: ink, cream words, a cream rule under it; what sits on it
+     (a close button, a switch) is a lighter ink block. */
+  --head-bg: var(--ink);
+  --head-ink: var(--paper);
+  --head-dim: rgba(244, 234, 213, 0.78);
+  --head-box: var(--ink-3);
   /* Contrast (WCAG AA, measured for every element, boss and Spire colour:
      tests/visual/poster-contrast.spec.ts). Every --el is light, so what is
      drawn on --el is ink, never white (ink on the darkest, Shadow's
@@ -63,9 +85,9 @@
   --fill-card-hi: var(--ink-3);
   --fill-bar: #070708;
   --scrim: rgba(0, 0, 0, 0.55);
-  --btn-primary-bg: var(--el);
+  --btn-primary-bg: var(--gold);
   --btn-primary-ink: var(--ink);
-  --cta-bg: var(--el);
+  --cta-bg: var(--gold);
   --icon-btn-bg: var(--ink);
   --icon-btn-line: transparent;
   --shadow-1: 5px 5px 0 rgba(0, 0, 0, 0.35);

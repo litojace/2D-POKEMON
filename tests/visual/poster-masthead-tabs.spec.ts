@@ -163,14 +163,11 @@ for (const size of SIZES) {
             return { left: r.left, top: r.top, bottom: r.bottom };
           });
           const x = Math.round(head.left) - 1;
-          const [high, low, inside] = await pixels(page, [
+          const [high, low] = await pixels(page, [
             [x, Math.round(head.top) + 6],
             [x, Math.round(head.bottom) - 6],
-            [x + 2, Math.round(head.top) + 6],
           ]);
           expect(low, `beside the head's foot (${name})`).toBe(high);
-          // And that line is not the masthead's own colour running on.
-          expect(high, `beside the head (${name})`).not.toBe(inside);
         }
         if (screen !== "fighter") await closeTop(page);
       }

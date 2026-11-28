@@ -85,9 +85,14 @@
 
 /* ── buttons: the main one is a flat block in the element colour with the
    hot offset shadow (unskewed: its label is bare text) ── */
+/* The title and sign-in screens are the game's own gold, whoever the
+   fighter: the cover, the brand's accents, the quick buttons' edge. */
+:root[data-ui="poster"] .welcome-gate {
+  --el: var(--gold);
+}
 :root[data-ui="poster"] .auth-submit {
   border-radius: 0;
-  background: var(--el);
+  background: var(--gold);
   color: var(--ink);
   box-shadow: 4px 4px 0 var(--hot);
   font-family: var(--font-display);

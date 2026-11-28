@@ -1077,7 +1077,8 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
         const fighter = CHARACTERS[character];
         const art = $("lobby-fighter-art");
         $("lobby-fighter").style.setProperty("--element", hex(fighter.color));
-        // Both looks draw with it, on every screen (ui-theme.ts).
+        // The look underneath draws with it on every screen; Poster on
+        // the fighter's own things (ui-theme.ts).
         setUiElementColour(hex(fighter.color));
         // The name behind the fighter, for a look that shows it (Poster).
         $("lobby-bigname").textContent = fighter.name;

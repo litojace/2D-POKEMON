@@ -3,6 +3,14 @@
    rite and blessing cards between rounds. Loaded after screens.css, whose
    sheet rules these build on. */
 
+/* The battle's sheets and cards keep the Lobby fighter's colour as their
+   accent (a win is a sheet of it): --fighter is written on the overlay
+   (ui-theme.ts), the game's gold before a Lobby has said. Their main
+   button is gold all the same (screens.css, --sheet-cta). */
+:root[data-ui="poster"] #arena-overlay {
+  --el: var(--fighter, var(--gold));
+}
+
 /* ── defeat: an ink sheet, so its words are white ──
    screens.css draws every sheet's title, kicker, score and foot in ink for
    the element-colour sheet of a win; on a defeat's ink sheet that left the
@@ -54,7 +62,7 @@
    drawn a square in front of the slant.) The kit's .ui-btn.is-primary is
    already that block. */
 :root[data-ui="poster"] #arena-overlay#arena-overlay.is-sheet .is-defeat {
-  --sheet-cta: var(--el);
+  --sheet-cta: var(--gold);
   --sheet-cta-ink: var(--ink);
 }
 

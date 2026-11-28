@@ -201,7 +201,10 @@ for (const size of SIZES) {
           };
         });
         expect(look.radius, action).toBe("0px");
-        if (look.head) expect(look.head, action).toBe(look.el);
+        // One chrome for every fighter (tokens.css): a masthead is ink and
+        // the accent is cream, whatever the Lobby fighter's colour.
+        if (look.head) expect(look.head, action).toBe("rgb(13, 13, 15)");
+        expect(look.el, action).toBe("rgb(244, 234, 213)");
         // A tab reads whole: its words lie inside the tab row (above a
         // phone's height the Friends row came to 22 px and cut them in
         // half), and a count on a tab stands out from its chip (it was
@@ -530,3 +533,152 @@ for (const size of [
     }
   });
 }
+
+// One chrome for every fighter (owner, 27 Nov 2026): cream, ink, gold and
+// red. The Lobby fighter's element colour shows only on the fighter's own
+// things: the Lobby's field, the name plate and the seats take it
+// (--fighter, written on the Lobby and not on the root: ui-theme.ts); the
+// switch, the rail, PLAY and a masthead stay as they are when the fighter
+// changes. (The chrome used to be the fighter's colour: with Voltkit the
+// whole game was yellow.)
+test("Poster: the fighter's colour stays on the fighter's things", async ({
+  browser,
+}, info) => {
+  test.setTimeout(90_000);
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    await skipTour(page);
+    await withPoster(page);
+    const errors = await openHub(page);
+    await page.evaluate(() => document.fonts.ready);
+    const colours = () =>
+      page.evaluate(() => {
+        const paint = document.createElement("canvas").getContext("2d", {
+          willReadFrequently: true,
+        })!;
+        paint.canvas.width = paint.canvas.height = 1;
+        // Through a canvas: Poster's computed colours can be oklch().
+        const rgb = (c: string) => {
+          paint.clearRect(0, 0, 1, 1);
+          paint.fillStyle = "#000";
+          paint.fillStyle = c;
+          paint.fillRect(0, 0, 1, 1);
+          return Array.from(
+            paint.getImageData(0, 0, 1, 1).data.slice(0, 3),
+          ).join(",");
+        };
+        const css = (sel: string, prop: string, pseudo?: string) =>
+          rgb(
+            getComputedStyle(document.querySelector(sel)!, pseudo)[
+              prop as "color"
+            ],
+          );
+        const root = document.documentElement;
+        return {
+          // The fighter's own colour, as the Lobby's art has it.
+          fighter: rgb(
+            document
+              .getElementById("lobby-fighter")!
+              .style.getPropertyValue("--element"),
+          ),
+          rootInline: root.style.getPropertyValue("--el"),
+          accent: rgb(getComputedStyle(root).getPropertyValue("--el").trim()),
+          field: css(".lobby-layer", "backgroundColor"),
+          plate: css(".lobby-name h2", "color"),
+          play: css(".lobby-play-button", "color"),
+          lobbySwitch: css(
+            '.hub-scenes > button[aria-pressed="true"]',
+            "backgroundColor",
+          ),
+          xp: css("body.hub-active .nav-xp > *", "backgroundColor"),
+        };
+      });
+    const CREAM = "244,234,213",
+      GOLD = "255,214,91";
+    const first = await colours();
+    // Nothing on the root: a custom property there restyles the whole page.
+    expect(first.rootInline).toBe("");
+    expect(first.accent).toBe(CREAM);
+    expect(first.field).toBe(first.fighter);
+    expect(first.plate).toBe(first.fighter);
+    expect(first.play).toBe(GOLD);
+    expect(first.lobbySwitch).toBe(CREAM);
+    expect(first.xp).toBe(GOLD);
+    // The next fighter: the field and the name plate follow, the chrome
+    // does not.
+    await page.evaluate(() =>
+      document
+        .querySelector<HTMLElement>('.lobby-step[data-lobby-step="1"]')!
+        .click(),
+    );
+    await expect
+      .poll(async () => (await colours()).field)
+      .not.toBe(first.field);
+    const next = await colours();
+    expect(next.fighter).not.toBe(first.fighter);
+    expect(next.field).toBe(next.fighter);
+    expect(next.plate).toBe(next.fighter);
+    expect({ ...next, fighter: 0, field: 0, plate: 0 }).toEqual({
+      ...first,
+      fighter: 0,
+      field: 0,
+      plate: 0,
+    });
+    // A screen over the Lobby: its masthead is ink, its open rail block
+    // cream, its main button gold, with this fighter as with the first.
+    await hubMenu(page, "fighters");
+    await expect(page.locator(".roster-room, .ui-panel").last()).toBeVisible();
+    // Once the screen has opened: a tap during its entrance is not taken.
+    await page.waitForTimeout(700);
+    // A fighter that is not the Lobby's, so its page offers SELECT.
+    await page.click('[data-roster-card="tidefin"]');
+    await page.click("[data-roster-details]");
+    await expect(page.locator("[data-roster-select]").last()).toBeEnabled();
+    await page.waitForTimeout(500);
+    await page.mouse.move(420, 380);
+    const panel = await page.evaluate(() => {
+      const paint = document.createElement("canvas").getContext("2d", {
+        willReadFrequently: true,
+      })!;
+      paint.canvas.width = paint.canvas.height = 1;
+      const rgb = (c: string) => {
+        paint.clearRect(0, 0, 1, 1);
+        paint.fillStyle = "#000";
+        paint.fillStyle = c;
+        paint.fillRect(0, 0, 1, 1);
+        return Array.from(paint.getImageData(0, 0, 1, 1).data.slice(0, 3)).join(
+          ",",
+        );
+      };
+      const bg = (el: Element, pseudo?: string) =>
+        rgb(getComputedStyle(el, pseudo).backgroundColor);
+      return {
+        rail: bg(
+          document.querySelector('.lobby-rail [data-lobby-action="fighters"]')!,
+          "::before",
+        ),
+        select: bg(
+          [...document.querySelectorAll("[data-roster-select]")].pop()!,
+          "::before",
+        ),
+        tab: bg(
+          document.querySelector(
+            '.ui-split-main > .ui-tabs > button[aria-selected="true"]',
+          )!,
+        ),
+      };
+    });
+    expect(panel.rail).toBe(CREAM);
+    expect(panel.select).toBe(GOLD);
+    expect(panel.tab).toBe(CREAM);
+    await snap(page, info, "poster-fixed-chrome-844x390");
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});

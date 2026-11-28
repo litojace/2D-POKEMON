@@ -1,22 +1,21 @@
 /* Poster on the admin panel (admin-panel.css, the owner's tool). Its tabs
-   sit on the dialog's element-colour masthead, where the default look's
-   pale-gold labels could not be read; its cards were the default navy. */
+   sit on the dialog's ink masthead; its cards were the default navy. */
 
-/* ── tabs on the masthead: ink labels, the open one an ink block ── */
+/* ── tabs on the masthead: cream labels, the open one a cream block ── */
 :root[data-ui="poster"] .dialog-toolbar .admin-tab {
   border-radius: 0;
-  color: rgba(13, 13, 15, 0.66);
+  color: var(--head-dim);
   font-family: var(--font-display);
   font-weight: 400;
   letter-spacing: 0.05em;
 }
 :root[data-ui="poster"] .dialog-toolbar .admin-tab:hover:not(.active) {
-  background: rgba(13, 13, 15, 0.08);
-  color: var(--ink);
+  background: rgba(244, 234, 213, 0.12);
+  color: var(--head-ink);
 }
 :root[data-ui="poster"] .dialog-toolbar .admin-tab.active {
-  background: var(--ink);
-  color: var(--el);
+  background: var(--head-ink);
+  color: var(--ink);
 }
 :root[data-ui="poster"] .dialog-toolbar .admin-tab.active::after {
   display: none;
@@ -33,8 +32,8 @@
   color: #fff;
 }
 :root[data-ui="poster"] .admin-tab.active .admin-count {
-  background: var(--el);
-  color: var(--ink);
+  background: var(--ink);
+  color: var(--head-ink);
 }
 
 /* ── the board: ink cards, square controls ── */
@@ -83,7 +82,7 @@
   background: var(--ink-3);
 }
 :root[data-ui="poster"] .adm .adm-btn-primary {
-  background: var(--el);
+  background: var(--gold);
   color: var(--ink);
   box-shadow: 3px 3px 0 var(--hot);
 }

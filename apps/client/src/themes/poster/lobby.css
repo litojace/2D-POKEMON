@@ -1,9 +1,11 @@
-/* Poster's Lobby and the hub's top bar: the screen takes the fighter's
-   element colour; an ink slab carries the rail, the fighter's name stands
-   huge and outlined behind it, the cards are white clippings. */
+/* Poster's Lobby and the hub's top bar: the field takes the fighter's
+   element colour (--fighter: ui-theme.ts; the game's gold before a Lobby
+   has said); an ink slab carries the rail, the fighter's name stands huge
+   and outlined behind it, the cards are cream clippings. Everything else
+   here is the fixed chrome (tokens.css). */
 :root[data-ui="poster"] .lobby-layer {
   --lobby-rail: 132px;
-  background: var(--el);
+  background: var(--fighter, var(--gold));
   font-family: var(--font-body);
   color: var(--ink);
 }
@@ -14,7 +16,7 @@
   background:
     radial-gradient(circle, rgba(0, 0, 0, 0.16) 1.4px, transparent 1.8px) 0 0 /
       9px 9px,
-    var(--el);
+    var(--fighter, var(--gold));
   -webkit-mask: none;
 }
 :root[data-ui="poster"] .lobby-layer .lobby-backdrop::before {
@@ -24,7 +26,7 @@
   inset: 0;
   background: radial-gradient(
     48% 60% at 52% 58%,
-    var(--el) 30%,
+    var(--fighter, var(--gold)) 30%,
     transparent 75%
   );
 }
@@ -48,7 +50,7 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: #fff;
+  background: var(--paper);
   clip-path: polygon(
     calc(var(--slab-x) + var(--slab-top) + 5px) 0,
     calc(var(--slab-x) + var(--slab-top) + 12px) 0,
@@ -228,7 +230,7 @@
   color: var(--ink);
   box-shadow: none;
   /* Solid, so a seat that reaches the slab still reads as one card. */
-  background: color-mix(in srgb, var(--el) 65%, #fff);
+  background: color-mix(in srgb, var(--fighter, var(--gold)) 65%, #fff);
 }
 :root[data-ui="poster"] .lobby-layer .lobby-slot small {
   font: 800 calc(11px * var(--text-scale, 1)) / 1 var(--font-body);
@@ -258,7 +260,8 @@
 :root[data-ui="poster"] .lobby-layer .lobby-name h2 {
   font: 400 calc(28px * var(--text-scale, 1)) / 1 var(--font-display);
   letter-spacing: 0.06em;
-  color: var(--el);
+  /* The fighter's name in the fighter's colour. */
+  color: var(--fighter, var(--gold));
   background: var(--ink);
   padding: 4px 14px 5px;
   transform: skewX(-10deg);
@@ -275,7 +278,7 @@
   }
 }
 :root[data-ui="poster"] .lobby-layer .lobby-name .element-pill {
-  background: #fff;
+  background: var(--paper);
   color: var(--ink);
   border-radius: 0;
   font-family: var(--font-body);
@@ -303,7 +306,7 @@
   gap: 12px;
 }
 :root[data-ui="poster"] .lobby-layer .lobby-card {
-  background: #fff;
+  background: var(--paper);
   border: 3px solid var(--ink);
   border-radius: 0;
   box-shadow: 6px 6px 0 var(--ink);
@@ -341,7 +344,8 @@
   .lobby-layer
   .lobby-card
   progress::-webkit-progress-bar {
-  background: #e5e5e5;
+  /* A wash of ink on the cream card. */
+  background: rgba(13, 13, 15, 0.14);
   border-radius: 0;
 }
 :root[data-ui="poster"]
@@ -354,7 +358,7 @@
 /* mode + play */
 :root[data-ui="poster"] .lobby-layer .lobby-mode {
   width: calc(100% - 6px);
-  background: #fff;
+  background: var(--paper);
   border: 3px solid var(--ink);
   border-radius: 0;
   box-shadow: none;
@@ -383,19 +387,19 @@
 :root[data-ui="poster"] .lobby-layer .lobby-mode-caret {
   color: var(--ink);
 }
-/* A bot's level on the white mode box. The look underneath's light green,
-   amber and red are made for a dark ground: on white EASY read at 1.9:1
-   and its empty pips not at all (UI audit, 27 Nov 2026). These are the same
-   three hues at 4.5:1 or better; the mode menu's dark rows keep the light
-   ones. */
+/* A bot's level on the cream mode box. The look underneath's light green,
+   amber and red are made for a dark ground: on a light box EASY read at
+   1.9:1 and its empty pips not at all (UI audit, 27 Nov 2026). These are
+   the same three hues at 5:1 on the cream; the mode menu's dark rows keep
+   the light ones. */
 :root[data-ui="poster"] .lobby-layer .lobby-mode .ai-level {
-  --ai: #15803d;
+  --ai: #137236;
 }
 :root[data-ui="poster"]
   .lobby-layer
   .lobby-mode
   .ai-level[data-ai-level="normal"] {
-  --ai: #b45309;
+  --ai: #a04a08;
 }
 :root[data-ui="poster"]
   .lobby-layer
@@ -413,8 +417,9 @@
 }
 :root[data-ui="poster"] .lobby-layer .lobby-play-button {
   background: var(--ink);
-  /* The Lobby's own rule sets PLAY's colour and font with !important. */
-  color: var(--el) !important;
+  /* The Lobby's own rule sets PLAY's colour and font with !important.
+     Gold: what to press. */
+  color: var(--gold) !important;
   font: 400 calc(44px * var(--text-scale, 1)) / 1 var(--font-display) !important;
   border: 0;
   border-radius: 0;
@@ -428,7 +433,7 @@
   transform: skewX(10deg);
 }
 :root[data-ui="poster"] .lobby-layer .lobby-play-button svg {
-  fill: var(--el);
+  fill: var(--gold);
   transform: skewX(10deg);
 }
 :root[data-ui="poster"] #account-profile .account-name {
