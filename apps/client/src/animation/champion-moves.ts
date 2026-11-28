@@ -18,6 +18,10 @@ import type { Facing } from "./controller";
  *   as the fighter stays the winner.
  * - Reduce motion (`calm`): the held pose, with nothing swaying or hopping.
  * - At most a few particles that belong to the move (dust on a landing).
+ * - Nothing leaves the body (owner, 28 Nov 2026: a head that looked cut off).
+ *   The head never lifts off the neck and barely tilts (the rig clamps both);
+ *   "head thrown back" is a lean of the whole fighter. A somersault turns the
+ *   fighter as one piece about its middle (`flip`), limbs kept close.
  *
  * A champion without a move here keeps its older pose in rig.ts.
  */
@@ -83,6 +87,16 @@ export const arc = (t: number, a: number, b: number) => {
   if (t <= a || t >= b) return 0;
   const k = (t - a) / (b - a);
   return 4 * k * (1 - k);
+};
+/**
+ * Turn the whole fighter in the air about its middle (between head and
+ * hips), not about the hips: turned about the hips, the big head swings wide
+ * round a small body and reads as a head on its own.
+ */
+const MIDDLE = 22;
+const flip = (s: MoveStage, angle: number) => {
+  s.spin(angle);
+  s.move(-MIDDLE * Math.sin(angle), -MIDDLE * (1 - Math.cos(angle)));
 };
 /** A landing: squash at `at`, springing back over `len` seconds. */
 const land = (s: MoveStage, at: number, depth = 0.14, len = 0.22) => {
@@ -207,8 +221,9 @@ const cindrakeEntrance: Move = (s) => {
   const tremble = Math.sin(t * 60) * roar;
   s.squash(1 - 0.03 * roar, 1 + 0.07 * roar);
   s.move(tremble * 1.2, 0);
-  p.head.y -= 4 * roar;
-  p.head.rotation = -0.26 * roar;
+  // (Head thrown back = the whole fighter leaning back, head on its neck.)
+  s.spin(-s.side * 0.1 * roar);
+  p.head.rotation = -0.08 * roar;
   p.armL.rotation += 1.5 * roar;
   p.armR.rotation -= 1.5 * roar;
   p.wings.setScale(0.5 + 0.12 * roar, 0.5 + 0.05 * roar);
@@ -239,7 +254,7 @@ const cindrakeVictory: Move = (s) => {
   p.armL.rotation = -0.5 * wind - 0.5 * punch;
   p.legL.rotation = 0.35 * punch;
   p.legR.rotation = -0.2 * punch;
-  p.head.rotation = -0.18 * punch;
+  p.head.rotation = -0.08 * punch;
   land(s, 0.92, 0.18, 0.24);
   if (s.passed(0.92)) s.accent("dust", 4);
   if (s.passed(0.4)) s.accent("ember", 4);
@@ -248,8 +263,9 @@ const cindrakeVictory: Move = (s) => {
   p.armL.rotation += 0.5 * proud;
   p.armR.rotation -= 0.5 * proud;
   p.body.setScale(0.5 + 0.03 * proud, 0.5 + 0.012 * s.sway(2.6) * proud);
-  p.head.y += -3 * proud + (bump(t, 1.5, 1.72) + bump(t, 1.78, 2.0)) * 4;
-  p.head.rotation += -0.08 * proud;
+  p.head.y += (bump(t, 1.5, 1.72) + bump(t, 1.78, 2.0)) * 4;
+  p.head.rotation += -0.05 * proud;
+  s.spin(-s.side * 0.05 * proud);
   p.tail.rotation = s.sway(3) * 0.28 * proud;
   const crest = 0.5 + 0.22 * punch + 0.12 * proud;
   p.flame.setScale(
@@ -299,8 +315,7 @@ const tidefinEntrance: Move = (s) => {
     0.5 - 0.08 * flat + (0.13 + bump(t, 0.98, 1.3) * 0.06) * bloom,
   );
   p.ears.rotation = -0.22 * flat;
-  p.head.rotation = -0.12 * salute + 0.1 * flat;
-  p.head.y -= 2 * salute;
+  p.head.rotation = -0.1 * salute + 0.1 * flat;
   // En garde: blade forward, back arm high, light on its toes, tail up.
   const guard = ease(t, 1.85, 2.05);
   s.move(0, -Math.max(0, s.sway(10)) * 3 * guard);
@@ -314,24 +329,29 @@ const tidefinEntrance: Move = (s) => {
 };
 const tidefinVictory: Move = (s) => {
   const { t, p } = s;
-  // Crouch, then a backflip.
+  // Crouch, then a leap like a fish clearing the water: up leaning back,
+  // over the top, down leaning forward, tail whipping. (Not a somersault:
+  // upside down, a big head beside a small body read as a head on its own.)
   crouch(s, 0, 0.24, 0.18);
-  const air = t > 0.24 && t < 0.92 ? 1 : 0;
-  const tuck = ease(t, 0.24, 0.36) * (1 - ease(t, 0.8, 0.92));
-  s.move(0, -arc(t, 0.24, 0.92) * 38);
-  if (air) s.spin(-s.side * ease(t, 0.28, 0.88) * Math.PI * 2);
-  p.legL.rotation = 0.8 * tuck;
-  p.legR.rotation = -0.8 * tuck;
-  p.armL.rotation = -0.7 * tuck;
-  p.armR.rotation = 0.7 * tuck;
-  p.scarf.rotation = 0.5 * tuck;
+  const up = ease(t, 0.24, 0.4) * (1 - ease(t, 0.5, 0.66));
+  const down = ease(t, 0.56, 0.72) * (1 - ease(t, 0.86, 0.94));
+  const air = ease(t, 0.24, 0.34) * (1 - ease(t, 0.84, 0.94));
+  s.move(0, -arc(t, 0.24, 0.92) * 40);
+  flip(s, s.side * (-0.34 * up + 0.34 * down));
+  if (air > 0) s.squash(1 - 0.05 * air, 1 + 0.08 * air);
+  p.legL.rotation = 0.3 * air;
+  p.legR.rotation = -0.3 * air;
+  p.armL.rotation = 1.2 * air;
+  p.armR.rotation = -1.2 * air;
+  p.tail.rotation = (0.5 * up - 0.5 * down) * 1.2;
+  p.scarf.rotation = 0.4 * up - 0.4 * down;
   land(s, 0.92, 0.18);
   if (s.passed(0.92)) s.accent("drop", 5);
   // A deep fencer's bow: head low, gills drooping forward, one arm across
   // the chest, the other swept back.
   const bow = ease(t, 1.05, 1.3) * (1 - ease(t, 1.7, 1.92));
-  p.head.y += 11 * bow;
-  p.head.rotation = 0.24 * bow;
+  p.head.y += 7 * bow;
+  p.head.rotation = 0.14 * bow;
   if (bow > 0) s.squash(1 + 0.04 * bow, 1 - 0.12 * bow);
   s.spin(
     s.side * 0.12 * bow * (s.facing === "left" || s.facing === "right" ? 1 : 0),
@@ -347,8 +367,7 @@ const tidefinVictory: Move = (s) => {
   p.armL.rotation += -0.55 * hold;
   p.legR.rotation += 0.32 * hold;
   s.spin(s.side * 0.06 * hold);
-  p.head.rotation += -0.12 * hold;
-  p.head.y -= 2 * hold;
+  p.head.rotation += -0.1 * hold;
   p.ears.setScale(
     0.5 - 0.02 * bow + 0.025 * hold,
     0.5 - 0.08 * bow + (0.12 + s.sway(4, 1.2) * 0.03) * hold,

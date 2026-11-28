@@ -823,7 +823,14 @@ export class FighterRig {
           accents.push([kind, count]);
         },
       };
+      const neck = head.y;
       ownMove(stage);
+      // Nothing leaves the body: the head stays on its neck (it may sink,
+      // never lift) and barely tilts; a headpiece drawn across the head
+      // (gills, ears) never widens off it.
+      head.y = Math.max(neck, head.y);
+      head.rotation = Math.max(-0.16, Math.min(0.16, head.rotation));
+      ears.scaleX = Math.min(0.54, ears.scaleX);
       this.moveT = at;
     } else if (state === "wave" && !reduced)
       this.wave(
