@@ -986,6 +986,212 @@ const astrabunVictory: Move = (s) => {
   p.ears.rotation += s.sway(8, 1) * 0.1 * ease(t, 2.05, 2.25);
 };
 
+// -------------------------------------------------------------- Wombolder
+// Gruff, stubborn, and proud of it: "Strongest rump in the land."
+// (It turns its back to show the rump: TURNS, below.)
+const wombolderEntrance: Move = (s) => {
+  const { t, p } = s;
+  // Backs in rump first, shuffling.
+  const back = 1 - ease(t, 0.7, 0.8);
+  const shuffle = Math.sin(t * Math.PI * 5) * back;
+  s.move(shuffle * 4, -Math.abs(shuffle) * 2);
+  s.spin(shuffle * 0.08);
+  // Turns round; one curt nod.
+  p.head.y += 4 * bump(t, 1.05, 1.4);
+  s.mood(t < 2.3 ? "focus" : "happy");
+  // A stomp that means it.
+  s.move(0, -6 * arc(t, 1.4, 1.72));
+  p.legR.rotation = -0.5 * bump(t, 1.4, 1.72);
+  land(s, 1.72, 0.14, 0.24);
+  if (s.passed(1.72)) s.accent("dust", 5);
+  // Head down like a bull, pawing the ground.
+  const bull = ease(t, 1.85, 2.1);
+  s.spin(s.side * 0.1 * bull);
+  p.head.y += 3 * bull;
+  if (bull > 0) s.squash(1 + 0.04 * bull, 1 - 0.05 * bull);
+  const paw = Math.max(0, s.sway(7)) * bull;
+  p.legR.rotation += -0.5 * paw;
+  s.move(-s.side * 1.5 * paw, 0);
+};
+const wombolderVictory: Move = (s) => {
+  const { t, p } = s;
+  // Turns its back and wags the boulder rump, three big wags.
+  const wag = ease(t, 0.12, 0.2) * (1 - ease(t, 1.15, 1.25));
+  const side = Math.sin((t - 0.15) * Math.PI * 3) * wag;
+  s.move(side * 6, -Math.abs(side) * 4);
+  s.spin(side * 0.15);
+  // Looks back over its shoulder, then faces front for one chest thump.
+  const thump = bump(t, 1.6, 1.85);
+  if (thump > 0) s.squash(1 + 0.07 * thump, 1 - 0.06 * thump);
+  p.armR.rotation = 1.2 * thump;
+  p.armL.rotation = -1.2 * thump;
+  if (s.passed(1.72)) s.accent("dust", 3);
+  // Chin up, chest out, breathing proud.
+  const proud = ease(t, 1.9, 2.15);
+  s.spin(-s.side * 0.06 * proud);
+  if (proud > 0)
+    s.squash(1 + (0.04 + s.sway(1.8) * 0.015) * proud, 1 + 0.02 * proud);
+  p.armL.rotation += 0.5 * proud;
+  p.armR.rotation += -0.5 * proud;
+};
+
+// --------------------------------------------------------------- Shadopus
+// Sneaky and slippery: "Gone before they turn around."
+const shadopusEntrance: Move = (s) => {
+  const { t, p } = s;
+  // Melts into a puddle, slides aside and back...
+  const puddle = ease(t, 0, 0.2) * (1 - ease(t, 0.62, 0.78));
+  if (puddle > 0) s.squash(1 + 0.25 * puddle, 1 - 0.55 * puddle);
+  s.fade(1 - 0.35 * puddle);
+  s.move(s.side * 13 * bump(t, 0.15, 0.7), 0);
+  // ...and rises out of it, stretching tall.
+  const rise = bump(t, 0.7, 1.1);
+  if (rise > 0) s.squash(1 - 0.1 * rise, 1 + 0.16 * rise);
+  // Tentacles unfurl one after another.
+  const each = (a: number) => bump(t, a, a + 0.45);
+  p.armL.rotation = 1.6 * each(0.95);
+  p.armR.rotation = -1.6 * each(1.1);
+  p.legL.rotation = 0.5 * each(1.25);
+  p.legR.rotation = -0.5 * each(1.4);
+  // A sly look one way, then the other.
+  const sly = bump(t, 1.7, 2.05) - bump(t, 2.05, 2.4);
+  s.spin(sly * 0.12);
+  s.move(sly * 5, 0);
+  p.head.rotation = sly * 0.12;
+  s.mood(t > 1.65 && t < 2.45 ? "focus" : "happy");
+  // Never quite still.
+  const idle = ease(t, 2.4, 2.6);
+  p.armL.rotation += s.sway(4) * 0.3 * idle;
+  p.armR.rotation += s.sway(4, 1.5) * 0.3 * idle;
+};
+const shadopusVictory: Move = (s) => {
+  const { t, p } = s;
+  // A vanishing act: gone, back over there, gone, back over here...
+  const blink = (a: number) => bump(t, a, a + 0.3);
+  const gone = Math.max(blink(0.02), blink(0.45), blink(0.9));
+  s.fade(1 - 0.9 * gone);
+  if (gone > 0) s.squash(1 - 0.25 * gone, 1 - 0.25 * gone);
+  const where = t < 0.17 ? 0 : t < 0.6 ? -14 : t < 1.05 ? 14 : 0;
+  s.move(where * s.side, 0);
+  // ...ta-da: every tentacle flung up.
+  const tada = ease(t, 1.08, 1.2);
+  const pop = bump(t, 1.08, 1.5);
+  if (pop > 0) s.squash(1 - 0.06 * pop, 1 + 0.14 * pop);
+  s.move(0, -10 * arc(t, 1.08, 1.5));
+  // Then a wave rolling through them, one after another.
+  const roll = (phase: number) => s.sway(5, phase) * 0.3 * ease(t, 1.5, 1.8);
+  p.armL.rotation = (1.9 + roll(0)) * tada;
+  p.armR.rotation = (-1.9 + roll(1.2)) * tada;
+  p.legL.rotation = (0.4 + roll(2.4) * 0.5) * tada;
+  p.legR.rotation = (-0.4 + roll(3.6) * 0.5) * tada;
+  s.move(0, -(1 + s.sway(2.5)) * 2 * ease(t, 1.5, 1.8));
+};
+
+// --------------------------------------------------------------- Pangrove
+// A tumbler who loves a surprise: "Dig, dig, dig... SURPRISE!"
+const pangroveEntrance: Move = (s) => {
+  const { t, p } = s;
+  // Curls into a ball and rolls out and back, one piece, limbs tucked.
+  const ball = ease(t, 0, 0.12) * (1 - ease(t, 0.86, 0.96));
+  if (ball > 0) s.squash(1 + 0.04 * ball, 1 - 0.16 * ball);
+  p.head.y += 5 * ball;
+  p.armL.rotation = -0.4 * ball;
+  p.armR.rotation = 0.4 * ball;
+  p.tail.rotation = 0.5 * ball;
+  const travel = Math.sin(ease(t, 0.1, 0.9) * Math.PI * 2);
+  s.move(s.side * 15 * travel, 0);
+  flip(s, s.side * ease(t, 0.1, 0.9) * Math.PI * 4 * (t < 0.9 ? 1 : 0));
+  // Pops open with a hop...
+  const open = ease(t, 0.92, 1.02);
+  s.move(0, -11 * arc(t, 0.94, 1.3));
+  const pop = bump(t, 0.94, 1.3);
+  if (pop > 0) s.squash(1 - 0.05 * pop, 1 + 0.12 * pop);
+  land(s, 1.3, 0.1);
+  if (s.passed(1.3)) s.accent("dust", 3);
+  // ...shakes its leaves out...
+  const shake = bump(t, 1.35, 1.8);
+  s.move(Math.sin(t * 48) * 2.2 * shake, 0);
+  p.flame.rotation = Math.sin(t * 40) * 0.3 * shake + s.sway(5) * 0.08 * open;
+  p.tail.rotation += Math.sin(t * 30) * 0.25 * shake;
+  // ...and: surprise! Arms wide.
+  const ta = ease(t, 1.8, 1.92);
+  p.armL.rotation += (1.7 + s.sway(8) * 0.12) * ta;
+  p.armR.rotation += (-1.7 - s.sway(8) * 0.12) * ta;
+  s.move(
+    0,
+    -8 * arc(t, 1.8, 2.1) - Math.max(0, s.sway(6)) * 3 * ease(t, 2.2, 2.4),
+  );
+  p.tail.rotation += s.sway(6) * 0.2 * ta;
+};
+const pangroveVictory: Move = (s) => {
+  const { t, p } = s;
+  // Drums the ground with its tail, rocking side to side.
+  const drum = ease(t, 0, 0.1) * (1 - ease(t, 0.85, 0.95));
+  const beat = Math.sin(t * Math.PI * 4.5) * drum;
+  p.tail.rotation = beat * 0.7;
+  s.spin(beat * 0.1);
+  s.move(beat * 3, -Math.abs(beat) * 3);
+  // Curls up and rolls on the spot, twice round, one piece.
+  const ball = ease(t, 0.92, 1.02) * (1 - ease(t, 1.5, 1.6));
+  if (ball > 0) s.squash(1 + 0.04 * ball, 1 - 0.16 * ball);
+  p.head.y += 5 * ball;
+  s.move(0, -8 * ball);
+  flip(s, s.side * ease(t, 1.0, 1.55) * Math.PI * 4 * (t < 1.55 ? 1 : 0));
+  // Pops open, arms wide...
+  const pop = bump(t, 1.56, 1.9);
+  if (pop > 0) s.squash(1 - 0.05 * pop, 1 + 0.12 * pop);
+  p.armL.rotation = 1.6 * pop;
+  p.armR.rotation = -1.6 * pop;
+  // ...and sits back on its tail, paws on its belly, well pleased.
+  const sit = ease(t, 1.9, 2.2);
+  if (sit > 0) s.squash(1 + 0.07 * sit, 1 - 0.1 * sit);
+  s.spin(-s.side * 0.1 * sit);
+  p.armL.rotation += -0.3 * sit;
+  p.armR.rotation += 0.3 * sit;
+  p.tail.rotation += (0.3 + s.sway(4) * 0.2) * sit;
+  p.flame.rotation = s.sway(4, 1) * 0.12 * sit;
+  p.head.rotation = s.sway(2) * 0.06 * sit;
+};
+
+// --------------------------------------------------------------- Mossloth
+// Unhurried to the point of comedy: "Heyyy... nice... to... meet... you."
+// (Its wave takes the whole countdown on purpose: the arm arrives as the
+// round begins. The rule about telling the story in 1.6 s is the joke.)
+const mosslothEntrance: Move = (s) => {
+  const { t, p } = s;
+  const slow = ease(t, 0.15, 2.75);
+  p.armR.rotation = -2.3 * slow;
+  s.spin(-s.side * 0.07 * slow);
+  p.head.rotation = 0.1 * ease(t, 0.6, 2.2);
+  // One long blink on the way.
+  s.mood(t > 1.0 && t < 1.9 ? "normal" : "happy");
+  s.shut(bump(t, 1.0, 1.9));
+  // The flower on its head opens as slowly.
+  p.flame.setScale(0.5 - 0.1 * (1 - slow) * ease(t, 0, 0.2) + 0.05 * slow);
+  // Arrived: a small, pleased bob.
+  s.move(0, -4 * arc(t, 2.75, 3.1));
+  p.armR.rotation += s.sway(2.5) * 0.2 * ease(t, 2.8, 3.1);
+};
+const mosslothVictory: Move = (s) => {
+  const { t, p } = s;
+  // Hooray, in slow motion: both arms creep up.
+  const up = ease(t, 0.1, 1.5);
+  p.armL.rotation = 2.5 * up;
+  p.armR.rotation = -2.5 * up;
+  if (up > 0) s.squash(1 - 0.03 * up, 1 + 0.06 * up);
+  // Then it hangs from a branch that isn't there, swinging gently.
+  const hang = ease(t, 1.5, 2.0);
+  s.move(0, -7 * hang);
+  const swing = s.sway(1.9) * hang;
+  flip(s, swing * 0.16);
+  p.legL.rotation = (0.25 - swing * 0.25) * hang;
+  p.legR.rotation = (-0.25 - swing * 0.25) * hang;
+  p.head.rotation = -swing * 0.08;
+  s.mood(t > 1.6 ? "normal" : "happy");
+  s.shut(0.95 * hang);
+  p.flame.setScale(0.5 + (0.05 + s.sway(1.9, 1) * 0.02) * hang);
+};
+
 export const ENTRANCES: Partial<Record<CharacterId, Move>> = {
   voltkit: voltkitEntrance,
   cindrake: cindrakeEntrance,
@@ -1001,6 +1207,10 @@ export const ENTRANCES: Partial<Record<CharacterId, Move>> = {
   halcyra: halcyraEntrance,
   sunbara: sunbaraEntrance,
   astrabun: astrabunEntrance,
+  wombolder: wombolderEntrance,
+  shadopus: shadopusEntrance,
+  pangrove: pangroveEntrance,
+  mossloth: mosslothEntrance,
 };
 export const VICTORIES: Partial<Record<CharacterId, Move>> = {
   voltkit: voltkitVictory,
@@ -1017,6 +1227,30 @@ export const VICTORIES: Partial<Record<CharacterId, Move>> = {
   halcyra: halcyraVictory,
   sunbara: sunbaraVictory,
   astrabun: astrabunVictory,
+  wombolder: wombolderVictory,
+  shadopus: shadopusVictory,
+  pangrove: pangroveVictory,
+  mossloth: mosslothVictory,
+};
+/**
+ * A move that turns the fighter round for a moment: the facing at `t`
+ * seconds, given the one it stands in. Always back to its own facing by the
+ * time the move holds. Never under Reduce motion.
+ */
+export type Turn = (t: number, own: Facing) => Facing;
+/** Round by the side nearest its own facing. */
+const side = (own: Facing): Facing =>
+  own === "left" || own === "right" ? own : "right";
+export const TURNS: Partial<
+  Record<CharacterId, { wave?: Turn; victory?: Turn }>
+> = {
+  wombolder: {
+    // Backs in rump first, then turns round to face you.
+    wave: (t, own) => (t < 0.8 ? "up" : t < 1.0 ? side(own) : own),
+    // Turns its back, wags, looks back over its shoulder, faces front.
+    victory: (t, own) =>
+      t < 0.12 ? own : t < 1.25 ? "up" : t < 1.55 ? side(own) : own,
+  },
 };
 /** The moment Reduce motion shows: every move has settled into its hold. */
 export const SETTLED = 12;
