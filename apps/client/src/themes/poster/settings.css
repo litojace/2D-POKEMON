@@ -1,22 +1,25 @@
 /* Poster on Settings (settingsMarkup in main.ts; settings-screen.css lays
-   it out). Its tabs sit on the dialog's masthead after the title: ink
-   labels, as the title is (at 66% they fell under AA on fire, water,
-   psychic, earth and shadow: poster-contrast.spec), the open one an ink
-   block in the element colour, each a finger tall. */
+   it out). Its tabs sit on the dialog's masthead after the title, as the
+   admin panel's do (admin.css): labels in the masthead's words, the open
+   one the masthead turned inside out, each a finger tall. Written in the
+   masthead's tokens (--head-*, tokens.css), with the colours of the
+   masthead before them as fallbacks (ink words on --el): a dimmed label
+   fell under AA there on fire, water, psychic, earth and shadow
+   (poster-contrast.spec), so it is ink until --head-dim exists. */
 :root[data-ui="poster"] .dialog-toolbar .settings-tab {
-  color: var(--ink);
+  color: var(--head-dim, var(--ink));
   font: 400 calc(15px * var(--text-scale, 1)) / 1 var(--font-display);
   letter-spacing: 0.05em;
 }
 :root[data-ui="poster"]
   .dialog-toolbar
   .settings-tab:is(:hover, :focus-visible):not([aria-selected="true"]) {
-  background: rgba(13, 13, 15, 0.08);
-  color: var(--ink);
+  background: color-mix(in srgb, var(--head-ink, var(--ink)) 12%, transparent);
+  color: var(--head-ink, var(--ink));
 }
 :root[data-ui="poster"] .dialog-toolbar .settings-tab[aria-selected="true"] {
-  background: var(--ink);
-  color: var(--el);
+  background: var(--head-ink, var(--ink));
+  color: var(--head-bg, var(--el));
   box-shadow: none;
 }
 
