@@ -49,12 +49,15 @@ const TAIL = 8;
 const CUT = { cx: 0.5, cy: 0.365, side: 0.78 };
 
 /**
- * A champion whose moves need a taller picture, for every look it has:
- * Cindrake's crest flame stands a head above it, and its victory hop put the
- * flame's tip past the top.
+ * Champions (or one look) whose moves need a taller picture:
+ * Cindrake's crest flame and Astrabun's ears stand a head above them, and
+ * their victory hops put the tips past the top.
  */
 const TALL: Record<string, Partial<typeof CUT>> = {
   cindrake: { cy: 0.315, side: 0.96 },
+  astrabun: { cy: 0.331, side: 0.9 },
+  // One look: Sunbara's Mythical raises an eclipse over its head.
+  "sunbara-daybreak": { cy: 0.331, side: 0.9 },
 };
 
 type Action = "entrance" | "victory" | "ultimate";
@@ -183,7 +186,11 @@ for (const clip of CLIPS.filter((c) => !ONLY || ONLY.includes(c.name)))
       const page = await context.newPage();
       await open(page, clip);
       const box = (await page.locator(".fit-stage").boundingBox())!;
-      const c = { ...CUT, ...TALL[clip.champion], ...clip.cut };
+      const c = {
+        ...CUT,
+        ...(TALL[clip.name] ?? TALL[clip.champion]),
+        ...clip.cut,
+      };
       const side = Math.round(box.width * c.side);
       const cut = {
         x: Math.round(box.x + box.width * c.cx - side / 2),

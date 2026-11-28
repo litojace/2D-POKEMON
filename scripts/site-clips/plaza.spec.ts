@@ -1,13 +1,14 @@
 /**
  * The website's Plaza picture (docs/website.md, "The Plaza and its pond"):
- * the real Plaza, at the pond, with a friend beside the angler: the line
- * out, then the bite, the fight and the fish leaping in.
+ * the real Plaza, at the pond, with two friends on the path behind the
+ * angler: the line out, then the bite.
  *
  *   npx playwright test --config scripts/site-clips/playwright.config.ts scripts/site-clips/plaza.spec.ts
  *   python3 apps/site/tools/make-scenes.py
  *
- * Writes site-clips/plaza/<moment>.png (wait, bite, leap-N, card), with and
- * without the fishing buttons; make-scenes.py holds the one chosen by eye.
+ * Writes site-clips/plaza/wait.png and bite.png, and each without the
+ * fishing buttons (-clean); make-scenes.py cuts the page's pictures from
+ * the bite.
  */
 import { expect, test, type Page } from "@playwright/test";
 import { mkdirSync } from "node:fs";
@@ -85,39 +86,5 @@ test("plaza fishing", async ({ browser }) => {
     .poll(async () => (await mode(page)).phase, { timeout: 30_000 })
     .toBe("bite");
   await shot("bite");
-  await act(page).click();
-  await expect
-    .poll(async () => (await mode(page)).phase, { timeout: 30_000 })
-    .toBe("fight");
-  // Land it: hold while the needle is under the green band's middle.
-  const b = (await act(page).boundingBox())!;
-  await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
-  let down = false;
-  let fought = false;
-  for (let i = 0; i < 1600; i++) {
-    const m = await mode(page);
-    if (m.phase !== "fight") break;
-    const f = m.fight;
-    if (f?.result === "going") {
-      if (!fought && f.progress > 0.4) {
-        fought = true;
-        await page.screenshot({ path: `${OUT}/fight.png` });
-      }
-      const want = f.tension < (f.lo + f.hi) / 2;
-      if (want !== down) {
-        down = want;
-        await (want ? page.mouse.down() : page.mouse.up());
-      }
-    }
-    await page.waitForTimeout(25);
-  }
-  if (down) await page.mouse.up();
-  console.log("after the fight:", (await mode(page)).phase);
-  for (let i = 0; i < 6; i++) {
-    await page.screenshot({ path: `${OUT}/leap-${i}.png` });
-    await page.waitForTimeout(250);
-  }
-  await page.waitForTimeout(1200);
-  await shot("card");
   await context.close();
 });

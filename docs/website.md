@@ -167,7 +167,15 @@ python3 apps/site/tools/make-skin-clips.py        # -> media/skins/, img/skins/
   action's next cycle, or the action before it), so nothing jumps where the
   loop wraps or one action follows another.
 - **The cut** leaves room above the head: a move that hops (Voltkit's glide
-  rises a third of its height) stays in the picture.
+  rises a third of its height) stays in the picture. Cindrake (its crest
+  flame), Astrabun (its ears) and Sunbara's Mythical (the eclipse over its
+  head) get a taller one (`TALL` in skins.spec.ts). After recording, each
+  loop's frames were checked for the fighter touching the picture's edge,
+  and every champion's moves looked at on a sheet of frames against the
+  owner's rules (nothing leaves the body, the head on the neck, no spin, no
+  flattened face, the legs move). What still crosses the top is a skin's own
+  effect leaving the stage: a Sky lantern drifting up, a Mythical's lightning
+  coming down.
 - **How 60 frames a second come off a machine that draws a few:** the
   stage runs on Playwright's clock. Time is paused and moved on 16 ms
   between screenshots, so a frame takes as long as the CPU renderer needs
@@ -177,9 +185,10 @@ python3 apps/site/tools/make-skin-clips.py        # -> media/skins/, img/skins/
   60 frames a second the loop plays 4% slower than the game, which no one
   can see.
 - **One file per loop, H.264 MP4**, 720 x 720, CRF 28 tuned for animation,
-  fast start, no sound: an idle 42 to 299 KB (most under 110), a
-  Legendary 154 to 391 KB (median 230), a Mythical 253 to 363 KB (median
-  296); 21 MB for all 92, and 2.9 MB of posters and thumbnails. VP9 and
+  fast start, no sound: a Classic look (two actions, 9.2 s) 179 to 443 KB
+  (median 251), a Legendary 160 to 315 KB (median 252), a Mythical 211 to
+  340 KB (median 271); 24 MB for all 92, and 2.6 MB of posters and
+  thumbnails. VP9 and
   AV1 (WebM) came out larger than H.264 on these stages, and older iPhones
   play no AV1, so there is no WebM. (Playwright's own Chromium has no H.264;
   the cloud container's Chrome for Testing plays it.)

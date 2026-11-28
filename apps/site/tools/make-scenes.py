@@ -54,7 +54,7 @@ def save(im: Image.Image, name: str):
 def pond():
     im = Image.open(POND).convert("RGB")
     # The card: the friends, the angler and the bobber.
-    save(crop(im, 0.34, 0.42, 0.56), "plaza")
+    save(crop(im, 0.30, 0.38, 0.56), "plaza")
     # The band: the path to the dock and the whole pond, 3:2.
     h = 0.95 * im.height
     w = h * 3 / 2
