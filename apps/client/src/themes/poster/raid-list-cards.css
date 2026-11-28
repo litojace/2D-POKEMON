@@ -1,0 +1,18 @@
+/* Poster: the raid list's cards (and the Spire's card beside them), the
+   audit, 28 Nov. The picture faded to navy (#0b1020) under the boss's name,
+   and on a phone the name had a soft dark glow. Now the fade is ink and the
+   name carries the bare-word edge (tokens.css): a hard ink outline, as
+   every word set straight on a picture. Each card keeps its boss's colour
+   on its rim: its own colour on its own card. */
+:root[data-ui="poster"] .rh-card::after {
+  background: linear-gradient(
+    180deg,
+    #0d0d0f99 0%,
+    transparent 22%,
+    transparent 52%,
+    #0d0d0ff2 88%
+  );
+}
+:root[data-ui="poster"] .rh-card .rh-card-name {
+  text-shadow: var(--bare-word-edge);
+}

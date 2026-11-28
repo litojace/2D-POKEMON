@@ -187,6 +187,20 @@ for (const size of SIZES)
         "clears tag",
       );
       await centred(page, '.rh-head .ui-chip[aria-pressed="true"]', "All chip");
+      // A boss's name sits on an ink fade with a hard ink edge, not on navy
+      // with a soft glow (themes/poster/raid-list-cards.css).
+      expect(
+        await page
+          .locator('[data-raid-card="grumblecrag"]')
+          .evaluate((card) => ({
+            fade: getComputedStyle(card, "::after").backgroundImage,
+            edge: getComputedStyle(card.querySelector(".rh-card-name")!)
+              .textShadow,
+          })),
+      ).toMatchObject({
+        fade: expect.stringContaining("rgba(13, 13, 15, 0.95)"),
+        edge: expect.stringMatching(/^rgb\(13, 13, 15\) 1px 0px 0px/),
+      });
       await snap(page, info, `raid-hall-${size.name}`);
       // Desktop keeps two rows; phones have one swipeable row, fully
       // contained vertically instead of clipping a second row below it.
