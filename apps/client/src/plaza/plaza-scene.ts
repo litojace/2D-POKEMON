@@ -6393,7 +6393,7 @@ export function openPlaza(options) {
   /* ---------- panels over the Plaza ---------- */
   // What covers the Plaza, looked up once per DOM change, not every frame.
   let cover;
-  const COVERS = "dialog, .home-drawer, .header-menu, .ui-panel-host";
+  const COVERS = "dialog, .home-drawer, .ui-panel-host";
   const coverWatch = new MutationObserver((records) => {
     if (!cover) return;
     for (const r of records) {
@@ -6417,7 +6417,7 @@ export function openPlaza(options) {
   const coverNow = () =>
     (cover ??= {
       covered: !!document.querySelector(
-        "dialog[open], .home-drawer:not([hidden]), .header-menu[open], .plaza-layer .pz-album:not([hidden]), .plaza-layer > .ui-panel-host:not([data-ui-leaving])",
+        "dialog[open], .home-drawer:not([hidden]), .plaza-layer .pz-album:not([hidden]), .plaza-layer > .ui-panel-host:not([data-ui-leaving])",
       ),
       hides: !!document.querySelector(
         "dialog[open], .home-drawer:not([hidden]), .plaza-layer .pz-album:not([hidden])",

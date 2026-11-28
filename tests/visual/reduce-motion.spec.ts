@@ -57,7 +57,7 @@ for (const s of [
         ),
       ).toBe(true);
 
-      await page.evaluate(() => document.getElementById("settings")!.click());
+      await page.evaluate(() => document.getElementById("home-settings")!.click());
       const dialog = page.locator("#dialog");
       const toggle = dialog.locator("#settings-motion");
       await expect(toggle).toBeVisible();
@@ -111,7 +111,7 @@ for (const s of [
       await expect(page.locator("#server-startup")).toHaveCount(0, {
         timeout: 60_000,
       });
-      await page.evaluate(() => document.getElementById("settings")!.click());
+      await page.evaluate(() => document.getElementById("home-settings")!.click());
       await expect(toggle).toHaveAttribute("aria-checked", "true");
       await toggle.click();
       await expect(toggle).toHaveAttribute("aria-checked", "false");

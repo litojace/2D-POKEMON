@@ -173,9 +173,7 @@ export function setupHomeNavigation(menu: HTMLElement, settings: () => void) {
       const pressed = new Set([0, 1, 9].filter((i) => down(pad, i)));
       const scroller = (
         document.activeElement as HTMLElement | null
-      )?.closest<HTMLElement>(
-        ".fr-scroll, .rk-list, .rk-card, .ui-panel-body",
-      );
+      )?.closest<HTMLElement>(".fr-scroll, .rk-list, .rk-card, .ui-panel-body");
       if (scroller && Math.abs(pad.axes[3] ?? 0) > 0.25)
         scroller.scrollBy({ top: pad.axes[3] * 10, behavior: "instant" });
       const d =
@@ -189,14 +187,7 @@ export function setupHomeNavigation(menu: HTMLElement, settings: () => void) {
                 ? 1
                 : 0;
       const dialog = document.querySelector<HTMLDialogElement>("#dialog");
-      const header = document.querySelector<HTMLDetailsElement>("#header-menu");
-      const scope = dialog?.open
-        ? dialog
-        : panel
-          ? drawer()!
-          : header?.open
-            ? header
-            : document;
+      const scope = dialog?.open ? dialog : panel ? drawer()! : document;
       if (d && (d !== lastDirection || time - lastStep > 240)) {
         const all = focusable(scope),
           i = all.indexOf(document.activeElement as HTMLElement);
@@ -213,7 +204,6 @@ export function setupHomeNavigation(menu: HTMLElement, settings: () => void) {
       if (pressed.has(1) && !previous.has(1)) {
         if (dialog?.open)
           dialog.querySelector<HTMLButtonElement>("#close-dialog")?.click();
-        else if (header?.open) header.open = false;
         else close();
       }
       if (pressed.has(9) && !previous.has(9)) {

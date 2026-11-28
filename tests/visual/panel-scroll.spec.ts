@@ -257,7 +257,9 @@ const HUB_SCREENS: Screen[] = [
     name: "settings",
     root: "#dialog",
     open: async (page) => {
-      await page.evaluate(() => document.getElementById("settings")!.click());
+      await page.evaluate(() =>
+        document.getElementById("home-settings")!.click(),
+      );
       await expect(page.locator("#dialog .settings-screen")).toBeVisible();
     },
   },
@@ -265,7 +267,10 @@ const HUB_SCREENS: Screen[] = [
     name: "controls",
     root: "#dialog",
     open: async (page) => {
-      await page.evaluate(() => document.getElementById("settings")!.click());
+      await page.evaluate(() =>
+        document.getElementById("home-settings")!.click(),
+      );
+      await page.click('[data-settings-tab="help"]');
       await page.click("#open-controls");
     },
   },
@@ -273,7 +278,10 @@ const HUB_SCREENS: Screen[] = [
     name: "credits",
     root: "#dialog",
     open: async (page) => {
-      await page.evaluate(() => document.getElementById("settings")!.click());
+      await page.evaluate(() =>
+        document.getElementById("home-settings")!.click(),
+      );
+      await page.click('[data-settings-tab="about"]');
       await page.click("#settings-credits");
       await expect(page.locator("#dialog .credits-screen")).toBeVisible();
     },
@@ -282,7 +290,10 @@ const HUB_SCREENS: Screen[] = [
     name: "report a player",
     root: "#dialog",
     open: async (page) => {
-      await page.evaluate(() => document.getElementById("settings")!.click());
+      await page.evaluate(() =>
+        document.getElementById("home-settings")!.click(),
+      );
+      await page.click('[data-settings-tab="help"]');
       await page.click("#settings-report");
     },
   },
