@@ -245,6 +245,7 @@ import {
   titleDue,
   type QuickAction,
 } from "./title-screen";
+import { watchGlint } from "./glint";
 import { PROFILE_COPY_KEY } from "./profile-copy";
 import { appIconCardHTML, bindAppIconCard } from "./app-icon-setting";
 import { abilityIcon } from "./ability-icons";
@@ -2796,6 +2797,11 @@ function renderGate() {
     });
   const start = document.getElementById("title-start");
   if (start) start.onclick = leaveTitle;
+  // "Tap to start" glints while the title waits for the tap (glint.ts);
+  // a title drawn again is a new element, and the old one is forgotten.
+  const prompt = start?.querySelector<HTMLElement>(".title-prompt");
+  if (prompt && !(start as HTMLButtonElement).disabled)
+    watchGlint(prompt, () => !prompt.closest("[hidden]"));
   const change = document.getElementById("title-switch");
   if (change) change.onclick = () => void accountsUI.logOut();
   const login = document.getElementById("gate-login"),

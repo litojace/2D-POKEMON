@@ -15,6 +15,7 @@ import type { RaidLoadout } from "../../../packages/shared/src/raid";
 import { iconLabel, menuIcon } from "./menu-icons";
 import { fighterStageArt, wornSkin } from "./fighter-selection";
 import { lowGraphics } from "./graphics-quality";
+import { wakeGlint, watchGlint } from "./glint";
 import type { ShopPreviewHandle } from "./shop-preview";
 import { QUIP_MOVE_MS, pickQuip } from "./lobby-quips";
 import { elementIcon } from "./element-icons";
@@ -739,6 +740,8 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
     layer.classList.toggle("is-covered", covered);
     rig?.suspend(covered);
     for (const seat of seatRigs) seat?.suspend(covered);
+    // PLAY's glint rests while the Lobby is covered (glint.ts).
+    if (!covered) wakeGlint();
   };
   /** A friend in a seat moves like your fighter (not on Low graphics). */
   const mountSeatRig = (seat: number) => {
@@ -955,6 +958,11 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
     attributeFilter: ["open", "hidden", "data-ui-leaving"],
   });
   syncCovered();
+  // A bar of light crosses PLAY now and then while it shows (glint.ts).
+  const unwatchGlint = watchGlint(
+    $("lobby-play"),
+    () => !layer.classList.contains("is-covered"),
+  );
   // The frame-rate read-out (perf-hud.ts): your fighter's frames, our own
   // drawing time (median and slowest) and its canvas, while the Lobby shows.
   const perfSource = () => {
@@ -1220,6 +1228,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       clearTimeout(hopTimer);
       clearTimeout(armTimer);
       coverWatch.disconnect();
+      unwatchGlint();
       setPerfSource("lobby", undefined);
       document.removeEventListener("ea-graphics-change", syncGraphics);
       document.removeEventListener(UI_THEME_EVENT, fitSoon);
