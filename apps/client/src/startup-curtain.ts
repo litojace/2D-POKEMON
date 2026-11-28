@@ -41,6 +41,30 @@ export const CURTAIN_CAP_MS = 12_000;
 export const COPY_GRACE_MS = 800;
 /** The longest the drawn scene may take to finish its artwork. */
 export const SCENE_SETTLE_MS = 2_500;
+/**
+ * Once the scene is complete, the longest the curtain waits for the Lobby's
+ * panels to be ready (their data and code, accounts.ts warmLobby; owner,
+ * 28 Nov: a tap on any tile opens it at once). On a quick connection they
+ * are in before the scene is; past this a slow or failed answer lifts the
+ * curtain anyway, and that panel fills in when it opens, as before.
+ */
+export const LOBBY_WAIT_MS = 1_500;
+
+/** What the Lobby's panels still wait for (the latest sign-in's). */
+let lobbyJob: { done: boolean } | undefined;
+/**
+ * A sign-in is getting the Lobby's panels ready: the curtain also waits for
+ * `job` (capped by LOBBY_WAIT_MS, and by CURTAIN_CAP_MS as ever). A later
+ * sign-in's job replaces this one.
+ */
+export function curtainWaitsFor(job: Promise<unknown>) {
+  const entry = { done: false };
+  lobbyJob = entry;
+  const end = () => {
+    entry.done = true;
+  };
+  void job.then(end, end);
+}
 
 const STEPS: Record<
   Exclude<StartupStage, "gate" | "scene" | "provisional">,
@@ -133,6 +157,8 @@ export function startStartupCurtain(
   let settledFor: StartupStage | undefined;
   let settling: StartupStage | undefined;
   let readySince: number | undefined;
+  /** When the scene was first complete (LOBBY_WAIT_MS counts from it). */
+  let settledAt: number | undefined;
   /** Everything is in: lift the curtain. */
   const finish = (now = false) => {
     clearInterval(poll);
@@ -169,6 +195,18 @@ export function startStartupCurtain(
         void settle().then(done, done);
       }
       if (settling || !settledFor) return;
+      settledAt ??= performance.now();
+      // The Lobby's panels, a moment more (not under a battle: a room
+      // rejoined at startup has no Lobby to tap).
+      if (
+        lobbyJob &&
+        !lobbyJob.done &&
+        !document.body.classList.contains("battle-active") &&
+        performance.now() - settledAt < LOBBY_WAIT_MS
+      ) {
+        curtainStep(0.94, "Getting the Lobby ready…");
+        return;
+      }
       if (now === "scene" || performance.now() - sceneSince > COPY_GRACE_MS)
         finish();
       return;
