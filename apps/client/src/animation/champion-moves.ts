@@ -713,6 +713,279 @@ const coilemurVictory: Move = (s) => {
   if (s.passed(1.9)) s.accent("spark", 4);
 };
 
+// ---------------------------------------------------------------- Pyranda
+// Shy and easily startled, trying hard to be brave: "I can be brave. Watch."
+const pyrandaEntrance: Move = (s) => {
+  const { t, p } = s;
+  // Hides behind its tail: small, head ducked.
+  const hide = ease(t, 0, 0.15) * (1 - ease(t, 1.45, 1.6));
+  if (hide > 0) s.squash(1 - 0.06 * hide, 1 - 0.18 * hide);
+  p.head.y += 5 * hide;
+  p.tail.rotation = 0.55 * hide;
+  // Peeks out one side, ducks back, peeks out the other with a tiny wave.
+  const peekA = bump(t, 0.3, 0.75),
+    peekB = bump(t, 0.85, 1.45);
+  s.move((7 * peekA - 7 * peekB) * s.side, 0);
+  s.spin((0.14 * peekA - 0.14 * peekB) * s.side);
+  p.head.y -= 4 * Math.max(peekA, peekB) * hide;
+  p.armL.rotation = (0.9 + Math.sin(t * 18) * 0.3) * peekB;
+  s.mood(t < 1.5 ? "normal" : t < 2.2 ? "focus" : "happy");
+  // A deep breath, and it stands as tall as it can, fists clenched.
+  const brave = ease(t, 1.6, 1.8);
+  const puff = bump(t, 1.6, 2.2);
+  if (brave > 0) s.squash(1 - 0.03 * puff, 1 + 0.08 * puff + 0.02 * brave);
+  s.move(0, -6 * arc(t, 1.62, 1.95));
+  p.armL.rotation += -0.5 * brave;
+  p.armR.rotation = 0.5 * brave;
+  p.tail.rotation += (-0.2 + s.sway(5) * 0.25) * brave;
+  p.tail.setScale(0.5 + 0.04 * brave, 0.5 + 0.05 * brave);
+};
+const pyrandaVictory: Move = (s) => {
+  const { t, p } = s;
+  // Startled by its own win: a jump, eyes wide.
+  s.move(0, -12 * arc(t, 0.02, 0.4));
+  const eep = bump(t, 0.02, 0.4);
+  if (eep > 0) s.squash(1 - 0.05 * eep, 1 + 0.1 * eep);
+  land(s, 0.4, 0.12);
+  s.mood(t < 0.45 ? "normal" : "happy");
+  // Hides its face: curls small, paws up, tail round.
+  const hide = ease(t, 0.45, 0.65) * (1 - ease(t, 1.1, 1.25));
+  if (hide > 0) s.squash(1 + 0.02 * hide, 1 - 0.14 * hide);
+  p.head.y += 6 * hide;
+  p.armL.rotation = 1.6 * hide;
+  p.armR.rotation = -1.6 * hide;
+  p.tail.rotation = 0.5 * hide;
+  // Peeks... and two proud little hops, the tail flame flaring.
+  const proud = ease(t, 1.25, 1.4);
+  s.move(0, -9 * (arc(t, 1.3, 1.6) + arc(t, 1.65, 1.95)));
+  land(s, 1.6, 0.08, 0.1);
+  land(s, 1.95, 0.08, 0.14);
+  p.armL.rotation += (1.9 + s.sway(9) * 0.15) * proud;
+  p.armR.rotation += (-1.9 - s.sway(9) * 0.15) * proud;
+  // Bashful again: swaying, tail wagging.
+  const sway = ease(t, 2.0, 2.3);
+  s.spin(s.sway(2.2) * 0.07 * sway);
+  p.tail.rotation += s.sway(6) * 0.3 * proud;
+  p.tail.setScale(0.5 + 0.05 * proud, 0.5 + 0.07 * proud);
+  p.head.rotation = s.sway(2.2) * 0.08 * sway;
+};
+
+// --------------------------------------------------------------- Glacelle
+// Graceful and cool: an ice dancer. "Stay frosty."
+const glacelleEntrance: Move = (s) => {
+  const { t, p } = s;
+  // Drifts down like a snowflake, turning a slow spiral.
+  const fall = bump(t, 0, 1.3);
+  const spiral = Math.sin(t * 5) * (1 - ease(t, 0.5, 1.3));
+  s.move(spiral * 12 * ease(t, 0, 0.3), -16 * fall);
+  s.spin(spiral * 0.1 * ease(t, 0, 0.3));
+  // Wing-flaps unfurl, slow as a ballet arm.
+  const unfurl = ease(t, 0.5, 1.4);
+  p.armL.rotation = 1.5 * unfurl;
+  p.armR.rotation = -1.5 * unfurl;
+  // A curtsey: a dip, head bowed, arms drawn in a little.
+  const curtsey = bump(t, 1.4, 2.1);
+  if (curtsey > 0) s.squash(1 + 0.03 * curtsey, 1 - 0.1 * curtsey);
+  p.head.y += 5 * curtsey;
+  p.armL.rotation -= 0.7 * curtsey;
+  p.armR.rotation += 0.7 * curtsey;
+  s.spin(s.side * 0.06 * curtsey);
+  // Poised: arms low and open, a slow paddle.
+  const poise = ease(t, 2.1, 2.4);
+  p.armL.rotation -= (0.7 - s.sway(2) * 0.15) * poise;
+  p.armR.rotation += (0.7 - s.sway(2) * 0.15) * poise;
+  s.move(0, -(1 + s.sway(2)) * 1.5 * poise);
+};
+const glacelleVictory: Move = (s) => {
+  const { t, p } = s;
+  // A skater's spin, faster and faster, arms drawn in. (The fighter turns
+  // edge-on and round again as one piece.)
+  const spin = ease(t, 0, 0.15) * (1 - ease(t, 1.18, 1.26));
+  const turns = t < 1.26 ? Math.pow(Math.min(t, 1.26) / 1.26, 2) * 3 : 3;
+  const edge = Math.abs(Math.cos(turns * Math.PI));
+  if (spin > 0) s.squash(1 - 0.62 * (1 - edge) * spin, 1 + 0.06 * spin);
+  s.move(0, -10 * spin);
+  p.armL.rotation = -0.4 * spin;
+  p.armR.rotation = 0.4 * spin;
+  // Stops dead: arms flung wide, and holds it, frozen.
+  const stop = ease(t, 1.24, 1.32);
+  const pop = bump(t, 1.24, 1.5);
+  if (pop > 0) s.squash(1 + 0.08 * pop, 1 + 0.06 * pop);
+  p.armL.rotation += 1.9 * stop;
+  p.armR.rotation -= 1.9 * stop;
+  s.move(0, -8 * stop);
+  // A tiny shiver, then a slow drift, arms wide.
+  s.move(Math.sin(t * 60) * 1.4 * bump(t, 1.85, 2.15), 0);
+  const drift = ease(t, 2.2, 2.5);
+  s.move(0, -s.sway(1.8) * 2 * drift);
+  p.armL.rotation += s.sway(1.8) * 0.12 * drift;
+  p.armR.rotation -= s.sway(1.8) * 0.12 * drift;
+  if (s.passed(1.28)) s.accent("spark", 4);
+};
+
+// ---------------------------------------------------------------- Halcyra
+// Precise, composed, a little vain: "Longest reach in the arena."
+const halcyraEntrance: Move = (s) => {
+  const { t, p } = s;
+  // Up and back, then a diving swoop that brakes hard.
+  const climb = ease(t, 0, 0.3) * (1 - ease(t, 0.3, 0.62));
+  const dive = bump(t, 0.3, 0.7);
+  s.move(-s.side * 12 * climb, -18 * climb);
+  s.spin(s.side * (-0.12 * climb + 0.28 * dive));
+  const swept = ease(t, 0.1, 0.3) * (1 - ease(t, 0.62, 0.7));
+  p.armL.rotation = -0.5 * swept;
+  p.armR.rotation = 0.5 * swept;
+  const brake = bump(t, 0.66, 1.0);
+  s.spin(-s.side * 0.16 * brake);
+  p.armL.rotation += 2.0 * brake;
+  p.armR.rotation -= 2.0 * brake;
+  s.move(0, -5 * brake);
+  land(s, 1.0, 0.06, 0.14);
+  // Folds its wings, one, two, crisp.
+  p.armL.rotation += 1.0 * (t > 1.0 && t < 1.14 ? 1 : 0);
+  p.armR.rotation -= 1.0 * (t > 1.0 && t < 1.3 ? 1 : 0);
+  // Sights along its beak: low, leaning in, crest up, perfectly still.
+  const aim = ease(t, 1.35, 1.5);
+  s.mood(t > 1.3 && t < 2.3 ? "focus" : "happy");
+  s.spin(s.side * 0.08 * aim);
+  if (aim > 0) s.squash(1 + 0.02 * aim, 1 - 0.05 * aim);
+  p.ears.setScale(0.5, 0.5 + 0.08 * aim);
+  // Then a bird's quick looks about: the head snaps, it never drifts.
+  const look = s.calm ? 0 : [0, 1, 0, -1, 1, 0, -1][Math.floor(t * 2.2) % 7];
+  p.head.rotation = look * 0.11 * ease(t, 2.3, 2.35);
+};
+const halcyraVictory: Move = (s) => {
+  const { t, p } = s;
+  // Preens: leans to its wing, three quick nibbles.
+  const preen = ease(t, 0, 0.15) * (1 - ease(t, 0.85, 0.95));
+  s.spin(-s.side * 0.14 * preen);
+  p.head.rotation = 0.15 * preen;
+  p.head.y += (3 + Math.abs(Math.sin(t * 14)) * 2.5) * preen;
+  p.armL.rotation = 0.7 * preen;
+  // Snaps upright, chest out, crest fanned.
+  const proud = ease(t, 0.95, 1.05);
+  const puff = bump(t, 0.95, 1.4);
+  if (proud > 0)
+    s.squash(1 + 0.05 * proud + 0.03 * puff, 1 + 0.03 * proud + 0.05 * puff);
+  p.ears.setScale(0.5, 0.5 + 0.1 * proud);
+  s.move(0, -7 * arc(t, 0.95, 1.25));
+  // One wing swept out in a formal bow.
+  const bow = bump(t, 1.3, 2.0);
+  p.armL.rotation += 1.9 * bow;
+  p.head.y += 5 * bow;
+  s.spin(s.side * 0.1 * bow);
+  // Poised: beak high, a bird's quick looks about.
+  const look = s.calm ? 0 : [0, -1, 0, 1, 0, 1, -1][Math.floor(t * 2.2) % 7];
+  p.head.rotation += (-0.06 + look * 0.1) * ease(t, 2.05, 2.1);
+};
+
+// ---------------------------------------------------------------- Sunbara
+// Blissfully calm and warm: "Hi friend! Everyone's my friend."
+const sunbaraEntrance: Move = (s) => {
+  const { t, p } = s;
+  // An unhurried waddle, rocking side to side.
+  const waddle = 1 - ease(t, 0.95, 1.1);
+  const rock = Math.sin(t * Math.PI * 2.2) * waddle;
+  s.move(rock * 6, -Math.abs(rock) * 2);
+  s.spin(rock * 0.09);
+  // The yuzu wobbles, nearly rolls off... and it leans calmly to keep it.
+  const wobble = ease(t, 0.3, 1.1) * (1 - ease(t, 1.45, 1.75));
+  const tip = bump(t, 1.05, 1.6);
+  p.flame.rotation = Math.sin(t * 9) * 0.25 * wobble + 0.5 * tip;
+  s.spin(-0.12 * tip);
+  p.head.rotation = -0.1 * tip;
+  s.mood(tip > 0.3 ? "normal" : "happy");
+  // Arms open wide: a hug for whoever is across the court.
+  const hug = ease(t, 1.7, 2.0);
+  const reach = bump(t, 1.7, 2.3);
+  p.armL.rotation = (1.3 + 0.3 * reach) * hug;
+  p.armR.rotation = (-1.3 - 0.3 * reach) * hug;
+  if (hug > 0) s.squash(1 + 0.03 * reach, 1 + 0.03 * reach);
+  s.spin(s.sway(1.6) * 0.05 * hug);
+  s.move(s.sway(1.6) * 2 * hug, 0);
+  p.flame.rotation += s.sway(1.6, 1) * 0.08 * hug;
+};
+const sunbaraVictory: Move = (s) => {
+  const { t, p } = s;
+  // Lowers itself into a hot spring that isn't there.
+  const soak = ease(t, 0.1, 1.0);
+  const breath = s.sway(1.5) * 0.02 * ease(t, 1.2, 1.6);
+  s.squash(1 + 0.12 * soak + breath, 1 - 0.2 * soak - breath);
+  p.legL.rotation = 0.7 * soak;
+  p.legR.rotation = -0.7 * soak;
+  s.spin(-s.side * 0.1 * soak);
+  // Arms out along the rim, head back, a long contented sigh.
+  p.armL.rotation = 1.0 * soak;
+  p.armR.rotation = -1.0 * soak;
+  p.head.rotation = -0.08 * soak;
+  const sigh = bump(t, 1.0, 1.7);
+  if (sigh > 0) s.squash(1 - 0.03 * sigh, 1 + 0.05 * sigh);
+  p.flame.rotation =
+    s.sway(1.5, 1) * 0.1 * soak + Math.sin(t * 8) * 0.2 * bump(t, 0.1, 1.0);
+};
+
+// --------------------------------------------------------------- Astrabun
+// Bubbly and bouncy, with the moon's gravity in its legs.
+const astrabunEntrance: Move = (s) => {
+  const { t, p } = s;
+  // Three moon hops, each higher, each with a long float at the top.
+  const hops: [number, number, number][] = [
+    [0, 0.4, 10],
+    [0.4, 0.95, 20],
+    [0.95, 1.7, 32],
+  ];
+  let ears = 0;
+  for (const [a, b, h] of hops) {
+    s.move(0, -h * arc(t, a, b));
+    crouch(s, a - 0.08, a, 0.08);
+    land(s, b, 0.12, 0.14);
+    if (t > a && t < b) ears = (t - a) / (b - a) < 0.5 ? -0.22 : 0.26;
+  }
+  if (s.passed(1.7)) s.accent("dust", 3);
+  p.ears.rotation = ears;
+  const float = arc(t, 0.95, 1.7);
+  p.legL.rotation = 0.4 * float;
+  p.legR.rotation = -0.4 * float;
+  p.armL.rotation = 1.6 * float;
+  // Lands, ears flop, then spring straight up.
+  const perk = ease(t, 1.8, 1.95);
+  p.ears.rotation += 0.3 * bump(t, 1.7, 1.9);
+  p.ears.setScale(0.5, 0.5 + (0.07 + s.sway(8) * 0.01) * perk);
+  // Ready: bouncing on its toes.
+  s.move(0, -Math.max(0, s.sway(9)) * 5 * perk);
+  p.armL.rotation += (0.6 + s.sway(9) * 0.1) * perk;
+  p.ears.rotation += s.sway(9, 1) * 0.07 * perk;
+};
+const astrabunVictory: Move = (s) => {
+  const { t, p } = s;
+  // Mochi pound with its whole body: up, and SLAM, twice.
+  for (const [a, b] of [
+    [0, 0.36],
+    [0.42, 0.78],
+  ]) {
+    s.move(0, -16 * arc(t, a, b));
+    land(s, b, 0.26, 0.16);
+    if (s.passed(b)) s.accent("dust", 3);
+  }
+  p.ears.rotation =
+    -0.25 * (bump(t, 0, 0.3) + bump(t, 0.42, 0.72)) +
+    0.3 * (bump(t, 0.36, 0.5) + bump(t, 0.78, 0.95));
+  // Then one enormous, slow moon jump, legs kicking.
+  crouch(s, 0.84, 0.98, 0.14);
+  const air = arc(t, 0.98, 1.95);
+  const up = t > 0.98 && t < 1.95 ? 1 : 0;
+  s.move(0, -40 * air);
+  p.legL.rotation = Math.sin(t * 16) * 0.5 * up;
+  p.legR.rotation = -Math.sin(t * 16) * 0.5 * up;
+  p.ears.rotation += (t < 1.46 ? -0.2 : 0.24) * up;
+  land(s, 1.95, 0.16);
+  // Free paw waving high, still hopping.
+  const hold = ease(t, 1.0, 1.2);
+  p.armL.rotation = (2.4 + s.sway(13) * 0.3) * hold;
+  s.move(0, -Math.max(0, s.sway(8)) * 8 * ease(t, 2.05, 2.25));
+  p.ears.rotation += s.sway(8, 1) * 0.1 * ease(t, 2.05, 2.25);
+};
+
 export const ENTRANCES: Partial<Record<CharacterId, Move>> = {
   voltkit: voltkitEntrance,
   cindrake: cindrakeEntrance,
@@ -723,6 +996,11 @@ export const ENTRANCES: Partial<Record<CharacterId, Move>> = {
   terradon: terradonEntrance,
   duskveil: duskveilEntrance,
   coilemur: coilemurEntrance,
+  pyranda: pyrandaEntrance,
+  glacelle: glacelleEntrance,
+  halcyra: halcyraEntrance,
+  sunbara: sunbaraEntrance,
+  astrabun: astrabunEntrance,
 };
 export const VICTORIES: Partial<Record<CharacterId, Move>> = {
   voltkit: voltkitVictory,
@@ -734,6 +1012,11 @@ export const VICTORIES: Partial<Record<CharacterId, Move>> = {
   terradon: terradonVictory,
   duskveil: duskveilVictory,
   coilemur: coilemurVictory,
+  pyranda: pyrandaVictory,
+  glacelle: glacelleVictory,
+  halcyra: halcyraVictory,
+  sunbara: sunbaraVictory,
+  astrabun: astrabunVictory,
 };
 /** The moment Reduce motion shows: every move has settled into its hold. */
 export const SETTLED = 12;
