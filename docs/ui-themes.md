@@ -227,7 +227,9 @@ game was yellow):
   word is, or a state. Body copy stays ink or cream. The roles of the look's
   own colours: cream is what is chosen; gold is what to press and coins,
   and progress on ink only (gold on cream is about 1.2:1); red is the level
-  badge, a sale, leaving and danger.
+  badge, a sale, leaving and danger. One exception: the loading screen's
+  bar fills in cream, because its page is gold and a gold fill read as a
+  hole in the ink bar (`server-connection.css`; over a painting it is gold).
   - **How serious** (`severity.css`): neutral and info have no colour of
     their own (info shows an ⓘ); highlight is weight, not colour; success
     is green (`--sev-ok`), warning amber (`--sev-warn`), danger the look's
