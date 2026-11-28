@@ -69,6 +69,33 @@ To change a post, edit its entry in `POSTS` in
 `scripts/instagram/make-posts.mjs`;
 `POSTS=6 npx tsx scripts/instagram/make-posts.mjs` makes only that one.
 
+### The home screen how-to (post 11)
+
+Made from the owner's own iPhone screenshots (27 Nov: "a real phone, not
+drawings"), which never go in the repo: they show the owner's contacts,
+apps and player name. Put them in `instagram-clips/phone/` (ignored) as the
+phone named them, then:
+
+```bash
+python3 scripts/instagram/phone-howto.py --preview
+HOWTO=1 POSTS=0 npx tsx scripts/instagram/make-posts.mjs
+```
+
+`phone-howto.py` pixelates and blurs for good what shows other people (the
+share sheet's contacts), crops each step and writes where to ring what to
+tap (`instagram-clips/phone/steps.json`; `--preview` draws the rings on
+`steps-preview.jpg` to check). Only Safari's steps and the icon come from
+the phone: the game itself is shown from our own captures of big moves
+(`HOWTO_SHOTS` in `make-posts.mjs`: the duel's lightning field, the
+four-way fight's chestnut storm), never the owner's battle or Lobby
+screenshots (the owner, 28 Nov; they also show their player name and
+coins). `make-posts.mjs` then makes the carousel, `11-home-screen-1-feed.jpg`
+to `-7-feed.jpg` (cover, five steps, done), and a story for each step and
+the end, `11-home-screen-story-1.jpg` to `-6.jpg`.
+A new iOS that moves a button needs new screenshots and new numbers in
+`phone-howto.py`. Android is in the caption only, until someone sends
+screenshots from an Android phone.
+
 ## The profile
 
 - **Handle**, the first one free: `@elementarena`, `@elementarenagame`,
@@ -113,6 +140,7 @@ hashtags; five works under either rule.
 | 8. The Shop: Mythical skins | a Reel (below)                                                           |
 | 9. The Spire                | a real Spire floor                                                       |
 | 10. Found a bug? Tell us.   | the game's Menu, rings on the gear and Report a problem (report.spec.ts) |
+| 11. Play it like an app     | a carousel from a real iPhone: Safari's steps to the home screen (above) |
 
 **Post 8**: Post `08-skins-reel.mp4` as a **Reel**, with `08-skins-reel-cover.jpg` as
 its cover: the three skins' Entrance, Victory and Ultimate with their full
@@ -125,7 +153,7 @@ Ultimate's peak) is the still version, for a later post or Story.
 ## Posting plan (US Pacific time)
 
 The plan is `scripts/instagram/plan.json`: each item's time, kind (post,
-Reel or story), its file in `apps/site/social/` and its caption. That file,
+carousel, Reel or story), its files in `apps/site/social/` and its caption. That file,
 not this page, is what goes out. Launch with three posts on the first day,
 so a visitor from the website finds a full first row, then three a week:
 Monday, Wednesday and Friday at 5:40 PM PT (after school and work on the
@@ -137,7 +165,8 @@ point to the link in bio.
 | ------------------- | ------------------------ |
 | Mon 30 Nov, 5:40 PM | 1. Welcome               |
 | Mon 30 Nov, 5:40 PM | 2. Duels                 |
-| Mon 30 Nov, 5:40 PM | 3. The roster            |
+| Mon 30 Nov, 5:40 PM | 11. Play it like an app  |
+| Tue 1 Dec, 5:40 PM  | 3. The roster            |
 | Wed 2 Dec, 5:40 PM  | 4. Raid boss: Lumiwick   |
 | Fri 4 Dec, 5:40 PM  | 10. Found a bug? Tell us |
 | Mon 7 Dec, 5:40 PM  | 5. 2v2 teams             |
@@ -147,9 +176,10 @@ point to the link in bio.
 | Wed 16 Dec, 5:40 PM | 9. The Spire             |
 
 Launch day's three go out in this order, a minute or so apart, so the grid
-(newest first) reads roster, duels, welcome. The home screen how-to (a
-carousel, and a story each for iPhone and Android) joins launch day once
-the owner's phone screenshots are in.
+(newest first) starts with the home screen how-to, which is what a new
+player needs first (the owner: friends keep asking how). Its six stories
+go up right after (5:45 PM), before any other story; the welcome and duels
+stories follow the next morning, and the roster gets its own day.
 
 Week 4: read Insights (Professional dashboard) for which post reached the
 most people, and make more like it: the next champion spotlights, the other

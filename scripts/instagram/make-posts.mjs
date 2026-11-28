@@ -299,13 +299,14 @@ ${size === "square" ? SQUARE.replace(/h1 \{[^}]*\}/, "") : ""}
 }
 
 /**
- * The 16:9 crop of a capture as CSS for an <img> in a 16:9 window, in
- * shares of the window, so the window can take whatever size fits.
+ * The crop of a capture (16:9 unless `aspect` says) as CSS for an <img> in
+ * a window of that shape, in shares of the window, so the window can take
+ * whatever size fits.
  */
-function cropStyle({ cx, cy, share }) {
+function cropStyle({ cx, cy, share }, aspect = 16 / 9) {
   const [iw, ih] = [2622, 1206];
   const cw = share * iw;
-  const ch = (cw * 9) / 16;
+  const ch = cw / aspect;
   const x0 = Math.min(Math.max(0, cx * iw - cw / 2), iw - cw);
   const y0 = Math.min(Math.max(0, cy * ih - ch / 2), ih - ch);
   const pc = (v) => `${(v * 100).toFixed(3)}%`;
@@ -504,6 +505,146 @@ function reportPost(post, size) {
   );
 }
 
+/**
+ * "Play it like an app" (owner, 27 Nov: the first posts show how to add
+ * the game to the home screen, from a real phone, never drawings): the
+ * owner's own iPhone screenshots, scrubbed and cropped by phone-howto.py
+ * (instagram-clips/phone/steps.json), with a ring on what to tap. A
+ * carousel (cover, five steps, done) and a story for each step.
+ */
+const PHONE = "instagram-clips/phone";
+const STEP_TEXT = [
+  [
+    "Open the game in Safari",
+    `Go to <b>play.elementarenausa.com</b>, then tap the button at the left end of the address bar.`,
+  ],
+  ["Tap Share", "It's near the top of the menu."],
+  ["Tap View More", "At the end of the row of buttons."],
+  ["Tap Add to Home Screen", "At the bottom of the list."],
+  [
+    "Keep Open as Web App on. Tap Add.",
+    "The switch makes it open fullscreen, like an app.",
+  ],
+];
+
+/** One screenshot crop as a dark phone clipping, its rings drawn on. */
+function phoneShot(step, maxH) {
+  const [w, h] = step.size;
+  const rings = step.rings
+    .map(
+      ([x0, y0, x1, y1]) =>
+        `<i class="ring" style="left:${x0 * 100}%;top:${y0 * 100}%;width:${(x1 - x0) * 100}%;height:${(y1 - y0) * 100}%"></i>`,
+    )
+    .join("");
+  // A wide crop is held to the column's width (860 px of screen inside
+  // the frame), a tall one to maxH.
+  const tall = Math.min(maxH, Math.round((860 * h) / w) + 24);
+  return `<div class="pshot" style="height:min(100%, ${tall}px)"><div class="win" style="aspect-ratio:${w} / ${h}"><img src="${url(`${PHONE}/${step.file}`)}">${rings}</div></div>`;
+}
+const PHONE_CSS = `
+.pshot { flex: none; padding: 12px; background: var(--ink); border-radius: 34px; box-shadow: 14px 14px 0 rgba(0,0,0,.35); }
+.pshot .win { position: relative; height: 100%; border-radius: 24px; overflow: hidden; }
+.pshot img { width: 100%; height: 100%; display: block; object-fit: cover; }
+.ring { position: absolute; border: 6px solid var(--hot); border-radius: 14px; box-shadow: 0 0 0 5px #fff, 0 0 30px rgba(255,46,77,.8); }
+.chip.step { background: var(--ink); color: var(--el); }
+p b { font-weight: 800; }
+`;
+
+function howtoStep(size, n, phone) {
+  const [title, line] = STEP_TEXT[n];
+  const story = size === "story";
+  return (
+    `<div class="halftone"></div>` +
+    flow(
+      size,
+      `<div class="chip step">iPhone · Step ${n + 1} of 5</div><h1>${title}</h1>`,
+      phoneShot(phone.steps[n], story ? 980 : 760),
+      `<p>${line}</p>`,
+      PHONE_CSS +
+        `h1 { font-size: ${story ? 104 : 92}px; } p { font-size: ${story ? 38 : 34}px; }`,
+    )
+  );
+}
+
+/**
+ * The icon on the home screen, and the game held sideways: our own capture
+ * of a big move (the owner, 28 Nov: not their battle screenshots), cropped
+ * to an iPhone's landscape screen. The cover has the duel's lightning field
+ * going off between both fighters, the last slide the four-way fight's
+ * chestnut storm with all four in sight.
+ */
+const PHONE_ASPECT = 2868 / 1320;
+const HOWTO_SHOTS = {
+  cover: { ...capture(`${SCENES}/duels/026.png`, 0.555, 0.43, 0.4), icon: 0.5 },
+  // The icon over the empty floor at the left, clear of Ink's and Sunny's labels.
+  done: { ...capture(`${SCENES}/ffa/018.png`, 0.56, 0.39, 0.5), icon: 0.16 },
+};
+function iconAndGame(phone, size, shot) {
+  const w = size === "story" ? 860 : 720;
+  // `icon`: where the icon's middle sits, as a share of the screen's width.
+  const iconLeft = Math.round(shot.icon * w - 120);
+  return `<div class="pair" style="width:${w}px"><div class="icon-shot" style="margin-left:${iconLeft}px"><img src="${url(`${PHONE}/${phone.icon.file}`)}"></div><div class="land" style="width:${w}px"><img src="${url(shot.file)}" style="${cropStyle(shot, PHONE_ASPECT)}"></div></div>`;
+}
+const PAIR_CSS = `
+.pair { position: relative; display: grid; justify-items: start; gap: 0; }
+.icon-shot { position: relative; z-index: 2; width: 220px; padding: 10px; background: var(--ink); border-radius: 30px; box-shadow: 10px 10px 0 rgba(0,0,0,.35); transform: rotate(-4deg); margin-bottom: -60px; }
+.icon-shot img { width: 100%; display: block; border-radius: 22px; }
+.land { aspect-ratio: 2868 / 1320; border: 14px solid var(--ink); border-radius: 44px; overflow: hidden; box-shadow: 16px 16px 0 rgba(0,0,0,.35); transform: rotate(-1.5deg); background: var(--ink); }
+.land { position: relative; }
+.land img { position: absolute; max-width: none; display: block; }
+p b { font-weight: 800; }
+`;
+
+function howtoCover(size, phone) {
+  return (
+    `<div class="halftone"></div>` +
+    flow(
+      size,
+      `<div class="chip">Open beta · iPhone · 30 seconds</div><h1>Play it like an app.</h1>`,
+      iconAndGame(phone, size, HOWTO_SHOTS.cover),
+      `<p>Add Element Arena to your home screen: fullscreen, no download, one tap to open. <b>Swipe for the 5 steps.</b></p>`,
+      PAIR_CSS,
+    )
+  );
+}
+
+function howtoDone(size, phone) {
+  return (
+    `<div class="halftone"></div>` +
+    flow(
+      size,
+      `<div class="chip">Done</div><h1>Tap the icon. Turn it sideways. Play.</h1>`,
+      iconAndGame(phone, size, HOWTO_SHOTS.done),
+      `<p>Fullscreen, no browser bars. On Android: Chrome's menu, then <b>Install app</b>. Found a bug? Tap the gear, then <b>Report a problem</b>.</p>${PLAY}`,
+      PAIR_CSS + `h1 { font-size: ${size === "story" ? 110 : 96}px; }`,
+    )
+  );
+}
+
+/** The carousel's slides and the stories: [file, size, body, colour]. */
+function howto(id, phone) {
+  const out = [
+    [`${id}-1-feed.jpg`, "feed", howtoCover("feed", phone), EL.electric],
+  ];
+  for (let n = 0; n < 5; n++)
+    out.push([
+      `${id}-${n + 2}-feed.jpg`,
+      "feed",
+      howtoStep("feed", n, phone),
+      EL.water,
+    ]);
+  out.push([`${id}-7-feed.jpg`, "feed", howtoDone("feed", phone), EL.fire]);
+  for (let n = 0; n < 5; n++)
+    out.push([
+      `${id}-story-${n + 1}.jpg`,
+      "story",
+      howtoStep("story", n, phone),
+      EL.water,
+    ]);
+  out.push([`${id}-story-6.jpg`, "story", howtoDone("story", phone), EL.fire]);
+  return out;
+}
+
 const LAYOUTS = {
   art: artPost,
   shot: shotPost,
@@ -546,6 +687,22 @@ const browser = await chromium.launch(
 );
 const page = await browser.newPage();
 if (!only) await avatar(page);
+// The home-screen how-to (HOWTO=1 makes only it), once phone-howto.py has
+// made its pictures from the owner's screenshots.
+if (!only || process.env.HOWTO) {
+  const steps = at(`${PHONE}/steps.json`);
+  if (!existsSync(steps))
+    console.warn("skipped the how-to: run scripts/instagram/phone-howto.py");
+  else {
+    const phone = JSON.parse(readFileSync(steps, "utf8"));
+    for (const [file, size, body, el] of howto("11-home-screen", phone)) {
+      const [w, h] = SIZES[size];
+      const html = `<style>${BASE} :root { --w: ${w}px; --h: ${h}px; }</style><div class="page" style="--el:${el}">${body}</div>`;
+      await shoot(page, html, [w, h], path.join(OUT, file));
+    }
+    console.log("how-to: 7 slides, 6 stories");
+  }
+}
 for (const post of POSTS) {
   if (only && !only.includes(post.id)) continue;
   const needs = post.art?.file;

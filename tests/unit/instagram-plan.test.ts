@@ -16,7 +16,9 @@ describe("instagram plan", () => {
   it("serves every picture and video it posts from the website", () => {
     expect(plan.mediaBase).toBe("https://elementarenausa.com/social/");
     for (const p of plan.posts)
-      for (const f of [p.image, p.video, p.cover].filter(Boolean)) {
+      for (const f of [p.image, p.video, p.cover, ...(p.images ?? [])].filter(
+        Boolean,
+      )) {
         const file = path.join(SOCIAL, f);
         expect(existsSync(file), f).toBe(true);
         // Meta takes JPEG pictures only, and fetches them over the web.
@@ -30,14 +32,19 @@ describe("instagram plan", () => {
   it("gives each item one kind, a time in Pacific time and a unique id", () => {
     const ids = new Set();
     for (const p of plan.posts) {
-      expect(["feed", "reel", "story"], p.id).toContain(p.kind);
+      expect(["feed", "carousel", "reel", "story"], p.id).toContain(p.kind);
       // -08:00 in winter, -07:00 in summer: always US Pacific.
       expect(p.at, p.id).toMatch(/^\d{4}-\d\d-\d\dT\d\d:\d\d:00-0[78]:00$/);
       expect(Number.isNaN(Date.parse(p.at)), p.id).toBe(false);
       expect(ids.has(p.id), p.id).toBe(false);
       ids.add(p.id);
       if (p.kind === "reel") expect(p.video && p.cover, p.id).toBeTruthy();
-      else expect(p.image, p.id).toBeTruthy();
+      // A carousel takes 2 to 10 pictures through the API, each once.
+      else if (p.kind === "carousel") {
+        expect(p.images.length, p.id).toBeGreaterThanOrEqual(2);
+        expect(p.images.length, p.id).toBeLessThanOrEqual(10);
+        expect(new Set(p.images).size, p.id).toBe(p.images.length);
+      } else expect(p.image, p.id).toBeTruthy();
     }
   });
 

@@ -27,11 +27,55 @@
       "caption": "Dodge. Dash. Land the big one. ⚡\n\nEvery duel is live: aim your skills, read your rival and time your ultimate. No turns, no waiting.\n\nOpen beta, free in your browser. Tip: add it to your home screen and it plays fullscreen, like an app (in the game: tap the gear, then Want fullscreen?). Link in bio.\n\n#ElementArena #pvp #indiegame #mobilegame #gamedev"
     },
     {
-      "id": "03-roster",
+      "id": "11-home-screen",
       "at": "2026-11-30T17:40:00-08:00",
-      "kind": "feed",
-      "image": "03-roster-feed.jpg",
-      "caption": "18 creatures. 9 elements. 🔥💧⚡🌿\n\nFire, Water, Electric, Nature, Earth, Light, Shadow, Psychic and Aura, two champions each, every one with its own kit. More are on the way for the iPhone and Android apps.\n\nWho are you picking first? Tell us in the comments 👇\n\n#ElementArena #indiegame #mobilegame #characterdesign #pvp"
+      "kind": "carousel",
+      "images": [
+        "11-home-screen-1-feed.jpg",
+        "11-home-screen-2-feed.jpg",
+        "11-home-screen-3-feed.jpg",
+        "11-home-screen-4-feed.jpg",
+        "11-home-screen-5-feed.jpg",
+        "11-home-screen-6-feed.jpg",
+        "11-home-screen-7-feed.jpg"
+      ],
+      "caption": "Play it like an app. 📲\n\nPut Element Arena on your home screen in 30 seconds: it opens fullscreen, with no browser bars and nothing to download. Swipe for the steps, from a real iPhone.\n\niPhone, in Safari:\n1. Open play.elementarenausa.com (link in bio)\n2. Tap the button at the left end of the address bar, then Share\n3. Tap View More, then Add to Home Screen\n4. Keep \"Open as Web App\" on, and tap Add\nNo button there? Tap Share at the bottom of Safari, then Add to Home Screen.\n\nAndroid, in Chrome:\n1. Open play.elementarenausa.com\n2. Tap ⋮ at the top right\n3. Tap Install app (or Add to Home screen), then Install\n\nThen tap the icon, turn your phone sideways and play. 🎮\n\nIt's an open beta, a first taste before the iPhone and Android apps. Found a bug? In the game, tap the gear, then Report a problem.\n\nSave this for later, and send it to the friend who always asks how. 👇\n\n#ElementArena #indiegame #mobilegame #browsergame #gamingtips"
+    },
+    {
+      "id": "11-home-screen-story-1",
+      "at": "2026-11-30T17:45:00-08:00",
+      "kind": "story",
+      "image": "11-home-screen-story-1.jpg"
+    },
+    {
+      "id": "11-home-screen-story-2",
+      "at": "2026-11-30T17:45:00-08:00",
+      "kind": "story",
+      "image": "11-home-screen-story-2.jpg"
+    },
+    {
+      "id": "11-home-screen-story-3",
+      "at": "2026-11-30T17:45:00-08:00",
+      "kind": "story",
+      "image": "11-home-screen-story-3.jpg"
+    },
+    {
+      "id": "11-home-screen-story-4",
+      "at": "2026-11-30T17:45:00-08:00",
+      "kind": "story",
+      "image": "11-home-screen-story-4.jpg"
+    },
+    {
+      "id": "11-home-screen-story-5",
+      "at": "2026-11-30T17:45:00-08:00",
+      "kind": "story",
+      "image": "11-home-screen-story-5.jpg"
+    },
+    {
+      "id": "11-home-screen-story-6",
+      "at": "2026-11-30T17:45:00-08:00",
+      "kind": "story",
+      "image": "11-home-screen-story-6.jpg"
     },
     {
       "id": "01-welcome-story",
@@ -46,8 +90,15 @@
       "image": "02-duels-story.jpg"
     },
     {
+      "id": "03-roster",
+      "at": "2026-12-01T17:40:00-08:00",
+      "kind": "feed",
+      "image": "03-roster-feed.jpg",
+      "caption": "18 creatures. 9 elements. 🔥💧⚡🌿\n\nFire, Water, Electric, Nature, Earth, Light, Shadow, Psychic and Aura, two champions each, every one with its own kit. More are on the way for the iPhone and Android apps.\n\nWho are you picking first? Tell us in the comments 👇\n\n#ElementArena #indiegame #mobilegame #characterdesign #pvp"
+    },
+    {
       "id": "03-roster-story",
-      "at": "2026-12-01T11:40:00-08:00",
+      "at": "2026-12-02T11:40:00-08:00",
       "kind": "story",
       "image": "03-roster-story.jpg"
     },

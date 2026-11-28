@@ -15,10 +15,11 @@
 // Rules the script keeps, whoever runs it:
 // - nothing goes out while the plan is paused, or before it is approved or
 //   24 hours have passed since it was sent (the owner, 27 Nov: "both");
-// - an item goes out once: a post or Reel whose caption's first line is
-//   already on the account, or a story already up since its time, is skipped;
-// - a post more than 48 hours late, or a story more than 20 hours late, is
-//   left for the owner, never posted out of its moment.
+// - an item goes out once: a post, carousel or Reel whose caption's first
+//   line is already on the account, or a story already up since its time,
+//   is skipped;
+// - a post, carousel or Reel more than 48 hours late, or a story more than
+//   20 hours late, is left for the owner, never posted out of its moment.
 // It needs only Node 18+ (fetch), no packages.
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -29,7 +30,12 @@ const PLAN = JSON.parse(readFileSync(path.join(HERE, "plan.json"), "utf8"));
 const GRAPH = "https://graph.facebook.com/v23.0";
 const IG = PLAN.account.igUserId;
 const HOUR = 3600_000;
-const LATE = { feed: 48 * HOUR, reel: 48 * HOUR, story: 20 * HOUR };
+const LATE = {
+  feed: 48 * HOUR,
+  carousel: 48 * HOUR,
+  reel: 48 * HOUR,
+  story: 20 * HOUR,
+};
 
 async function graph(method, route, params = {}) {
   const query = new URLSearchParams(params);
@@ -77,9 +83,40 @@ function approved(now) {
   return now >= Date.parse(a.sentAt) + 24 * HOUR;
 }
 
+/** Waits for Meta to fetch and process a container's media (a video takes a while). */
+async function ready(id, label) {
+  for (let i = 0; i < 60; i++) {
+    const { status_code, status } = await graph("GET", id, {
+      fields: "status_code,status",
+    });
+    if (status_code === "FINISHED") return id;
+    if (status_code === "ERROR" || status_code === "EXPIRED")
+      throw new Error(`${label}: container ${status_code}: ${status}`);
+    await new Promise((r) => setTimeout(r, 5000));
+  }
+  throw new Error(`${label}: container still processing after 5 minutes`);
+}
+
 /** The container for one item: its media fetched by Meta from mediaBase. */
 async function container(item) {
   const base = PLAN.mediaBase;
+  if (item.kind === "carousel") {
+    // A container per picture, then the carousel's own, which carries the caption.
+    const children = [];
+    for (const image of item.images) {
+      const { id } = await graph("POST", `${IG}/media`, {
+        image_url: base + image,
+        is_carousel_item: "true",
+      });
+      children.push(await ready(id, `${item.id} ${image}`));
+    }
+    const { id } = await graph("POST", `${IG}/media`, {
+      media_type: "CAROUSEL",
+      children: children.join(","),
+      caption: item.caption,
+    });
+    return ready(id, item.id);
+  }
   const params =
     item.kind === "reel"
       ? {
@@ -93,17 +130,7 @@ async function container(item) {
         ? { media_type: "STORIES", image_url: base + item.image }
         : { image_url: base + item.image, caption: item.caption };
   const { id } = await graph("POST", `${IG}/media`, params);
-  // Meta fetches and processes the file; a video takes a while.
-  for (let i = 0; i < 60; i++) {
-    const { status_code, status } = await graph("GET", id, {
-      fields: "status_code,status",
-    });
-    if (status_code === "FINISHED") return id;
-    if (status_code === "ERROR" || status_code === "EXPIRED")
-      throw new Error(`${item.id}: container ${status_code}: ${status}`);
-    await new Promise((r) => setTimeout(r, 5000));
-  }
-  throw new Error(`${item.id}: container still processing after 5 minutes`);
+  return ready(id, item.id);
 }
 
 async function due(dry) {
@@ -167,7 +194,7 @@ async function list() {
     const done =
       item.kind !== "story" && ig.captions.has(firstLine(item.caption));
     console.log(
-      `${pt(Date.parse(item.at)).padEnd(24)} ${item.kind.padEnd(5)} ${item.id.padEnd(24)} ${done ? "on Instagram" : ""}`,
+      `${pt(Date.parse(item.at)).padEnd(24)} ${item.kind.padEnd(8)} ${item.id.padEnd(24)} ${done ? "on Instagram" : ""}`,
     );
   }
 }
