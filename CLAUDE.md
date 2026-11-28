@@ -232,6 +232,10 @@ Other notes:
 - `VISUAL_SHOTS=<folder>` saves a screenshot of each `snap()` to look over.
 - A visual test that must not pass by luck: break the fix on purpose, check
   that the test fails, then restore the fix.
+- Measure an opened dialog, sheet or panel only after `await settle(page)`
+  (`tests/visual/helpers.ts`; `box()` and `layoutProblems` call it). Their
+  open animations scale them, and CI's slow renderer can still be at the
+  first frame, so a 44 px control reads short (#703, #715, #719).
 - Run Prettier only on the files you changed (`npx prettier --write <files>`),
   never on the whole repo.
 

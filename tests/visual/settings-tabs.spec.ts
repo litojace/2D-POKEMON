@@ -3,6 +3,7 @@ import {
   openHub,
   openPlayPanel,
   pushUntilBattle,
+  settle,
   skipTour,
   snap,
   startPractice,
@@ -28,19 +29,12 @@ const SIZES = [
 const label = (s: (typeof SIZES)[number]) =>
   `${s.width}x${s.height}${s.island ? "-island" : ""}`;
 
-const head = (page: Page) =>
-  page.evaluate(async () => {
-    // Measure once the dialog has eased in. Its open (ea-pop, style.css)
-    // scales it from 0.97, and on CI's starved runner the animation can
-    // still be at its first frame: a 44 px tab read 42.68 (#715). The
-    // same wait as severity.spec's guest dialog (#703).
-    await Promise.all(
-      document
-        .getElementById("dialog")!
-        .getAnimations({ subtree: true })
-        .filter((a) => a.effect?.getComputedTiming().endTime !== Infinity)
-        .map((a) => a.finished),
-    );
+const head = async (page: Page) => {
+  // Measure once the dialog has eased in. Its open (ea-pop, style.css)
+  // scales it from 0.97, and on CI's starved runner the animation can
+  // still be at its first frame: a 44 px tab read 42.68 (#715).
+  await settle(page);
+  return page.evaluate(() => {
     const r = (sel: string) => {
       const b = document.querySelector(sel)!.getBoundingClientRect();
       return { l: b.left, r: b.right, t: b.top, b: b.bottom, h: b.height };
@@ -70,6 +64,7 @@ const head = (page: Page) =>
       sideways: content.scrollWidth - content.clientWidth,
     };
   });
+};
 
 /**
  * Every control that ends a row of Settings, on every tab at once (a tab
