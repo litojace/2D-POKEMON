@@ -116,3 +116,63 @@ for (const size of SIZES)
       await context.close();
     }
   });
+
+// The mode box under the cards, on phones held sideways: the chosen mode's
+// title and hint read whole. At 844 x 390 the hint was cut on one line ("A
+// fair fight · best of …", and the private rooms' and the raid's as long);
+// at 667 the level's pips cut the title to "NORMAL…" (UI audit, 27 Nov).
+for (const size of [
+  { name: "667x375", width: 667, height: 375 },
+  { name: "844x390", width: 844, height: 390 },
+  { name: "932x430", width: 932, height: 430 },
+])
+  test(`the mode box reads whole at ${size.name}`, async ({
+    browser,
+  }, info) => {
+    const context = await browser.newContext({
+      viewport: { width: size.width, height: size.height },
+      isMobile: true,
+      hasTouch: true,
+    });
+    try {
+      const page = await context.newPage();
+      const errors = await openLobby(page);
+      for (const mode of ["bot-normal", "duel", "raid", "teams", "quick"]) {
+        await page.click("#lobby-mode");
+        const row = page.locator(
+          `#lobby-mode-menu [data-lobby-mode="${mode}"]`,
+        );
+        await row.scrollIntoViewIfNeeded();
+        await row.click();
+        await expect(page.locator("#lobby-mode-menu")).toBeHidden();
+        // The title is one line (cut across with "…"); the hint may take
+        // two (cut down, past its second line).
+        const cut = await page.locator("#lobby-mode").evaluate((box) => {
+          const title = box.querySelector("b")!;
+          const hint = box.querySelector("small")!;
+          return [
+            ...(title.scrollWidth > title.clientWidth + 1
+              ? [`title: ${title.textContent}`]
+              : []),
+            ...(hint.scrollWidth > hint.clientWidth + 1 ||
+            hint.scrollHeight > hint.clientHeight + 1
+              ? [`hint: ${hint.textContent}`]
+              : []),
+          ];
+        });
+        expect(cut, mode).toEqual([]);
+        // Where the hint breaks, the dot stays with the words before it.
+        expect(
+          await page
+            .locator("#lobby-mode small")
+            .evaluate((small) => small.textContent ?? ""),
+          mode,
+        ).not.toMatch(/ ·/);
+        if (mode === "bot-normal")
+          await snap(page, info, `mode-box-${size.name}`);
+      }
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });

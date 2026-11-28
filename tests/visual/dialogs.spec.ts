@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { CHARACTERS } from "@arena/shared";
 import { box, inside, openHub, snap } from "./helpers";
 import { onPlayersLook } from "./players-look";
 
@@ -79,12 +80,16 @@ for (const s of SCREENS)
       await dialog.locator("#settings-credits").click();
       await expect(dialog.locator(".credits-screen")).toBeVisible();
       // The way back reads on the masthead (ink, not the pale blue-grey
-      // it had there).
+      // it had there), and the page counts the roster as it is ("Eight
+      // original creatures" beside eighteen fighters).
       expect(
         await dialog
           .locator("#credits-back")
           .evaluate((back) => getComputedStyle(back).color),
       ).toBe("rgb(13, 13, 15)");
+      await expect(dialog.locator(".credits-screen")).toContainText(
+        `${Object.keys(CHARACTERS).length} original creatures`,
+      );
       await snap(page, info, `credits-${s.name}`);
       await dialog.locator("#credits-back").click();
       await expect(dialog.locator(".settings-screen")).toBeVisible();
