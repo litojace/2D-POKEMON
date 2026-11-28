@@ -807,29 +807,37 @@ const glacelleEntrance: Move = (s) => {
 };
 const glacelleVictory: Move = (s) => {
   const { t, p } = s;
-  // A skater's spin, faster and faster, arms drawn in. (The fighter turns
-  // edge-on and round again as one piece.)
-  const spin = ease(t, 0, 0.15) * (1 - ease(t, 1.18, 1.26));
-  const turns = t < 1.26 ? Math.pow(Math.min(t, 1.26) / 1.26, 2) * 3 : 3;
-  const edge = Math.abs(Math.cos(turns * Math.PI));
-  if (spin > 0) s.squash(1 - 0.62 * (1 - edge) * spin, 1 + 0.06 * spin);
-  s.move(0, -10 * spin);
-  p.armL.rotation = -0.4 * spin;
-  p.armR.rotation = 0.4 * spin;
-  // Stops dead: arms flung wide, and holds it, frozen.
-  const stop = ease(t, 1.24, 1.32);
-  const pop = bump(t, 1.24, 1.5);
-  if (pop > 0) s.squash(1 + 0.08 * pop, 1 + 0.06 * pop);
-  p.armL.rotation += 1.9 * stop;
-  p.armR.rotation -= 1.9 * stop;
-  s.move(0, -8 * stop);
-  // A tiny shiver, then a slow drift, arms wide.
+  // Two long skating strokes: out to one side, across to the other, and
+  // home, leaning into each glide with the arms held wide. (A glide, never a
+  // spin: the art is flat, and a spin reads as paper turning over.)
+  const out = ease(t, 0, 0.42),
+    across = ease(t, 0.42, 0.92),
+    home = ease(t, 0.92, 1.2);
+  s.move(s.side * (14 * out - 28 * across + 14 * home), 0);
+  const glide = ease(t, 0, 0.15) * (1 - ease(t, 1.1, 1.24));
+  s.move(0, -7 * glide);
+  const lean =
+    bump(t, 0, 0.46) - bump(t, 0.42, 0.96) + 0.6 * bump(t, 0.92, 1.22);
+  s.spin(s.side * 0.2 * lean);
+  p.armL.rotation = (1.0 + 0.4 * lean) * glide;
+  p.armR.rotation = (-1.0 + 0.4 * lean) * glide;
+  // Then rises into a dancer's pose, one arm high, the other low and wide,
+  // and holds it, frozen.
+  const pose = ease(t, 1.22, 1.34);
+  const pop = bump(t, 1.22, 1.5);
+  if (pop > 0) s.squash(1 - 0.03 * pop, 1 + 0.08 * pop);
+  s.move(0, -10 * pose);
+  s.spin(s.side * 0.07 * pose);
+  p.armL.rotation += 2.4 * pose;
+  p.armR.rotation -= 0.8 * pose;
+  p.head.rotation = -0.08 * pose;
+  if (s.passed(1.28)) s.accent("spark", 4);
+  // A tiny shiver, then a slow drift, arms swaying.
   s.move(Math.sin(t * 60) * 1.4 * bump(t, 1.85, 2.15), 0);
   const drift = ease(t, 2.2, 2.5);
   s.move(0, -s.sway(1.8) * 2 * drift);
   p.armL.rotation += s.sway(1.8) * 0.12 * drift;
   p.armR.rotation -= s.sway(1.8) * 0.12 * drift;
-  if (s.passed(1.28)) s.accent("spark", 4);
 };
 
 // ---------------------------------------------------------------- Halcyra
