@@ -74,14 +74,14 @@ it("no title is in the table twice", () => {
 });
 
 it("tiers follow how hard the goal is", () => {
-  // Raids: first clear < 3 clears < solo or timed < Gilded, 100 clears.
+  // Raids: first clear < 3 clears < solo or timed, Gilded, 100 clears.
   expect(titleTier("Cragbreaker")).toBe("rare");
   expect(titleTier("Mountain Conqueror")).toBe("epic");
   expect(titleTier("Pillar Breaker")).toBe("epic");
   expect(titleTier("Lone Mountain")).toBe("legendary");
   expect(titleTier("Avalanche")).toBe("legendary");
-  expect(titleTier("Gilded Cragbreaker")).toBe("mythic");
-  expect(titleTier("Boss Hunter")).toBe("mythic");
+  expect(titleTier("Gilded Cragbreaker")).toBe("legendary");
+  expect(titleTier("Boss Hunter")).toBe("legendary");
   // The Spire climbs with its floors; only the summit is Mythical.
   const spire = SPIRE_REWARDS.filter((r) => r.kind === "title").sort(
     (a, b) => a.floor - b.floor,
@@ -93,10 +93,10 @@ it("tiers follow how hard the goal is", () => {
   expect(spire.filter((r) => titleTier(r.item) === "mythic")).toHaveLength(1);
   // The Journey climbs with the level.
   expect(titleTier("Rising Spark")).toBe("common");
-  expect(titleTier("Arena Vanguard")).toBe("epic");
-  expect(titleTier("Elemental Legend")).toBe("legendary");
-  expect(titleTier("Mythic Champion")).toBe("mythic");
-  expect(titleTier("Element Master")).toBe("mythic");
+  expect(titleTier("Arena Vanguard")).toBe("rare");
+  expect(titleTier("Elemental Legend")).toBe("epic");
+  expect(titleTier("Mythic Champion")).toBe("legendary");
+  expect(titleTier("Element Master")).toBe("legendary");
   // The rank road climbs with the tier.
   const road = RANK_TIERS.map((t) => titleTierRank(t.name));
   expect(road).toEqual([...road].sort((a, b) => a - b));
@@ -104,6 +104,17 @@ it("tiers follow how hard the goal is", () => {
   expect(titleTier("Legend")).toBe("mythic");
   // The Fish book.
   expect(titleTier(PLAZA_FISH_TITLE.name)).toBe("legendary");
+});
+
+it("Mythical is the top of a ladder of skill only: no level, count or lucky drop", () => {
+  expect(
+    TITLE_TIER_ROWS.filter((r) => r.tier === "mythic")
+      .map((r) => r.name)
+      .sort(),
+  ).toEqual(["Legend", "Legendary Grandmaster", "Stormbreaker of the Spire"]);
+  // Nothing the Journey gives (levels are time played) is Mythical.
+  for (const r of TITLE_TIER_ROWS.filter((r) => r.source === "journey"))
+    expect(r.tier, r.name).not.toBe("mythic");
 });
 
 it("no title, or one made by hand, is Common", () => {

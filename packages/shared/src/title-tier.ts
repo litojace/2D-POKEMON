@@ -16,18 +16,23 @@ import { SPIRE_REWARDS } from "./spire.js";
  * name, on the same five steps and names as cosmetics (cosmetic-tier.ts:
  * Common, Rare, Epic, Legendary, Mythical).
  *
+ * Mythical is for the rarest and hardest only (owner, 28 Nov): the top of
+ * a ladder that takes skill against players or the game's hardest fights,
+ * never what time alone earns (levels, counted clears) or what luck hands
+ * out (a Gilded boss, one raid in twenty). Those stop at Legendary.
+ *
  * One table, filled by rule from the data that grants each title:
  *
- *  - Raid titles follow their goal, as raid cosmetics do: a first clear is
- *    Rare, 3 clears or a counted deed Epic, a solo or timed clear Legendary,
- *    a Gilded boss or 100 clears Mythical.
+ *  - Raid titles follow their goal: a first clear is Rare, 3 clears or a
+ *    counted deed Epic; a solo or timed solo clear, a Gilded boss and 100
+ *    clears Legendary.
  *  - Spire titles follow the floor: 5 and 10 Rare, 20 and 30 Epic, 40 to 60
  *    Legendary, the summit (70) Mythical.
- *  - Journey titles follow the level: 5 Common, from 10 Rare, from 30 Epic,
- *    from 50 Legendary, from 75 Mythical.
+ *  - Journey titles follow the level: 5 Common, from 10 Rare, from 50 Epic,
+ *    from 75 Legendary. No level is Mythical.
  *  - Rank road titles follow the rating the tier starts at: under 1000
  *    Common, from 1000 Rare, from 1210 Epic, from 1450 Legendary, from 1600
- *    Mythical.
+ *    (Legend, the top) Mythical.
  *  - Titles whose goal is not in shared data (achievements, the ranks'
  *    first names, the Farm's, renamed raid titles) are named in
  *    NAMED_TITLE_TIERS: one line each.
@@ -56,9 +61,7 @@ const raidTier = (rule: RaidRule): TitleTier => {
     case "clears":
       return rule.n >= 10 ? "legendary" : rule.n >= 3 ? "epic" : "rare";
     case "total-clears":
-      return rule.n >= 100 ? "mythic" : "legendary";
     case "gilded":
-      return "mythic";
     case "solo":
     case "speed":
     case "flawless":
@@ -80,14 +83,12 @@ const spireTier = (floor: number): TitleTier =>
         : "rare";
 const journeyTier = (level: number): TitleTier =>
   level >= 75
-    ? "mythic"
+    ? "legendary"
     : level >= 50
-      ? "legendary"
-      : level >= 30
-        ? "epic"
-        : level >= 10
-          ? "rare"
-          : "common";
+      ? "epic"
+      : level >= 10
+        ? "rare"
+        : "common";
 const ratingTier = (rating: number): TitleTier =>
   rating >= 1600
     ? "mythic"
@@ -138,8 +139,8 @@ export const NAMED_TITLE_TIERS: readonly [
   // The Farm (migrations 037 and 041; docs/removed-features.md).
   ["Green Thumb", "rare", "legacy", "Farm level 25"],
   ["Master Grower", "epic", "legacy", "Farm level 50"],
-  ["Harvest Legend", "legendary", "legacy", "Farm level 75"],
-  ["Elemental Farmer", "mythic", "legacy", "Farm level 100"],
+  ["Harvest Legend", "epic", "legacy", "Farm level 75"],
+  ["Elemental Farmer", "legendary", "legacy", "Farm level 100"],
   ["Elemental Botanist", "epic", "legacy", "All 25 crops in the crop book"],
 ];
 
