@@ -1,8 +1,6 @@
-/* Poster before the Lobby: the welcome screen's sign-up / log-in card and
-   the same form wherever it opens (Save account, Log in). The default
-   look's blue frosted glass becomes an ink board with a hard shadow;
-   nothing blurred, nothing rounded. The quick buttons in the corner are
-   the title screen's, round (screens.css). */
+/* Poster before the Lobby: the illustrated welcome cover and its account
+   card. The same form wherever it opens uses an ink board and hard shadow.
+   Both front-door screens share the compact tools disclosure below. */
 
 /* ── the card ── */
 :root[data-ui="poster"] .welcome-gate .gate-card {
@@ -145,31 +143,15 @@
 :root[data-ui="poster"] .auth-legal a {
   color: var(--ui-dim);
 }
-/* ==========================================================================
-   The cover: what stands behind the title screen and the sign-in screen
-   (owner, 27 Nov 2026: the painted valley looked out of place in Poster;
-   no fighters here; "the sunburst and the star, the star will be something
-   else later"). The element colour in halftone, a sunburst, and the game's
-   four-point star in ink where the rays meet. One still picture, drawn by
-   the browser: no painting is downloaded.
-   ========================================================================== */
+/* The cover keeps Poster's halftone sunburst behind still character cutouts. */
 :root[data-ui="poster"] .welcome-gate {
   /* Where the rays meet, as a share of the screen. */
-  --cover-x: 0.74;
-  --cover-y: 0.54;
-  /* The star: 62% of the screen's height, never wider than its half. */
-  --cover-star: min(62vh, 46vw);
+  --cover-x: 0.7;
+  --cover-y: 0.55;
 }
 :root[data-ui="poster"] .welcome-gate .gate-backdrop {
   inset: 0;
-  /* The star (a picture of its own later: change this only). Every quote,
-     space and bracket in the address is %-encoded: welcome.spec reads the
-     address out of the computed style up to the first one. */
-  --cover-star-art: url("data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20viewBox=%270%200%2072%2072%27%3E%3Cpath%20transform=%27translate%288%208%29%27%20fill=%27%23ff2e4d%27%20fill-rule=%27evenodd%27%20d=%27M32%202%2042%2021%2062%2032%2043%2043%2032%2062%2021%2043%202%2032%2021%2021Zm0%2014L16%2032l16%2016%2016-16Z%27/%3E%3Cpath%20fill=%27%230d0d0f%27%20fill-rule=%27evenodd%27%20d=%27M32%202%2042%2021%2062%2032%2043%2043%2032%2062%2021%2043%202%2032%2021%2021Zm0%2014L16%2032l16%2016%2016-16Z%27/%3E%3C/svg%3E");
   background:
-    var(--cover-star-art) calc(var(--cover-x) * 100vw - var(--cover-star) / 2)
-      calc(var(--cover-y) * 100vh - var(--cover-star) / 2) / var(--cover-star)
-      var(--cover-star) no-repeat,
     radial-gradient(circle, rgba(0, 0, 0, 0.16) 1.4px, transparent 1.8px) 0 0 /
       9px 9px,
     repeating-conic-gradient(
@@ -187,7 +169,7 @@
       the title screen, which leaves the page before the Lobby and any
       battle. The rays are a layer of their own that only turns, so the
       browser draws it once and the compositor rotates it; the halftone and
-      the star lie still on a layer above it. It stops with Reduce motion
+      character illustration lie still on layers above it. It stops with Reduce motion
       and on Low graphics (ui/light-effects.css). ── */
 :root[data-ui="poster"] .welcome-gate.is-title .gate-backdrop {
   overflow: hidden;
@@ -235,12 +217,12 @@
   content: "";
   position: absolute;
   inset: 0;
-  background:
-    var(--cover-star-art) calc(var(--cover-x) * 100vw - var(--cover-star) / 2)
-      calc(var(--cover-y) * 100vh - var(--cover-star) / 2) / var(--cover-star)
-      var(--cover-star) no-repeat,
-    radial-gradient(circle, rgba(0, 0, 0, 0.16) 1.4px, transparent 1.8px) 0 0 /
-      9px 9px;
+  background: radial-gradient(
+      circle,
+      rgba(0, 0, 0, 0.16) 1.4px,
+      transparent 1.8px
+    )
+    0 0 / 9px 9px;
 }
 @keyframes poster-cover-turn {
   to {
@@ -254,35 +236,63 @@
   animation: none;
 }
 
-/* On the sign-in side the form stands where the rays meet: the star would
-   only show as a black corner beside it (a wide screen), so it stays off
-   and the sunburst alone carries the cover. */
-:root[data-ui="poster"] .welcome-gate:not(.is-title) .gate-backdrop {
-  --cover-star-art: none;
-}
-
-/* ── The sign-in side: the title's ink slab and white stripe, the name in
-      Anton on it; the form (above) stands on the cover. ── */
-:root[data-ui="poster"] .welcome-gate:not(.is-title)::before {
-  inset: 0;
-  z-index: -1;
-  background: var(--ink);
-  clip-path: polygon(0 0, 50% 0, 40% 100%, 0 100%);
-}
+/* Selected cover A: a continuous diagonal, narrower than the original
+   half-screen slab. The actors and the ray origin keep their own anchors. */
+:root[data-ui="poster"] .welcome-gate.is-title::before,
+:root[data-ui="poster"] .welcome-gate.is-title::after,
+:root[data-ui="poster"] .welcome-gate:not(.is-title)::before,
 :root[data-ui="poster"] .welcome-gate:not(.is-title)::after {
   content: "";
+  display: block;
   position: absolute;
   inset: 0;
   block-size: auto;
+  pointer-events: none;
+}
+:root[data-ui="poster"] .welcome-gate.is-title::before,
+:root[data-ui="poster"] .welcome-gate.is-title::after {
+  z-index: 0;
+}
+:root[data-ui="poster"] .welcome-gate:not(.is-title)::before,
+:root[data-ui="poster"] .welcome-gate:not(.is-title)::after {
   z-index: -1;
+}
+:root[data-ui="poster"] .welcome-gate.is-title::before,
+:root[data-ui="poster"] .welcome-gate:not(.is-title)::before {
+  background: var(--ink);
+  clip-path: polygon(0 0, 40% 0, 30% 100%, 0 100%);
+}
+:root[data-ui="poster"] .welcome-gate.is-title::after,
+:root[data-ui="poster"] .welcome-gate:not(.is-title)::after {
   background: #fff;
   clip-path: polygon(
-    calc(50% + 6px) 0,
-    calc(50% + 14px) 0,
-    calc(40% + 14px) 100%,
-    calc(40% + 6px) 100%
+    calc(40% + 5px) 0,
+    calc(40% + 11px) 0,
+    calc(30% + 11px) 100%,
+    calc(30% + 5px) 100%
   );
-  pointer-events: none;
+}
+:root[data-ui="poster"] .welcome-gate .gate-heading,
+:root[data-ui="poster"] .welcome-gate .title-brand {
+  inline-size: fit-content;
+  max-inline-size: 100%;
+  padding: 0;
+  box-sizing: border-box;
+  background: none;
+  box-shadow: none;
+}
+:root[data-ui="poster"] .welcome-gate .title-brand h1 {
+  font-size: clamp(48px, 8vw, 112px);
+}
+:root[data-ui="poster"] .welcome-gate.is-title .title-prompt {
+  color: var(--ink);
+}
+:root[data-ui="poster"] .welcome-gate.is-title .title-prompt::before {
+  background: var(--el);
+}
+:root[data-ui="poster"] .welcome-gate.is-title .title-hint {
+  color: #e6e2d9;
+  text-shadow: none;
 }
 :root[data-ui="poster"] .welcome-gate .gate-mark {
   color: var(--el, #ffd65b);
@@ -293,7 +303,7 @@
   font-weight: 800;
 }
 :root[data-ui="poster"] .welcome-gate .gate-intro h1 {
-  font: 400 calc(clamp(52px, 9vw, 118px) * var(--text-scale, 1)) / 0.88
+  font: 400 calc(clamp(44px, 7vw, 90px) * var(--text-scale, 1)) / 0.88
     var(--font-display);
   letter-spacing: 0.01em;
   text-shadow: none;
@@ -307,16 +317,428 @@
   :is(.gate-lead, .gate-invite) {
   text-shadow: none;
 }
-/* The quick buttons stand on the slab here: a lighter ink, to show, with
-   the cover's colour along the bottom edge (screens.css has the tile). */
-:root[data-ui="poster"] .welcome-gate .gate-quick .title-quick-icon {
+/* All actors are siblings of the scrollport, attached to the panel itself.
+   Pyranda and Shadopus share one cutout so their reaction stays together. */
+:root[data-ui="poster"] .welcome-gate {
+  --peek-size: clamp(110px, 16vw, 200px);
+  --terradon-size: clamp(170px, 19vw, 270px);
+  --reaction-size: clamp(180px, 16vw, 230px);
+}
+:root[data-ui="poster"] .title-illustration {
+  display: block;
+  position: absolute;
+  z-index: 1;
+  /* Both the image centre and the ray origin use these same coordinates. */
+  left: calc(var(--cover-x) * 100%);
+  top: calc(var(--cover-y) * 100%);
+  inline-size: min(
+    54vw,
+    104dvh,
+    calc(
+      2 * (100vw - max(24px, var(--safe-right, 0px)) - var(--cover-x) * 100vw)
+    )
+  );
+  aspect-ratio: 3 / 2;
+  transform: translate(-50%, -50%);
+  background: url("/assets/welcome/title-plaza-mischief.webp") center / contain
+    no-repeat;
+  pointer-events: none;
+}
+:root[data-ui="poster"] .welcome-gate:not(.is-title) .gate-layout {
+  grid-template-columns: minmax(0, 1fr) clamp(292px, 36vw, 440px);
+  padding-right: max(236px, calc(var(--safe-right, 0px) + 16.5vw));
+  align-items: end;
+}
+:root[data-ui="poster"] .gate-account-stage {
+  position: relative;
+  min-inline-size: 0;
+  align-self: end;
+}
+:root[data-ui="poster"] .gate-account-stage::after {
+  content: "";
+  position: absolute;
+  left: calc(var(--terradon-size) * -0.8);
+  right: calc(var(--reaction-size) * -0.9);
+  bottom: 0;
+  border-bottom: 2px solid #35251266;
+  pointer-events: none;
+}
+:root[data-ui="poster"] .gate-account-stage .gate-card {
+  position: relative;
+  z-index: 1;
+}
+:root[data-ui="poster"] .gate-action {
+  display: block;
+  position: absolute;
+  z-index: 2;
+  background: center / contain no-repeat;
+  pointer-events: none;
+}
+:root[data-ui="poster"] .gate-action-voltkit {
+  inline-size: var(--peek-size);
+  aspect-ratio: 1;
+  left: 0;
+  top: 22%;
+  /* The two paws and braced foot contact the wall at x=83.5%. */
+  transform: translate(-83.5%, -30%);
+  background-image: url("/assets/welcome/signup-voltkit-flight.webp");
+}
+:root[data-ui="poster"] .gate-action-terradon {
+  inline-size: var(--terradon-size);
+  aspect-ratio: 3 / 2;
+  left: 0;
+  bottom: 0;
+  transform: translate(-82%, 4.5%);
+  background-image: url("/assets/welcome/signup-terradon-nap.webp");
+}
+:root[data-ui="poster"] .gate-action-terradon::before {
+  content: "";
+  position: absolute;
+  inset: auto -1% 2.5% -2%;
+  height: 24%;
+  z-index: -1;
+  background: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 45"%3E%3Cpath fill="%23abce44" stroke="%233c4c1d" stroke-width="2" d="M2 41L6 21 17 35 21 4 30 34 43 24 40 41ZM258 41L267 24 270 36 282 10 281 37 296 28 291 41Z"/%3E%3Cpath stroke="%23744625" stroke-width="2" d="M0 42H300"/%3E%3C/svg%3E')
+    bottom / 100% 100% no-repeat;
+}
+:root[data-ui="poster"] .gate-action-terradon::after {
+  content: "z z Z";
+  position: absolute;
+  right: 20%;
+  top: 24%;
+  color: var(--ink);
+  font: 400 clamp(11px, 1.7vw, 24px) / 1 var(--font-display);
+  transform: rotate(-17deg);
+  text-shadow:
+    1px 1px #fff3c2,
+    -1px -1px #fff3c2;
+}
+:root[data-ui="poster"] .gate-action-reaction {
+  inline-size: var(--reaction-size);
+  aspect-ratio: 4 / 5;
+  left: 100%;
+  bottom: 0;
+  /* The shared contact shadow lies on y=91% of the cutout. */
+  transform: translate(-8%, 9%);
+  background-image: url("/assets/welcome/signup-friends-reaction.webp");
+}
+@media (max-height: 700px) and (orientation: landscape) {
+  /* Signing up on a phone held sideways, the form stands taller, so 22% of
+     it reached up past the heading into the BETA tag (667 x 375: Voltkit's
+     ear on its corner). Lower on the wall, the art keeps clear of the tag
+     (accounts.ts sets the mode on the stage). */
+  :root[data-ui="poster"]
+    .gate-account-stage[data-auth-mode="signup"]
+    .gate-action-voltkit {
+    top: 32%;
+  }
+  :root[data-ui="poster"] .welcome-gate {
+    --peek-size: min(
+      clamp(96px, 17vw, 150px),
+      calc(150px - var(--safe-left, 0px) * 0.5)
+    );
+    --terradon-size: clamp(94px, 15vw, 132px);
+    --reaction-size: clamp(132px, 17vw, 150px);
+  }
+  :root[data-ui="poster"] .welcome-gate:not(.is-title) .gate-layout {
+    grid-template-columns: minmax(0, 1fr) clamp(280px, 38vw, 360px);
+    padding-right: max(142px, calc(var(--safe-right, 0px) + 138px));
+  }
+  :root[data-ui="poster"] .gate-account-stage .gate-card {
+    max-block-size: calc(
+      100dvh - max(12px, var(--safe-top, 0px)) -
+        max(12px, var(--safe-bottom, 0px))
+    );
+  }
+  :root[data-ui="poster"] .welcome-gate .gate-intro h1 {
+    font-size: clamp(36px, 6vw, 64px);
+  }
+}
+@media (max-width: 600px) and (orientation: landscape) {
+  :root[data-ui="poster"] .gate-action-voltkit,
+  :root[data-ui="poster"]
+    .gate-account-stage[data-auth-mode="signup"]
+    .gate-action-voltkit {
+    top: 48%;
+  }
+  :root[data-ui="poster"] .welcome-gate .gate-intro h1 {
+    font-size: 26px;
+  }
+  :root[data-ui="poster"] .welcome-gate .gate-intro .gate-kicker {
+    display: none;
+  }
+  :root[data-ui="poster"] .welcome-gate:not(.is-title) .quick-menu-shell {
+    margin-top: 12px;
+  }
+  :root[data-ui="poster"]
+    .welcome-gate:not(.is-title)
+    .quick-menu-shell
+    .gate-quick {
+    top: calc(100% + 8px);
+    bottom: auto;
+  }
+  :root[data-ui="poster"] .welcome-gate .gate-kicker {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+  }
+}
+@media (max-width: 640px) and (orientation: portrait) {
+  :root[data-ui="poster"] .welcome-gate {
+    --peek-size: clamp(64px, 20vw, 90px);
+    --terradon-size: 104px;
+    --reaction-size: clamp(120px, 36vw, 150px);
+  }
+  :root[data-ui="poster"] .welcome-gate:not(.is-title) .gate-layout {
+    grid-template-columns: minmax(0, 1fr);
+    block-size: auto;
+    gap: 28px;
+    padding: max(24px, var(--safe-top, 0px)) 16px
+      max(28px, var(--safe-bottom, 0px));
+  }
+  :root[data-ui="poster"] .welcome-gate .gate-intro h1 {
+    font-size: 48px;
+  }
+  :root[data-ui="poster"]
+    .welcome-gate
+    .gate-intro
+    :is(.gate-mark, .gate-lead, .gate-build) {
+    display: none;
+  }
+  :root[data-ui="poster"] .gate-account-stage {
+    margin-inline: 52px clamp(62px, 18vw, 72px);
+  }
+  :root[data-ui="poster"] .gate-account-stage .gate-card {
+    max-block-size: none;
+    padding: 20px 16px 160px;
+  }
+  :root[data-ui="poster"] .gate-action-terradon {
+    transform: translate(-32%, 4.5%);
+  }
+  :root[data-ui="poster"] .gate-action-reaction {
+    left: auto;
+    right: -48px;
+    transform: translateY(9%);
+  }
+  :root[data-ui="poster"] .gate-account-stage::after {
+    left: -52px;
+    right: -48px;
+  }
+  :root[data-ui="poster"] .gate-account-stage .auth-guest {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  :root[data-ui="poster"] .welcome-gate.is-title {
+    --cover-x: 0.5;
+    --cover-y: 0.58;
+  }
+  :root[data-ui="poster"] .welcome-gate.is-title .title-who {
+    inline-size: max-content;
+    max-inline-size: calc(100vw - 48px);
+  }
+  :root[data-ui="poster"] .welcome-gate .title-brand {
+    left: 24px;
+    top: 162px;
+    padding: 0;
+    transform: none;
+  }
+  :root[data-ui="poster"] .welcome-gate .title-brand h1 {
+    font-size: 48px;
+  }
+  :root[data-ui="poster"] .title-illustration {
+    inline-size: calc(100vw - 24px);
+  }
+  :root[data-ui="poster"] .title-tap {
+    padding-left: 24px;
+  }
+}
+
+/* Accounts can be read upright; the playfield still asks for landscape. */
+:root[data-ui="poster"] body.gate-active #rotate-gate {
+  display: none;
+}
+@media (orientation: portrait) {
+  :root[data-ui="poster"] body.gate-active {
+    overflow-y: auto;
+  }
+  :root[data-ui="poster"] body.gate-active dialog[open] {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+  }
+  :root[data-ui="poster"] body.gate-active dialog::backdrop {
+    background: #0009;
+  }
+}
+
+@media (max-width: 640px) and (orientation: portrait) and (max-height: 700px) {
+  :root[data-ui="poster"] .welcome-gate.is-title {
+    --cover-y: 0.6;
+  }
+  :root[data-ui="poster"] .welcome-gate .title-brand {
+    top: 138px;
+    padding: 0;
+  }
+  :root[data-ui="poster"] .welcome-gate .title-brand h1 {
+    font-size: 36px;
+  }
+}
+
+@media (max-width: 750px) and (orientation: landscape) {
+  :root[data-ui="poster"] .welcome-gate .title-brand .gate-kicker {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+  }
+}
+@media (orientation: portrait) {
+  :root[data-ui="poster"] .welcome-gate.is-title::before,
+  :root[data-ui="poster"] .welcome-gate:not(.is-title)::before {
+    clip-path: polygon(0 0, 100% 0, 100% 36dvh, 0 40dvh);
+  }
+  :root[data-ui="poster"] .welcome-gate.is-title::after,
+  :root[data-ui="poster"] .welcome-gate:not(.is-title)::after {
+    clip-path: polygon(
+      0 calc(40dvh + 5px),
+      100% calc(36dvh + 5px),
+      100% calc(36dvh + 11px),
+      0 calc(40dvh + 11px)
+    );
+  }
+  :root[data-ui="poster"] .welcome-gate.is-title .title-prompt {
+    color: var(--el);
+  }
+  :root[data-ui="poster"] .welcome-gate.is-title .title-prompt::before {
+    background: var(--ink);
+  }
+  :root[data-ui="poster"] .welcome-gate.is-title .title-hint {
+    color: var(--ink);
+  }
+  :root[data-ui="poster"] .welcome-gate.is-title .title-quick-btn {
+    color: var(--el);
+  }
+}
+
+/* A compact disclosure retains all four original actions. */
+
+:root[data-ui="poster"] .welcome-gate .title-quick-btn {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 3px;
+  padding: 4px;
+  border: 0;
+  border-radius: 0;
+  min-block-size: 54px;
+  font-family: var(--font-display);
+  font-size: 11px;
+  line-height: 1.1;
+  font-weight: 400;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  text-shadow: none;
+  color: #f5eedb;
+}
+:root[data-ui="poster"] .welcome-gate .title-quick-icon {
+  inline-size: 26px;
+  block-size: 26px;
+  min-inline-size: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+:root[data-ui="poster"] .welcome-gate .title-quick-icon .menu-option-icon {
+  inline-size: 21px;
+  block-size: 21px;
+  color: var(--el);
+}
+:root[data-ui="poster"] .welcome-gate .title-quick-btn:hover {
   background: var(--ink-2);
-  box-shadow: inset 0 -3px 0 var(--el, #ffd65b);
+}
+
+:root[data-ui="poster"] .welcome-gate .quick-menu-shell {
+  display: block;
+  position: relative;
+  inline-size: max-content;
+  z-index: 5;
+  margin-top: auto;
+}
+:root[data-ui="poster"] .welcome-gate.is-title .quick-menu-shell {
+  display: block;
+  position: absolute;
+  top: var(--t-t);
+  right: var(--t-r);
+  margin: 0;
+}
+:root[data-ui="poster"] .welcome-gate .quick-menu-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  inline-size: 108px;
+  min-block-size: 44px;
+  padding: 10px 14px;
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  background: var(--el);
+  box-shadow: 3px 3px 0 var(--hot);
+  color: var(--ink);
+  font: 400 15px/1 var(--font-display);
+  letter-spacing: 0.08em;
+}
+:root[data-ui="poster"] .welcome-gate .quick-menu-trigger .menu-option-icon {
+  inline-size: 20px;
+  block-size: 20px;
+  color: var(--ink);
+}
+:root[data-ui="poster"] .welcome-gate .quick-menu-shell .title-quick,
+:root[data-ui="poster"] .welcome-gate .quick-menu-shell .gate-quick {
+  display: none;
+  position: absolute;
+  inline-size: max-content;
+  grid-template-columns: repeat(2, 76px);
+  gap: 6px;
+  padding: 8px;
+  margin: 0;
+  background: var(--ink);
+  border: 1px solid #f7dc8290;
+  box-shadow: 4px 4px 0 var(--hot);
+  top: auto;
+  right: auto;
+  bottom: calc(100% + 8px);
+  left: 0;
+}
+:root[data-ui="poster"] .welcome-gate.is-title .quick-menu-shell .title-quick {
+  top: calc(100% + 8px);
+  right: 0;
+  bottom: auto;
+  left: auto;
 }
 :root[data-ui="poster"]
   .welcome-gate
-  .gate-quick
-  .title-quick-btn:hover
-  .title-quick-icon {
-  background: var(--ink-3);
+  .quick-menu-shell[data-open="true"]
+  .title-quick,
+:root[data-ui="poster"]
+  .welcome-gate
+  .quick-menu-shell[data-open="true"]
+  .gate-quick {
+  display: grid;
+}
+:root[data-ui="poster"] .welcome-gate .quick-menu-shell .title-quick-btn {
+  inline-size: 76px;
+  min-block-size: 54px;
+  background: var(--ink-2);
+}
+
+@media (max-width: 640px) and (orientation: portrait) {
+  :root[data-ui="poster"] .welcome-gate.is-title .quick-menu-shell {
+    top: 82px;
+    right: 24px;
+  }
+}
+/* Cover labels are ink; tool labels need their own colour on the ink popup. */
+:root[data-ui="poster"]
+  .welcome-gate
+  .quick-menu-shell
+  .title-quick-btn
+  > span:last-child {
+  color: #f5eedb;
+  text-shadow: none;
 }

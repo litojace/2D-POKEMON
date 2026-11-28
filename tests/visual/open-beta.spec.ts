@@ -120,7 +120,6 @@ for (const size of SIZES)
     try {
       // The title screen.
       const page = await context.newPage();
-      if (size.island) await setInsets(page, ISLAND);
       await page.addInitScript(() => {
         (window as any).__showTitle = true;
         try {
@@ -136,6 +135,8 @@ for (const size of SIZES)
       await expect(page.locator("#server-startup")).toHaveCount(0, {
         timeout: 60_000,
       });
+      // The island once the page is in (a blank page's inset goes with it).
+      if (size.island) await setInsets(page, ISLAND);
       await page.evaluate(() => document.fonts.ready);
       expectFits(
         await tagFits(page, "#title-heading", ".title-brand, .title-who"),
@@ -144,7 +145,6 @@ for (const size of SIZES)
 
       // The sign-in screen: signed out.
       const out = await context.newPage();
-      if (size.island) await setInsets(out, ISLAND);
       await out.route("**/stubs.ts*", async (route) => {
         const response = await route.fetch();
         await route.fulfill({
@@ -158,6 +158,7 @@ for (const size of SIZES)
       await out.goto("/");
       await expect(out.locator(".auth-panel")).toBeVisible();
       await expect(out.locator("#server-startup")).toHaveCount(0);
+      if (size.island) await setInsets(out, ISLAND);
       await out.evaluate(() => document.fonts.ready);
       expectFits(await tagFits(out, "#gate-title", ".gate-heading"));
       await snap(out, info, `open-beta-signin-${size.name}`);
