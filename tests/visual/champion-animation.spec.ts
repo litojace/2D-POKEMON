@@ -123,8 +123,14 @@ for (const canvas of [false, true])
             ).toBeLessThan(0);
           }
           for (const [i, r] of rows.entries()) {
-            if (state === "victory" || state === "wave")
+            if (state === "victory" || state === "wave") {
               expectPropUpright(r, `${state} ${phase}`);
+              // No move turns a fighter round: it keeps the facing it
+              // stands in (owner, 28 Nov 2026: the art is flat).
+              expect(r.dir, `${r.id} ${state} ${phase}: keeps its facing`).toBe(
+                rest[i].dir,
+              );
+            }
             expect(r.finite, `${r.id} ${state}`).toBe(true);
             expect(r.visible).toBe(true);
             expect(r.whole).toBe(false);
