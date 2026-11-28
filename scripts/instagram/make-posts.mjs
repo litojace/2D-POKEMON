@@ -408,8 +408,10 @@ function championPost(post, size) {
   const small = size === "square";
   const moves = post.moves
     .map(
+      // Each skill's button as the game draws it in battle (kit.spec.ts;
+      // owner, 28 Nov: show what the skill buttons look like).
       ([name, text], i) =>
-        `<li class="${i === post.moves.length - 1 ? "ult" : ""}"><b>${name}</b><span>${text}</span></li>`,
+        `<li class="${i === post.moves.length - 1 ? "ult" : ""}"><img class="key" src="${url(`instagram-clips/kit/${c.id}/${i}.png`)}" alt=""><b>${name}</b><span>${text}</span></li>`,
     )
     .join("");
   const head = `<div class="chip">${post.eyebrow}</div><div class="plate"><span>${c.name}</span></div><div class="tags"><span class="tag">${c.element}</span><span class="tag ink">${c.role}</span></div>`;
@@ -420,7 +422,9 @@ function championPost(post, size) {
 .tag.ink { background: var(--ink); color: #fff; }
 .hero { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
 ul { list-style: none; margin: 0; padding: 0; display: grid; gap: ${small ? 10 : 12}px; }
-li { display: grid; gap: 2px; padding: ${small ? "10px 16px" : "10px 20px"}; background: #fff; border: 4px solid var(--ink); box-shadow: 8px 8px 0 rgba(0,0,0,.3); }
+li { display: grid; grid-template-columns: ${small ? 76 : 108}px 1fr; column-gap: ${small ? 14 : 18}px; row-gap: 2px; align-items: center; padding: ${small ? "8px 14px" : "8px 18px"}; background: #fff; border: 4px solid var(--ink); box-shadow: 8px 8px 0 rgba(0,0,0,.3); }
+li .key { grid-row: span 2; width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 50%; }
+li b { align-self: end; } li span { align-self: start; }
 li b { font: 400 ${small ? 28 : 32}px/1 Anton; text-transform: uppercase; color: var(--ink); }
 li span { font: 600 ${small ? 20 : 24}px/1.25 Archivo; color: #2a2a30; }
 li.ult { background: var(--ink); box-shadow: 8px 8px 0 var(--hot); }
@@ -440,15 +444,17 @@ li.ult b { color: var(--el); } li.ult span { color: #fff; }`;
       ) +
       `<img class="hero" src="${drawing(c.id)}">`
     );
+  // Feed and story: the drawing placed on its own, beside the name in the
+  // feed and the story, so the taller list
+  // (each move with its button) never shrinks it.
+  const hero =
+    size === "story"
+      ? `.hero { inset: auto; right: 10px; top: 330px; width: 600px; height: 600px; }`
+      : `.hero { inset: auto; right: 10px; top: 150px; width: 560px; height: 560px; }`;
   return (
     back +
-    flow(
-      size,
-      head,
-      `<img class="hero" src="${drawing(c.id)}">`,
-      `<ul>${moves}</ul>`,
-      css,
-    )
+    flow(size, head, ``, `<ul>${moves}</ul>`, css + hero) +
+    `<img class="hero" src="${drawing(c.id)}">`
   );
 }
 
