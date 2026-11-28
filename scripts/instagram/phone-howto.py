@@ -8,7 +8,8 @@ The owner asked for real phone screenshots, never drawings (27 Nov). They
 are theirs, taken on their own iPhone, and show their contacts and apps, so
 they never go in the repo: they live in instagram-clips/phone/ (ignored),
 named as the phone named them (IMG_4228.png ...). This script makes what the
-posts use from them:
+posts use from them, in scripts/instagram/phone/ (committed, so a session
+without the screenshots can still rebuild the posts):
 
 - every region that shows other people (the share sheet's row of
   contacts) is pixelated and blurred for good before anything is cropped;
@@ -17,13 +18,13 @@ posts use from them:
   owner's battle or Lobby screenshots (the owner, 28 Nov; they also show
   their player name and coins);
 - each step is cropped to the part that matters;
-- instagram-clips/phone/steps.json: each crop's file, its size, and the
+- scripts/instagram/phone/steps.json: each crop's file, its size, and the
   rings to draw (as shares of the crop), for make-posts.mjs.
 
 Coordinates are shares of the screenshot (x of its width, y of its height),
 so a screenshot from another iPhone size lands in the same place. A new
 iOS that moves a button needs new numbers: check them with --preview, which
-writes steps-preview.jpg with the rings drawn on.
+writes instagram-clips/phone/steps-preview.jpg with the rings drawn on.
 """
 from pathlib import Path
 import json
@@ -32,7 +33,11 @@ import sys
 from PIL import Image, ImageDraw, ImageFilter
 
 ROOT = Path(__file__).resolve().parents[2]
+# The owner's raw screenshots: never committed.
 PHONE = ROOT / "instagram-clips/phone"
+# What this makes from them, scrubbed, so any session can rebuild post 11
+# when the game's look changes (docs/instagram.md): committed.
+OUT = ROOT / "scripts/instagram/phone"
 
 # Regions that show other people, per screenshot: (x0, y0, x1, y1) shares.
 PRIVATE = {
@@ -73,6 +78,7 @@ def scrub(im: Image.Image, regions) -> Image.Image:
 def main():
     if not PHONE.is_dir():
         sys.exit(f"{PHONE} missing: put the owner's screenshots there")
+    OUT.mkdir(parents=True, exist_ok=True)
     out = {"steps": []}
     shots = {}
     for name, crop, rings in STEPS:
@@ -83,7 +89,7 @@ def main():
         box = tuple(round(v) for v in (x0 * w, y0 * h, x1 * w, y1 * h))
         part = im.crop(box)
         file = f"step-{len(out['steps']) + 1}.jpg"
-        part.save(PHONE / file, quality=92)
+        part.save(OUT / file, quality=92)
         shots[file] = part
         out["steps"].append({
             "file": file,
@@ -97,9 +103,9 @@ def main():
     im = Image.open(PHONE / f"{name}.png").convert("RGB")
     w, h = im.size
     icon = im.crop(tuple(round(v) for v in (x0 * w, y0 * h, x1 * w, y1 * h)))
-    icon.save(PHONE / "icon.jpg", quality=92)
+    icon.save(OUT / "icon.jpg", quality=92)
     out["icon"] = {"file": "icon.jpg", "size": icon.size}
-    (PHONE / "steps.json").write_text(json.dumps(out, indent=1))
+    (OUT / "steps.json").write_text(json.dumps(out, indent=1) + "\n")
     if "--preview" in sys.argv:
         tiles = []
         for s in out["steps"]:
@@ -113,7 +119,7 @@ def main():
         for k, t in enumerate(tiles):
             sheet.paste(t, (k * 400, 0))
         sheet.save(PHONE / "steps-preview.jpg", quality=85)
-    print(f"{len(out['steps'])} steps, icon -> {PHONE}")
+    print(f"{len(out['steps'])} steps, icon -> {OUT}")
 
 
 if __name__ == "__main__":

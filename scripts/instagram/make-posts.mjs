@@ -512,7 +512,8 @@ function reportPost(post, size) {
  * (instagram-clips/phone/steps.json), with a ring on what to tap. A
  * carousel (cover, five steps, done) and a story for each step.
  */
-const PHONE = "instagram-clips/phone";
+// phone-howto.py's scrubbed crops (committed; the raw screenshots never are).
+const PHONE = "scripts/instagram/phone";
 const STEP_TEXT = [
   [
     "Open the game in Safari",
@@ -692,7 +693,7 @@ if (!only) await avatar(page);
 if (!only || process.env.HOWTO) {
   const steps = at(`${PHONE}/steps.json`);
   if (!existsSync(steps))
-    console.warn("skipped the how-to: run scripts/instagram/phone-howto.py");
+    console.warn("skipped the how-to: scripts/instagram/phone/ is missing");
   else {
     const phone = JSON.parse(readFileSync(steps, "utf8"));
     for (const [file, size, body, el] of howto("11-home-screen", phone)) {

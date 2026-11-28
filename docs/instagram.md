@@ -23,8 +23,8 @@ champions, skins and features. So the posts:
   game's own steps are in the Menu, **Want fullscreen?**
   (`apps/client/src/fullscreen-help.ts`).
 
-The title screen says "Open beta" after the name on the web (and never in
-the store apps: `title-screen.ts`, `betaTag`).
+The game itself marks the web version BETA beside its name, never the store
+apps (#645, the website session's; `docs/open-beta.md` once it is in).
 
 ## Make the pictures
 
@@ -73,8 +73,11 @@ To change a post, edit its entry in `POSTS` in
 
 Made from the owner's own iPhone screenshots (27 Nov: "a real phone, not
 drawings"), which never go in the repo: they show the owner's contacts,
-apps and player name. Put them in `instagram-clips/phone/` (ignored) as the
-phone named them, then:
+apps and player name. What the posts use from them, scrubbed and cropped,
+is committed in `scripts/instagram/phone/`, so any session can rebuild
+post 11 with `HOWTO=1 POSTS=0 npx tsx scripts/instagram/make-posts.mjs`. Only
+new screenshots (a new iOS) need the raw ones: put them in
+`instagram-clips/phone/` (ignored) as the phone named them, then:
 
 ```bash
 python3 scripts/instagram/phone-howto.py --preview
@@ -83,8 +86,8 @@ HOWTO=1 POSTS=0 npx tsx scripts/instagram/make-posts.mjs
 
 `phone-howto.py` pixelates and blurs for good what shows other people (the
 share sheet's contacts), crops each step and writes where to ring what to
-tap (`instagram-clips/phone/steps.json`; `--preview` draws the rings on
-`steps-preview.jpg` to check). Only Safari's steps and the icon come from
+tap (`scripts/instagram/phone/steps.json`; `--preview` draws the rings on
+`instagram-clips/phone/steps-preview.jpg` to check). Only Safari's steps and the icon come from
 the phone: the game itself is shown from our own captures of big moves
 (`HOWTO_SHOTS` in `make-posts.mjs`: the duel's lightning field, the
 four-way fight's chestnut storm), never the owner's battle or Lobby
@@ -95,6 +98,32 @@ the end, `11-home-screen-story-1.jpg` to `-6.jpg`.
 A new iOS that moves a button needs new screenshots and new numbers in
 `phone-howto.py`. Android is in the caption only, until someone sends
 screenshots from an Android phone.
+
+### Keeping the pictures current (owner, 28 Nov)
+
+Other sessions keep changing the game's look, and the owner wants what goes
+out to show the game as it is. A posted picture can't be changed (the API
+has no edit), so this is about what is still to come: before an item goes
+out, if a merge since its picture was made changed what that picture
+shows, retake it, look at it, and ship it before its time. The pictures in
+`apps/site/social/` were last made at the commit that last changed them
+(`git log -1 -- apps/site/social/<file>`).
+
+| Post                                                                 | Shows of the game                                            | Retake with                                                     |
+| -------------------------------------------------------------------- | ------------------------------------------------------------ | --------------------------------------------------------------- |
+| 2 Duels, 5 Teams, 7 Free-for-all, 9 Spire, 11's cover and last slide | a real battle: court, fighters, effects, the battle HUD      | `scenes.spec.ts` (site-clips), then pick the frame again by eye |
+| 3 Roster, 6 Pyranda                                                  | the fighters' drawings, names and elements (packages/shared) | `make-posts.mjs`                                                |
+| 8 Skins (Reel)                                                       | the Shop's fitting room in Poster, the Mythical skins        | `skins.spec.ts`, `make-reel.py`                                 |
+| 10 Found a bug?                                                      | the gear menu in Poster and Report a problem                 | `report.spec.ts`, then `make-posts.mjs`                         |
+| 11 Play it like an app                                               | the app icon, and Safari's steps (iOS, not the game)         | `HOWTO=1 make-posts.mjs`; new iOS: new screenshots              |
+| 1 Welcome, 4 Lumiwick                                                | paintings only                                               | `make-posts.mjs`                                                |
+
+Every post's frame copies Poster (colours, fonts, slabs: the CSS in
+`make-posts.mjs`), and captions name places in the game ("the gear, then
+Report a problem", "Want fullscreen?"): when Poster's palette or the gear
+menu changes, check the frames and the captions too. The sessions changing
+the game's look were asked (28 Nov) to tell the Instagram session when
+they merge.
 
 ## The profile
 

@@ -17,7 +17,6 @@
  */
 import { buildId } from "./build-id";
 import { menuIcon } from "./menu-icons";
-import { isNativeApp } from "./native";
 
 const PASSED_KEY = "ea-title-passed";
 
@@ -72,17 +71,6 @@ const QUICK: [QuickAction, Parameters<typeof menuIcon>[0], string][] = [
   ["repair", "again", "Repair"],
 ];
 /**
- * "Open beta" after the name (owner, 27 Nov: the game is still being
- * finished; the web version is a first taste, the store apps will bring more
- * fighters, skins and features). On the web only: Apple's review turns away
- * apps that call themselves betas (betas go through TestFlight), so the
- * iPhone and Android apps never show it. Poster draws it (screens.css); the
- * look underneath hides it (welcome-scene.css).
- */
-export const betaTag = () =>
-  isNativeApp() ? "" : `<small class="title-beta">Open beta</small>`;
-
-/**
  * The title screen (owner's pick, 22 Nov: layout B, "tap anywhere"): the
  * painting fills the screen with the name in the middle; a tap anywhere
  * starts. Who you play as sits top left and opens Switch account; the quick
@@ -93,7 +81,7 @@ export const betaTag = () =>
 export function titleScreen(a: TitleAccount, build = "") {
   const how = a.method === "guest" ? "Guest" : (METHOD[a.method] ?? "email");
   const quick = quickButtons();
-  return `<section class="welcome-gate is-title" data-title-card aria-labelledby="title-heading"><div class="gate-backdrop" aria-hidden="true"></div><button type="button" class="title-tap" id="title-start" ${a.ready ? "" : "disabled"} aria-describedby="title-status"><span class="title-prompt">${a.ready ? `<span class="for-touch">Tap to start</span><span class="for-mouse">Click to start</span>` : `<span class="gate-spinner" aria-hidden="true"></span>Connecting…`}</span>${a.ready ? `<small class="title-hint"><span class="for-touch">Tap anywhere on the screen</span><span class="for-mouse">Click anywhere, or press Enter</span></small>` : ""}</button><div class="title-brand"><span class="gate-kicker">Real-time creature duels</span><h1 id="title-heading">Element<span>Arena${betaTag()}</span></h1></div><button type="button" class="title-who" id="title-switch" aria-label="${esc(a.name)}, level ${a.level ?? "unknown"}, signed in with ${how}. Switch account"><span class="title-avatar" aria-hidden="true">${a.picture}</span><span class="title-id"><b class="title-name">${esc(a.name)}</b><small>${a.level !== null ? `<span class="title-level">Lv ${a.level}</span> · ` : ""}${menuIcon("swap")}Switch account</small></span></button><nav class="title-quick" aria-label="Quick options">${quick}</nav>${build ? `<p class="title-build">Version ${esc(build)}</p>` : ""}<p class="title-status" id="title-status" role="status"><i class="title-dot${a.ready ? " is-on" : ""}" aria-hidden="true"></i>${a.ready ? "Server online" : "Reaching the server…"}</p></section>`;
+  return `<section class="welcome-gate is-title" data-title-card aria-labelledby="title-heading"><div class="gate-backdrop" aria-hidden="true"></div><button type="button" class="title-tap" id="title-start" ${a.ready ? "" : "disabled"} aria-describedby="title-status"><span class="title-prompt">${a.ready ? `<span class="for-touch">Tap to start</span><span class="for-mouse">Click to start</span>` : `<span class="gate-spinner" aria-hidden="true"></span>Connecting…`}</span>${a.ready ? `<small class="title-hint"><span class="for-touch">Tap anywhere on the screen</span><span class="for-mouse">Click anywhere, or press Enter</span></small>` : ""}</button><div class="title-brand"><span class="gate-kicker">Real-time creature duels</span><h1 id="title-heading">Element<span>Arena</span></h1></div><button type="button" class="title-who" id="title-switch" aria-label="${esc(a.name)}, level ${a.level ?? "unknown"}, signed in with ${how}. Switch account"><span class="title-avatar" aria-hidden="true">${a.picture}</span><span class="title-id"><b class="title-name">${esc(a.name)}</b><small>${a.level !== null ? `<span class="title-level">Lv ${a.level}</span> · ` : ""}${menuIcon("swap")}Switch account</small></span></button><nav class="title-quick" aria-label="Quick options">${quick}</nav>${build ? `<p class="title-build">Version ${esc(build)}</p>` : ""}<p class="title-status" id="title-status" role="status"><i class="title-dot${a.ready ? " is-on" : ""}" aria-hidden="true"></i>${a.ready ? "Server online" : "Reaching the server…"}</p></section>`;
 }
 
 /**

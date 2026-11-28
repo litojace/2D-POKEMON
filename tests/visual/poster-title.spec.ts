@@ -151,38 +151,6 @@ for (const size of SIZES)
       ]);
       await snap(page, info, `poster-title-${size.name}`);
 
-      // "Open beta" (owner, 27 Nov; web only, title-screen.ts betaTag): a
-      // sticker after ARENA, whole on the ink slab, left of its slanted
-      // edge and its white stripe, clear of the prompt and the corners.
-      const beta = await page.locator(".title-beta").evaluate((tag) => {
-        const r = tag.getBoundingClientRect();
-        const box = (s: string) =>
-          document.querySelector(s)!.getBoundingClientRect();
-        const apart = (a: DOMRect, b: DOMRect) =>
-          a.right <= b.left ||
-          b.right <= a.left ||
-          a.bottom <= b.top ||
-          b.bottom <= a.top;
-        // The slab's edge runs from 54% of the width at the top to 44% at
-        // the bottom (screens.css, .welcome-gate.is-title::before).
-        const edge = (y: number) =>
-          innerWidth * (0.54 - (0.1 * y) / innerHeight);
-        return {
-          text: tag.textContent,
-          shown: r.width > 0 && getComputedStyle(tag).display !== "none",
-          onSlab: r.right <= Math.min(edge(r.top), edge(r.bottom)) - 6,
-          clear: [".title-prompt", "#title-switch", ".title-quick"].every((s) =>
-            apart(r, box(s)),
-          ),
-        };
-      });
-      expect(beta).toEqual({
-        text: "Open beta",
-        shown: true,
-        onSlab: true,
-        clear: true,
-      });
-
       // Reduce motion (Settings): it stands still.
       await askReducedMotion(page, true);
       await expect.poll(async () => (await rays(page)).name).toBe("none");
