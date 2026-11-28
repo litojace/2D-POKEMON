@@ -48,9 +48,10 @@ import { canvasPng, idle, sizedSvg } from "./svg-raster";
  * The frame a skin's thumbnail is drawn in: every skin and Awakening stage
  * whole, with a little room. Measured: all their ink lies within x -1…200,
  * y -19…186; the fighter's usual frame (0 -12 200 202) cut the crests and
- * crowns of 27 of them.
+ * crowns of 27 of them. The champion's ground ellipse (ground.ts) reaches
+ * lower, to y 197 under Shadopus, so the frame goes down to 200.
  */
-const THUMB_FRAME = "-6 -26 212 216";
+const THUMB_FRAME = "-12 -26 224 226";
 /** Device pixels drawn per device pixel shown (see above): skins, inline. */
 const OVERSAMPLE = { img: 1.5, inline: 1.75 };
 /**
