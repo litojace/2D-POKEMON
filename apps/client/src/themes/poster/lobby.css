@@ -314,6 +314,14 @@
   overflow: visible;
   text-overflow: clip;
 }
+/* The name plate stands in front of the stage: a champion's ground (its
+   shadow and aura, ground.ts) is the battle's rounder ellipse, and under a
+   wide or low-standing champion (Shadopus, Wombolder) its near edge reaches
+   the plate. The plate stays whole and readable; the ring passes behind. */
+:root[data-ui="poster"] .lobby-layer .lobby-name {
+  position: relative;
+  z-index: 2;
+}
 /* The shortest windows (320 px): a smaller plate, as the old look's 22 px
    name there, so the stage has the height its fighter needs. At 28 px a
    party's bar covered the top of a 568x320 phone's fighter, which stood at

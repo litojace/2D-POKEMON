@@ -15,6 +15,7 @@ import {
 } from "./creature-palette";
 import { pyrandaMarks } from "./champion-markings";
 import type { CharacterId } from "@arena/shared";
+import { GROUND_FLAT, footprint, groundDrop } from "./ground";
 import type { Facing } from "./animation/controller";
 import { awakeningSvg } from "./skins/mythic-art";
 import { UNDER } from "./skins/rare-fashion";
@@ -56,7 +57,11 @@ export type CreaturePart =
  * pieces on that layer go on the "hat" layer instead, which follows the head
  * rigidly, so only the crest itself flickers, sways or rocks.
  */
-export const ANIMATED_CRESTS = new Set<CharacterId>(["cindrake", "terradon", "sunbara"]);
+export const ANIMATED_CRESTS = new Set<CharacterId>([
+  "cindrake",
+  "terradon",
+  "sunbara",
+]);
 export const creatureParts: CreaturePart[] = [
   "tail",
   "wings",
@@ -101,6 +106,18 @@ export const PROPORTIONS: Record<CreaturePart, typeof FACE> = {
 export function proportioned(part: CreaturePart, x: number, y: number) {
   const { s, cx, cy } = PROPORTIONS[part];
   return [cx + (x - cx) * s, cy + (y - cy) * s];
+}
+/**
+ * A champion's ground ellipse in art units (ground.ts): centred under the
+ * body at its ground point, as wide as its footprint, as flat as every
+ * other view's. The menu art's own shadow and the Lobby's both use it.
+ */
+export function groundEllipse(id: CharacterId) {
+  const pawY = id === "terradon" ? 172 : id === "cindrake" ? 172 : 171;
+  const pawX = id === "terradon" ? 65 : id === "cindrake" ? 78 : 80;
+  const feet = proportioned("legL", pawX, pawY)[1];
+  const rx = footprint(id);
+  return { cx: 100, cy: feet + groundDrop(id), rx, ry: rx * GROUND_FLAT };
 }
 /** Head-and-shoulders crop, centred on the face, for small round avatars. */
 export const AVATAR_VIEWBOX = "22 -8 156 156";
@@ -1139,7 +1156,9 @@ export function creatureLayers(
   // (REAR_ARMS_MIRRORED): both arms, with all they carry, are mirrored.
   if (back && REAR_ARMS_MIRRORED.has(id))
     for (const part of ["armL", "armR"] as const)
-      if (layers[part]) layers[part] = `<g transform="matrix(-1 0 0 1 200 0)">${layers[part]}</g>`;
+      if (layers[part])
+        layers[part] =
+          `<g transform="matrix(-1 0 0 1 200 0)">${layers[part]}</g>`;
   if (profile)
     for (const part of PROFILE_FACE_PARTS)
       if (layers[part])
@@ -1171,14 +1190,20 @@ function dressLayers(
   const kept: [CreaturePart, string][] = [];
   for (const part of art.replaces ?? []) {
     if (layers[part].includes("data-keep"))
-      kept.push([part, layers[part].replace(/<g data-swap="1">[\s\S]*?<\/g>/g, "")]);
+      kept.push([
+        part,
+        layers[part].replace(/<g data-swap="1">[\s\S]*?<\/g>/g, ""),
+      ]);
     layers[part] = "";
   }
   // A skin that hands its champion something else takes the held piece off
   // (Tidefin's fin-blade, Pyranda's chestnut, Duskveil's lantern body).
   if (art.heldOff)
     for (const part of Object.keys(layers) as CreaturePart[])
-      layers[part] = layers[part].replace(/<g data-held="1">[\s\S]*?<\/g>/g, "");
+      layers[part] = layers[part].replace(
+        /<g data-held="1">[\s\S]*?<\/g>/g,
+        "",
+      );
   // A skin's re-forged weapon: Astrabun's mallet handle and head.
   if (art.weapon)
     for (const part of ["armR", "armL"] as const)
@@ -1211,7 +1236,12 @@ function dressLayers(
     for (const [own, svg] of accessorySvg(a, id, dir, p)) {
       // Headwear rides the head, not an animated crest; a piece that is the
       // crest itself (a flame a design redraws) is marked data-crest.
-      const part = own === "flame" && ANIMATED_CRESTS.has(id) && !svg.includes("data-crest") ? "hat" : own;
+      const part =
+        own === "flame" &&
+        ANIMATED_CRESTS.has(id) &&
+        !svg.includes("data-crest")
+          ? "hat"
+          : own;
       // A piece marked UNDER (a pack, hanging sleeves) goes behind the part.
       const under = svg.startsWith(UNDER);
       const g = `<g class="skin-accessory skin-${a}">${under ? svg.slice(UNDER.length) : svg}</g>`;
@@ -1275,6 +1305,7 @@ export function creatureSvgRenderer(
     dir === "down" ? null : order.slice(firstFace, lastFace + 1);
   const group = (p: CreaturePart) =>
     `<g class="fighter-${p === "body" ? "torso" : p}">${layers[p]}</g>`;
+  const ground = groundEllipse(id);
   return (
     part?: CreaturePart,
     viewBox = CREATURE_VIEWBOX,
@@ -1288,11 +1319,17 @@ export function creatureSvgRenderer(
       viewBox = profileViewBox(id, dir);
     const content = part
       ? layers[part]
-      : `<ellipse class="fighter-shadow" cx="100" cy="177" rx="40" ry="8" fill="#060d24" opacity=".25"/><g class="fighter-character">${lowerParts
+      : `<ellipse class="fighter-shadow" cx="${ground.cx}" cy="${ground.cy}" rx="${ground.rx}" ry="${ground.ry}" fill="#060d24" opacity=".25"/><g class="fighter-character">${lowerParts
           .filter((p) => !omit.includes(p))
           .map(group)
           .join("")}<g class="fighter-face">${(
-          (faceParts ?? ["head", "ears", "eyes", "flame", "hat"]) as CreaturePart[]
+          (faceParts ?? [
+            "head",
+            "ears",
+            "eyes",
+            "flame",
+            "hat",
+          ]) as CreaturePart[]
         )
           .filter((p) => !omit.includes(p))
           .map(group)

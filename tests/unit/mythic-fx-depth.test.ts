@@ -29,9 +29,9 @@ function graphics() {
 for (const [skin, flat] of [
   ["tidefin-moontide", undefined],
   ["cindrake-sunforged", undefined],
-  // The fitting room's flatter floor (SHOP_GROUND_FLAT).
-  ["tidefin-moontide", 26 / 128],
-  ["cindrake-sunforged", 26 / 128],
+  // The menus' floor, flatter than the court (GROUND_FLAT, ground.ts).
+  ["tidefin-moontide", 18 / 48],
+  ["cindrake-sunforged", 18 / 48],
 ] as const) {
   it(`${skin} puts each ring's far arc and rising particles behind the fighter (flat ${flat ?? "arena"})`, () => {
     const front = graphics(),

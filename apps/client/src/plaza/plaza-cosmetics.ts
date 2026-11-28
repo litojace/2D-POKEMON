@@ -49,6 +49,8 @@ import {
 import { rigEntrance, rigVictory } from "../skins/rig-piece-fx";
 import { wornArt } from "../skins/skin-art";
 import { auraScale } from "../aura-size";
+import { GROUND_FLAT, footprintScale, groundDrop } from "../ground";
+import { CHARACTERS, type CharacterId } from "@arena/shared";
 import { CREATURE_VIEWBOX, type CreaturePart } from "../creature-design";
 import { WORLD_ART } from "../../../../packages/shared/src/world-art";
 
@@ -73,8 +75,20 @@ export const PLAZA_PX_PER_ART = PLAZA_SPRITE_PX / ART_W;
  */
 export const PLAZA_AURA_BOOST = 1.35;
 export const PLAZA_AURA_SCALE = auraScale(PLAZA_PX_PER_ART) * PLAZA_AURA_BOOST;
-/** The shadow's flatness (24 × 9 radii): the aura lies on the same plane. */
-export const PLAZA_AURA_FLAT = 18 / 48;
+/** Every champion's ground flatness (ground.ts): shadow and aura alike. */
+export const PLAZA_AURA_FLAT = GROUND_FLAT;
+/**
+ * A champion's ground on the Plaza (ground.ts): how far below the feet its
+ * shadow and aura sit (Plaza px), and how much wider they are than the
+ * standard footprint. The Plaza's own shadow uses it too (plaza-scene.ts).
+ */
+export const plazaGround = (id?: string | null) => {
+  const known = id && id in CHARACTERS ? (id as CharacterId) : undefined;
+  return {
+    drop: known ? groundDrop(known) * PLAZA_PX_PER_ART : 0,
+    wide: known ? footprintScale(known) : 1,
+  };
+};
 /** Colors' scale (Plaza px per rig unit; a rig unit is two art units). */
 export const PLAZA_COLORS_SCALE = PLAZA_PX_PER_ART * 2;
 /** At most this many Colors particles per fighter. */
@@ -152,8 +166,10 @@ export const wearsFx = (b: Wearer) =>
 function aura(g: Ctx, b: Wearer, o: WornOptions, front: boolean) {
   if (!b.aura) return;
   g.save();
-  g.translate(b.x, b.y);
-  g.scale(PLAZA_AURA_SCALE, PLAZA_AURA_SCALE);
+  // The champion's ground point and footprint, as everywhere (ground.ts).
+  const ground = plazaGround(b.character);
+  g.translate(b.x, b.y + ground.drop);
+  g.scale(PLAZA_AURA_SCALE * ground.wide, PLAZA_AURA_SCALE * ground.wide);
   const G = gfx(g);
   const draw = o.low ? drawCollectionAuraBase : drawCollectionAura;
   // Behind: the ring and the far items; in front: the near items only.
