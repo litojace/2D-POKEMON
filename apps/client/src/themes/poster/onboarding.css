@@ -1,8 +1,6 @@
-/* Poster before the Lobby: the welcome screen's sign-up / log-in card and
-   the same form wherever it opens (Save account, Log in). The default
-   look's blue frosted glass becomes an ink board with a hard shadow;
-   nothing blurred, nothing rounded. The quick buttons in the corner are
-   the title screen's, round (screens.css). */
+/* Poster before the Lobby: the illustrated welcome cover and its account
+   card. The same form wherever it opens uses an ink board and hard shadow.
+   Both front-door screens share the compact tools disclosure below. */
 
 /* ── the card ── */
 :root[data-ui="poster"] .welcome-gate .gate-card {
@@ -451,7 +449,20 @@
     top: 48%;
   }
   :root[data-ui="poster"] .welcome-gate .gate-intro h1 {
-    font-size: 32px;
+    font-size: 28px;
+  }
+  :root[data-ui="poster"] .welcome-gate .gate-intro .gate-kicker {
+    display: none;
+  }
+  :root[data-ui="poster"] .welcome-gate:not(.is-title) .quick-menu-shell {
+    margin-top: 12px;
+  }
+  :root[data-ui="poster"]
+    .welcome-gate:not(.is-title)
+    .quick-menu-shell
+    .gate-quick {
+    top: calc(100% + 8px);
+    bottom: auto;
   }
   :root[data-ui="poster"] .welcome-gate .gate-kicker {
     font-size: 10px;

@@ -96,9 +96,8 @@ export function quickBar(build?: string) {
   return `${welcomeTools("gate-quick", quickButtons())}${build ? `<p class="gate-build">Version ${esc(build)}</p>` : ""}`;
 }
 /**
- * The quick buttons themselves, one markup for the title screen and the
- * sign-in screen (owner, 22 Nov: the same round buttons on both): a round
- * icon with its label under it.
+ * The four actions share their markup across the title and sign-in screens.
+ * Poster groups them under MENU; the underlying look retains its round icons.
  */
 function quickButtons() {
   return QUICK.map(

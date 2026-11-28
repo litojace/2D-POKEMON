@@ -74,6 +74,14 @@ test("the illustrated grips stay on the panel through resizes and form changes",
           voltkit: read("voltkit"),
           terradon: read("terradon"),
           reaction: read("reaction"),
+          betaRight:
+            document
+              .querySelector(".gate-intro .beta-tag")
+              ?.getBoundingClientRect().right ?? 0,
+          menu: document
+            .querySelector(".quick-menu-trigger")!
+            .getBoundingClientRect()
+            .toJSON(),
           overflow: document.documentElement.scrollWidth > innerWidth,
         };
       });
@@ -97,6 +105,14 @@ test("the illustrated grips stay on the panel through resizes and form changes",
       if (width > height) {
         // The shared floor stays near the safe bottom of the screen.
         expect(height - card.bottom).toBeLessThanOrEqual(48);
+        expect(placement.betaRight).toBeLessThanOrEqual(card.left);
+        const menu = placement.menu;
+        expect(
+          menu.right <= terradon.x ||
+            menu.left >= terradon.x + terradon.width ||
+            menu.bottom <= terradon.y ||
+            menu.top >= terradon.bottom,
+        ).toBe(true);
       }
       expect(placement.overflow, `${width}×${height}, ${mode}`).toBe(false);
 
