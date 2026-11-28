@@ -95,18 +95,51 @@
   border-radius: 0;
 }
 
-/* ── chat: the drawer's tabs, settings, quick reactions and send ──
-   The settings gear is a square block like Close beside it (the
-   UI-overhaul session's block). */
+/* ── chat: the drawer is a Poster sheet ──
+   An ink board with a masthead in the element colour, as every panel
+   (kit.css). The board is ink by name, not through the glass tokens: on an
+   iPhone after a match against a bot, the tabs, the field and Send floated
+   on the result's dotted backdrop with no sheet behind them, and "No
+   messages yet" read pale grey on cyan (owner, 27 Nov). A hard shadow, not
+   a soft one, parts it from what is beside it. */
+:root[data-ui="poster"] .chat-drawer {
+  border-right: 0;
+  background: var(--ink);
+  background-color: #0d0d0f;
+  box-shadow: 6px 0 0 rgba(0, 0, 0, 0.45);
+}
+/* The masthead: the drawer's top padding and side padding, taken back by
+   margins as wide, so the band runs edge to edge and no control moves. */
+:root[data-ui="poster"] .chat-head {
+  margin: calc(-1 * max(8px, calc(var(--safe-top, 0px) + 6px))) -10px 0
+    calc(-10px - var(--safe-left, 0px));
+  padding: max(8px, calc(var(--safe-top, 0px) + 6px)) 10px 8px
+    calc(var(--safe-left, 0px) + 10px);
+  background: var(--el);
+  color: var(--ink);
+}
+/* Tabs on the masthead: the words in quiet ink, the chosen one an ink
+   block with its word in the element colour (kit.css's masthead tabs). */
 :root[data-ui="poster"] .chat-tab {
-  border-color: var(--ink-3);
+  border: 0;
   border-radius: 0;
+  background: transparent;
+  color: var(--on-el-dim);
   font-weight: 400;
 }
 :root[data-ui="poster"] .chat-tab[aria-selected="true"] {
-  border-color: var(--el);
-  background: var(--el);
+  border-color: transparent;
+  background: var(--ink);
+  color: var(--el-text);
+}
+/* An unread count on the masthead: ink on the element colour, red on the
+   chosen tab's ink (5.3:1). */
+:root[data-ui="poster"] .chat-tab i {
   color: var(--ink);
+  font-weight: 800;
+}
+:root[data-ui="poster"] .chat-tab[aria-selected="true"] i {
+  color: var(--hot);
 }
 :root[data-ui="poster"]
   :is(
@@ -154,6 +187,92 @@
   border-radius: 0;
   background: var(--ink-2);
 }
+/* Settings and Close on the masthead: ink blocks, white icons (kit.css's
+   masthead buttons); the gear in the element colour while it is open. */
+:root[data-ui="poster"] .chat-head :is(.chat-gear, .chat-close) {
+  border: 0;
+  background: var(--ink);
+  color: #fff;
+}
+:root[data-ui="poster"] .chat-head .chat-gear[aria-expanded="true"] {
+  color: var(--el-text);
+}
+/* The chat over the results: the sheet starts right of the drawer, so the
+   title, the score and the reward tiles stay in sight beside it instead of
+   under it (owner, 27 Nov: its gear and Close sat on VICTORY and the XP and
+   Mastery tiles were hidden). The sheet itself narrows, not just its
+   padding: it is the container its narrow-screen rules ask about
+   (match-sheet.css), so its tiles and buttons lay out for the width left.
+   The chat button is under the drawer then, so the sheet's sides need no
+   room for it. The drawer's width is chat.css's. body.chat-open is
+   chat-ui.ts's class, not a :has() rule. */
+:root[data-ui="poster"]
+  body.battle-active.chat-open[data-battle-overlay="sheet"]
+  #arena-overlay#arena-overlay.is-sheet:not(:empty) {
+  left: calc(min(360px, 46vw) + var(--safe-left, 0px));
+}
+:root[data-ui="poster"]
+  body.battle-active.chat-open[data-battle-overlay="sheet"]
+  #arena-overlay#arena-overlay.is-sheet
+  > :is(.rc-card, .overlay-card) {
+  --sheet-l: 24px;
+  --sheet-r: max(24px, var(--safe-right, 0px));
+}
+/* What the narrowed sheet holds: one column that never runs past its
+   edge, whatever its width. */
+:root[data-ui="poster"]
+  body.battle-active.chat-open[data-battle-overlay="sheet"]
+  #arena-overlay#arena-overlay.is-sheet
+  > :is(.rc-card, .overlay-card) {
+  grid-template-columns: minmax(0, 1fr);
+}
+:root[data-ui="poster"]
+  body.battle-active.chat-open[data-battle-overlay="sheet"]
+  #arena-overlay#arena-overlay.is-sheet
+  .overlay-card
+  > .panel-actions
+  .result-actions {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+/* On a phone, as little as 360 px beside the chat (667 x 375): the title
+   free to take two lines, a reward tile a row, the buttons two by two. A
+   desktop keeps the sheet's own layout. */
+@container (max-width: 600px) {
+  :root[data-ui="poster"]
+    body.battle-active.chat-open[data-battle-overlay="sheet"]
+    #arena-overlay#arena-overlay.is-sheet
+    :is(.rc-head .ui-title, .overlay-card > h2) {
+    font-size: min(calc(24px * var(--text-scale, 1)), 7cqw);
+    text-wrap: balance;
+  }
+  :root[data-ui="poster"]
+    body.battle-active.chat-open[data-battle-overlay="sheet"]
+    #arena-overlay#arena-overlay
+    .rw-tiles
+    .rw-tile {
+    grid-column: span 6;
+  }
+  :root[data-ui="poster"]
+    body.battle-active.chat-open[data-battle-overlay="sheet"]
+    #arena-overlay#arena-overlay.is-sheet
+    :is(.rc-foot, .overlay-card > .panel-actions .result-actions) {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+  }
+  :root[data-ui="poster"]
+    body.battle-active.chat-open[data-battle-overlay="sheet"]
+    #arena-overlay#arena-overlay.is-sheet
+    :is(
+      .rc-foot .ui-btn,
+      .overlay-card > .panel-actions .result-actions button
+    ) {
+    flex: 1 1 calc(50% - 8px);
+    min-width: 0;
+    margin: 0;
+  }
+}
 :root[data-ui="poster"] .chat-friend button {
   border-radius: 0;
 }
@@ -176,12 +295,13 @@
 :root[data-ui="poster"] .battle-chat-grid button {
   border: 0;
   border-radius: 0;
-  background: var(--ink-2);
+  /* --ink-3, not --ink-2: on the grid's ink the buttons read as buttons. */
+  background: var(--ink-3);
   font-family: var(--font-body);
   font-weight: 800;
 }
 :root[data-ui="poster"] .battle-chat-grid button:is(:hover, :focus-visible) {
-  background: var(--ink-3);
+  background: #3a3a42;
 }
 :root[data-ui="poster"] .battle-chat-feed li {
   border-radius: 0;

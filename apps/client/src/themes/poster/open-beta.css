@@ -1,0 +1,15 @@
+/* Open beta (open-beta.ts; the sticker itself is src/open-beta.css). The
+   title and sign-in screens: the tag inside the name, just right of its first
+   line (ELEMENT, the longer), clear of the kicker above and the letters. */
+:root[data-ui="poster"] :is(#title-heading, #gate-title) {
+  position: relative;
+  width: fit-content;
+}
+:root[data-ui="poster"] :is(#title-heading, #gate-title) > .beta-tag {
+  left: 100%;
+  top: 0.15em;
+  margin-left: 0.5em;
+  font-size: clamp(11px, 1.25vw, 18px);
+  letter-spacing: 0.1em;
+  font-style: normal;
+}

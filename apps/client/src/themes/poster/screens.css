@@ -269,12 +269,48 @@
   font-family: var(--font-body);
   font-weight: 800;
 }
-:root[data-ui="poster"] body.battle-active #battle-menu,
-:root[data-ui="poster"] body.battle-active #battle-chat,
 :root[data-ui="poster"] body.battle-active .chat-button {
   border-radius: 0;
   background: var(--ink);
   border: 0;
+}
+/* The battle's two corner buttons, chat and the gear: bare icons, with no
+   block behind them (owner, 27 Nov 2026: the ink squares covered the
+   playfield's corners, and an iPhone's rounded screen corner cut the
+   square's own). The icon is cream with an ink outline and a hard shadow,
+   so it reads on a light arena and on a dark one; the button's box, 44 px,
+   still takes the tap. The outline is four 1 px shadows with no blur and
+   the hard shadow a fifth: drawn once, since the icons do not change. Over
+   a whole-screen sheet the chat keeps its ink square (below). */
+/* (The gear's id three times: the battle's glass rule for it sits in an
+   :is() list that weighs three ids, ui/aero.css.) */
+:root[data-ui="poster"]
+  body.battle-active
+  #battle
+  #battle-menu#battle-menu#battle-menu,
+:root[data-ui="poster"] body.battle-active #battle-chat {
+  border-radius: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  color: #f4ead5;
+}
+:root[data-ui="poster"]
+  body.battle-active
+  :is(#battle-menu, #battle-chat)
+  > svg {
+  color: inherit;
+  filter: drop-shadow(1px 0 0 var(--ink)) drop-shadow(-1px 0 0 var(--ink))
+    drop-shadow(0 1px 0 var(--ink)) drop-shadow(0 -1px 0 var(--ink))
+    drop-shadow(2px 3px 0 rgba(0, 0, 0, 0.55));
+}
+/* An open chat or the gear under a finger: the icon in the game's gold. */
+:root[data-ui="poster"]
+  body.battle-active
+  :is(#battle-menu, #battle-chat):is(:focus-visible, [aria-expanded="true"]) {
+  color: #ffd65b;
 }
 :root[data-ui="poster"] .touch-buttons > button {
   box-shadow:
@@ -799,6 +835,15 @@
   padding-top: 7px;
   padding-bottom: 0;
   border-bottom: 0;
+}
+/* The row keeps its 2 px between tabs (ui/components.css); each tab's
+   reach runs 1 px into the gap on either side, so a finger landing between
+   two tabs takes one of them, never the row (phone-fit, "dead gap beside
+   GUIDE" on a boss page at 667 x 375, #641). */
+:root[data-ui="poster"] .ui-split-main > .ui-tabs > button::before {
+  content: "";
+  position: absolute;
+  inset: 0 -1px;
 }
 :root[data-ui="poster"]
   .ui-split-main
