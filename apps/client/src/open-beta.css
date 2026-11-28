@@ -21,6 +21,8 @@
   white-space: nowrap;
   transform: rotate(6deg);
   box-shadow: 2px 2px 0 #0d0d0f;
+  /* Inside a name that has its own lettering shadow (the title, sign-in). */
+  text-shadow: none;
   pointer-events: none;
 }
 /* The loading curtain: hanging off the name block's top right corner. */
