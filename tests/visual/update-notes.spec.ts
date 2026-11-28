@@ -54,57 +54,114 @@ const restartSoon = (page: Page) =>
     }),
   );
 
-/** The deploy's last word: a toast that shows in any state. */
-async function aToast(page: Page) {
-  // Fired, and read where it starts from in the same task: every place sets
-  // the toast from its middle (left, then -50% of its width), so moving
-  // between places (the Reveal to the fight) only animates its rise. Placed
-  // by insets in the fight, its transform went from -50% to none and it slid
-  // across the joystick and the gear, on CI's slow renderer (25 Nov 2026).
-  const sideways = await page.evaluate(() => {
-    (window as any).__sock.fire("server-update", { closing: true });
-    const t = document.getElementById("toast")!;
-    const x = new DOMMatrix(getComputedStyle(t).transform).m41;
-    return Math.abs(x + t.offsetWidth / 2);
+/**
+ * Before the page loads: what the toast and the update note cover, as
+ * `__covered(controls)` in the page, and `__toastLog`, every time the toast
+ * shows, hides or changes its words, with the page's clock. A failure
+ * prints the log, so a toast that went early says when and with what.
+ */
+async function watchNotes(page: Page) {
+  await page.addInitScript(() => {
+    const w = window as any;
+    const log: string[] = (w.__toastLog = []);
+    const watch = () => {
+      const t = document.getElementById("toast");
+      if (!t) return void setTimeout(watch, 50);
+      new MutationObserver(() =>
+        log.push(
+          `${Math.round(performance.now())} ${t.classList.contains("show") ? "shown" : "hidden"} "${(t.textContent ?? "").slice(0, 24)}"`,
+        ),
+      ).observe(t, {
+        attributes: true,
+        attributeFilter: ["class"],
+        childList: true,
+      });
+    };
+    watch();
+    w.__covered = (controls: string) => {
+      const box = (e: Element) => e.getBoundingClientRect();
+      const notes = ["#toast.show", "#pwa-banner:not([hidden])"]
+        .map((s) => document.querySelector(s))
+        .filter((e): e is Element => !!e && box(e).width > 0);
+      const out: string[] = [];
+      for (const c of document.querySelectorAll(controls)) {
+        const b = box(c);
+        if (!b.width || getComputedStyle(c).visibility === "hidden") continue;
+        for (const n of notes) {
+          const r = box(n);
+          if (
+            r.left < b.right &&
+            b.left < r.right &&
+            r.top < b.bottom &&
+            b.top < r.bottom
+          )
+            out.push(
+              `${n.id} over ${(c.textContent || c.getAttribute("aria-label") || c.className).trim().slice(0, 30)}`,
+            );
+        }
+      }
+      return {
+        out,
+        shown: notes.map((n) => n.id),
+        log: [...log.slice(-6), `${Math.round(performance.now())} measured`],
+      };
+    };
   });
-  expect(sideways, "the toast moves sideways").toBeLessThan(1);
-  const toast = page.locator("#toast");
-  await expect(toast).toHaveClass(/\bshow\b/);
-  // Measured where it comes to rest.
-  await toast.evaluate((t) =>
-    Promise.all(t.getAnimations().map((a) => a.finished)),
+}
+/** Which controls the toast or the update note covers, by name. */
+const covered = (page: Page, controls: string) =>
+  page.evaluate(
+    (controls) =>
+      (window as any).__covered(controls) as {
+        out: string[];
+        shown: string[];
+        log: string[];
+      },
+    controls,
   );
+
+/**
+ * The deploy's last word, a toast that shows in any state, and what it
+ * covers where it comes to rest. Fired, its rise brought to its end and
+ * measured in one go in the page, with no frame in between. Waiting for
+ * the rise lost the toast on CI's slower runners (#678): it stays 4.5 s
+ * (toast() in main.ts), and a CSS transition only ends on a drawn frame.
+ * Over a raid's briefing, with the court drawn in software, the log read
+ * "10921 shown / 15426 hidden / 15601 measured": no frame for 4.5 s, the
+ * timer on time, the toast gone before its rise ended (#651's run).
+ */
+async function aToast(page: Page, controls: string) {
+  const r = await page.evaluate((controls) => {
+    const w = window as any;
+    w.__sock.fire("server-update", { closing: true });
+    const t = document.getElementById("toast")!;
+    // Read where it starts from in the same task: every place sets the
+    // toast from its middle (left, then -50% of its width), so moving
+    // between places (the Reveal to the fight) only animates its rise.
+    // Placed by insets in the fight, its transform went from -50% to none
+    // and it slid across the joystick and the gear, on CI's slow renderer
+    // (25 Nov 2026). Reading its style also starts the rise's transitions.
+    const x = new DOMMatrix(getComputedStyle(t).transform).m41;
+    const sideways = Math.abs(x + t.offsetWidth / 2);
+    const shows = t.classList.contains("show");
+    // Measured where it comes to rest: its rise taken to its end now,
+    // as a drawn frame would at its end (finish() needs no frame).
+    for (const a of t.getAnimations()) a.finish();
+    return { sideways, shows, ...w.__covered(controls) } as {
+      sideways: number;
+      shows: boolean;
+      out: string[];
+      shown: string[];
+      log: string[];
+    };
+  }, controls);
+  expect(r.sideways, "the toast moves sideways").toBeLessThan(1);
+  expect(r.shows, `the toast shows: ${r.log.join(" / ")}`).toBe(true);
+  return r;
 }
 /** Everything a player can press on a whole-screen sheet. */
 const SHEET_CONTROLS =
   "#arena-overlay button, #arena-overlay a, #arena-overlay [data-raid-rite], #chat-button, #battle-menu, #mobile-settings";
-
-/** Which controls the toast or the update note covers, by name. */
-const covered = (page: Page, controls: string) =>
-  page.evaluate((controls) => {
-    const box = (e: Element) => e.getBoundingClientRect();
-    const notes = ["#toast.show", "#pwa-banner:not([hidden])"]
-      .map((s) => document.querySelector(s))
-      .filter((e): e is Element => !!e && box(e).width > 0);
-    const out: string[] = [];
-    for (const c of document.querySelectorAll(controls)) {
-      const b = box(c);
-      if (!b.width || getComputedStyle(c).visibility === "hidden") continue;
-      for (const n of notes) {
-        const r = box(n);
-        if (
-          r.left < b.right &&
-          b.left < r.right &&
-          r.top < b.bottom &&
-          b.top < r.bottom
-        )
-          out.push(
-            `${n.id} over ${(c.textContent || c.getAttribute("aria-label") || c.className).trim().slice(0, 30)}`,
-          );
-      }
-    }
-    return { out, shown: notes.map((n) => n.id) };
-  }, controls);
 
 for (const size of SIZES)
   test(`the update toast and note cover no control at ${label(size)}`, async ({
@@ -119,6 +176,7 @@ for (const size of SIZES)
     try {
       const page = await context.newPage();
       await fakeUpdates(page);
+      await watchNotes(page);
       await skipTour(page);
       const errors = await openHub(page);
       if (size.island) await setInsets(page, ISLAND);
@@ -126,13 +184,12 @@ for (const size of SIZES)
       const toast = page.locator("#toast");
 
       // The Lobby.
-      await aToast(page);
-      const lobby = await covered(
+      const lobby = await aToast(
         page,
         ".lobby-layer button, .lobby-card, .hub-scenes button, #account-nav button, #home-settings",
       );
       await snap(page, info, `update-notes-lobby-${label(size)}`);
-      expect(lobby.shown).toEqual(["toast"]);
+      expect(lobby.shown, lobby.log.join(" / ")).toEqual(["toast"]);
       expect(lobby.out).toEqual([]);
 
       await page.evaluate(() =>
@@ -148,10 +205,9 @@ for (const size of SIZES)
       // The Reveal: the note waits, the toast keeps off the cards.
       await push(page, `s.phase = "briefing";`);
       await expect(overlay).toHaveClass(/\bis-reveal\b/);
-      await aToast(page);
-      const reveal = await covered(page, SHEET_CONTROLS);
+      const reveal = await aToast(page, SHEET_CONTROLS);
       await snap(page, info, `update-notes-reveal-${label(size)}`);
-      expect(reveal.shown).toEqual(["toast"]);
+      expect(reveal.shown, reveal.log.join(" / ")).toEqual(["toast"]);
       expect(reveal.out).toEqual([]);
       await push(page, `s.phase = "playing";`);
       await expect(overlay).not.toHaveClass(/\bis-reveal\b/);
@@ -165,7 +221,10 @@ for (const size of SIZES)
         ".touch-buttons button, .joystick, #chat-button, #battle-menu, #mobile-settings",
       );
       await snap(page, info, `update-notes-fight-${label(size)}`);
-      expect(fight.shown).toEqual(["toast", "pwa-banner"]);
+      expect(fight.shown, fight.log.join(" / ")).toEqual([
+        "toast",
+        "pwa-banner",
+      ]);
       expect(fight.out).toEqual([]);
 
       // The break between rounds, with rites on offer: the cards clear.
@@ -175,13 +234,12 @@ for (const size of SIZES)
       );
       await expect(overlay).toHaveClass(/\bis-break\b/);
       await expect(overlay.locator("[data-rite]")).toHaveCount(2);
-      await aToast(page);
-      const roundBreak = await covered(
+      const roundBreak = await aToast(
         page,
         `${SHEET_CONTROLS}, #arena-overlay [data-rite]`,
       );
       await snap(page, info, `update-notes-break-${label(size)}`);
-      expect(roundBreak.shown).toEqual(["toast"]);
+      expect(roundBreak.shown, roundBreak.log.join(" / ")).toEqual(["toast"]);
       expect(roundBreak.out).toEqual([]);
 
       // The results: every button of the sheet clear.
@@ -190,10 +248,9 @@ for (const size of SIZES)
         `s.phase = "finished"; s.winner = "me"; s.matchId = "m1"; s.scores = { me: 3, p2: 1 };`,
       );
       await expect(overlay).toHaveClass(/\bis-sheet\b/);
-      await aToast(page);
-      const results = await covered(page, SHEET_CONTROLS);
+      const results = await aToast(page, SHEET_CONTROLS);
       await snap(page, info, `update-notes-results-${label(size)}`);
-      expect(results.shown).toEqual(["toast"]);
+      expect(results.shown, results.log.join(" / ")).toEqual(["toast"]);
       expect(results.out).toEqual([]);
       // Back in a fight, the note is back.
       await push(page, `s.phase = "playing";`);
@@ -219,6 +276,7 @@ for (const size of SIZES)
     try {
       const page = await context.newPage();
       await fakeUpdates(page);
+      await watchNotes(page);
       await skipTour(page);
       const errors = await openHub(page);
       await page.evaluate(() =>
@@ -234,10 +292,9 @@ for (const size of SIZES)
       await push(page, `s.phase = "briefing";`);
       await expect(overlay.locator(".rc-card.is-briefing")).toBeVisible();
       await expect(overlay).toHaveClass(/\bis-sheet\b/);
-      await aToast(page);
-      const briefing = await covered(page, SHEET_CONTROLS);
+      const briefing = await aToast(page, SHEET_CONTROLS);
       await snap(page, info, `update-notes-raid-briefing-${label(size)}`);
-      expect(briefing.shown).toEqual(["toast"]);
+      expect(briefing.shown, briefing.log.join(" / ")).toEqual(["toast"]);
       expect(briefing.out).toEqual([]);
 
       await push(
@@ -246,10 +303,9 @@ for (const size of SIZES)
       );
       await expect(overlay).toHaveClass(/\bis-rites\b/);
       await expect(page.locator("[data-raid-rite]")).toHaveCount(6);
-      await aToast(page);
-      const rites = await covered(page, SHEET_CONTROLS);
+      const rites = await aToast(page, SHEET_CONTROLS);
       await snap(page, info, `update-notes-rites-${label(size)}`);
-      expect(rites.shown).toEqual(["toast"]);
+      expect(rites.shown, rites.log.join(" / ")).toEqual(["toast"]);
       expect(rites.out).toEqual([]);
       expect(errors).toEqual([]);
     } finally {

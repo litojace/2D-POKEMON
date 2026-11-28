@@ -233,7 +233,7 @@ function portrait(
     raidLook: (p.look ?? { frame: p.frame }) as RaidLoadout,
     raidClears: p.raidClears,
   });
-  return `<span class="fr-avatar"${fighter ? ` style="--el:var(--el-${CHARACTERS[fighter].element})"` : ""} aria-hidden="true">${art}${status ? `<i class="ui-status" style="--st:var(--st-${status})"></i>` : ""}</span>`;
+  return `<span class="fr-avatar"${fighter ? ` style="--el:var(--el-${CHARACTERS[fighter].element.toLowerCase()})"` : ""} aria-hidden="true">${art}${status ? `<i class="ui-status" style="--st:var(--st-${status})"></i>` : ""}</span>`;
 }
 function rowShell(o: {
   id: string;
