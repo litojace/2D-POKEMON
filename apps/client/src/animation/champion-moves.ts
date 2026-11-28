@@ -1108,7 +1108,9 @@ const shadopusVictory: Move = (s) => {
 // A tumbler who loves a surprise: "Dig, dig, dig... SURPRISE!"
 const pangroveEntrance: Move = (s) => {
   const { t, p } = s;
-  // Curls into a ball and rolls out and back, one piece, limbs tucked.
+  // Curls into a ball and bounces out and back, three bounces, each lower:
+  // a ball that bounces, never one that rolls (the art is flat, and a turn
+  // reads as paper flipping over).
   const ball = ease(t, 0, 0.12) * (1 - ease(t, 0.86, 0.96));
   if (ball > 0) s.squash(1 + 0.04 * ball, 1 - 0.16 * ball);
   p.head.y += 5 * ball;
@@ -1117,7 +1119,16 @@ const pangroveEntrance: Move = (s) => {
   p.tail.rotation = 0.5 * ball;
   const travel = Math.sin(ease(t, 0.1, 0.9) * Math.PI * 2);
   s.move(s.side * 15 * travel, 0);
-  flip(s, s.side * ease(t, 0.1, 0.9) * Math.PI * 4 * (t < 0.9 ? 1 : 0));
+  const bounces: [number, number, number][] = [
+    [0.1, 0.37, 12],
+    [0.37, 0.63, 9],
+    [0.63, 0.9, 6],
+  ];
+  for (const [a, b, h] of bounces) {
+    s.move(0, -h * arc(t, a, b));
+    land(s, b, 0.14, 0.12);
+  }
+  s.spin(s.side * 0.12 * Math.cos(ease(t, 0.1, 0.9) * Math.PI * 2) * ball);
   // Pops open with a hop...
   const open = ease(t, 0.92, 1.02);
   s.move(0, -11 * arc(t, 0.94, 1.3));
@@ -1148,17 +1159,20 @@ const pangroveVictory: Move = (s) => {
   p.tail.rotation = beat * 0.7;
   s.spin(beat * 0.1);
   s.move(beat * 3, -Math.abs(beat) * 3);
-  // Curls up and rolls on the spot, twice round, one piece.
+  // Curls into a ball and bounces on the spot, high then higher.
   const ball = ease(t, 0.92, 1.02) * (1 - ease(t, 1.5, 1.6));
   if (ball > 0) s.squash(1 + 0.04 * ball, 1 - 0.16 * ball);
   p.head.y += 5 * ball;
-  s.move(0, -8 * ball);
-  flip(s, s.side * ease(t, 1.0, 1.55) * Math.PI * 4 * (t < 1.55 ? 1 : 0));
-  // Pops open, arms wide...
+  p.armL.rotation = -0.4 * ball;
+  p.armR.rotation = 0.4 * ball;
+  s.move(0, -10 * arc(t, 1.0, 1.26) - 16 * arc(t, 1.26, 1.56));
+  land(s, 1.26, 0.16, 0.1);
+  if (s.passed(1.26)) s.accent("dust", 3);
+  // Pops open at the top of the last bounce, arms wide...
   const pop = bump(t, 1.56, 1.9);
   if (pop > 0) s.squash(1 - 0.05 * pop, 1 + 0.12 * pop);
-  p.armL.rotation = 1.6 * pop;
-  p.armR.rotation = -1.6 * pop;
+  p.armL.rotation += 1.6 * pop;
+  p.armR.rotation -= 1.6 * pop;
   // ...and sits back on its tail, paws on its belly, well pleased.
   const sit = ease(t, 1.9, 2.2);
   if (sit > 0) s.squash(1 + 0.07 * sit, 1 - 0.1 * sit);
@@ -1200,7 +1214,7 @@ const mosslothVictory: Move = (s) => {
   const hang = ease(t, 1.5, 2.0);
   s.move(0, -7 * hang);
   const swing = s.sway(1.9) * hang;
-  flip(s, swing * 0.16);
+  tilt(s, swing * 0.16);
   p.legL.rotation = (0.25 - swing * 0.25) * hang;
   p.legR.rotation = (-0.25 - swing * 0.25) * hang;
   p.head.rotation = -swing * 0.08;
