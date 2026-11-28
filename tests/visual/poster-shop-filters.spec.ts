@@ -105,7 +105,9 @@ for (const size of SIZES)
           radius: getComputedStyle(el).borderTopLeftRadius,
           bg: getComputedStyle(el).backgroundColor,
         }));
-      expect(select).toEqual({ radius: "0px", bg: "rgb(13, 13, 15)" });
+      // A square block of the masthead's lighter ink (tokens.css,
+      // --head-box), as the close button beside it.
+      expect(select).toEqual({ radius: "0px", bg: "rgb(42, 42, 48)" });
       await snap(page, info, `poster-fighters-head-${size.width}`);
       await page.keyboard.press("Escape");
 

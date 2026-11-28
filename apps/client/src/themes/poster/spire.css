@@ -9,7 +9,7 @@
   border-left: 4px solid var(--ink-3);
   border-radius: 0;
   background: var(--ink);
-  color: #fff;
+  color: var(--paper);
 }
 :root[data-ui="poster"] #arena-overlay .spire-waves b {
   color: var(--el);
@@ -50,7 +50,7 @@
 /* Its coin count is white on the ink (it was the dim grey of the price
    text, unreadable). */
 :root[data-ui="poster"] #arena-overlay .spire-rewards .ui-price {
-  color: #fff;
+  color: var(--paper);
 }
 /* "Blessings" and what they are, on a results sheet in the element colour:
    ink (the kicker's gold and the old pale text vanished on it). */
@@ -63,5 +63,5 @@
 :root[data-ui="poster"] #arena-overlay .spire-stack {
   border-radius: 0;
   background: var(--ink-3);
-  color: #fff;
+  color: var(--paper);
 }
