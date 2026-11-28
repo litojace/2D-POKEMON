@@ -9,6 +9,10 @@ import {
   createRoom,
 } from "./helpers";
 import { ISLAND, layoutProblems, setInsets, type Insets } from "./ui-measure";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // The Spire on iPhone and iPad first (App Store launch): every surface —
 // the hub tile, the page's tabs, the briefing (floor 1 and the Ascendant's),

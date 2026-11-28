@@ -1,19 +1,19 @@
 // The Instagram starter pack (docs/instagram.md): the profile picture and
-// the first nine posts, each at the three sizes Instagram shows, in the
+// the posts, each at the three sizes Instagram shows, in the
 // game's look, Poster (docs/ui-themes.md): the fighter's element colour with
 // its halftone, ink slabs and a white stripe, white clippings with hard
 // offset shadows, Anton capitals and Archivo text. Everything comes from the
 // game itself: its rules (packages/shared), fonts, fighters' drawings,
 // painted art and real captures.
 //
-//   VISUAL_UI=poster npx playwright test --config scripts/site-clips/playwright.config.ts scripts/site-clips/scenes.spec.ts
-//   npx playwright test --config scripts/instagram/playwright.config.ts
+//   npx playwright test --config scripts/instagram/playwright.config.ts   # battles, skins, music, the report menu
 //   python3 scripts/instagram/make-reel.py
 //   npx tsx scripts/instagram/make-posts.mjs            # -> instagram/
 //
-// The first command records the real battles in Poster (the same scenes as
-// the website's "Ways to play"); the next two record the Mythical skins and
-// cut their stills (post 8). A post whose capture is missing is skipped with
+// The first command records, in Poster, the real battles as a phone shows
+// them, whole screen and touch controls included (battles.spec.ts, the
+// website's scenes), the Mythical skins, the game's music and its menu;
+// make-reel.py cuts the skins' Reel and stills (post 8). A post whose capture is missing is skipped with
 // a note. POSTS=1,4 renders only those. PW_CHROMIUM points at a Chromium
 // already on the machine, as in tests/visual. Run with tsx: the champions'
 // data is read from packages/shared.
@@ -26,7 +26,13 @@
 // left and right edges of a feed post; a story keeps its words out of the
 // top 260 px and bottom 330 px, where Instagram draws its own bars.
 import { chromium } from "@playwright/test";
-import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -68,22 +74,35 @@ const EL = {
 };
 
 /**
- * A real capture of the game (2622 x 1206), cropped to 16:9 like make-scenes.py.
- * Each post's frame is picked by eye from the scene's 37 (owner, 27 Nov): a
- * big move going off, with every fighter still in sight, never one buried
- * under a flash. Duels 8 (the charged beam into the lightning field; from 14
- * on the flash hides Frost), teams 8 (from 9 the pillar's glow hides Blaze),
- * free-for-all 11 (the chestnut storm, Sunny's orb and Ink's tendrils, all
- * four in sight), Spire 15 (the beam beside Echo Wombolder, not on it).
+ * A real battle as the player sees it: the whole phone screen, HUD,
+ * joystick, skill buttons and scoreboard included, never cropped (owner,
+ * 28 Nov), from battles.spec.ts at the owner's iPhone size held sideways
+ * (2868 x 1320). Each frame is picked by eye from the scene's 37 (owner,
+ * 27 Nov): a big move going off, with every fighter still in sight, never
+ * one buried under a flash. Duels 8 (the charged beam into the lightning
+ * field), teams 8 (Blaze charging in its rings, all four in sight; from 9
+ * the pillar hides Blaze), free-for-all 11 (the chestnut storm, Sunny's
+ * orb and Ink's tendrils), Spire 11 (the beam beside Echo Wombolder; from
+ * 13 its flash covers it).
  */
-const capture = (file, cx, cy, share) => ({ file, cx, cy, share });
-const SCENES = "site-clips/scenes";
+const BATTLES = "instagram-clips/battles";
+const screen = (file) => ({ file: `${BATTLES}/${file}` });
+const PHONE_ASPECT = 2868 / 1320;
+/**
+ * A screen outside battle, whole, from screens.spec.ts (same phone, same
+ * look): the Plaza in an Orb Shower with made-up players and their titles
+ * over their names, every tier (#650; frame 13: every name and title in
+ * sight, none behind a lamp post), Friends with made-up friends.
+ * Coin counts are blurred where they stand (the owner's rule: no amounts of
+ * the game's money outside the game).
+ */
+const ui = (file) => ({ file: `instagram-clips/screens/${file}` });
 
 /** Painted art: the game's raid splash and loading art (1536 x 1024). */
 const painting = (file, x = 50, y = 50) => ({ painting: file, x, y });
 
 /**
- * The nine posts, in posting order. `kind` picks the layout:
+ * The posts, numbered as planned. `kind` picks the layout:
  * - "art": a painting full bleed above an ink slab that carries the words,
  * - "shot": a real capture of the game as a white clipping on the element
  *   colour,
@@ -102,16 +121,16 @@ const POSTS = [
       52,
       50,
     ),
-    eyebrow: "Real-time creature battles",
+    eyebrow: "Open beta · free in your browser",
     title: "Pick an element. Outplay your friends.",
-    line: "18 original creatures, 9 elements. Free to play in your browser.",
+    line: "18 original creatures, 9 elements. The iPhone and Android apps come later.",
   },
   {
     id: 2,
     name: "duels",
     kind: "shot",
     el: EL.water,
-    art: capture(`${SCENES}/duels/008.png`, 0.53, 0.47, 0.42),
+    art: screen("duels/008.png"),
     eyebrow: "1v1 duels",
     title: "Dodge. Dash. Land the big one.",
     line: "Every fight is live: aim your skills, read your rival, time your ultimate.",
@@ -141,7 +160,7 @@ const POSTS = [
     name: "teams",
     kind: "shot",
     el: EL.nature,
-    art: capture(`${SCENES}/teams/008.png`, 0.5, 0.36, 0.56),
+    art: screen("teams/008.png"),
     eyebrow: "2v2 team battles",
     title: "Better with a friend.",
     line: "Team up, stack your skills and wipe the other side.",
@@ -165,7 +184,7 @@ const POSTS = [
     name: "free-for-all",
     kind: "shot",
     el: EL.psychic,
-    art: capture(`${SCENES}/ffa/011.png`, 0.57, 0.4, 0.46),
+    art: screen("ffa/011.png"),
     eyebrow: "Free-for-all",
     title: "Four fighters. One winner.",
     line: "Everyone against everyone in the Ember Forge.",
@@ -186,10 +205,43 @@ const POSTS = [
     name: "spire",
     kind: "shot",
     el: EL.aura,
-    art: capture(`${SCENES}/spire/015.png`, 0.47, 0.61, 0.48),
+    art: screen("spire/011.png"),
     eyebrow: "The Spire",
     title: "70 floors. How high can you climb?",
     line: "Seven zones of ten floors, an elite halfway up and a boss at the top of each.",
+  },
+  {
+    id: 10,
+    name: "report-bugs",
+    kind: "report",
+    el: EL.light,
+    // report.spec.ts captures the game's Menu and its report form.
+    art: { file: "instagram-clips/report/menu.png" },
+    boxes: "instagram-clips/report/boxes.json",
+    eyebrow: "Open beta",
+    title: "Found a bug? Tell us.",
+    line: "In the game: tap the gear, then Report a problem (with a free account). Or tell us in the comments. Every report gets read.",
+  },
+  {
+    id: 12,
+    name: "plaza",
+    kind: "shot",
+    el: EL.shadow,
+    art: ui("plaza/13.png"),
+    eyebrow: "The Plaza · up to 40 players",
+    title: "Hang out between fights.",
+    line: "Bounce pads, a ball pitch, a dash track, a photo spot, and an Orb Shower every 15 minutes.",
+  },
+  {
+    id: 13,
+    name: "friends",
+    kind: "shot",
+    // Blue: the Lobby behind the sheet is Pyranda's orange.
+    el: EL.water,
+    art: ui("friends/00.png"),
+    eyebrow: "Friends",
+    title: "Bring your friends.",
+    line: "Share your code, invite them to your room, or watch their match live.",
   },
 ];
 
@@ -281,23 +333,10 @@ ${size === "square" ? SQUARE.replace(/h1 \{[^}]*\}/, "") : ""}
 }
 
 /**
- * The 16:9 crop of a capture as CSS for an <img> in a 16:9 window, in
- * shares of the window, so the window can take whatever size fits.
- */
-function cropStyle({ cx, cy, share }) {
-  const [iw, ih] = [2622, 1206];
-  const cw = share * iw;
-  const ch = (cw * 9) / 16;
-  const x0 = Math.min(Math.max(0, cx * iw - cw / 2), iw - cw);
-  const y0 = Math.min(Math.max(0, cy * ih - ch / 2), ih - ch);
-  const pc = (v) => `${(v * 100).toFixed(3)}%`;
-  return `width:${pc(iw / cw)};left:${pc(-x0 / cw)};top:${pc(-y0 / ch)}`;
-}
-
-/**
- * A capture as a white clipping on the element colour. The clipping takes
- * the room the words leave, up to its full width, so a title that wraps to
- * three lines shrinks the picture instead of running into it.
+ * A battle's whole phone screen as a white clipping on the element colour.
+ * The clipping takes the room the words leave, up to its full width, so a
+ * title that wraps to three lines shrinks the picture instead of running
+ * into it.
  */
 function shotPost(post, size) {
   const cardW = size === "square" ? 700 : 880;
@@ -306,11 +345,11 @@ function shotPost(post, size) {
     flow(
       size,
       `<div class="chip">${post.eyebrow}</div><h1>${post.title}</h1>`,
-      `<div class="clip shot"><div class="window"><img src="${url(post.art.file)}" style="${cropStyle(post.art)}"></div></div>`,
+      `<div class="clip shot"><div class="window"><img src="${url(post.art.file)}"></div></div>`,
       `<p>${post.line}</p>${PLAY}`,
-      `.shot { flex: none; padding: 10px; height: min(100%, ${(cardW * 9) / 16 + 30}px); transform: rotate(-1.5deg); }
-.window { position: relative; height: 100%; aspect-ratio: 16 / 9; overflow: hidden; }
-.window img { position: absolute; height: auto; }`,
+      `.shot { flex: none; padding: 10px; height: min(100%, ${Math.round(cardW / PHONE_ASPECT) + 20}px); transform: rotate(-1.5deg); }
+.window { position: relative; height: 100%; aspect-ratio: 2868 / 1320; overflow: hidden; }
+.window img { width: 100%; height: 100%; display: block; }`,
     )
   );
 }
@@ -451,12 +490,186 @@ figcaption small { font: 800 ${small ? 15 : 17}px/1 Archivo; text-transform: upp
   );
 }
 
+/**
+ * The open beta's "found a bug?" post: the game's Menu as one clipping,
+ * with rings on the two things to tap (1 the gear, 2 Report a problem),
+ * placed from where report.spec.ts found them (boxes.json). The coin count
+ * is covered: no amounts of the game's money outside the game (owner,
+ * 27 Nov, for the website).
+ */
+function reportPost(post, size) {
+  const small = size === "square";
+  const b = JSON.parse(readFileSync(at(post.boxes), "utf8"));
+  // The crop: from the menu's left edge to the screen's right, from the top
+  // to just under the menu (CSS pixels of the 844 x 390 capture).
+  const c = { x: b.panel.x - 12, y: 0, w: 844 - (b.panel.x - 12) };
+  c.h = b.panel.y + b.panel.height + 10;
+  const pc = (v, of) => `${((v / of) * 100).toFixed(3)}%`;
+  const place = (r, pad = 6) =>
+    `left:${pc(r.x - pad - c.x, c.w)};top:${pc(r.y - pad - c.y, c.h)};width:${pc(r.width + 2 * pad, c.w)};height:${pc(r.height + 2 * pad, c.h)}`;
+  return (
+    `<div class="halftone"></div>` +
+    flow(
+      size,
+      `<div class="chip">${post.eyebrow}</div><h1>${post.title}</h1>`,
+      `<div class="clip shot"><div class="win"><img src="${url(post.art.file)}" style="width:${pc(844, c.w)};left:${pc(-c.x, c.w)};top:${pc(-c.y, c.h)}"><i class="cover" style="${place(b.coins, 0)}"></i><i class="ring" style="${place(b.gear)}"><b>1</b></i><i class="ring right" style="${place(b.report)}"><b>2</b></i></div></div>`,
+      `<p>${post.line}</p>${PLAY}`,
+      `.shot { flex: none; padding: 10px; height: min(100%, ${small ? 560 : 760}px); transform: rotate(-1.5deg); }
+.win { position: relative; height: 100%; aspect-ratio: ${c.w} / ${c.h}; overflow: hidden; }
+.win img { position: absolute; display: block; }
+.cover { position: absolute; background: #0d0d0f; }
+.ring { position: absolute; border: 5px solid var(--hot); box-shadow: 0 0 0 4px #fff; }
+.ring.right b { right: auto; left: calc(100% + 10px); }
+.ring b { position: absolute; right: calc(100% + 10px); top: 50%; transform: translateY(-50%); font: 400 44px/1 Anton; background: var(--hot-fill, #e0143a); color: #fff; padding: 4px 13px; box-shadow: 4px 4px 0 rgba(0,0,0,.5); }`,
+    )
+  );
+}
+
+/**
+ * "Play it like an app" (owner, 27 Nov: the first posts show how to add
+ * the game to the home screen, from a real phone, never drawings): the
+ * owner's own iPhone screenshots, scrubbed and cropped by phone-howto.py
+ * (instagram-clips/phone/steps.json), with a ring on what to tap. A
+ * carousel (cover, five steps, done) and a story for each step.
+ */
+// phone-howto.py's scrubbed crops (committed; the raw screenshots never are).
+const PHONE = "scripts/instagram/phone";
+const STEP_TEXT = [
+  [
+    "Open the game in Safari",
+    `Go to <b>play.elementarenausa.com</b>, then tap the button at the left end of the address bar.`,
+  ],
+  ["Tap Share", "It's near the top of the menu."],
+  ["Tap View More", "At the end of the row of buttons."],
+  ["Tap Add to Home Screen", "At the bottom of the list."],
+  [
+    "Keep Open as Web App on. Tap Add.",
+    "The switch makes it open fullscreen, like an app.",
+  ],
+];
+
+/** One screenshot crop as a dark phone clipping, its rings drawn on. */
+function phoneShot(step, maxH) {
+  const [w, h] = step.size;
+  const rings = step.rings
+    .map(
+      ([x0, y0, x1, y1]) =>
+        `<i class="ring" style="left:${x0 * 100}%;top:${y0 * 100}%;width:${(x1 - x0) * 100}%;height:${(y1 - y0) * 100}%"></i>`,
+    )
+    .join("");
+  // A wide crop is held to the column's width (860 px of screen inside
+  // the frame), a tall one to maxH.
+  const tall = Math.min(maxH, Math.round((860 * h) / w) + 24);
+  return `<div class="pshot" style="height:min(100%, ${tall}px)"><div class="win" style="aspect-ratio:${w} / ${h}"><img src="${url(`${PHONE}/${step.file}`)}">${rings}</div></div>`;
+}
+const PHONE_CSS = `
+.pshot { flex: none; padding: 12px; background: var(--ink); border-radius: 34px; box-shadow: 14px 14px 0 rgba(0,0,0,.35); }
+.pshot .win { position: relative; height: 100%; border-radius: 24px; overflow: hidden; }
+.pshot img { width: 100%; height: 100%; display: block; object-fit: cover; }
+.ring { position: absolute; border: 6px solid var(--hot); border-radius: 14px; box-shadow: 0 0 0 5px #fff, 0 0 30px rgba(255,46,77,.8); }
+.chip.step { background: var(--ink); color: var(--el); }
+p b { font-weight: 800; }
+`;
+
+function howtoStep(size, n, phone) {
+  const [title, line] = STEP_TEXT[n];
+  const story = size === "story";
+  return (
+    `<div class="halftone"></div>` +
+    flow(
+      size,
+      `<div class="chip step">iPhone · Step ${n + 1} of 5</div><h1>${title}</h1>`,
+      phoneShot(phone.steps[n], story ? 980 : 760),
+      `<p>${line}</p>`,
+      PHONE_CSS +
+        `h1 { font-size: ${story ? 104 : 92}px; } p { font-size: ${story ? 38 : 34}px; }`,
+    )
+  );
+}
+
+/**
+ * The icon on the home screen, over the game held sideways: our own
+ * battle, the whole screen with its HUD and touch controls (the owner,
+ * 28 Nov: not their screenshots, and never cropped). The icon sits above
+ * the phone, so it covers nothing on its screen. The cover has the duel's
+ * lightning field going off between both fighters, the last slide the
+ * four-way fight's chestnut storm with all four in sight.
+ */
+const HOWTO_SHOTS = {
+  cover: screen("duels/026.png"),
+  done: screen("ffa/018.png"),
+};
+function iconAndGame(phone, size, shot, feedWidth = 800) {
+  const w = size === "story" ? 900 : feedWidth;
+  return `<div class="pair" style="width:${w}px"><div class="icon-shot"><img src="${url(`${PHONE}/${phone.icon.file}`)}"></div><div class="land" style="width:${w}px"><img src="${url(shot.file)}"></div></div>`;
+}
+const PAIR_CSS = `
+.pair { position: relative; display: grid; justify-items: center; gap: 14px; }
+.icon-shot { position: relative; z-index: 2; width: 170px; padding: 9px; background: var(--ink); border-radius: 26px; box-shadow: 8px 8px 0 rgba(0,0,0,.35); transform: rotate(-4deg); }
+.icon-shot img { width: 100%; display: block; border-radius: 18px; }
+.land { aspect-ratio: 2868 / 1320; border: 14px solid var(--ink); border-radius: 44px; overflow: hidden; box-shadow: 16px 16px 0 rgba(0,0,0,.35); transform: rotate(-1.5deg); background: var(--ink); }
+.land img { width: 100%; height: 100%; display: block; }
+p b { font-weight: 800; }
+`;
+
+function howtoCover(size, phone) {
+  return (
+    `<div class="halftone"></div>` +
+    flow(
+      size,
+      `<div class="chip">Open beta · iPhone · 30 seconds</div><h1>Play it like an app.</h1>`,
+      iconAndGame(phone, size, HOWTO_SHOTS.cover),
+      `<p>Add Element Arena to your home screen: fullscreen, no download, one tap to open. <b>Swipe for the 5 steps.</b></p>`,
+      PAIR_CSS,
+    )
+  );
+}
+
+function howtoDone(size, phone) {
+  return (
+    `<div class="halftone"></div>` +
+    flow(
+      size,
+      `<div class="chip">Done</div><h1>Tap the icon. Turn it sideways. Play.</h1>`,
+      // Narrower in the feed: the last slide's words take three lines.
+      iconAndGame(phone, size, HOWTO_SHOTS.done, 720),
+      `<p>Fullscreen, no browser bars. On Android: Chrome's menu, then <b>Install app</b>. Found a bug? Tap the gear, then <b>Report a problem</b>.</p>${PLAY}`,
+      PAIR_CSS + `h1 { font-size: ${size === "story" ? 110 : 96}px; }`,
+    )
+  );
+}
+
+/** The carousel's slides and the stories: [file, size, body, colour]. */
+function howto(id, phone) {
+  const out = [
+    [`${id}-1-feed.jpg`, "feed", howtoCover("feed", phone), EL.electric],
+  ];
+  for (let n = 0; n < 5; n++)
+    out.push([
+      `${id}-${n + 2}-feed.jpg`,
+      "feed",
+      howtoStep("feed", n, phone),
+      EL.water,
+    ]);
+  out.push([`${id}-7-feed.jpg`, "feed", howtoDone("feed", phone), EL.fire]);
+  for (let n = 0; n < 5; n++)
+    out.push([
+      `${id}-story-${n + 1}.jpg`,
+      "story",
+      howtoStep("story", n, phone),
+      EL.water,
+    ]);
+  out.push([`${id}-story-6.jpg`, "story", howtoDone("story", phone), EL.fire]);
+  return out;
+}
+
 const LAYOUTS = {
   art: artPost,
   shot: shotPost,
   roster: rosterPost,
   champion: championPost,
   skins: skinsPost,
+  report: reportPost,
 };
 
 /** The profile picture: the app icon's circle-safe (maskable) drawing. */
@@ -492,6 +705,22 @@ const browser = await chromium.launch(
 );
 const page = await browser.newPage();
 if (!only) await avatar(page);
+// The home-screen how-to (HOWTO=1 makes only it), once phone-howto.py has
+// made its pictures from the owner's screenshots.
+if (!only || process.env.HOWTO) {
+  const steps = at(`${PHONE}/steps.json`);
+  if (!existsSync(steps))
+    console.warn("skipped the how-to: scripts/instagram/phone/ is missing");
+  else {
+    const phone = JSON.parse(readFileSync(steps, "utf8"));
+    for (const [file, size, body, el] of howto("11-home-screen", phone)) {
+      const [w, h] = SIZES[size];
+      const html = `<style>${BASE} :root { --w: ${w}px; --h: ${h}px; }</style><div class="page" style="--el:${el}">${body}</div>`;
+      await shoot(page, html, [w, h], path.join(OUT, file));
+    }
+    console.log("how-to: 7 slides, 6 stories");
+  }
+}
 for (const post of POSTS) {
   if (only && !only.includes(post.id)) continue;
   const needs = post.art?.file;

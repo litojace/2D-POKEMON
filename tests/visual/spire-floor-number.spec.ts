@@ -8,6 +8,10 @@ import {
   snap,
 } from "./helpers";
 import { SPIRE_RING } from "../../packages/shared/src/spire-court";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // The floor number carved in the middle of the Spire's court
 // (spire-court-art.ts paintNumber): its ink sits on the rune ring's centre,
