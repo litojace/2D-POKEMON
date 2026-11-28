@@ -1,0 +1,66 @@
+/* Rarity in its own colour wherever it is a choice or a picture (owner, 27
+   Nov 2026: colour where it means something). The five colours are the
+   Shop's and the titles' (ui/tokens.css --r-*, as cosmetic-tier.ts
+   TIER_COLORS); nothing here adds one. Slice D.
+
+   - The Shop's rarity filter: each chip carries its tier's diamond; a
+     pressed chip is filled with its tier (Mythical: the foil), the words
+     ink, as a pressed element chip is (elements.css). Ink on every tier
+     colour holds 5.8:1 or more.
+   - An item tile keeps a thin edge of its tier at its foot: Poster drew
+     every tile the same ink and only the art's band told them apart. A
+     chosen tile keeps its own ring. */
+:root[data-ui="poster"] .ui-chip[data-ui-rarity="common"] {
+  --rr: var(--r-common);
+}
+:root[data-ui="poster"] .ui-chip[data-ui-rarity="rare"] {
+  --rr: var(--r-rare);
+}
+:root[data-ui="poster"] .ui-chip[data-ui-rarity="epic"] {
+  --rr: var(--r-epic);
+}
+:root[data-ui="poster"] .ui-chip[data-ui-rarity="legendary"] {
+  --rr: var(--r-legendary);
+}
+:root[data-ui="poster"] .ui-chip[data-ui-rarity="mythical"] {
+  --rr: var(--r-foil);
+}
+:root[data-ui="poster"]
+  .ui-chip[data-ui-rarity]:not([data-ui-rarity="all"])::before {
+  content: "";
+  display: inline-block;
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-right: 7px;
+  transform: rotate(45deg);
+  background: var(--rr);
+}
+:root[data-ui="poster"]
+  .ui-chip[data-ui-rarity]:not([data-ui-rarity="all"])[aria-pressed="true"] {
+  background: var(--rr);
+  color: var(--ink);
+}
+:root[data-ui="poster"]
+  .ui-chip[data-ui-rarity]:not(
+    [data-ui-rarity="all"]
+  )[aria-pressed="true"]::before {
+  background: var(--ink);
+}
+
+:root[data-ui="poster"]
+  .ui-tile[data-rarity]:not(
+    [aria-pressed="true"],
+    .is-selected,
+    [aria-current="true"]
+  ) {
+  box-shadow: inset 0 -3px 0 var(--r);
+}
+:root[data-ui="poster"]
+  .ui-tile:is([data-rarity="mythical"], [data-rarity="mythic"]):not(
+    [aria-pressed="true"],
+    .is-selected,
+    [aria-current="true"]
+  ) {
+  box-shadow: inset 0 -3px 0 var(--r-mythic);
+}
