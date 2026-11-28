@@ -111,15 +111,13 @@ for (const size of SIZES)
       await snap(page, info, `poster-fighters-head-${size.width}`);
       await page.keyboard.press("Escape");
 
-      // A raid boss: its line beside All bosses reads.
+      // A raid boss: its line reads whole under the tabs (it was cut with
+      // "…" on the masthead: tests/visual/raid-room-lede.spec.ts).
       await page.click('.lobby-rail [data-lobby-action="raids"]');
       await page.click('[data-raid-card="grumblecrag"]');
-      await expect(page.locator(".rh-head .rh-hint")).toBeVisible();
+      await expect(page.locator(".rh-body .rh-lede")).toBeVisible();
+      await expect(page.locator(".rh-head .rh-hint")).toHaveCount(0);
       await settle(page);
-      expect(
-        await contrastOnHead(page, ".rh-head .rh-hint"),
-        "the boss's line on the masthead",
-      ).toBeGreaterThanOrEqual(4.5);
       await snap(page, info, `poster-boss-head-${size.width}`);
       expect(errors).toEqual([]);
     } finally {

@@ -353,6 +353,18 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* A boss's line, at the top of its page under the tabs: in the masthead it
+   was cut to one line with "…" (up to 225 letters, "A proud, sparkly
+   snail…"). Here it wraps and reads whole. The masthead keeps the close
+   button on its right edge. */
+.rh-head-gap {
+  flex: 1;
+}
+.rh-lede {
+  margin: 0 0 10px;
+  max-width: 72ch;
+  line-height: 1.4;
+}
 .rh-section {
   display: flex;
   align-items: center;
@@ -883,7 +895,8 @@ button.rh-reward:focus-visible {
     font-size: calc(20px * var(--text-scale, 1));
   }
   .rh-stage-line,
-  .rh-hint {
+  .rh-hint,
+  .rh-lede {
     display: none;
   }
   .rh-seats {
