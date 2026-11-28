@@ -23,7 +23,7 @@ export function fullscreenHelp(options: {
 }) {
   const { standalone, platform, canPrompt, canFullscreen } = options;
   if (standalone)
-    return `<h2>You are already fullscreen</h2><p>Element Arena is running from your home screen, so there are no browser bars in the way. Turn your ${platform === "ipad" ? "iPad" : "phone"} sideways for the best view.</p>${
+    return `<h2 data-dialog-size="s">You are already fullscreen</h2><p>Element Arena is running from your home screen, so there are no browser bars in the way. Turn your ${platform === "ipad" ? "iPad" : "phone"} sideways for the best view.</p>${
       platform === "ipad"
         ? '<p class="fullscreen-note">The clock and battery along the top belong to iPadOS, which keeps them on screen for home-screen apps; a web game cannot hide them. If the game opens in a window, use its window buttons (top left) to make it full screen.</p>'
         : ""
@@ -48,7 +48,7 @@ export function fullscreenHelp(options: {
       ? `<button class="secondary" id="fullscreen-now">${iconLabel("fullscreen", "Fullscreen for now")}</button>`
       : "",
   ].join("");
-  return `<h2>Want fullscreen?</h2><p>Add Element Arena to your home screen. It then opens like an app, with no address bar or browser buttons taking up space, and starts faster next time.</p>${
+  return `<h2 data-dialog-size="s">Want fullscreen?</h2><p>Add Element Arena to your home screen. It then opens like an app, with no address bar or browser buttons taking up space, and starts faster next time.</p>${
     canPrompt ? "<p>Your browser can do it in one tap:</p>" : steps
   }${actions ? `<div class="fullscreen-actions">${actions}</div>` : ""}${
     platform === "iphone"

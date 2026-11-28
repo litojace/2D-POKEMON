@@ -172,8 +172,8 @@ for (const size of [
           return !!hit?.closest(".room-invite-notice");
         }),
       ).toBe(true);
-      // Its own card, not the browser's white popover: dark, pinned bottom
-      // right, Decline and Join side by side at the same size.
+      // Its own card, not the browser's white popover: Poster's ink, pinned
+      // bottom right, Decline and Join side by side at the same size.
       const look = await notice.evaluate((n) => {
         const cs = getComputedStyle(n);
         const r = n.getBoundingClientRect();
@@ -189,7 +189,7 @@ for (const size of [
           sameRow: Math.abs(decline.top - join.top) < 1,
         };
       });
-      expect(look.background).toBe("rgb(20, 33, 58)");
+      expect(look.background).toBe("rgb(13, 13, 15)");
       expect(look.right).toBeGreaterThanOrEqual(15);
       expect(look.right).toBeLessThanOrEqual(17);
       expect(look.bottom).toBeGreaterThanOrEqual(15);

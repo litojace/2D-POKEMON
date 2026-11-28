@@ -209,7 +209,7 @@ type Hooks = {
   messageFriend?: (id: string, name: string) => void;
   /** Friends closed (a room puts its picker back). */
   onFriendsClosed?: () => void;
-  notify: (message: string) => void;
+  notify: (message: string, kind?: "ok" | "warn" | "error") => void;
   /** Running announcements from the admins, fetched at sign-in (announcements.ts). */
   announce?: (list: unknown) => void;
   onChange: () => void;
@@ -836,6 +836,7 @@ export class AccountUI {
       extra:
         '<p class="ui-note">They aren\'t told. You can unblock them under Friends → Recent.</p>',
       confirm: "Block",
+      danger: true,
       confirmIcon: "block",
     });
     if (!sure) return false;
@@ -1028,7 +1029,7 @@ export class AccountUI {
   async logOut() {
     if (this.account?.guest && !this.confirmedGuestLogout) {
       this.hooks.openDialog(
-        `<div class="eyebrow">Guest account</div><h2>Log out of your guest pass?</h2><p>Guest accounts can't be recovered after logging out: your records and titles would be lost. Save your account with an email first to keep them.</p><div class="dialog-actions"><button class="primary" id="guest-save">${iconLabel("save", "Save my account")}</button><button class="secondary" id="guest-leave">${iconLabel("leave", "Log out anyway")}</button></div>`,
+        `<div class="eyebrow">Guest account</div><h2>Log out of your guest pass?</h2><p>Guest accounts can't be recovered after logging out: your records and titles would be lost. Save your account with an email first to keep them.</p><div class="dialog-actions is-even"><button class="primary" id="guest-save">${iconLabel("save", "Save my account")}</button><button class="secondary is-danger" id="guest-leave">${iconLabel("leave", "Log out anyway")}</button></div>`,
       );
       element("guest-save").onclick = () => void this.showProfile();
       element("guest-leave").onclick = () => {
@@ -1748,7 +1749,8 @@ export class AccountUI {
         this.fittingRoom?.refresh();
         void this.loadFittingRoom();
       },
-      notify: (message: string) => this.hooks.notify(message),
+      notify: (message: string, kind?: "ok" | "warn" | "error") =>
+        this.hooks.notify(message, kind),
     };
   }
   /** The open Journey panel, if any (UI remodel step 4). */
@@ -2413,7 +2415,11 @@ export class AccountUI {
             titles: (this.account?.ownedTitles ?? []).map((t) => t.name),
           },
         }),
-        load: (scope) => this.loadRanks(scope, accountId),
+        // The Friends board is asked for again each time it is picked (it
+        // shows the copy it has meanwhile): friends' ratings move between
+        // matches, and it was never older than the pick before #681.
+        load: (scope) =>
+          this.loadRanks(scope, accountId, scope === "friends" ? 0 : undefined),
         reportPhoto: (photo, name) =>
           void this.hooks.reportPhoto?.(photo, name),
         friends: () => void this.showFriends(),
@@ -2425,7 +2431,11 @@ export class AccountUI {
     // Opened again on the board it already shows: nothing to redraw.
     if (this.ranksData !== shown) this.ranksScreen?.refresh();
   }
-  private async loadRanks(scope: "everyone" | "friends", accountId?: string) {
+  private async loadRanks(
+    scope: "everyone" | "friends",
+    accountId?: string,
+    maxAge?: number,
+  ) {
     const fresh = () => this.account?.id === accountId;
     if (scope === "everyone") {
       if (this.ranksData.problem)
@@ -2452,7 +2462,7 @@ export class AccountUI {
       if (this.ranksData.friendsProblem)
         this.ranksData = { ...this.ranksData, friendsProblem: "" };
       try {
-        const raw = await this.fetchCopy("/api/leaderboard/friends");
+        const raw = await this.fetchCopy("/api/leaderboard/friends", maxAge);
         if (fresh() && raw !== this.friendsBoardRaw) {
           this.friendsBoardRaw = raw;
           const friends = friendsBoardSchema.parse(raw);
@@ -2481,7 +2491,7 @@ export class AccountUI {
       return;
     }
     this.hooks.openDialog(
-      `<div class="eyebrow">Help us fix it</div><h2>${context.playerName ? `Report ${escape(context.playerName)}` : "Report a problem"}</h2><p>Tell the admins what happened. Your current screen${context.playerName ? " and who you're reporting" : ""}${context.room ? ` and room code ${escape(context.room)}` : ""} ${context.playerName || context.room ? "are" : "is"} included automatically.</p><form id="report-form" class="account-form"><label>What kind of problem?<select name="category" required>${Object.entries(
+      `<div class="eyebrow">Help us fix it</div><h2>${context.playerName ? `Report ${escape(context.playerName)}` : "Report a problem"}</h2><p>Tell the admins what happened. Your current screen${context.playerName ? " and who you're reporting" : ""}${context.room ? ` and room code ${escape(context.room)}` : ""} ${context.playerName || context.room ? "are" : "is"} included automatically.</p><form id="report-form" class="account-form" data-dialog-size="m"><label>What kind of problem?<select name="category" required>${Object.entries(
         REPORT_CATEGORIES,
       )
         .map(
