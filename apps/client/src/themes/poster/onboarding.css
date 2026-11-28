@@ -449,7 +449,7 @@
     top: 48%;
   }
   :root[data-ui="poster"] .welcome-gate .gate-intro h1 {
-    font-size: 28px;
+    font-size: 26px;
   }
   :root[data-ui="poster"] .welcome-gate .gate-intro .gate-kicker {
     display: none;
@@ -720,4 +720,13 @@
     top: 82px;
     right: 24px;
   }
+}
+/* Cover labels are ink; tool labels need their own colour on the ink popup. */
+:root[data-ui="poster"]
+  .welcome-gate
+  .quick-menu-shell
+  .title-quick-btn
+  > span:last-child {
+  color: #f5eedb;
+  text-shadow: none;
 }

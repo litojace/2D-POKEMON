@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page, type Locator } from "@playwright/test";
 import { askReducedMotion, snap } from "./helpers";
 import { onPlayersLook } from "./players-look";
 import { ISLAND, setInsets } from "./ui-measure";
@@ -80,6 +80,34 @@ const rays = (page: Page) =>
     };
   });
 
+/** The tool text must read against its own tile, not inherit the yellow cover's ink. */
+const toolContrast = (tool: Locator) =>
+  tool.evaluate((button) => {
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = 1;
+    const ctx = canvas.getContext("2d")!;
+    const luminance = (colour: string) => {
+      ctx.clearRect(0, 0, 1, 1);
+      ctx.fillStyle = colour;
+      ctx.fillRect(0, 0, 1, 1);
+      const [r, g, b] = [...ctx.getImageData(0, 0, 1, 1).data]
+        .slice(0, 3)
+        .map((value) => {
+          const v = value / 255;
+          return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+        });
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    };
+    const foreground = luminance(
+      getComputedStyle(button.querySelector(":scope > span:last-child")!).color,
+    );
+    const background = luminance(getComputedStyle(button).backgroundColor);
+    return (
+      (Math.max(foreground, background) + 0.05) /
+      (Math.min(foreground, background) + 0.05)
+    );
+  });
+
 const SIZES = [
   { name: "667x375", width: 667, height: 375, phone: true },
   { name: "844x390", width: 844, height: 390, phone: true },
@@ -118,7 +146,9 @@ for (const size of SIZES)
         const r = (await tool.boundingBox())!;
         expect(r.width).toBeGreaterThanOrEqual(44);
         expect(r.height).toBeGreaterThanOrEqual(44);
+        expect(await toolContrast(tool)).toBeGreaterThanOrEqual(4.5);
       }
+      await snap(page, info, `poster-tools-${size.name}`);
       await page.keyboard.press("Escape");
 
       // The sunburst: one turn in 100 s, for ever, on a layer that reaches
@@ -216,6 +246,7 @@ for (const size of SIZES)
         const r = (await tool.boundingBox())!;
         expect(r.width).toBeGreaterThanOrEqual(44);
         expect(r.height).toBeGreaterThanOrEqual(44);
+        expect(await toolContrast(tool)).toBeGreaterThanOrEqual(4.5);
       }
       await page.keyboard.press("Escape");
       // Behind the form the rays never move: no turning layer at all.
