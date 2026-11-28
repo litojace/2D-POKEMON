@@ -103,7 +103,10 @@ for (const size of SIZES) {
       expect(brand.y + brand.height).toBeLessThan(prompt.y);
       // The corners: inside the safe areas, clear of each other and the name.
       const who = await box(page, "#title-switch");
-      const quick = await box(page, ".title-quick");
+      const quick = await box(
+        page,
+        poster ? ".quick-menu-trigger" : ".title-quick",
+      );
       const status = await box(page, "#title-status");
       for (const b of [who, quick, status, brand, prompt]) {
         expect(inside(b, view)).toBe(true);
@@ -137,12 +140,15 @@ for (const size of SIZES) {
       ).toBe(true);
       // Every corner control is a real touch target, and a tap on it hits
       // it, never the Start button underneath.
+      if (poster) await page.locator(".quick-menu-trigger").click();
       const corners = page.locator("#title-switch, [data-gate-quick]");
       expect(await corners.count()).toBe(5);
       for (const c of await corners.all()) {
-        const hit = c
-          .locator(".title-quick-icon")
-          .or(c.filter({ has: page.locator(".title-avatar") }));
+        const hit = poster
+          ? c
+          : c
+              .locator(".title-quick-icon")
+              .or(c.filter({ has: page.locator(".title-avatar") }));
         const b = (await hit.first().boundingBox())!;
         expect(b.height).toBeGreaterThanOrEqual(44);
         expect(b.width).toBeGreaterThanOrEqual(44);
@@ -233,6 +239,7 @@ test("Switch account signs out to the log-in form, without a title screen after"
   const poster = await page.evaluate(
     () => document.documentElement.dataset.ui === "poster",
   );
+  if (poster) await page.locator(".quick-menu-trigger").click();
   for (const icon of await page
     .locator("[data-gate-quick] .title-quick-icon")
     .all()) {
@@ -240,8 +247,8 @@ test("Switch account signs out to the log-in form, without a title screen after"
       poster ? "0px" : "50%",
     );
     const b = (await icon.boundingBox())!;
-    expect(Math.round(b.width)).toBe(44);
-    expect(Math.round(b.height)).toBe(44);
+    expect(Math.round(b.width)).toBe(poster ? 26 : 44);
+    expect(Math.round(b.height)).toBe(poster ? 26 : 44);
   }
   expect(
     await page.evaluate(() => sessionStorage.getItem("ea-title-passed")),
@@ -256,16 +263,22 @@ test("the quick buttons open Settings, Help and Repair", async ({
   await page.setViewportSize({ width: 667, height: 375 });
   const errors = await openTitle(page);
   const dialog = page.locator("#dialog");
+  if (await page.locator(".quick-menu-trigger").count())
+    await page.locator(".quick-menu-trigger").click();
   await page.click('[data-gate-quick="settings"]');
   await expect(dialog.locator(".settings-screen")).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(dialog).not.toBeVisible();
   // A quick button never starts the game under it.
   await expect(page.locator("[data-title-card]")).toBeVisible();
+  if (await page.locator(".quick-menu-trigger").count())
+    await page.locator(".quick-menu-trigger").click();
   await page.click('[data-gate-quick="help"]');
   await expect(dialog).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(dialog).not.toBeVisible();
+  if (await page.locator(".quick-menu-trigger").count())
+    await page.locator(".quick-menu-trigger").click();
   await page.click('[data-gate-quick="repair"]');
   await expect(dialog.locator(".repair-screen")).toBeVisible();
   await snap(page, info, "title-repair-ask");

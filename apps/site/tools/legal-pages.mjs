@@ -6,7 +6,7 @@
 //   node apps/site/tools/legal-pages.mjs
 //
 // Writes apps/site/support/index.html, privacy/index.html and legal.css, and
-// copies what they use (a font, the hero's picture). tests/unit/site.test.ts
+// copies a font they use that the website doesn't have yet. tests/unit/site.test.ts
 // fails when the website's copies no longer match their source.
 import {
   copyFileSync,
@@ -69,10 +69,6 @@ function write() {
         path.join(game, "assets/fonts", file),
         path.join(site, "fonts", file),
       );
-  copyFileSync(
-    path.join(game, "assets/backgrounds/elemental-horizon-small.webp"),
-    path.join(site, "img/elemental-horizon-small.webp"),
-  );
   console.log("wrote /support/, /privacy/ and legal.css");
 }
 

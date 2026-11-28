@@ -18,6 +18,7 @@
 import { buildId } from "./build-id";
 import { betaTag } from "./open-beta";
 import { menuIcon } from "./menu-icons";
+import { welcomeTools } from "./welcome-tools";
 
 const PASSED_KEY = "ea-title-passed";
 
@@ -82,7 +83,7 @@ const QUICK: [QuickAction, Parameters<typeof menuIcon>[0], string][] = [
 export function titleScreen(a: TitleAccount, build = "") {
   const how = a.method === "guest" ? "Guest" : (METHOD[a.method] ?? "email");
   const quick = quickButtons();
-  return `<section class="welcome-gate is-title" data-title-card aria-labelledby="title-heading"><div class="gate-backdrop" aria-hidden="true"></div><button type="button" class="title-tap" id="title-start" ${a.ready ? "" : "disabled"} aria-describedby="title-status"><span class="title-prompt">${a.ready ? `<span class="for-touch">Tap to start</span><span class="for-mouse">Click to start</span>` : `<span class="gate-spinner" aria-hidden="true"></span>Connecting…`}</span>${a.ready ? `<small class="title-hint"><span class="for-touch">Tap anywhere on the screen</span><span class="for-mouse">Click anywhere, or press Enter</span></small>` : ""}</button><div class="title-brand"><span class="gate-kicker">Real-time creature duels</span><h1 id="title-heading">Element<span>Arena</span>${betaTag()}</h1></div><button type="button" class="title-who" id="title-switch" aria-label="${esc(a.name)}, level ${a.level ?? "unknown"}, signed in with ${how}. Switch account"><span class="title-avatar" aria-hidden="true">${a.picture}</span><span class="title-id"><b class="title-name">${esc(a.name)}</b><small>${a.level !== null ? `<span class="title-level">Lv ${a.level}</span> · ` : ""}${menuIcon("swap")}Switch account</small></span></button><nav class="title-quick" aria-label="Quick options">${quick}</nav>${build ? `<p class="title-build">Version ${esc(build)}</p>` : ""}<p class="title-status" id="title-status" role="status"><i class="title-dot${a.ready ? " is-on" : ""}" aria-hidden="true"></i>${a.ready ? "Server online" : "Reaching the server…"}</p></section>`;
+  return `<section class="welcome-gate is-title" data-title-card aria-labelledby="title-heading"><div class="gate-backdrop" aria-hidden="true"></div><div class="title-illustration" aria-hidden="true"></div><button type="button" class="title-tap" id="title-start" ${a.ready ? "" : "disabled"} aria-describedby="title-status"><span class="title-prompt">${a.ready ? `<span class="for-touch">Tap to start</span><span class="for-mouse">Click to start</span>` : `<span class="gate-spinner" aria-hidden="true"></span>Connecting…`}</span>${a.ready ? `<small class="title-hint"><span class="for-touch">Tap anywhere on the screen</span><span class="for-mouse">Click anywhere, or press Enter</span></small>` : ""}</button><div class="title-brand"><span class="gate-kicker">Real-time creature duels</span><h1 id="title-heading">Element<span>Arena</span>${betaTag()}</h1></div><button type="button" class="title-who" id="title-switch" aria-label="${esc(a.name)}, level ${a.level ?? "unknown"}, signed in with ${how}. Switch account"><span class="title-avatar" aria-hidden="true">${a.picture}</span><span class="title-id"><b class="title-name">${esc(a.name)}</b><small>${a.level !== null ? `<span class="title-level">Lv ${a.level}</span> · ` : ""}${menuIcon("swap")}Switch account</small></span></button>${welcomeTools("title-quick", quick)}${build ? `<p class="title-build">Version ${esc(build)}</p>` : ""}<p class="title-status" id="title-status" role="status"><i class="title-dot${a.ready ? " is-on" : ""}" aria-hidden="true"></i>${a.ready ? "Server online" : "Reaching the server…"}</p></section>`;
 }
 
 /**
@@ -92,12 +93,11 @@ export function titleScreen(a: TitleAccount, build = "") {
  * downloaded files and reloads, without touching the account.
  */
 export function quickBar(build?: string) {
-  return `<nav class="gate-quick" aria-label="Quick options">${quickButtons()}</nav>${build ? `<p class="gate-build">Version ${esc(build)}</p>` : ""}`;
+  return `${welcomeTools("gate-quick", quickButtons())}${build ? `<p class="gate-build">Version ${esc(build)}</p>` : ""}`;
 }
 /**
- * The quick buttons themselves, one markup for the title screen and the
- * sign-in screen (owner, 22 Nov: the same round buttons on both): a round
- * icon with its label under it.
+ * The four actions share their markup across the title and sign-in screens.
+ * Poster groups them under MENU; the underlying look retains its round icons.
  */
 function quickButtons() {
   return QUICK.map(
