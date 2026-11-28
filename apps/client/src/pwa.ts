@@ -272,8 +272,13 @@ export function setupPWA(
       navigator.userAgent,
       navigator.maxTouchPoints,
     );
+    // As Settings decides (fullscreenSupported, main.ts): where the page
+    // may not go full screen (fullscreenEnabled false), no button that
+    // can't work.
     const canFullscreen =
-      !!document.documentElement.requestFullscreen && platform !== "iphone";
+      !!document.documentElement.requestFullscreen &&
+      document.fullscreenEnabled !== false &&
+      platform !== "iphone";
     openDialog(
       fullscreenHelp({
         standalone,
