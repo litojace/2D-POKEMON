@@ -86,6 +86,143 @@
 :root[data-ui="poster"] .plaza-layer .pz-card .pc-h img {
   border-radius: 0;
 }
+/* A player's title, in its tier's look (title-tag.ts; the same steps as
+   over heads in the Plaza, plaza-title-art.ts). No plate or frame (owner,
+   28 Nov): the tier shows in the lettering. Common: the title in its own
+   colour. Rare: shaded, light at the top. Epic: a slow glint across the
+   letters. Legendary: gold-lit letters, the glint, a star at each end that
+   twinkles. Mythical: letters whose colours drift, and stars. Nothing here
+   runs for ever (Poster's rule, tests/unit/ui-theme.test.ts): each plays a
+   few times as the card opens, then rests, and holds still with Reduce
+   motion. */
+:root[data-ui="poster"] .title-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  justify-self: start;
+  box-sizing: border-box;
+  max-width: 100%;
+  min-height: 18px;
+  overflow: hidden;
+  color: var(--title);
+  font: 800 12px/18px var(--font-body);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+:root[data-ui="poster"] .title-tag > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+:root[data-ui="poster"] .title-tag > i {
+  font-style: normal;
+  font-size: 10px;
+  line-height: 18px;
+  color: #ffe08a;
+}
+/* The letters are painted with a gradient from Rare up (the text shows
+   through its own shape). */
+:root[data-ui="poster"] .title-tag:not([data-tier="common"]) > span {
+  color: transparent;
+  -webkit-background-clip: text;
+  background-clip: text;
+  background-image: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--title) 40%, #fff),
+    var(--title) 60%
+  );
+}
+/* The glint: a band of light that crosses the letters now and then. */
+:root[data-ui="poster"]
+  .title-tag:is([data-tier="epic"], [data-tier="legendary"])
+  > span {
+  background-image:
+    linear-gradient(100deg, transparent 42%, #fff 50%, transparent 58%),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--title) 40%, #fff),
+      var(--title) 60%
+    );
+  background-size:
+    300% 100%,
+    100% 100%;
+  background-position:
+    100% 0,
+    0 0;
+  background-repeat: no-repeat;
+  animation: title-tag-glint 2.6s ease-in-out 0.4s 2 both;
+}
+:root[data-ui="poster"] .title-tag[data-tier="legendary"] > span {
+  background-image:
+    linear-gradient(100deg, transparent 42%, #fff 50%, transparent 58%),
+    linear-gradient(180deg, #fff3c4, var(--r-legendary) 45%, var(--title) 100%);
+}
+:root[data-ui="poster"] .title-tag[data-tier="legendary"] > i {
+  animation: title-tag-twinkle 1.6s ease-in-out 4;
+}
+:root[data-ui="poster"] .title-tag[data-tier="legendary"] > i:last-child {
+  animation-delay: -0.8s;
+}
+/* Mythical: the title's colour, the tier's pink and a pale light, twice
+   over, sliding by one turn. */
+:root[data-ui="poster"] .title-tag[data-tier="mythic"] > span {
+  background-image: linear-gradient(
+    90deg,
+    var(--title),
+    var(--r-mythic),
+    #fff3c4,
+    var(--r-mythic),
+    var(--title),
+    var(--r-mythic),
+    #fff3c4,
+    var(--r-mythic),
+    var(--title)
+  );
+  background-size: 400% 100%;
+  animation: title-tag-drift 5s linear 2;
+}
+:root[data-ui="poster"] .title-tag[data-tier="mythic"] > i {
+  color: #fff3c4;
+}
+/* On a player's card it has a row to itself, tucked under the name, so the
+   longest title reads in full. */
+:root[data-ui="poster"] .plaza-layer .pz-card > .title-tag {
+  margin-top: -0.25em;
+}
+@keyframes title-tag-glint {
+  0%,
+  35% {
+    background-position:
+      100% 0,
+      0 0;
+  }
+  100% {
+    background-position:
+      0% 0,
+      0 0;
+  }
+}
+@keyframes title-tag-twinkle {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.25;
+    transform: scale(0.7);
+  }
+}
+@keyframes title-tag-drift {
+  to {
+    background-position: 66.67% 0;
+  }
+}
+:root[data-ui="poster"]:where([data-motion="reduced"]) .title-tag > span,
+:root[data-ui="poster"]:where([data-motion="reduced"]) .title-tag > i {
+  animation: none;
+}
 :root[data-ui="poster"]
   .plaza-layer
   :is(
