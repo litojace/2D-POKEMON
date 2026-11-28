@@ -140,7 +140,10 @@ const number = (n: number) => n.toLocaleString("en-US");
 export function price(n: number, was?: number) {
   return `<span class="ui-price"><i class="ui-coin" aria-hidden="true"></i>${was !== undefined && was !== n ? `<s><span class="sr-only">was </span>${number(was)}</s>` : ""}<span>${number(n)}<span class="sr-only"> coins</span></span></span>`;
 }
-export type TagKind = "default" | "new" | "ok" | "sale" | "lock";
+/** "new": something new (one colour everywhere: the Spire's violet in
+ *  Poster); "mark": a highlight that isn't news (You on a ladder, your
+ *  level). */
+export type TagKind = "default" | "new" | "mark" | "ok" | "sale" | "lock";
 export const tag = (text: string, kind: TagKind = "default") =>
   `<span class="ui-tag${kind === "default" ? "" : ` is-${kind}`}">${esc(text)}</span>`;
 export const badge = (n: number) =>

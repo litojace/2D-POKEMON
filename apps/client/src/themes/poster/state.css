@@ -1,0 +1,33 @@
+/* State in its colour (owner, 27 Nov 2026: colour where it means something;
+   docs/ui-themes.md, "Colour that means something"). Slice C: what is new,
+   what is done, who is here.
+
+   - New is one colour everywhere: the Spire's violet (--badge-news,
+     badges.css), the Lobby rail's news square and the "New" tags alike.
+     Ink words on it hold 5.5:1; the white ✦ on the badge 3.5:1.
+   - Progress on a cream card is ink, not red: red is danger and what waits
+     on you (badges.css), and gold on cream is too faint (about 1.2:1).
+   - A friend who is here has a green edge, the presence dot's own colour
+     (--st-online); the dot and the words still say it. */
+
+/* New (a Shop item, a raid, your level on the Profile) */
+:root[data-ui="poster"] .ui-tag.is-new {
+  background: var(--badge-news);
+  color: var(--ink);
+}
+
+/* The Lobby's cards: Journey's tier and today's missions */
+:root[data-ui="poster"]
+  .lobby-layer
+  .lobby-card
+  progress::-webkit-progress-value {
+  background: var(--ink);
+}
+:root[data-ui="poster"] .lobby-layer .lobby-card progress::-moz-progress-bar {
+  background: var(--ink);
+}
+
+/* Friends: who is here */
+:root[data-ui="poster"] .fr-row.is-online > .ui-row {
+  border-left-color: var(--st-online);
+}

@@ -974,7 +974,7 @@
   color: var(--ui-text);
   white-space: nowrap;
 }
-.ui-tag.is-new {
+.ui-tag:is(.is-new, .is-mark) {
   background: var(--ui-accent);
   color: var(--ui-accent-ink);
 }

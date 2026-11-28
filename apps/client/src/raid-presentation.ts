@@ -529,7 +529,7 @@ export function raidContributions(state: Snapshot, myId?: string) {
             `<em class="ui-tag rc-role" data-stat="${role.stat}">${statIcon(role.stat)}${role.label}</em>`,
         )
         .join("");
-      return `<tr class="rc-score-row${p.id === myId ? " is-me" : ""}${p.out ? " is-out" : ""}"><th scope="row"><div class="rc-player"><span class="rc-portrait"><span class="raid-score-avatar" aria-hidden="true">${framedAvatar(p, "raid-result-" + p.id)}</span></span><span class="rc-id"><span class="rc-name" title="${escape(p.name)}"><b>${escape(p.name)}</b>${p.id === myId ? '<small class="ui-tag is-new rc-you">You</small>' : ""}</span><span class="rc-sub"><small class="rc-champ" title="${notes}">${notes}</small>${chips ? `<span class="rc-roles">${chips}</span>` : ""}</span></span></div></th>${cell(
+      return `<tr class="rc-score-row${p.id === myId ? " is-me" : ""}${p.out ? " is-out" : ""}"><th scope="row"><div class="rc-player"><span class="rc-portrait"><span class="raid-score-avatar" aria-hidden="true">${framedAvatar(p, "raid-result-" + p.id)}</span></span><span class="rc-id"><span class="rc-name" title="${escape(p.name)}"><b>${escape(p.name)}</b>${p.id === myId ? '<small class="ui-tag is-mark rc-you">You</small>' : ""}</span><span class="rc-sub"><small class="rc-champ" title="${notes}">${notes}</small>${chips ? `<span class="rc-roles">${chips}</span>` : ""}</span></span></div></th>${cell(
         "damage",
         stats.damage,
         share >= 0
