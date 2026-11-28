@@ -706,13 +706,17 @@
         at[1] <= r.bottom
       ) {
         tape.classList.add("free");
-        tape.addEventListener(
-          "pointerleave",
-          () => tape.classList.remove("free"),
-          {
-            once: true,
-          },
-        );
+        // Until the mouse is anywhere else. Not the tape's own pointerleave:
+        // the panel's backdrop covered the tape until now, so the browser
+        // may not have counted the mouse as inside it yet, and a mouse that
+        // moves off before it does never sends one (the tape then stayed
+        // free, and didn't hold for the mouse that came back).
+        const away = (e) => {
+          if (tape.contains(e.target)) return;
+          tape.classList.remove("free");
+          document.removeEventListener("pointermove", away);
+        };
+        document.addEventListener("pointermove", away);
       }
     }
   });
