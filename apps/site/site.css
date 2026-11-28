@@ -1618,6 +1618,13 @@ body::before {
   letter-spacing: 0;
   text-transform: none;
 }
+/* The game's Instagram: the app's own colours beside the word, so it is
+   known at a glance. */
+.foot-nav .foot-ig {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
 .foot-nav a:hover {
   color: var(--brand);
 }
