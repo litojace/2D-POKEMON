@@ -73,13 +73,14 @@ export const FULL_RULES = [
 const docsOnly = (f) => /^docs\//.test(f) || /\.md$/i.test(f);
 
 /**
- * The website's images and fonts (apps/site, a static page apart from the
- * game): nothing in the game, its build or its tests reads them, and a
- * page refresh adds dozens at once, so they don't count toward
- * MAX_FAST_FILES. The site's HTML, CSS and tools still do.
+ * The website's images, video loops and fonts (apps/site, a static page
+ * apart from the game): nothing in the game, its build or its tests reads
+ * them, and a page refresh adds dozens at once (the skin loops, 90 of
+ * them), so they don't count toward MAX_FAST_FILES. The site's HTML, CSS
+ * and tools still do.
  */
 const siteAsset = (f) =>
-  /^apps\/site\/(.*\.(webp|avif|png|jpe?g|svg|ico)|fonts\/.*)$/i.test(f);
+  /^apps\/site\/(.*\.(webp|avif|png|jpe?g|svg|ico|mp4)|fonts\/.*)$/i.test(f);
 
 /**
  * The lane for these changed files: FAST, or FULL with every reason found

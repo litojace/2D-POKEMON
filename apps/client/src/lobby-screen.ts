@@ -368,7 +368,7 @@ const modeLabel = (m: (typeof LOBBY_MODES)[number]) =>
 
 function modeButton(mode: LobbyMode, introRounds?: number, partySize = 0) {
   const m = LOBBY_MODES.find((x) => x.id === mode)!;
-  return `<span class="lobby-mode-icon">${menuIcon(m.icon)}</span><span class="lobby-mode-text"><b>${modeLabel(m)}</b><small>${modeHint(m, introRounds, partySize)}</small></span><span class="lobby-mode-caret" aria-hidden="true">▴</span>`;
+  return `<span class="lobby-mode-icon">${menuIcon(m.icon)}</span><span class="lobby-mode-text"><b>${modeLabel(m)}</b><small>${modeHint(m, introRounds, partySize).replace(/ · /g, "\u00a0· ")}</small></span><span class="lobby-mode-caret" aria-hidden="true">▴</span>`;
 }
 
 const lookData = (look: RaidLoadout | undefined) =>

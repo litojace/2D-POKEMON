@@ -1,6 +1,6 @@
 // The link preview image (og.jpg, 1200 x 630) that chats and social apps
 // show for the site: the hero art, the game's name and a line, in the
-// game's own font. Run from the repo root after make-images.py:
+// game's own look. Run from the repo root after make-images.py:
 //
 //   node apps/site/tools/og.mjs
 //
@@ -15,22 +15,28 @@ import { tmpdir } from "node:os";
 const site = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const url = (p) => "file://" + path.join(site, p);
 
+// Poster, as the site: an ink slab with a slanted edge and a white stripe
+// (the game's Lobby) over the hero art, Anton capitals, a yellow block with a
+// hard red shadow.
 const html = `<!doctype html><meta charset="utf-8"><style>
-@font-face { font-family: B; font-weight: 800; src: url(${url("fonts/barlow-condensed-latin-800-normal.woff2")}); }
-@font-face { font-family: D; font-weight: 600; src: url(${url("fonts/dm-sans-latin-600-normal.woff2")}); }
-html, body { margin: 0; width: 1200px; height: 630px; overflow: hidden; background: #0b1020; }
-img.art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 42%; }
-.shade { position: absolute; inset: 0; background: linear-gradient(to right, #0b1020f2 0%, #0b1020b8 38%, transparent 66%); }
-.tx { position: absolute; left: 64px; top: 0; bottom: 0; display: flex; flex-direction: column; justify-content: center; gap: 18px; color: #fff; }
-.logo { display: flex; align-items: center; gap: 16px; font: 800 44px/1 B; text-transform: uppercase; letter-spacing: .02em; }
-.logo img { width: 64px; height: 64px; border-radius: 14px; }
-h1 { margin: 0; font: 800 92px/.95 B; text-transform: uppercase; max-width: 600px; }
-p { margin: 0; font: 600 28px/1.3 D; color: #dfe6f7; max-width: 560px; }
-.play { align-self: flex-start; margin-top: 8px; background: #ffd65b; color: #2a1a00; font: 800 34px/1 B; text-transform: uppercase; letter-spacing: .04em; padding: 16px 32px; border-radius: 999px; }
+@font-face { font-family: A; src: url(${url("fonts/anton-latin-400-normal.woff2")}); }
+@font-face { font-family: R; font-weight: 100 900; src: url(${url("fonts/archivo-latin-wght-normal.woff2")}); }
+html, body { margin: 0; width: 1200px; height: 630px; overflow: hidden; background: #0d0d0f; }
+img.art { position: absolute; left: 360px; top: 0; width: 945px; height: 630px; object-fit: cover; }
+.slab { position: absolute; inset: 0; background: #0d0d0f; clip-path: polygon(0 0, 600px 0, 490px 100%, 0 100%); }
+.stripe { position: absolute; inset: 0; background: #fff; clip-path: polygon(610px 0, 624px 0, 514px 100%, 500px 100%); }
+.dots { position: absolute; inset: 0; background: radial-gradient(circle, rgba(255,216,74,.22) 1.4px, transparent 1.8px) 0 0 / 9px 9px; clip-path: polygon(0 0, 600px 0, 490px 100%, 0 100%); -webkit-mask: linear-gradient(to bottom, transparent 30%, #000); }
+.tx { position: absolute; left: 60px; top: 0; bottom: 0; display: flex; flex-direction: column; justify-content: center; gap: 18px; color: #fff; }
+.logo { display: flex; align-items: center; gap: 14px; font: 40px/1 A; text-transform: uppercase; letter-spacing: .03em; }
+.logo img { width: 60px; height: 60px; border: 3px solid #ffd84a; }
+h1 { margin: 0; font: 104px/.9 A; text-transform: uppercase; max-width: 520px; }
+h1 span { color: #ffd84a; }
+p { margin: 0; font: 600 27px/1.3 R; color: #b8b8c0; max-width: 440px; }
+.play { align-self: flex-start; margin-top: 10px; background: #ffd84a; color: #0d0d0f; font: 30px/1 A; text-transform: uppercase; letter-spacing: .05em; padding: 15px 24px 13px; box-shadow: 7px 7px 0 #ff2e4d; }
 </style>
-<img class="art" src="${url("img/hero-dusk-2048.webp")}"><div class="shade"></div>
+<img class="art" src="${url("img/hero-dusk-2048.webp")}"><div class="slab"></div><div class="dots"></div><div class="stripe"></div>
 <div class="tx"><div class="logo"><img src="${url("icon-192.png")}">Element Arena</div>
-<h1>Real-time creature battles</h1><p>18 creatures, 9 elements. Duels, teams and raid bosses.</p>
+<h1>Real-time <span>creature</span> battles</h1><p>18 creatures, 9 elements. Duels, teams and raid bosses.</p>
 <div class="play">Play free in your browser</div></div>`;
 
 const browser = await chromium.launch(
