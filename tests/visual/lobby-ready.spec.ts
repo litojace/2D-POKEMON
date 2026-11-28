@@ -300,10 +300,17 @@ test.describe("measure", () => {
     test(`${s.name} lobby frames after the lift`, async ({ page }) => {
       test.setTimeout(180_000);
       await page.setViewportSize({ width: s.w, height: s.h });
+      if (process.env.LOBBY_READY_LOW)
+        await page.addInitScript(() =>
+          localStorage.setItem("ea-graphics", "low"),
+        );
       await prepare(page, s.delay);
       const cdp = await page.context().newCDPSession(page);
       await cdp.send("Emulation.setCPUThrottlingRate", { rate: s.cpu });
       await start(page);
+      const graphics = await page.evaluate(() =>
+        localStorage.getItem("ea-graphics"),
+      );
       const frames = await page.evaluate(
         () =>
           new Promise<{ fps: number; longest: number; over50: number }>(
@@ -332,7 +339,7 @@ test.describe("measure", () => {
           ),
       );
       console.log(
-        `MEASURE ${JSON.stringify({ setup: s.name, panel: "lobby-frames", ...frames })}`,
+        `MEASURE ${JSON.stringify({ setup: s.name, panel: "lobby-frames", graphics, ...frames })}`,
       );
     });
   const ONLY = process.env.LOBBY_READY_ONLY?.split(",");
