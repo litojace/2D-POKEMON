@@ -240,6 +240,16 @@ for (const size of SIZES) {
       await expect(
         sheet.locator(".guide-step").nth(1).locator(".feature-lock"),
       ).toHaveText("Lv 2");
+      // The sheet's title reads whole: with no tabs beside it, it has the
+      // masthead to itself ("GETTING STAR…" at 1440 x 900: UI audit, 27 Nov).
+      const title = await sheet
+        .locator(".ui-panel-head .ui-title")
+        .evaluate((t) => ({
+          text: t.textContent,
+          cut: t.scrollWidth - t.clientWidth,
+        }));
+      expect(title.text).toBe("Getting started");
+      expect(title.cut).toBeLessThanOrEqual(0);
       await snap(page, info, `locks-guide-${name}`);
       expect(errors).toEqual([]);
     } finally {

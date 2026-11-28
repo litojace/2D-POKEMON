@@ -191,6 +191,13 @@ test("Poster: PvP results, a win and a loss, read", async ({ browser }) => {
       );
       await page.waitForTimeout(500);
       await check(page, win, win ? "PvP win" : "PvP loss");
+      // The way out wears the leave button's red edge, as a bot match's
+      // and a raid's do (audit D10).
+      expect(
+        await page
+          .locator("#arena-overlay .result-actions #return")
+          .evaluate((b) => getComputedStyle(b).boxShadow),
+      ).toContain("rgb(208, 24, 54)");
     }
     expect(errors).toEqual([]);
   } finally {
@@ -211,7 +218,7 @@ for (const mode of ["raid", "spire"] as const)
       const errors = await start(
         page,
         mode === "raid"
-          ? () => (window as any).__room("raid", { boss: "grumblecrag" })
+          ? () => (window as any).__room("raid", { boss: "prismatail" })
           : () =>
               (window as any).__room("spire", { floor: 4, stage: "briefing" }),
       );
@@ -221,12 +228,62 @@ for (const mode of ["raid", "spire"] as const)
       await expect(page.locator("#raid-instructions")).toBeEnabled({
         timeout: 45_000,
       });
-      if (mode === "raid")
+      if (mode === "raid") {
         await readable(
           page,
           [".rc-safety > b", ".rc-safety > p", "#battle-chat"],
           "raid briefing",
         );
+        // The steps line up whatever their titles' length: the pictures
+        // start on one line (a title in two lines pushed its step's
+        // picture down, audit D03), and the titles are Anton capitals (D12).
+        const steps = await page.evaluate(() =>
+          [...document.querySelectorAll(".rc-steps > li")].map((li) => ({
+            scene: Math.round(
+              li.querySelector(".raid-guide-scene")!.getBoundingClientRect()
+                .top,
+            ),
+            caps: getComputedStyle(li.querySelector(".rc-step-head h3")!)
+              .textTransform,
+            lines: Math.round(
+              li.querySelector(".rc-step-head h3")!.getBoundingClientRect()
+                .height /
+                parseFloat(
+                  getComputedStyle(li.querySelector(".rc-step-head h3")!)
+                    .lineHeight,
+                ),
+            ),
+          })),
+        );
+        expect(steps.length).toBe(3);
+        expect(
+          steps.some((s) => s.lines > 1),
+          "a title takes two lines here (else the check proves nothing)",
+        ).toBe(true);
+        expect(new Set(steps.map((s) => s.scene)).size, "pictures level").toBe(
+          1,
+        );
+        expect(steps.map((s) => s.caps)).toEqual([
+          "uppercase",
+          "uppercase",
+          "uppercase",
+        ]);
+        // The countdown: its kicker clear of the number (D13).
+        await push(page, `s.phase = "countdown"; s.remaining = 2;`);
+        const card = overlay.locator(".countdown-card");
+        await expect(card.locator("h2")).toHaveText("2");
+        await page.waitForTimeout(300);
+        const gap = await card.evaluate((c) => {
+          const kicker = c.querySelector(".eyebrow")!.getBoundingClientRect();
+          const number = c.querySelector("h2")!.getBoundingClientRect();
+          return number.top - kicker.bottom;
+        });
+        expect(gap, "kicker to number").toBeGreaterThanOrEqual(8);
+        await push(page, `s.phase = "briefing";`);
+        await expect(page.locator("#raid-instructions")).toBeEnabled({
+          timeout: 45_000,
+        });
+      }
       if (mode === "raid") await push(page, `s.phase = "finished";`);
       else
         await page.evaluate(() => {

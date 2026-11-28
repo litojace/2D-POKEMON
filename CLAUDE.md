@@ -83,6 +83,17 @@ them box by box:
 Fix what the screenshots show before merging, and say in the PR what you
 looked at.
 
+**Keep the README current** (owner, 27 Nov): README.md is the game's public
+face. When a change alters what a player sees (a screen, the HUD, the
+Lobby, the Plaza, a raid, a new mode, fighter or feature), update the
+README in the same PR: its words ("What's in the game", checked against the
+code) and its pictures in `docs/readme/`. Retake the pictures it changes
+with `npx playwright test --config scripts/readme/playwright.config.ts`
+(`SCENES=lobby,plaza` for some) and `python3 scripts/readme/to-webp.py`,
+look at each one as above, and say in the PR which you retook
+([docs/development.md](docs/development.md), "README pictures"). A change
+nobody sees in those pictures or words needs no README change.
+
 **Text fields a button opens** (a form, a code box, a name to change):
 focus them with `focusForTyping(field)` from `apps/client/src/screen-pin.ts`,
 never `field.focus({ preventScroll: true })` and never `select()` straight
