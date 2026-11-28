@@ -23,8 +23,10 @@ export interface Quip {
 }
 /** How long each gesture plays (ms). */
 export const QUIP_MOVE_MS: Record<QuipMove, number> = {
-  wave: 1400,
-  victory: 1800,
+  // Long enough for a champion's own move to tell its story
+  // (animation/champion-moves.ts: about 1.6 s, then its held pose).
+  wave: 2000,
+  victory: 2300,
   jump: 700,
   hurt: 500,
   basic: 450,

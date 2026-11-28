@@ -3,8 +3,9 @@ import { CHAMPION_SKINS } from "../../packages/shared/src/shop";
 import { FIGHTER_IDS } from "../../packages/shared/src/index";
 import { REAR_ARMS_MIRRORED } from "../../apps/client/src/creature-profile";
 /**
- * A prop that stands up from the near paw (Astrabun's mallet) is painted on
- * that arm: raised overhead, it would hang upside down onto the belly.
+ * A prop that stands up from the near paw (Astrabun's mallet, Tidefin's
+ * blade) is painted on that arm: raised overhead or turned inward, it would
+ * hang upside down onto the belly or lie across the chest.
  * Greetings and victories keep that arm near the angle that holds it up.
  */
 function expectPropUpright(r: any, what: string) {
@@ -15,12 +16,15 @@ function expectPropUpright(r: any, what: string) {
   // are the rear arms of a champion whose held paw changes side from behind
   // (REAR_ARMS_MIRRORED).
   const arm = r.points.find((p: any) => p.part === "armR").rotation;
-  const mirrored = r.dir === "left" || (r.dir === "up" && REAR_ARMS_MIRRORED.has(r.id));
+  const mirrored =
+    r.dir === "left" || (r.dir === "up" && REAR_ARMS_MIRRORED.has(r.id));
   const local = mirrored ? -arm : arm;
   expect(
     Math.abs(local - hold),
     `${r.id} ${r.dir} ${what}: the upright prop stays up`,
-  ).toBeLessThanOrEqual(r.propArm.swing + 1e-6);
+  ).toBeLessThanOrEqual(
+    ((side ? r.propArm.sideSwing : undefined) ?? r.propArm.swing) + 1e-6,
+  );
 }
 const SKINNED = {
   rare: new Set(
