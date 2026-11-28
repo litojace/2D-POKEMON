@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import { expect, test, type Page } from "@playwright/test";
 import { openPlaza, snap } from "./helpers";
 import { onPlayersLook } from "./players-look";
@@ -34,27 +35,6 @@ const drawn = (page: Page) =>
     },
     TITLE_CROWD.map((c) => c[1]),
   );
-
-/** The canvas's colours in a small box round a body's title (or where it would be). */
-const titlePixels = (page: Page, name: string | null) =>
-  page.evaluate((name) => {
-    const p = (window as any).__plaza,
-      cv = document.querySelector<HTMLCanvasElement>("#pz-cv")!;
-    const b = name
-      ? [...p.others.values()].find((o: any) => o.name === name)
-      : p.P;
-    const v = p.view(),
-      k = cv.width / cv.clientWidth,
-      w = b.titleW ?? 40;
-    const cx = (b.x - v.x0) * v.z * k,
-      cy = ((b.titleY ?? NaN) - v.y0) * v.z * k;
-    if (Number.isNaN(cy)) return null;
-    const half = Math.max(2, Math.floor((w / 2 - 3) * v.z * k));
-    const d = cv
-      .getContext("2d")!
-      .getImageData(Math.round(cx - half), Math.round(cy), half * 2, 1).data;
-    return [...d];
-  }, name);
 
 /** The crowd is there and drawn, and the camera has come to rest on it. */
 async function ready(page: Page) {
@@ -136,21 +116,10 @@ for (const viewport of [
           .filter((c) => c[2])
           .map((c) => c[1]),
       );
-      // On the canvas: Pip's Rare title is lettering with its dark outline
-      // and no plate behind it (owner, 28 Nov: no frames), and there is
-      // nothing over Sol, who has no title.
-      const ink = (px: number[] | null) => {
-        if (!px) return 0;
-        let n = 0;
-        for (let i = 0; i < px.length; i += 4)
-          if (px[i] < 60 && px[i + 1] < 60 && px[i + 2] < 70) n++;
-        return n / (px.length / 4);
-      };
-      await expect
-        .poll(async () => ink(await titlePixels(page, "Pip")))
-        .toBeGreaterThan(0.08);
-      expect(ink(await titlePixels(page, "Pip"))).toBeLessThan(0.7);
-      expect(await titlePixels(page, "Sol")).toBeNull();
+      // Sol, who has no title, has nothing drawn over the name.
+      expect(d.crowd[TITLE_CROWD.findIndex((c) => c[1] === "Sol")]?.tier).toBe(
+        null,
+      );
       await snap(
         page,
         info,
@@ -163,34 +132,86 @@ for (const viewport of [
   });
 }
 
-/** The share of a title's pixels that changed clearly between two reads
- *  (the town behind the letters twinkles a little: that is not counted). */
-function changed(a: number[], b: number[]) {
-  let n = 0;
-  for (let i = 0; i < a.length; i += 4)
-    if (
-      Math.abs(a[i] - b[i]) > 40 ||
-      Math.abs(a[i + 1] - b[i + 1]) > 40 ||
-      Math.abs(a[i + 2] - b[i + 2]) > 40
-    )
-      n++;
-  return n / (a.length / 4);
-}
-
-test("a Mythical title's colours drift through its letters", async ({
+/**
+ * The titles' own painting, drawn by itself on a bare canvas (the town
+ * behind a title twinkles and its people wander across, so the live
+ * scene's pixels say little): what share of it is painted, and whether two
+ * moments look the same.
+ */
+const ART = fileURLToPath(
+  new URL("../../apps/client/src/plaza/plaza-title-art.ts", import.meta.url),
+);
+const SAMPLES: [string, string][] = [
+  ["First Victory", "#9ee6a8"],
+  ["Cragbreaker", "#e5bc73"],
+  ["Mountain Conqueror", "#ffcf66"],
+  ["Lone Mountain", "#c9a46a"],
+  ["Stormbreaker of the Spire", "#8edfff"],
+];
+test("lettering only, no plate; only Epic and up move, and only when allowed", async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 844, height: 390 });
   const errors = await openPlaza(page);
-  await titleCrowd(page, SPOT);
-  await ready(page);
-  // The player's own Mythical lettering changes from frame to frame.
-  const first = (await titlePixels(page, null))!;
-  await expect
-    .poll(async () => changed(first, (await titlePixels(page, null))!), {
-      timeout: 15_000,
-    })
-    .toBeGreaterThan(0.1);
+  const rows = await page.evaluate(
+    async ([path, samples]) => {
+      const { plazaTitleArt, drawPlazaTitle } = await import(
+        /* @vite-ignore */ `/@fs${path}`
+      );
+      await document.fonts.ready;
+      return samples.map(([title, color]) => {
+        const art = plazaTitleArt(title, color, 2);
+        const paint = (time: number, animate: boolean) => {
+          const c = document.createElement("canvas");
+          c.width = Math.ceil(art.w * 2);
+          c.height = Math.ceil(art.h * 2);
+          const g = c.getContext("2d")!;
+          g.scale(2, 2);
+          drawPlazaTitle(g, art, art.w / 2, art.h / 2, time, animate);
+          return g.getImageData(0, 0, c.width, c.height).data;
+        };
+        const still = paint(0, false);
+        let painted = 0;
+        for (let i = 3; i < still.length; i += 4) if (still[i] > 200) painted++;
+        // The lowest line of the title's own box (13 px tall, in a 4 px
+        // margin; drawn at 2x): capitals stop short of it, a plate fills it.
+        const W = Math.ceil(art.w * 2),
+          row = (4 + 13) * 2 - 1;
+        let edge = 0;
+        for (let x = 0; x < W; x++)
+          if (still[(row * W + x) * 4 + 3] > 60) edge++;
+        const same = (a: Uint8ClampedArray, b: Uint8ClampedArray) =>
+          a.every((v, i) => v === b[i]);
+        const times = Array.from({ length: 32 }, (_, i) => i * 0.25);
+        return {
+          title,
+          tier: art.tier as string,
+          painted: painted / (still.length / 4),
+          edge: edge / W,
+          // Not allowed to move: the same picture at every moment.
+          holds: times.every((t) => same(paint(t, false), still)),
+          // Allowed to move: does any moment differ?
+          moves: times.some((t) => !same(paint(t, true), still)),
+        };
+      });
+    },
+    [ART, SAMPLES] as const,
+  );
+  expect(rows.map((r) => r.tier)).toEqual(SAMPLES.map(([t]) => titleTier(t)));
+  expect(rows.map((r) => r.tier)).toEqual([
+    "common",
+    "rare",
+    "epic",
+    "legendary",
+    "mythic",
+  ]);
+  for (const r of rows) {
+    // Letters and their outlines are there, and no plate behind them: a
+    // plate would paint the box's lowest line from end to end.
+    expect(r.painted, r.title).toBeGreaterThan(0.15);
+    expect(r.edge, r.title).toBeLessThan(0.2);
+    expect(r.holds, r.title).toBe(true);
+    expect(r.moves, r.title).toBe(r.tier !== "common" && r.tier !== "rare");
+  }
   expect(errors).toEqual([]);
 });
 
@@ -202,14 +223,10 @@ test("Reduce motion holds every title still", async ({ page }) => {
   await ready(page);
   const d = await drawn(page);
   expect(d.me.tier).toBe("mythic");
+  // No title is drawn as one that may move: each is the still painting
+  // (the test above: the same picture at every moment).
   expect(d.me.moving).toBe(false);
   expect(d.crowd.filter((c) => c?.moving)).toEqual([]);
-  // The lettering over the player is the same picture for the next seconds.
-  const first = (await titlePixels(page, null))!;
-  for (let i = 0; i < 6; i++) {
-    await page.waitForTimeout(400);
-    expect(changed(first, (await titlePixels(page, null))!)).toBeLessThan(0.03);
-  }
   expect(errors).toEqual([]);
 });
 
