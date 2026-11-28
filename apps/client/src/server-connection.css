@@ -391,6 +391,10 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+  /* A little low (owner, 27 Nov): with the tip gone from above the bar,
+     the band over the bar was empty ground, and the fighters stood high.
+     A scene's own focus (loading-art.ts) still wins. */
+  object-position: 50% 35%;
   opacity: 0;
   transition: opacity 500ms ease-out;
 }

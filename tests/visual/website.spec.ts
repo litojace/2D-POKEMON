@@ -273,6 +273,91 @@ test.describe("website", () => {
     await expect(page.locator("#champ-name")).toHaveText("Pangrove");
   });
 
+  // The champion tape stood still after a panel opened from it closed: focus
+  // went back to the name (:focus-within held it), and the click that
+  // closed the panel left the mouse on it (owner, 27 Nov).
+  const tapeState = (page: Page) =>
+    page
+      .locator(".ticker-run")
+      .evaluate((el) => getComputedStyle(el).animationPlayState);
+  /** The middle of a name on the tape that is well inside the screen. */
+  const tickOnScreen = async (page: Page) => {
+    await page.locator(".ticker").scrollIntoViewIfNeeded();
+    return page.evaluate(() => {
+      const t = [
+        ...document.querySelectorAll(".ticker .tick:not([aria-hidden])"),
+      ]
+        .map((a) => a.getBoundingClientRect())
+        .find((r) => r.left > 60 && r.right < innerWidth - 60)!;
+      return { x: t.left + t.width / 2, y: t.top + t.height / 2 };
+    });
+  };
+
+  test("the champion tape runs on after a panel opened from it closes, with a mouse", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await openSite(page);
+    await expect.poll(() => tapeState(page)).toBe("running");
+    const tick = await tickOnScreen(page);
+    await page.mouse.click(tick.x, tick.y);
+    const dialog = page.locator("#champ");
+    await expect(dialog).toHaveJSProperty("open", true);
+    // Once the panel's entrance is over (a click during it lands on the
+    // transition, not on the page).
+    const html = page.locator("html");
+    await expect(html).not.toHaveAttribute("data-vt", /./);
+    // A click outside the panel (left of it), on the tape under it.
+    const spot = await page.evaluate(() => {
+      const tape = document.querySelector(".ticker")!.getBoundingClientRect();
+      const panel = document.querySelector("#champ")!.getBoundingClientRect();
+      return {
+        x: (Math.max(tape.left, 0) + panel.left) / 2,
+        y: tape.top + tape.height / 2,
+      };
+    });
+    await page.mouse.click(spot.x, spot.y);
+    await expect(dialog).toHaveJSProperty("open", false);
+    await expect(html).not.toHaveAttribute("data-vt", /./);
+    await expect.poll(() => tapeState(page)).toBe("running");
+    // A mouse that comes to the tape still holds it, to pick a name.
+    await page.mouse.move(spot.x, 5);
+    await page.mouse.move(spot.x, spot.y);
+    await expect.poll(() => tapeState(page)).toBe("paused");
+    await page.mouse.move(spot.x, 5);
+    await expect.poll(() => tapeState(page)).toBe("running");
+    // So does the keyboard on one of its names.
+    await page.locator(".ticker .tick:not([aria-hidden])").nth(1).focus();
+    await page.keyboard.press("Shift+Tab");
+    await page.keyboard.press("Tab");
+    await expect.poll(() => tapeState(page)).toBe("paused");
+  });
+
+  test("the champion tape runs on after a panel opened from it closes, on a phone", async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({
+      viewport: { width: 844, height: 390 },
+      isMobile: true,
+      hasTouch: true,
+    });
+    try {
+      const page = await context.newPage();
+      await openSite(page);
+      await expect.poll(() => tapeState(page)).toBe("running");
+      const tick = await tickOnScreen(page);
+      await page.touchscreen.tap(tick.x, tick.y);
+      const dialog = page.locator("#champ");
+      await expect(dialog).toHaveJSProperty("open", true);
+      await page.locator("#champ [data-close]").first().tap();
+      await expect(dialog).toHaveJSProperty("open", false);
+      await expect.poll(() => tapeState(page)).toBe("running");
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+
   test("a device asking for less motion starts paused; the switch plays", async ({
     page,
   }) => {

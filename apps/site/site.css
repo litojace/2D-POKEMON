@@ -536,6 +536,29 @@ body::before {
     display: none;
   }
 }
+/* Where the fight sits in the frame, at every frame size (owner, 27 Nov:
+   "too much empty floor under it"). In the painting (hero-dusk, 3:2) the
+   beam and the two fighters run from 27% to 60% of its height, and the
+   floor under them is empty. The fight's middle (43.5%) stands at 56% of
+   the frame, a little low, so the arena shows above it and less floor
+   below. Where the frame is too short for that (1280 x 720), its feet stay
+   8 px inside the bottom edge. The painting never leaves a gap at either
+   edge. Units of the frame's own size (cqw, cqh); older browsers keep the
+   percentages above. The painting is 2/3 as tall as it is wide, so it
+   covers by width in every frame here (1.8:1 and wider). */
+@supports (width: 1cqh) {
+  .hero-art {
+    container-type: size;
+  }
+  .hero-art img {
+    object-position: 50%
+      clamp(
+        calc(100cqh - 66.667cqw),
+        min(calc(56cqh - 29cqw), calc(100cqh - 40cqw - 8px)),
+        0px
+      );
+  }
+}
 
 /* ---------- Bands ---------- */
 .band {
@@ -2088,8 +2111,18 @@ body::before {
 :root:not([data-motion="paused"]) .ticker-run {
   animation: ticker 70s linear infinite;
 }
-.ticker:hover .ticker-run,
-.ticker:focus-within .ticker-run {
+/* The tape holds still under a mouse, or while the keyboard is on one of
+   its names. Not after a tap: a phone keeps :hover on what was last
+   tapped, and closing a champion's panel puts focus back on the name that
+   opened it, so the tape stood still until the reader tapped somewhere
+   else (owner, 27 Nov). Nor under a mouse left on it by the click that
+   closed the panel (.free, site.js), until it leaves. */
+@media (hover: hover) and (pointer: fine) {
+  .ticker:not(.free):hover .ticker-run {
+    animation-play-state: paused;
+  }
+}
+.ticker:has(:focus-visible) .ticker-run {
   animation-play-state: paused;
 }
 :root:not([data-motion="paused"]) .stage-rays {
