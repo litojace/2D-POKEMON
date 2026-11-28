@@ -1,0 +1,39 @@
+/* Poster: How to play's pictures (illustrated-help.ts), the audit, 28 Nov.
+   The pictures sat on a navy court with a blue glow; the buttons and the
+   EX mark glowed, and the meters were rounded gradients. Now the court is
+   ink with a faint grid, nothing glows, and the meters are square and flat.
+   What the pictures show of the match keeps its own colours: the round
+   skill buttons, the ultimate's gold, EX's blue, the orbs, the ring. */
+:root[data-ui="poster"] .guide-scene {
+  background:
+    repeating-linear-gradient(0deg, transparent 0 34px, #ffffff0d 35px 36px),
+    repeating-linear-gradient(90deg, transparent 0 39px, #ffffff0d 40px 41px),
+    var(--ink-1);
+}
+:root[data-ui="poster"]
+  :is(.guide-move, .guide-ultimate, .guide-charge .guide-move) {
+  box-shadow: none;
+}
+:root[data-ui="poster"] .guide-move {
+  background: var(--ink-2);
+}
+:root[data-ui="poster"] .guide-ex {
+  text-shadow: none;
+}
+:root[data-ui="poster"] .guide-charge-bar {
+  border: 0;
+  border-radius: 0;
+  background: var(--ink-3);
+}
+:root[data-ui="poster"] .guide-charge-bar i {
+  border-radius: 0;
+  background: var(--gold);
+}
+:root[data-ui="poster"] .is-ex .guide-charge-bar i {
+  background: #82caff;
+}
+:root[data-ui="poster"] .guide-rank-badge {
+  border: 0;
+  border-radius: 0;
+  background: var(--ink-3);
+}
