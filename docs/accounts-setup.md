@@ -156,6 +156,8 @@ After migration 004, every finished online match is saved to the players' record
 
 Achievement titles are ordinary titles: admins see them in the title list and can retire or delete them like any other.
 
+**Title tiers** ([migration 20261128060000](../supabase/migrations/20261128060000_title_tier.sql)): every title has one of five tiers (Common, Rare, Epic, Legendary, Mythical), which decides how it is lettered over heads in the Plaza, on the player card, in the Lobby's corner and in the Profile. The game's own titles get theirs by rule from how hard they are to earn (`packages/shared/src/title-tier.ts`); the title form shows that tier and has no picker for them. For a title an admin makes, the form (New title, Edit, and Create & grant on a player's row) has a **Tier** picker, Common unless another is chosen; titles made before the migration are Common. Only admins can set it, and only to one of the five (the server and the database both check). The game reads the admin-made tiers from `/api/title-tiers` (names and tiers only) when a player signs in.
+
 ## Guest play
 
 The login and sign-up dialogs offer **Play as a guest**: it uses Supabase anonymous sign-ins, so a friend can join a room from an invite link without making an account first. Guests are real (anonymous) accounts: they keep records and titles on that device, and they can **Save my account** from their profile by adding an email.
