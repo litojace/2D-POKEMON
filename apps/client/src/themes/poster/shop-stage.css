@@ -92,7 +92,9 @@
     --cols: 3 !important;
   }
   :root[data-ui="poster"] .fit-grid .ui-tile-art {
-    aspect-ratio: 5 / 3;
+    /* 9:5, not 5:3: at 932×430 a 5:3 picture put the first row's foot on
+       the action bar's top edge, with no air between a price and the bar. */
+    aspect-ratio: 9 / 5;
   }
 
   /* One edge, 8 px in from the panel's: the Shop | Wardrobe switch starts
