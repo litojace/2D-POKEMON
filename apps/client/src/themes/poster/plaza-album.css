@@ -1,0 +1,55 @@
+/* Poster audit, the Plaza (28 Nov 2026): three things that still wore the
+   look underneath. plaza/plaza.css keeps its rules for that look. */
+
+/* The button for what you stand next to ("Take photo", "Volt Boba · free"):
+   an ink block with cream words and a gold edge (a thing to press), beside
+   the round Dash and Jump. It was a green pill. */
+:root[data-ui="poster"] .plaza-layer .pz-interact {
+  border: 0;
+  border-left: 4px solid var(--gold);
+  border-radius: 0;
+  background: var(--ink);
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.4);
+  color: var(--paper);
+}
+:root[data-ui="poster"] .plaza-layer .pz-interact kbd {
+  border-radius: 0;
+  background: var(--ink-3);
+  color: var(--paper);
+}
+
+/* The album with nothing in it: an ink card, not a navy one. */
+:root[data-ui="poster"] .plaza-layer .pz-album-empty {
+  border: 0;
+  background: var(--ink-2);
+}
+
+/* A photo's buttons (Save to album, Save picture, Delete, Back, Close):
+   square, one size already. The main one is gold; Delete is red words on
+   ink, and a red block once it asks "Delete?"; the rest are ink blocks. */
+:root[data-ui="poster"] .plaza-layer :where(.pz) .polaroid .acts > * {
+  border-radius: 0;
+  background: var(--ink-3);
+  color: var(--paper);
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+:root[data-ui="poster"] .plaza-layer :where(.pz) .polaroid .acts > .pz-main {
+  background: var(--gold);
+  color: var(--ink);
+}
+:root[data-ui="poster"] .plaza-layer :where(.pz) .polaroid .acts > .pz-delete {
+  background: var(--ink);
+  color: var(--hot);
+}
+:root[data-ui="poster"]
+  .plaza-layer
+  :where(.pz)
+  .polaroid
+  .acts
+  > .pz-delete[data-sure="1"] {
+  background: var(--hot-fill);
+  color: #fff;
+}
