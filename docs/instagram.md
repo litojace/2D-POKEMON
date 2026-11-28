@@ -24,7 +24,7 @@ champions, skins and features. So the posts:
   (`apps/client/src/fullscreen-help.ts`).
 
 The game itself marks the web version BETA beside its name, never the store
-apps (#645, the website session's; `docs/open-beta.md` once it is in).
+apps (#645; `docs/open-beta.md`).
 
 ## Make the pictures
 
