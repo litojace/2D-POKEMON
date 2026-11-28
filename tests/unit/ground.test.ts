@@ -11,7 +11,6 @@ import {
   footprintScale,
   groundDrop,
 } from "../../apps/client/src/ground";
-import { SHOP_SHADOW } from "../../apps/client/src/shop-preview-layout";
 import { PLAZA_AURA_FLAT } from "../../apps/client/src/plaza/plaza-cosmetics";
 
 /**
@@ -67,9 +66,15 @@ describe("the ground a champion stands on", () => {
       expect(footprintScale(id)).toBeLessThanOrEqual(1.25);
     }
   });
-  it("has one flatness in the Shop, the Plaza and battle", () => {
-    expect(SHOP_SHADOW.height / SHOP_SHADOW.width).toBeCloseTo(GROUND_FLAT, 9);
+  it("has one flatness in the Plaza and battle, and the Shop's own shadow is the champion's ellipse", () => {
     expect(PLAZA_AURA_FLAT).toBe(GROUND_FLAT);
+    const preview = read("shop-preview.ts");
+    const floor = preview.slice(
+      preview.indexOf("paintFloor() {"),
+      preview.indexOf("update(_time"),
+    );
+    expect(floor).toContain("footprint(champion)");
+    expect(floor).toContain("width * GROUND_FLAT");
   });
   it("is read from ground.ts by every view, never from a champion's name or a number of its own", () => {
     const views = [

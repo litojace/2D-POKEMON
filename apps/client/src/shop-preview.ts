@@ -16,7 +16,7 @@ import { SKINS } from "./animation/cosmetics";
 import { drawCollectionAura } from "./skins/collection-fx";
 import { auraScale as auraSizeFor } from "./aura-size";
 import { menuShadow } from "./fighter-art";
-import { GROUND_FLAT, footprintScale, groundDrop } from "./ground";
+import { GROUND_FLAT, footprint, footprintScale, groundDrop } from "./ground";
 import { lowGraphics } from "./graphics-quality";
 import { reducedMotionQuery } from "./reduced-motion";
 import { previewDensity } from "./render-budget";
@@ -31,7 +31,6 @@ import {
   fitDrop,
   previewViewBox,
   previewAuraScale,
-  SHOP_SHADOW,
 } from "./shop-preview-layout";
 
 export type PreviewPlacement = "shop" | "selection";
@@ -619,15 +618,18 @@ export function mountShopPreview(
       const feet = framing.y + WORLD_ART.fighterFeet * framing.scale;
       // The light itself (glow, lit disc and ring) is the stage's own layer
       // behind the canvas (stage-light.ts, owner's option C): the rig draws
-      // only the fighter's contact shadow.
-      const wide = footprintScale(champion);
+      // only the fighter's contact shadow, the champion's ground ellipse
+      // (ground.ts) as the Lobby and the still art draw it. The rig draws
+      // an art unit at half the framing's scale.
+      const art = framing.scale / 2,
+        width = 2 * footprint(champion) * art;
       this.floor
         .fillStyle(0x040d20, 0.4)
         .fillEllipse(
           framing.x,
-          feet + (groundDrop(champion) * framing.scale) / 2,
-          SHOP_SHADOW.width * wide,
-          SHOP_SHADOW.height * wide,
+          feet + groundDrop(champion) * art,
+          width,
+          width * GROUND_FLAT,
         );
     }
     update(_time: number, delta: number) {

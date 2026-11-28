@@ -104,12 +104,6 @@ export function previewViewBox(
   ].join(" ");
 }
 
-/**
- * The fitting room's contact shadow at the fighter's feet, in canvas pixels:
- * as flat as every champion's ground (ground.ts).
- */
-export const SHOP_SHADOW = { width: 128, height: 128 * GROUND_FLAT } as const;
-
 // The aura's size is set in one place for the whole game (aura-size.ts).
 export { AURA_ART_SCALE, battleAuraScale } from "./aura-size";
 /**
