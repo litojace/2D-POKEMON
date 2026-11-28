@@ -20,8 +20,13 @@ import type { Facing } from "./controller";
  * - At most a few particles that belong to the move (dust on a landing).
  * - Nothing leaves the body (owner, 28 Nov 2026: a head that looked cut off).
  *   The head never lifts off the neck and barely tilts (the rig clamps both);
- *   "head thrown back" is a lean of the whole fighter. A somersault turns the
- *   fighter as one piece about its middle (`flip`), limbs kept close.
+ *   "head thrown back" is a lean of the whole fighter.
+ * - No spins (owner, 28 Nov 2026: "the champions aren't 3D; a spin looks
+ *   like a sheet of paper flipping over, Glacelle above all"). The whole
+ *   fighter leans (`tilt`), never turns past MAX_TURN, and is never narrowed
+ *   below MIN_WIDTH to fake turning edge-on. A ball bounces; it doesn't roll.
+ *   The rig clamps both, and tests/unit/champion-moves.test.ts fails on a
+ *   move that asks for more.
  *
  * A champion without a move here keeps its older pose in rig.ts.
  */
@@ -90,13 +95,17 @@ export const arc = (t: number, a: number, b: number) => {
   const k = (t - a) / (b - a);
   return 4 * k * (1 - k);
 };
+/** The furthest a move turns the whole fighter (radians): a lean, no more. */
+export const MAX_TURN = 0.45;
+/** The narrowest a move squashes the fighter (its width, times its own). */
+export const MIN_WIDTH = 0.7;
 /**
- * Turn the whole fighter in the air about its middle (between head and
- * hips), not about the hips: turned about the hips, the big head swings wide
- * round a small body and reads as a head on its own.
+ * Lean the whole fighter about its middle (between head and hips), not
+ * about the hips: leaned about the hips, the big head swings wide round a
+ * small body and reads as a head on its own.
  */
 const MIDDLE = 22;
-const flip = (s: MoveStage, angle: number) => {
+const tilt = (s: MoveStage, angle: number) => {
   s.spin(angle);
   s.move(-MIDDLE * Math.sin(angle), -MIDDLE * (1 - Math.cos(angle)));
 };
@@ -342,7 +351,7 @@ const tidefinVictory: Move = (s) => {
   const down = ease(t, 0.56, 0.72) * (1 - ease(t, 0.86, 0.94));
   const air = ease(t, 0.24, 0.34) * (1 - ease(t, 0.84, 0.94));
   s.move(0, -arc(t, 0.24, 0.92) * 40);
-  flip(s, s.side * (-0.34 * up + 0.34 * down));
+  tilt(s, s.side * (-0.34 * up + 0.34 * down));
   if (air > 0) s.squash(1 - 0.05 * air, 1 + 0.08 * air);
   p.legL.rotation = 0.3 * air;
   p.legR.rotation = -0.3 * air;

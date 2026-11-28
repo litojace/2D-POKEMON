@@ -148,6 +148,10 @@ that file and held by `tests/unit/champion-moves.test.ts`:
 - nothing leaves the body: the rig keeps the head on its neck whatever a move
   asks, and an arm with a prop painted on it (`UPRIGHT_PROP_ARM`: Astrabun's
   mallet, Tidefin's blade) only turns where the prop clears the body;
+- no spins: the art is flat, so a fighter leans but never turns past
+  `MAX_TURN` or narrows below `MIN_WIDTH` to fake turning edge-on (owner,
+  28 Nov 2026: a spin looks like a sheet of paper flipping over). The rig
+  clamps both; a ball bounces rather than rolls;
 - at most a few particles that belong to the move. The Shop's Entrance and
   Victory effects still play on top.
 

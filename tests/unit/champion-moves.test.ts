@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   ENTRANCES,
+  MAX_TURN,
+  MIN_WIDTH,
   SETTLED,
   VICTORIES,
   type Move,
@@ -112,6 +114,18 @@ describe("champion moves", () => {
         expect(o.dy, `${name} at ${t.toFixed(2)}s`).toBeLessThanOrEqual(0.5);
         expect(Math.abs(o.dx)).toBeLessThanOrEqual(40);
         expect(o.dy).toBeGreaterThanOrEqual(-60);
+      }
+    });
+    it(`${name}: leans, never spins (the art is flat)`, () => {
+      for (let t = 0; t <= 8; t += 1 / 60) {
+        const o = play(move, t);
+        expect(
+          Math.abs(o.spin),
+          `${name} at ${t.toFixed(2)}s`,
+        ).toBeLessThanOrEqual(MAX_TURN);
+        expect(o.sx, `${name} at ${t.toFixed(2)}s`).toBeGreaterThanOrEqual(
+          MIN_WIDTH,
+        );
       }
     });
     it(`${name}: the head never lifts off the neck`, () => {
