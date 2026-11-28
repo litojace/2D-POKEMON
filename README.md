@@ -12,7 +12,7 @@ Free in your browser, on a phone (best in landscape) or a computer. More about t
 </p>
 <p align="center">
   <img src="docs/readme/raid.webp" width="49%" alt="A four-player raid against Lumiwick: the boss's health bar and phase at the top, a ring of fire warning on the floor and the warning 'Flame Ring: jump as the expanding edge reaches you!'.">
-  <img src="docs/readme/plaza.webp" width="49%" alt="The Plaza at midday: a player's Pyranda by the fountain with two other players, each with a title on a small plate over their name, and bounce pads, lamp posts, benches, the Plaza map board and the Map, gifts, Album, Dash and Jump buttons.">
+  <img src="docs/readme/plaza.webp" width="49%" alt="The Plaza at midday: a player's Pyranda by the fountain with two other players, each with a title over their name, and bounce pads, lamp posts, benches, the Plaza map board and the Map, gifts, Album, Dash and Jump buttons.">
 </p>
 
 ## What's in the game

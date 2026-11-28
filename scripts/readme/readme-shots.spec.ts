@@ -67,7 +67,7 @@ const plaza: Scene = {
         });
         Object.assign(world.bodyOf(key), { x: me.x + dx, y: me.y + dy });
       };
-      join("mika", "Mika", "Lone Mountain", "#c9a46a", "tidefin", -215, 20);
+      join("mika", "Mika", "Lone Mountain", "#c9a46a", "tidefin", -125, 70);
       join(
         "juno",
         "Juno",
