@@ -4,6 +4,9 @@
 //   node scripts/instagram/publish.mjs list          # the plan and what is on Instagram
 //   node scripts/instagram/publish.mjs due [--dry]   # post what is due and not yet posted
 //   node scripts/instagram/publish.mjs check <id>    # make one item's container, never publish it
+//   node scripts/instagram/publish.mjs comments      # recent comments the account hasn't answered
+//   node scripts/instagram/publish.mjs reply <comment-id> <text>
+//   node scripts/instagram/publish.mjs hide <comment-id>
 //
 // The access token is a network secret on the cloud environment: its proxy
 // adds it to every request to graph.facebook.com, so nothing here holds it.
@@ -178,12 +181,76 @@ async function check(id) {
   );
 }
 
-const [command, arg] = process.argv.slice(2);
-const run = { list, due: () => due(arg === "--dry"), check: () => check(arg) }[
-  command
-];
+/**
+ * The comments of the last two weeks' posts that the account has neither
+ * answered nor hidden, oldest first, as JSON lines: what a session reads
+ * before it replies or hides (docs/instagram.md, "Running the account").
+ */
+async function comments() {
+  const since = Date.now() - 14 * 24 * HOUR;
+  const media = await graph("GET", `${IG}/media`, {
+    fields: "id,caption,timestamp,permalink,comments_count",
+    limit: "50",
+  });
+  const out = [];
+  for (const m of media.data) {
+    if (Date.parse(m.timestamp) < since || !m.comments_count) continue;
+    const { data } = await graph("GET", `${m.id}/comments`, {
+      fields: "id,text,username,timestamp,hidden,replies{username}",
+      limit: "100",
+    });
+    for (const c of data) {
+      if (c.hidden || c.username === PLAN.account.username) continue;
+      const answered = (c.replies?.data ?? []).some(
+        (r) => r.username === PLAN.account.username,
+      );
+      if (!answered)
+        out.push({
+          id: c.id,
+          post: firstLine(m.caption),
+          permalink: m.permalink,
+          from: c.username,
+          at: c.timestamp,
+          text: c.text,
+        });
+    }
+  }
+  out.sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
+  for (const c of out) c.at = `${pt(Date.parse(c.at))} PT`;
+  console.log(
+    out.length
+      ? out.map((c) => JSON.stringify(c)).join("\n")
+      : "no comments to answer",
+  );
+}
+
+async function reply(id, text) {
+  if (!id || !text) throw new Error("usage: reply <comment-id> <text>");
+  const { id: replyId } = await graph("POST", `${id}/replies`, {
+    message: text,
+  });
+  console.log(`replied to ${id}: ${replyId}`);
+}
+
+async function hide(id) {
+  if (!id) throw new Error("usage: hide <comment-id>");
+  await graph("POST", id, { hide: "true" });
+  console.log(`hid ${id}`);
+}
+
+const [command, arg, ...rest] = process.argv.slice(2);
+const run = {
+  list,
+  due: () => due(arg === "--dry"),
+  check: () => check(arg),
+  comments,
+  reply: () => reply(arg, rest.join(" ")),
+  hide: () => hide(arg),
+}[command];
 if (!run) {
-  console.error("usage: publish.mjs list | due [--dry] | check <id>");
+  console.error(
+    "usage: publish.mjs list | due [--dry] | check <id> | comments | reply <comment-id> <text> | hide <comment-id>",
+  );
   process.exit(2);
 }
 run().catch((e) => {
