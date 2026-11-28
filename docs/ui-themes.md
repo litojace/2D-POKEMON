@@ -150,3 +150,8 @@ raid room need). Sweep: `tests/visual/poster.spec.ts`.
   header's coins, the battle clock) take Archivo's tabular figures, heavy;
   Anton stays for words and labels ("Lv 12", "Tier 0 / 20", the medals).
   `tests/visual/poster-numbers.spec.ts` checks the Ranks road's column.
+- **Tabs a finger can't miss:** a tab's box is its touch target, so a
+  slanted or inset block draws inside the box rather than moving it. A tab
+  row's 2 px between tabs is covered by each tab's invisible reach (a
+  `::before`), so a tap between two tabs takes one of them
+  (`phone-fit.spec.ts`, `spire-safe-area.spec.ts`; #607, #643).
