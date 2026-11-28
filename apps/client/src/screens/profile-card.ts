@@ -7,9 +7,16 @@
  */
 import { playerLevel } from "../../../../packages/shared/src/journey";
 import {
+  BODY,
+  DISPLAY,
+  POSTER,
   drawScanToPlay,
   fitFont,
   loadImage,
+  posterBlock,
+  posterFonts,
+  posterPage,
+  posterTag,
   sharePicture,
 } from "../share-card";
 import { SHARE_SITE, shareLink, shownSite } from "../share-link";
@@ -23,8 +30,6 @@ import {
 
 const W = 1200,
   H = 630;
-const safe = (c: string | null | undefined, fallback: string) =>
-  c && /^#[0-9a-f]{6}$/i.test(c) ? c : fallback;
 
 /** The card's words, also used for the share message. */
 export function cardSummary(d: ProfileData) {
@@ -59,101 +64,83 @@ export async function drawPlayerCard(
   canvas.width = W;
   canvas.height = H;
   const g = canvas.getContext("2d")!;
-  const el = "#ffd65b";
-  const bg = g.createLinearGradient(0, 0, W, H);
-  bg.addColorStop(0, "#12213e");
-  bg.addColorStop(1, "#0b1020");
-  g.fillStyle = bg;
-  g.fillRect(0, 0, W, H);
-  // Your panel: a gold glow behind your avatar, the address under it.
-  const cy = 282;
-  g.save();
-  g.beginPath();
-  g.roundRect(40, 40, 420, 550, 28);
-  g.clip();
-  const glow = g.createRadialGradient(250, cy + 60, 20, 250, cy + 60, 320);
-  glow.addColorStop(0, `${el}66`);
-  glow.addColorStop(1, "#0000");
-  g.fillStyle = "#1a2547";
-  g.fillRect(40, 40, 420, 550);
-  g.fillStyle = glow;
-  g.fillRect(40, 40, 420, 550);
+  await posterFonts();
+  posterPage(g, W, H);
+  // Your panel: an ink block, your avatar framed square in the element
+  // colour, the address under it.
+  const cy = 270;
+  posterBlock(g, 40, 40, 420, 550);
   if (withArt) {
     try {
       const img = await loadImage(artSource(d), true);
-      g.save();
-      g.beginPath();
-      g.arc(250, cy, 170, 0, Math.PI * 2);
-      g.clip();
+      g.fillStyle = POSTER.el;
+      g.fillRect(72, cy - 178, 356, 356);
       g.drawImage(img, 80, cy - 170, 340, 340);
-      g.restore();
-      g.strokeStyle = el;
-      g.lineWidth = 8;
-      g.beginPath();
-      g.arc(250, cy, 172, 0, Math.PI * 2);
-      g.stroke();
     } catch {
       /* the card still works without the picture */
     }
   }
   g.textAlign = "center";
-  g.fillStyle = "#a0afc8";
-  g.font = "600 20px system-ui, sans-serif";
-  g.fillText("Play free at", 250, 522);
-  g.fillStyle = "#ffffff";
-  g.fillText(fitFont(g, shownSite(site), 380, 700, 28, 18), 250, 558);
-  g.restore();
-  g.strokeStyle = `${el}aa`;
-  g.lineWidth = 4;
-  g.beginPath();
-  g.roundRect(40, 40, 420, 550, 28);
-  g.stroke();
+  g.textBaseline = "alphabetic";
+  g.fillStyle = POSTER.dim;
+  g.font = `600 20px ${BODY}`;
+  g.fillText("Play free at", 250, 520);
+  g.fillStyle = POSTER.el;
+  g.fillText(
+    fitFont(g, shownSite(site).toUpperCase(), 380, 400, 32, 20, DISPLAY),
+    250,
+    560,
+  );
   // Right: who you are and your numbers.
   g.textAlign = "left";
-  g.fillStyle = "#ffd65b";
-  g.font = "700 22px system-ui, sans-serif";
-  g.fillText("ELEMENT ARENA · PLAYER CARD", 510, 90);
+  posterTag(g, "ELEMENT ARENA · PLAYER CARD", 510, 40);
   if (d.title) {
-    g.fillStyle = safe(d.titleColor, "#d9b98a");
-    g.fillText(fitFont(g, d.title, 650, 700, 30, 22), 510, 150);
+    // In ink on the page: a title's own colour is often pale (made for the
+    // old look's navy) and would not read on the element colour.
+    g.fillStyle = POSTER.ink;
+    g.fillText(fitFont(g, d.title, 650, 700, 28, 20), 510, 128);
   }
-  g.fillStyle = "#ffffff";
-  g.fillText(fitFont(g, d.name, 650, 800, 72, 32), 510, 225);
+  g.fillStyle = POSTER.ink;
+  g.fillText(
+    fitFont(g, d.name.toUpperCase(), 650, 400, 84, 36, DISPLAY),
+    510,
+    212,
+  );
   const { facts } = cardSummary(d);
   const rank = rankLine(d.progress);
   let x = 510;
-  g.font = "700 24px system-ui, sans-serif";
+  g.font = `700 22px ${BODY}`;
   for (const [i, fact] of facts.entries()) {
     const w = g.measureText(fact).width + 28;
     if (x + w > W - 40) break;
-    g.fillStyle = "#1a2547";
-    g.beginPath();
-    g.roundRect(x, 255, w, 42, 10);
-    g.fill();
-    g.fillStyle = i === 1 && rank ? rank.color : "#eef2ff";
-    g.fillText(fact, x + 14, 284);
-    x += w + 12;
+    g.fillStyle = POSTER.ink;
+    g.fillRect(x, 240, w, 42);
+    g.fillStyle = i === 1 && rank ? rank.color : "#ffffff";
+    g.font = `700 22px ${BODY}`;
+    g.fillText(fact, x + 14, 268);
+    x += w + 10;
   }
   // The four numbers, two by two, beside the QR code; their bottoms line up.
   const tiles = profileTiles(d.progress, d.raids);
-  const gap = 14,
-    top = 330,
+  const gap = 18,
+    top = 320,
     bottom = CARD_QR.y + CARD_QR.size;
-  const tw = (CARD_QR.x - 20 - 510 - gap) / 2,
+  const tw = (CARD_QR.x - 28 - 510 - gap) / 2,
     th = (bottom - top - gap) / 2;
   for (const [i, t] of tiles.entries()) {
     const tx = 510 + (i % 2) * (tw + gap),
       ty = top + Math.floor(i / 2) * (th + gap);
-    g.fillStyle = "#121a33";
-    g.beginPath();
-    g.roundRect(tx, ty, tw, th, 16);
-    g.fill();
+    posterBlock(g, tx, ty, tw, th);
     g.textAlign = "center";
     g.fillStyle = "#ffffff";
-    g.fillText(fitFont(g, t.value, tw - 20, 800, 46, 28), tx + tw / 2, ty + 62);
-    g.fillStyle = "#a0afc8";
-    g.font = "600 20px system-ui, sans-serif";
-    g.fillText(t.label, tx + tw / 2, ty + 94);
+    g.fillText(
+      fitFont(g, t.value, tw - 20, 400, 50, 28, DISPLAY),
+      tx + tw / 2,
+      ty + 66,
+    );
+    g.fillStyle = POSTER.dim;
+    g.font = `600 18px ${BODY}`;
+    g.fillText(t.label.toUpperCase(), tx + tw / 2, ty + 98);
   }
   g.textAlign = "left";
   await drawScanToPlay(

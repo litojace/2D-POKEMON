@@ -48,6 +48,17 @@ launch: verify small phones and safe-area insets before desktop polish.
 Keep new content driven by shared data rather than floor/boss-specific UI
 branches. For Spire updates, follow [the content guide](docs/spire-content-guide.md).
 
+**One look: Poster** (owner, 27 Nov). Every player gets Poster
+([docs/ui-themes.md](docs/ui-themes.md)), so new or changed UI is styled in
+`apps/client/src/themes/poster/`, every selector under
+`:root[data-ui="poster"]`, and judged in Poster. The look the game had before
+stays underneath until the visual suite has moved to Poster; ask the owner
+before removing it. Specs moved so far call `onPlayersLook()`
+(`tests/visual/players-look.ts`); the harness pins the rest to the old look,
+so take your screenshots in Poster (`VISUAL_UI=poster`, or
+`VITE_VISUAL_LOOK=poster` for a whole run). Poster's computed colours can
+come back as `oklch(…)`: resolve them through a canvas before comparing RGB.
+
 **Look at every UI change before calling it done** (owner, 22 Nov): take
 screenshots (`VISUAL_SHOTS=<folder>`, or a page.screenshot) at a small
 phone in landscape (667×375 and 844×390, plus 852×393 with the Dynamic
@@ -71,6 +82,17 @@ them box by box:
 
 Fix what the screenshots show before merging, and say in the PR what you
 looked at.
+
+**Keep the README current** (owner, 27 Nov): README.md is the game's public
+face. When a change alters what a player sees (a screen, the HUD, the
+Lobby, the Plaza, a raid, a new mode, fighter or feature), update the
+README in the same PR: its words ("What's in the game", checked against the
+code) and its pictures in `docs/readme/`. Retake the pictures it changes
+with `npx playwright test --config scripts/readme/playwright.config.ts`
+(`SCENES=lobby,plaza` for some) and `python3 scripts/readme/to-webp.py`,
+look at each one as above, and say in the PR which you retook
+([docs/development.md](docs/development.md), "README pictures"). A change
+nobody sees in those pictures or words needs no README change.
 
 **Text fields a button opens** (a form, a code box, a name to change):
 focus them with `focusForTyping(field)` from `apps/client/src/screen-pin.ts`,

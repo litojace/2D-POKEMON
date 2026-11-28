@@ -766,6 +766,28 @@ body:has(.battle-chat:not([hidden]))
     min-height: 40px;
   }
 }
+@media (max-width: 720px) {
+  /* Two figures beside the picture in a 667 px phone's third of the row:
+     the picture is smaller and a long unit takes two lines ("revive /
+     speed"), so the second figure no longer ran to the tile's edge and the
+     picture lost its left side (Helping Paws, audit B17). */
+  #arena-overlay#arena-overlay.is-rites .raid-rite-icon--dual {
+    --art-w: 44px;
+    --art-h: 34px;
+    gap: 4px;
+  }
+  #arena-overlay#arena-overlay.is-rites
+    .raid-rite-icon--dual
+    .raid-rite-buff-stat {
+    padding: 3px 4px;
+  }
+  #arena-overlay#arena-overlay.is-rites
+    .raid-rite-icon--dual
+    .raid-rite-buff-unit {
+    white-space: normal;
+    text-align: center;
+  }
+}
 @media (max-height: 429px) {
   #arena-overlay#arena-overlay.is-rites .rites-screen {
     --name-size: 18px;

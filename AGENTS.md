@@ -20,11 +20,19 @@ says, check that your copy is current before you trust it.
 **Removed features are history.** The Farm, the Bistro and Gold Leaves were
 removed in November 2026. They are not in the game, so never describe or
 recommend them as features. They still appear in places kept for the
-record: README and doc sections marked "(removed)", `docs/hub-redesign/`,
+record: [docs/removed-features.md](docs/removed-features.md) and other doc
+sections marked "(removed)", `docs/hub-redesign/`,
 the old `*farm*` and `*bistro*` migrations, and
 `tests/integration/remove-farm-bistro-leaves.test.ts`. The same goes for any
 section marked removed, retired or old. What the game has today is what the
 code on `origin/main` runs.
+
+**Also gone (27 Nov 2026):** the Showcase look and the look picker (Poster is
+the only look, `docs/ui-themes.md`); the loading tips on the startup screens;
+Raid of the Week, Raid of the Day and Boss Rush (retired earlier, their
+leftovers cleaned up in #500 and #587). The game's address is
+`https://play.elementarenausa.com`: `parena.litojace.com` only redirects there
+(301), and the game server no longer accepts it as an origin.
 
 ## What is different for you
 

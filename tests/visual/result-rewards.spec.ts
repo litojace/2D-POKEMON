@@ -235,6 +235,35 @@ for (const size of SIZES) {
             1.5,
           );
       await snap(page, info, `rewards-win-${name}`);
+      // The middle's edges fade where more is hidden past them (audit
+      // A06-A08: a line cut by the foot read as broken): taller than the
+      // screen, its bottom fades at the top and its top at the bottom;
+      // all showing, nothing fades.
+      const middle = page.locator("#arena-overlay .panel-scroll");
+      const edges = () =>
+        middle.evaluate((el) => ({
+          above: el.classList.contains("has-more-above"),
+          below: el.classList.contains("has-more-below"),
+          mask: getComputedStyle(el).maskImage,
+          scrolls: el.scrollHeight > el.clientHeight + 1,
+        }));
+      const first = await edges();
+      if (size.phone)
+        expect(first.scrolls, "the phone's middle scrolls").toBe(true);
+      if (first.scrolls) {
+        expect(first).toMatchObject({ above: false, below: true });
+        expect(first.mask).toContain("gradient");
+        await middle.evaluate((el) => (el.scrollTop = el.scrollHeight));
+        await expect.poll(edges).toMatchObject({ above: true, below: false });
+        await middle.evaluate((el) => (el.scrollTop = 0));
+        await expect.poll(edges).toMatchObject({ above: false, below: true });
+      } else {
+        expect(first).toMatchObject({
+          above: false,
+          below: false,
+          mask: "none",
+        });
+      }
 
       // Rematch is the main button, the widest; Add friend sits beside it.
       const again = page.locator("#rematch"),
@@ -259,6 +288,16 @@ for (const size of SIZES) {
           await b.evaluate((el) => el.scrollWidth - el.clientWidth),
         ).toBeLessThanOrEqual(1);
       }
+      // The note beside the buttons ("0/2 ready for a rematch") keeps to
+      // two lines: in three, the taller foot left the table one row (B20).
+      const note = await page
+        .locator("#arena-overlay .sheet-note")
+        .evaluate((el) => {
+          if (getComputedStyle(el).display === "none") return 0;
+          const lh = parseFloat(getComputedStyle(el).lineHeight);
+          return Math.round(el.getBoundingClientRect().height / lh);
+        });
+      expect(note, "the note's lines").toBeLessThanOrEqual(2);
       // The records line keeps the head-to-head, without a second Add.
       await expect(page.locator(".records")).toContainText("You vs Kai");
       await expect(page.locator(".records [data-add-friend]")).toHaveCount(0);
@@ -431,6 +470,22 @@ for (const [name, won, rating, burst, note, toast] of [
         ),
       ).toEqual([]);
       await snap(page, info, `rewards-rank-${name}-667x375`);
+      // The notice sits above the foot's buttons, clear of the title and
+      // the score it covered at the top (audit A05).
+      const toastBox = (await page.locator("#toast").boundingBox())!;
+      const title = (await page
+        .locator("#arena-overlay .result-score")
+        .boundingBox())!;
+      const foot = (await page
+        .locator("#arena-overlay .overlay-card > .panel-actions")
+        .boundingBox())!;
+      expect(toastBox.y, "below the title and score").toBeGreaterThanOrEqual(
+        title.y + title.height,
+      );
+      expect(
+        toastBox.y + toastBox.height,
+        "above the buttons",
+      ).toBeLessThanOrEqual(foot.y);
       expect(errors).toEqual([]);
     } finally {
       await context.close();

@@ -222,6 +222,27 @@ test("downloaded updates wait until the Shop closes, then ask first", async ({
   await expect(takeover).toContainText("New version");
   await expect(page.locator("#pwa-takeover-now")).toBeFocused();
   await expect(page.locator("#pwa-banner")).toBeHidden();
+  // In Poster's own colours: "Later" on the theme's ink (it was the look
+  // underneath's navy) and a flat title (it glowed).
+  const ask = await page.evaluate(() => {
+    const token = (name: string) => {
+      const probe = document.createElement("i");
+      probe.style.color = `var(${name})`;
+      document.body.append(probe);
+      const value = getComputedStyle(probe).color;
+      probe.remove();
+      return value;
+    };
+    return {
+      later: getComputedStyle(document.getElementById("pwa-takeover-later")!)
+        .backgroundColor,
+      ink3: token("--ink-3"),
+      glow: getComputedStyle(document.querySelector("#pwa-takeover h2")!)
+        .textShadow,
+    };
+  });
+  expect(ask.later).toBe(ask.ink3);
+  expect(ask.glow).toBe("none");
   await snap(page, info, "pwa-update-takeover");
   await page.waitForTimeout(500);
   expect(await counts(page)).toEqual([0, 0]);
@@ -233,6 +254,23 @@ test("downloaded updates wait until the Shop closes, then ask first", async ({
   await expect(page.locator("#pwa-update-now")).toBeVisible();
   await expect(takeover).toBeHidden();
   await expect(page.locator("#pwa-banner")).toContainText("New version ready");
+  // The banner is the toast's ink block: square, with nothing behind it
+  // showing through (the Plaza's event chip did, through a rounded card).
+  const card = await page.evaluate(() => {
+    const style = getComputedStyle(document.getElementById("pwa-banner")!);
+    const probe = document.createElement("i");
+    probe.style.color = "var(--ink)";
+    document.body.append(probe);
+    const ink = getComputedStyle(probe).color;
+    probe.remove();
+    return {
+      radius: style.borderTopLeftRadius,
+      background: style.backgroundColor,
+      ink,
+    };
+  });
+  expect(card.radius).toBe("0px");
+  expect(card.background).toBe(card.ink);
   await snap(page, info, "pwa-update-prompt");
   await page.locator("#pwa-update-now").click();
   await expect.poll(() => counts(page)).toEqual([1, 1]);

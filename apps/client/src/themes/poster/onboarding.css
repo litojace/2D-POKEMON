@@ -180,6 +180,80 @@
     var(--el, #ffd65b);
 }
 
+/* ── The title's cover turns: one turn in 100 s (owner, 27 Nov 2026, "to
+      feel alive"). The one animation in Poster that runs for ever, by the
+      owner's leave (docs/ui-themes.md): only here, never behind the
+      sign-in form (moving rays behind fields you type in), and gone with
+      the title screen, which leaves the page before the Lobby and any
+      battle. The rays are a layer of their own that only turns, so the
+      browser draws it once and the compositor rotates it; the halftone and
+      the star lie still on a layer above it. It stops with Reduce motion
+      and on Low graphics (ui/light-effects.css). ── */
+:root[data-ui="poster"] .welcome-gate.is-title .gate-backdrop {
+  overflow: hidden;
+  background: var(--el, #ffd65b);
+}
+:root[data-ui="poster"] .welcome-gate.is-title .gate-backdrop::before {
+  content: "";
+  position: absolute;
+  /* A square that reaches the farthest corner (the top left) from where
+     the rays meet, whatever its angle: the sum of the two sides where
+     hypot() is not known, their diagonal where it is. */
+  --cover-d: calc(2 * (var(--cover-x) * 100vw + var(--cover-y) * 100vh));
+  left: calc(var(--cover-x) * 100% - var(--cover-d) / 2);
+  top: calc(var(--cover-y) * 100% - var(--cover-d) / 2);
+  width: var(--cover-d);
+  height: var(--cover-d);
+  background: repeating-conic-gradient(
+    from 0deg at 50% 50%,
+    rgba(255, 255, 255, 0.34) 0 7.5deg,
+    transparent 7.5deg 15deg
+  );
+  will-change: transform;
+  animation: poster-cover-turn 100s linear infinite;
+}
+@supports (width: hypot(1px, 1px)) {
+  :root[data-ui="poster"] .welcome-gate.is-title .gate-backdrop::before {
+    --cover-d: calc(
+      2 * hypot(var(--cover-x) * 100vw, var(--cover-y) * 100vh) + 4px
+    );
+  }
+}
+/* A phone's dense screen: the layer at half its size, drawn twice as
+   large, so its picture is a quarter of the memory (a 3x phone's would be
+   about 60 MB). Each ray's edge is still finer than a point. */
+@media (min-resolution: 2dppx) {
+  :root[data-ui="poster"] .welcome-gate.is-title .gate-backdrop::before {
+    left: calc(var(--cover-x) * 100% - var(--cover-d) / 4);
+    top: calc(var(--cover-y) * 100% - var(--cover-d) / 4);
+    width: calc(var(--cover-d) / 2);
+    height: calc(var(--cover-d) / 2);
+    scale: 2;
+  }
+}
+:root[data-ui="poster"] .welcome-gate.is-title .gate-backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    var(--cover-star-art) calc(var(--cover-x) * 100vw - var(--cover-star) / 2)
+      calc(var(--cover-y) * 100vh - var(--cover-star) / 2) / var(--cover-star)
+      var(--cover-star) no-repeat,
+    radial-gradient(circle, rgba(0, 0, 0, 0.16) 1.4px, transparent 1.8px) 0 0 /
+      9px 9px;
+}
+@keyframes poster-cover-turn {
+  to {
+    rotate: 360deg;
+  }
+}
+:root[data-ui="poster"]:where([data-motion="reduced"])
+  .welcome-gate.is-title
+  .gate-backdrop::before,
+:root[data-ui="poster"] body.battle-active .gate-backdrop::before {
+  animation: none;
+}
+
 /* On the sign-in side the form stands where the rays meet: the star would
    only show as a black corner beside it (a wide screen), so it stays off
    and the sunburst alone carries the cover. */
@@ -233,8 +307,16 @@
   :is(.gate-lead, .gate-invite) {
   text-shadow: none;
 }
-/* The quick buttons stand on the slab here: a lighter ink, to show. */
+/* The quick buttons stand on the slab here: a lighter ink, to show, with
+   the cover's colour along the bottom edge (screens.css has the tile). */
 :root[data-ui="poster"] .welcome-gate .gate-quick .title-quick-icon {
   background: var(--ink-2);
-  box-shadow: none;
+  box-shadow: inset 0 -3px 0 var(--el, #ffd65b);
+}
+:root[data-ui="poster"]
+  .welcome-gate
+  .gate-quick
+  .title-quick-btn:hover
+  .title-quick-icon {
+  background: var(--ink-3);
 }

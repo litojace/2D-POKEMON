@@ -751,14 +751,19 @@ test("floor 20: the lagoon's summit grade, painted on floor 19, nothing fetched 
       page.evaluate(() => {
         const s = (window as any).__spireGame.scene.getScene("arena");
         return {
-          floor: s.floor.texture.key as string,
-          artwork: s.floor.texture.getSourceImage().dataset?.raidArtwork as
+          floor: s.floor?.texture?.key as string | undefined,
+          artwork: s.floor?.texture?.getSourceImage().dataset?.raidArtwork as
             string | undefined,
           summit: s.textures.exists("arena-floor-spire-summit-lagoon"),
           summitArt: s.textures.exists("arena-floor-spire-summit-lagoon"),
         };
       });
-    expect((await scene()).floor).toBe("arena-floor-spire-z2");
+    // The battle opens while the arena may still be loading its last
+    // textures (no floor yet): a read then threw, and failed the test
+    // about one run in three. Polled, as its sibling tests wait for it.
+    await expect
+      .poll(async () => (await scene()).floor)
+      .toBe("arena-floor-spire-z2");
     // Floor 19's stairs are open: the lagoon summit is painted now.
     await expect.poll(async () => (await scene()).summitArt).toBe(true);
     // Up to floor 20: Tidelotl's lagoon with the summit grade.
@@ -1383,8 +1388,8 @@ test("Inkpurr's own raid keeps the Lantern Yard ungraded", async ({
       .poll(() =>
         page.evaluate(
           () =>
-            (window as any).__spireGame.scene.getScene("arena").floor.texture
-              .key,
+            (window as any).__spireGame.scene.getScene("arena").floor?.texture
+              ?.key,
         ),
       )
       .toMatch(/^arena-floor-lantern-yard(:art)?$/);
@@ -1935,8 +1940,8 @@ test("Snoozaku's own raid keeps the Cloud Deck ungraded", async ({
       .poll(() =>
         page.evaluate(
           () =>
-            (window as any).__spireGame.scene.getScene("arena").floor.texture
-              .key,
+            (window as any).__spireGame.scene.getScene("arena").floor?.texture
+              ?.key,
         ),
       )
       .toMatch(/^arena-floor-cloud-deck(:art)?$/);
@@ -2748,8 +2753,8 @@ test("Prismell's own raid keeps the Sun Atrium ungraded", async ({
       .poll(() =>
         page.evaluate(
           () =>
-            (window as any).__spireGame.scene.getScene("arena").floor.texture
-              .key,
+            (window as any).__spireGame.scene.getScene("arena").floor?.texture
+              ?.key,
         ),
       )
       .toMatch(/^arena-floor-sun-atrium(:art)?$/);
@@ -3456,8 +3461,8 @@ test("Lumiwick's own raid keeps the Sky Terrace ungraded", async ({
       .poll(() =>
         page.evaluate(
           () =>
-            (window as any).__spireGame.scene.getScene("arena").floor.texture
-              .key,
+            (window as any).__spireGame.scene.getScene("arena").floor?.texture
+              ?.key,
         ),
       )
       .toMatch(/^arena-floor-sky-terrace(:art)?$/);
@@ -4174,8 +4179,8 @@ test("the Storm Twins' own raid keeps the Conductor Ring ungraded", async ({
       .poll(() =>
         page.evaluate(
           () =>
-            (window as any).__spireGame.scene.getScene("arena").floor.texture
-              .key,
+            (window as any).__spireGame.scene.getScene("arena").floor?.texture
+              ?.key,
         ),
       )
       .toMatch(/^arena-floor-conductor-ring(:art)?$/);

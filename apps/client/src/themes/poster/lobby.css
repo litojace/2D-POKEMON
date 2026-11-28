@@ -372,6 +372,30 @@
 :root[data-ui="poster"] .lobby-layer .lobby-mode-caret {
   color: var(--ink);
 }
+/* A bot's level on the white mode box. The look underneath's light green,
+   amber and red are made for a dark ground: on white EASY read at 1.9:1
+   and its empty pips not at all (UI audit, 27 Nov 2026). These are the same
+   three hues at 4.5:1 or better; the mode menu's dark rows keep the light
+   ones. */
+:root[data-ui="poster"] .lobby-layer .lobby-mode .ai-level {
+  --ai: #15803d;
+}
+:root[data-ui="poster"]
+  .lobby-layer
+  .lobby-mode
+  .ai-level[data-ai-level="normal"] {
+  --ai: #b45309;
+}
+:root[data-ui="poster"]
+  .lobby-layer
+  .lobby-mode
+  .ai-level[data-ai-level="hard"] {
+  --ai: #c2182f;
+}
+:root[data-ui="poster"] .lobby-layer .lobby-mode .ai-pips > i:not(.on) {
+  background: color-mix(in srgb, var(--ai) 35%, transparent);
+}
+
 :root[data-ui="poster"] .lobby-layer .lobby-play::before,
 :root[data-ui="poster"] .lobby-layer .lobby-play-button::after {
   display: none;
@@ -452,10 +476,10 @@
     letter-spacing: 0.03em;
   }
 }
-/* The narrowest phones (667 px): the mode's hint takes two lines there, so
-   the box gives its 3 px frame back to the words; a card's count and its
-   timer stack when they don't fit side by side. */
-@media (max-width: 760px) and (max-height: 500px) {
+/* A phone held sideways: the mode's hint takes two lines there (lobby.css),
+   so the box gives its 3 px frame back to the words; a card's count and
+   its timer stack when they don't fit side by side. */
+@media (max-height: 500px) {
   :root[data-ui="poster"] .lobby-layer .lobby-mode {
     border-width: 2px;
   }

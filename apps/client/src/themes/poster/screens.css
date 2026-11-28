@@ -766,26 +766,23 @@
 :root[data-ui="poster"] .ui-split-main {
   background: linear-gradient(var(--el) 0 44px, var(--ink) 44px);
 }
+/* The tab row is part of the masthead wherever it sits. Above a phone's
+   height it takes a row of its own under the head, below the 44 px band,
+   and its unchosen tabs were the masthead's ink on the page's ink: on a
+   boss page only REWARDS showed, on a fighter's only SKILLS (1440 x 900,
+   27 Nov 2026). There it is as tall as a masthead tab row (44 px): at
+   its own 29 px the tabs' Anton capitals were cut along their foot. */
 :root[data-ui="poster"] .ui-split-main > .ui-tabs {
+  min-height: 44px;
   border-bottom: 0;
-}
-/* Above a phone's height the tab row sits under the head, not in it: it
-   is its own 44 px band in the element colour, as the head row is on a
-   phone. Without it the row shrank to its words (22 px, the tabs 15 px:
-   calc(100% - 7px) of nothing), and the unchosen tabs' dim ink read on the
-   page's ink, invisible (a fighter's Skills and Skins, a boss page's tabs,
-   the Spire's: spire-safe-area at 1180x820). */
-@media (min-height: 501px) {
-  :root[data-ui="poster"] .ui-split-main > .ui-tabs {
-    height: 44px;
-    background: var(--el);
-  }
+  background: var(--el);
 }
 /* Each tab is the row's full height, so its own box is the 44 px a finger
    needs, centred on what it shows; what it shows is the block under the
-   row's top 7 px (the chosen one's ink, painted from 7 px down), its label
-   in the middle of that block. (A 37 px button with a strip above it as its
-   reach left a tap just under the tab hitting nothing: spire-safe-area.) */
+   row's top 7 px (the chosen one's ink, with the row's colour painted over
+   its top 7 px), its label in the middle of that block. (A 37 px button
+   with a strip above it as its reach left a tap just under the tab hitting
+   nothing: spire-safe-area.) */
 :root[data-ui="poster"] .ui-split-main > .ui-tabs > button {
   position: relative;
   align-self: stretch;
@@ -802,7 +799,7 @@
   > .ui-tabs
   > button[aria-selected="true"] {
   color: var(--el);
-  background: linear-gradient(transparent 7px, var(--ink) 7px);
+  background: linear-gradient(var(--el) 0 7px, transparent 7px) var(--ink);
   transform: skewX(-10deg);
 }
 :root[data-ui="poster"]
@@ -896,10 +893,11 @@
 }
 /* Phones: Archivo's capitals are wider than the old look's, so "RATING"
    (51 px) spilled its 46 px column. The column takes 8 px more from the
-   name's; the letters sit a little closer. */
+   name's; the letters sit a little closer. W–L takes 70 px, a five-figure
+   record ("9999–10000"): at 52 px it read "9999–1…" (UI audit, 27 Nov). */
 @media (max-height: 500px) {
   :root[data-ui="poster"] .rk-board {
-    --rk-cols: 40px 30px minmax(0, 1fr) 54px 52px;
+    --rk-cols: 40px 30px minmax(0, 1fr) 54px 70px;
   }
   :root[data-ui="poster"] .rk-head {
     letter-spacing: 0.06em;
@@ -996,6 +994,15 @@
     letter-spacing: 0.03em;
     padding-left: 8px;
     padding-right: 8px;
+  }
+}
+/* A 667 px phone: the fighter's three tabs and the Skins count ran 17 px
+   under Close, and "3/24" sat against its edge (audit B12). Tighter tabs
+   fit beside ‹ Roster with room before Close (after the rule above, which
+   it narrows). */
+@media (max-height: 500px) and (max-width: 700px) {
+  :root[data-ui="poster"] .ui-split-main > .ui-tabs > button {
+    padding-inline: 4px;
   }
 }
 /* Close always sits over a scrolled tab row */
@@ -1213,15 +1220,19 @@
   letter-spacing: 0.04em;
 }
 /* The quick buttons (Settings, Help, Support, Repair), here and on the
-   sign-in screen, stay round: one shape on both screens (owner;
-   title-screen.spec.ts). Poster's ink and hard shadow, no blur. */
+   sign-in screen: square ink tiles, as every other control in Poster
+   (owner, 27 Nov 2026: option C of three; until then they were the one
+   round shape left on these two screens). On the title they stand on the
+   cover: plain ink, their labels ink with no outline. On the sign-in
+   screen's slab a tile is the lighter ink with the cover's colour along
+   its bottom edge (onboarding.css). 44 px, a finger wide. */
 :root[data-ui="poster"] .title-quick-icon {
   border: 0;
-  border-radius: 50%;
+  border-radius: 0;
   background: var(--ink);
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
-  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.35);
+  box-shadow: none;
 }
 :root[data-ui="poster"] .title-quick-btn:hover .title-quick-icon {
   background: var(--ink-2);
@@ -1230,20 +1241,28 @@
   color: var(--el);
 }
 :root[data-ui="poster"] .title-quick-btn {
+  color: #fff;
   font: 400 calc(11px * var(--text-scale, 1)) / 1.1 var(--font-display);
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  text-shadow:
-    0 1px 0 var(--ink),
-    1px 0 0 var(--ink),
-    -1px 0 0 var(--ink),
-    0 -1px 0 var(--ink);
+  text-shadow: none;
+}
+:root[data-ui="poster"] .welcome-gate.is-title .title-quick-btn {
+  color: var(--ink);
 }
 :root[data-ui="poster"] :is(.title-status, .title-build) {
   padding: 4px 8px;
   background: var(--ink);
   color: #fff;
   text-shadow: none;
+}
+/* The version: quiet words in the body face, here and under the sign-in
+   screen's quick buttons (it was Anton, as loud as a label). */
+:root[data-ui="poster"] :is(.title-build, .gate-build) {
+  font-family: var(--font-body);
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--ui-faint);
 }
 :root[data-ui="poster"]:where([data-motion="reduced"]) .title-prompt {
   animation: none;

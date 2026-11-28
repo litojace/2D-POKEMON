@@ -14,6 +14,16 @@ import {
   itemListPrice,
 } from "../../packages/shared/src/shop";
 
+/** A skin loop and its pictures (scripts/site-clips/skins.spec.ts). */
+function expectLoop(name: string) {
+  const loop = path.join(SITE, `media/skins/${name}.mp4`);
+  expect(existsSync(loop), `${name}.mp4`).toBe(true);
+  // One loop downloads at a time; this keeps each a phone's quick fetch.
+  expect(statSync(loop).size, `${name}.mp4`).toBeLessThan(900_000);
+  for (const f of [`${name}.webp`, `${name}-thumb.webp`])
+    expect(existsSync(path.join(SITE, "img/skins", f)), f).toBe(true);
+}
+
 // The website (docs/website.md): a static page with no build, so these
 // checks stand in for one. Every file it links exists, it leads into the
 // game, it uses only the game's own names, and its facts match the game.
@@ -39,7 +49,7 @@ function files(dir: string): string[] {
 describe("website", () => {
   it("every local file the page or its styles use exists", () => {
     const refs = [
-      ...[...html.matchAll(/(?:src|href)="([^"]+)"/g)].map((m) => m[1]),
+      ...[...html.matchAll(/(?:src|href|poster)="([^"]+)"/g)].map((m) => m[1]),
       ...[...html.matchAll(/(?:srcset|imagesrcset)="([^"]+)"/g)].flatMap((m) =>
         m[1].split(",").map((s) => s.trim().split(/\s+/)[0]),
       ),
@@ -148,41 +158,57 @@ describe("website", () => {
       readFileSync(path.join(SITE, "data/champions.json"), "utf8"),
     );
     expect(saved).toEqual(siteChampions());
+    // Every look the champion panel can show has its loop: the Classic look
+    // (under the champion's id) and each featured skin.
     for (const c of saved) {
       expect(c.skins.length).toBeGreaterThan(0);
-      for (const s of c.skins)
-        expect(existsSync(path.join(SITE, `img/skins/${s.id}.svg`)), s.id).toBe(
-          true,
-        );
+      expectLoop(c.id);
+      for (const s of c.skins) expectLoop(s.id);
       expect(html).toContain(`data-champion="${c.id}"`);
     }
   });
 
-  it("its Shop spotlight shows real Shop pieces, at the Shop's prices (make-shop.py)", () => {
+  it("its Shop spotlight shows real Shop pieces, each playing in the fitting room (make-skin-clips.py)", () => {
     const spots = [
       ...flatHtml().matchAll(
-        /<article class="spot r-(\w+)" id="spot-([\w-]+)"[\s\S]*?<h3>([^<]+)<\/h3>[\s\S]*?<b>([\d,]+)<\/b>\s?coins/g,
+        /<article class="spot r-(\w+)" id="spot-([\w-]+)"[\s\S]*?<source src="media\/skins\/([\w-]+)\.mp4"[\s\S]*?<h3>([^<]+)<\/h3>/g,
       ),
     ];
     expect(spots.length).toBeGreaterThanOrEqual(4);
     const byName = new Map(
       [...CHAMPION_SKINS, ...LOOK_ITEMS].map((i) => [i.name, i]),
     );
-    for (const [, rarity, pic, name, price] of spots) {
+    for (const [, rarity, pic, loop, name] of spots) {
       const item = byName.get(name);
       expect(item, name).toBeDefined();
       expect(rarity, name).toBe(item!.rarity);
-      expect(Number(price.replace(/,/g, "")), name).toBe(
-        itemListPrice(item!.id),
+      // Its own loop, its poster, and a pick showing its thumbnail.
+      expect(loop, name).toBe(item!.id);
+      expectLoop(loop);
+      expect(flatHtml()).toContain(`poster="img/skins/${loop}.webp"`);
+      expect(flatHtml()).toMatch(
+        new RegExp(
+          `aria-controls="spot-${pic}"[^>]*><img src="img/skins/${loop}-thumb\\.webp"`,
+        ),
       );
-      // The loop, its still, and a pick for it.
-      for (const f of [`${pic}.webp`, `${pic}-still.webp`]) {
-        const file = path.join(SITE, "img/shop", f);
-        expect(existsSync(file), f).toBe(true);
-        expect(statSync(file).size, f).toBeLessThan(700_000);
-      }
-      expect(html).toContain(`aria-controls="spot-${pic}"`);
     }
+  });
+
+  it("never names an amount of the game's money (owner, 27 Nov)", () => {
+    // Coins, gems and prices stay in the game: the page says what a piece
+    // is, never what it costs.
+    const text = flatHtml().replace(/<[^>]+>/g, " ");
+    expect(text).not.toMatch(/\bcoins?\b|\bgems?\b/i);
+    expect(flatHtml()).not.toMatch(/class="(coin|spot-price)"/);
+    const prices = [...CHAMPION_SKINS, ...LOOK_ITEMS]
+      .map((i) => itemListPrice(i.id))
+      .filter((p) => p >= 1000);
+    for (const p of new Set(prices)) {
+      expect(text).not.toContain(p.toLocaleString("en-US"));
+      expect(text).not.toMatch(new RegExp(`\\b${p}\\b`));
+    }
+    const data = readFileSync(path.join(SITE, "data/champions.json"), "utf8");
+    expect(data).not.toMatch(/price|coin/i);
   });
 
   it("every long page of the game has the back-to-top button (to-top.js)", () => {
