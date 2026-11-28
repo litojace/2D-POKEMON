@@ -27,6 +27,8 @@ champions, skins and features. So the posts:
 The game itself marks the web version BETA beside its name, never the store
 apps (#645; `docs/open-beta.md`).
 
+**Handoff (28 Nov):** [instagram-handoff.md](instagram-handoff.md) has where things stand and how to carry on from a new Claude account.
+
 ## Make the pictures
 
 Everything is in the game's look, **Poster** (docs/ui-themes.md, owner,
