@@ -1471,8 +1471,16 @@ export class AccountUI {
       this.fetchCopy("/api/spire") as Promise<SpireProgress>,
     ]);
     // The Spire's records (before its migration runs: none, still playable).
-    if (climb.status === "fulfilled" && climb.value)
+    // A new climb is news for the Lobby too (its Spire card, the Raids
+    // badge), even when the raid records came back the same.
+    if (
+      climb.status === "fulfilled" &&
+      climb.value &&
+      climb.value !== this.spireProgress
+    ) {
       this.spireProgress = climb.value;
+      if (this.account?.id === accountId) this.hooks.onChange();
+    }
     if (this.account?.id !== accountId || !screen.isOpen) return;
     if (screen.view.mode === "spire") this.noteSpireSeen();
     if (raids.status === "fulfilled") {
