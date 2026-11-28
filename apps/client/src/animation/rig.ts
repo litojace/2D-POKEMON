@@ -21,6 +21,7 @@ import {
   MIN_WIDTH,
   SETTLED,
   VICTORIES,
+  keepHeadRigid,
   type MoveAccent,
   type MoveStage,
 } from "./champion-moves";
@@ -1093,6 +1094,16 @@ export class FighterRig {
       }
     }
     this.carriedRotation = dir === "down" ? 0 : body.rotation;
+    // A champion's own move never flattens the face: the squash or stretch
+    // is the body's, and the head with all it carries keeps its size and
+    // shape, riding on top (owner, 28 Nov 2026).
+    if (ownMove && (sx !== 1 || sy !== 1))
+      keepHeadRigid(
+        PROFILE_FACE_PARTS.flatMap((part) => this.images.get(part) ?? []),
+        { x: head.x, y: head.y },
+        sx,
+        sy,
+      );
     for (const image of this.images.values()) image.setVisible(true);
     // Shell Up: head, limbs and sprout tuck away; only the mossy shell shows.
     if (pose.shell)

@@ -21,10 +21,19 @@ import type { Facing } from "./controller";
  * - Nothing leaves the body (owner, 28 Nov 2026: a head that looked cut off).
  *   The head never lifts off the neck and barely tilts (the rig clamps both);
  *   "head thrown back" is a lean of the whole fighter.
+ * - The face never flattens (owner, 28 Nov 2026). A move never scales the
+ *   head, and a squash or stretch of the fighter is the body's alone: the rig
+ *   keeps the head, and all it carries, at its own size and shape, riding on
+ *   top (`keepHeadRigid`).
+ * - The legs move too (owner, 28 Nov 2026: "to make it lively"): steps, a
+ *   stomp, a kick, a tuck in a hop, happy feet (`lift`, `tap`, `kick`). A
+ *   foot that isn't lifted stays on the ground line. Tentacles and tails do
+ *   the same job for those who have them.
  * - No spins (owner, 28 Nov 2026: "the champions aren't 3D; a spin looks
  *   like a sheet of paper flipping over, Glacelle above all"). The whole
  *   fighter leans (`tilt`), never turns past MAX_TURN, and is never narrowed
  *   below MIN_WIDTH to fake turning edge-on. A ball bounces; it doesn't roll.
+ *   Nor does a move change the facing: no turning round, no showing the back.
  *   The rig clamps both, and tests/unit/champion-moves.test.ts fails on a
  *   move that asks for more.
  *
@@ -109,6 +118,48 @@ const tilt = (s: MoveStage, angle: number) => {
   s.spin(angle);
   s.move(-MIDDLE * Math.sin(angle), -MIDDLE * (1 - Math.cos(angle)));
 };
+/**
+ * Lift one leg by `k` (0 to 1): a step, a stomp's wind-up, a kick. `swing`
+ * is where the foot goes (radians; positive carries the left foot outward,
+ * negative the right), `up` how far it leaves the ground (rig units).
+ */
+const lift = (leg: MovePart, k: number, swing: number, up = 3) => {
+  leg.rotation += swing * k;
+  leg.y -= up * Math.abs(k);
+};
+/** Happy feet: the two feet tap in turn, `k` strong (still under calm). */
+const tap = (s: MoveStage, k: number, speed: number, swing = 0.3, up = 3) => {
+  const beat = s.sway(speed);
+  lift(s.p.legL, Math.max(0, beat) * k, swing, up);
+  lift(s.p.legR, Math.max(0, -beat) * k, -swing, up);
+};
+/** Dangling feet (or tentacles) kick in the air, one after the other. */
+const kick = (s: MoveStage, k: number, speed: number, swing = 0.3) => {
+  s.p.legL.rotation += s.sway(speed) * swing * k;
+  s.p.legR.rotation += s.sway(speed, 2) * swing * k;
+};
+/** Both feet out to the sides by `k`: a star, a wide stance, a startle. */
+const spread = (s: MoveStage, k: number) => {
+  s.p.legL.rotation += k;
+  s.p.legR.rotation -= k;
+};
+/**
+ * The head keeps its size and shape while the fighter squashes or stretches
+ * by (sx, sy): each head part is scaled back, and kept where it sits on the
+ * head. The head's own pivot (the neck) still rides the body up and down.
+ */
+export function keepHeadRigid(
+  headParts: Iterable<MovePart>,
+  neck: { x: number; y: number },
+  sx: number,
+  sy: number,
+) {
+  for (const part of headParts) {
+    part.x = neck.x + (part.x - neck.x) / sx;
+    part.y = neck.y + (part.y - neck.y) / sy;
+    part.setScale(part.scaleX / sx, part.scaleY / sy);
+  }
+}
 /** A landing: squash at `at`, springing back over `len` seconds. */
 const land = (s: MoveStage, at: number, depth = 0.14, len = 0.22) => {
   const k = s.t < at ? 0 : Math.max(0, 1 - (s.t - at) / len);
@@ -155,6 +206,9 @@ const voltkitEntrance: Move = (s) => {
   p.armR.rotation += (-0.5 - s.sway(11) * 0.12) * ready;
   p.ears.rotation += s.sway(11, 0.6) * 0.1 * ready;
   p.tail.rotation += s.sway(7) * 0.2 * ready;
+  // Legs.
+  kick(s, shiver, 46, 0.16);
+  tap(s, ready, 11, 0.3, 3);
 };
 const voltkitVictory: Move = (s) => {
   const { t, p } = s;
@@ -200,6 +254,10 @@ const voltkitVictory: Move = (s) => {
   p.armR.rotation += (-2.4 - s.sway(18) * 0.25) * hold;
   p.ears.rotation += s.sway(30) * 0.07 * hold;
   p.tail.rotation += s.sway(9, 1) * 0.25 * hold;
+  // Legs.
+  p.legL.rotation += travel * 0.4 * zig;
+  p.legR.rotation += travel * 0.4 * zig;
+  spread(s, 0.4 * Math.max(0, s.sway(9)) * hold);
 };
 
 // --------------------------------------------------------------- Cindrake
@@ -251,6 +309,9 @@ const cindrakeEntrance: Move = (s) => {
   p.armL.rotation += (0.85 + s.sway(6.4) * 0.08) * ready;
   p.armR.rotation += (-0.85 + s.sway(6.4) * 0.08) * ready;
   p.head.y += 1.5 * ready;
+  // Legs.
+  spread(s, 0.3 * roar);
+  tap(s, ready, 6.4, 0.25, 2.5);
 };
 const cindrakeVictory: Move = (s) => {
   const { t, p } = s;
@@ -284,6 +345,9 @@ const cindrakeVictory: Move = (s) => {
     crest * 1.12 + 0.05 * proud + s.sway(10) * 0.05,
   );
   p.wings.setScale(0.5 + 0.1 * Math.max(punch, proud), 0.5 + 0.04 * proud);
+  // Legs.
+  p.legL.rotation += 0.2 * proud;
+  lift(p.legR, Math.max(0, s.sway(8)) * proud, -0.25, 2.5);
 };
 
 // ---------------------------------------------------------------- Tidefin
@@ -340,6 +404,9 @@ const tidefinEntrance: Move = (s) => {
   p.legR.rotation += 0.3 * guard;
   p.tail.rotation += (0.35 + s.sway(5) * 0.12) * guard;
   p.scarf.rotation += s.sway(5, 1) * 0.12 * guard;
+  // Legs.
+  spread(s, -0.35 * click);
+  tap(s, guard, 10, 0.15, 2);
 };
 const tidefinVictory: Move = (s) => {
   const { t, p } = s;
@@ -390,6 +457,11 @@ const tidefinVictory: Move = (s) => {
   p.ears.rotation = 0.2 * bow;
   p.tail.rotation += (0.4 + s.sway(3) * 0.15) * hold;
   p.scarf.rotation += s.sway(5) * 0.14 * hold;
+  // Legs.
+  p.legL.rotation += Math.sin(t * 26) * 0.3 * air;
+  p.legR.rotation -= Math.sin(t * 26) * 0.3 * air;
+  p.legR.rotation += 0.4 * bow;
+  lift(p.legL, Math.max(0, s.sway(5.2)) * hold, 0.2, 2);
 };
 
 // --------------------------------------------------------------- Auralynx
@@ -421,6 +493,9 @@ const auralynxEntrance: Move = (s) => {
   p.legL.rotation += -0.2 * guard;
   p.legR.rotation += 0.25 * guard;
   s.move(0, -(1 + s.sway(1.6)) * 1.2 * snap);
+  // Legs.
+  lift(p.legR, bump(t, 1.8, 2.0), -0.5, 4);
+  kick(s, snap, 3.2, 0.12);
 };
 const auralynxVictory: Move = (s) => {
   const { t, p } = s;
@@ -442,6 +517,10 @@ const auralynxVictory: Move = (s) => {
   p.armR.rotation += 0.5 * lotus;
   p.head.y += bump(t, 1.4, 1.8) * 4;
   s.spin(s.sway(0.8) * 0.03 * lotus);
+  // Legs.
+  p.legL.rotation += 0.5 * one;
+  p.legR.rotation -= 0.5 * two;
+  kick(s, lotus, 1.6, 0.08);
 };
 
 // ----------------------------------------------------------------- Lumoth
@@ -477,6 +556,12 @@ const lumothEntrance: Move = (s) => {
   p.head.rotation += 0.1 * shy;
   p.armR.rotation = (-1.6 + s.sway(9) * 0.3) * shy;
   s.move(0, -(1 + s.sway(2.2)) * 1.5 * shy);
+  // Legs.
+  p.legL.rotation += -swing * 0.4 * ease(t, 0, 0.3);
+  p.legR.rotation += -swing * 0.4 * ease(t, 0, 0.3);
+  spread(s, 0.6 * startle);
+  p.legL.rotation -= 0.15 * shy;
+  p.legR.rotation += s.sway(4.4) * 0.3 * shy;
 };
 const lumothVictory: Move = (s) => {
   const { t, p } = s;
@@ -503,6 +588,10 @@ const lumothVictory: Move = (s) => {
   p.armL.rotation = 1.6 * open;
   p.armR.rotation = -1.6 * open;
   if (s.passed(1.34)) s.accent("spark", 4);
+  // Legs.
+  p.legL.rotation += -Math.cos(t * 5) * 0.35 * eight;
+  p.legR.rotation += -Math.cos(t * 5) * 0.35 * eight;
+  kick(s, open, 9, 0.4);
 };
 
 // ---------------------------------------------------------------- Mystowl
@@ -529,6 +618,9 @@ const mystowlEntrance: Move = (s) => {
   );
   s.move(0, -(7 + 4 * flourish + s.sway(1.4) * 1.5) * open);
   p.head.rotation += s.sway(0.9) * 0.1 * ease(t, 2.1, 2.5);
+  // Legs.
+  spread(s, 0.4 * flourish);
+  kick(s, ease(t, 2.1, 2.5), 1.4, 0.15);
 };
 const mystowlVictory: Move = (s) => {
   const { t, p } = s;
@@ -548,6 +640,11 @@ const mystowlVictory: Move = (s) => {
   );
   p.flame.setScale(0.5 + (0.09 + s.sway(5) * 0.03) * rise);
   p.head.rotation = s.sway(0.9) * 0.12 * ease(t, 1.7, 2.2);
+  // Legs.
+  lift(p.legL, bump(t, 0.1, 0.4), 0.3, 3);
+  lift(p.legR, bump(t, 0.4, 0.7), -0.3, 3);
+  p.legL.rotation += s.sway(1.3, 1) * 0.25 * rise;
+  p.legR.rotation += s.sway(1.3, 1) * 0.25 * rise;
 };
 
 // --------------------------------------------------------------- Terradon
@@ -581,6 +678,10 @@ const terradonEntrance: Move = (s) => {
     Math.max(0.92 * asleep, 0.95 * yawn, 0.45 * awake) *
       (1 - bump(t, 0.7, 1.0)),
   );
+  // Legs.
+  spread(s, 0.5 * arc(t, 0.68, 0.94));
+  lift(p.legR, bump(t, 1.2, 1.9), -0.35, 3);
+  lift(p.legL, Math.max(0, s.sway(1.6)) * awake * 0.6, 0.2, 2);
 };
 const terradonVictory: Move = (s) => {
   const { t, p } = s;
@@ -602,6 +703,11 @@ const terradonVictory: Move = (s) => {
   s.move(0, -3 * jolt * drowsy);
   s.mood(t < 0.9 ? "happy" : "normal");
   s.shut(drowsy * (0.5 + 0.45 * sink) * (1 - jolt));
+  // Legs.
+  lift(p.legR, bump(t, 0.1, 0.5), -0.5, 5);
+  spread(s, 0.2 * sink * drowsy);
+  p.legL.y -= 2 * jolt * drowsy;
+  p.legR.y -= 2 * jolt * drowsy;
 };
 
 // --------------------------------------------------------------- Duskveil
@@ -631,6 +737,11 @@ const duskveilEntrance: Move = (s) => {
   s.move(s.sway(1.8) * 4 * drift, -(1 + s.sway(3.6)) * 1.2 * drift);
   s.spin(s.sway(1.8) * 0.05 * drift);
   p.tail.rotation += s.sway(1.8, 1) * 0.35 * drift;
+  // Legs.
+  spread(s, 0.5 * boo);
+  kick(s, giggle, 22, 0.3);
+  p.legL.rotation += s.sway(1.8, 1) * 0.25 * drift;
+  p.legR.rotation += s.sway(1.8, 1) * 0.25 * drift;
 };
 const duskveilVictory: Move = (s) => {
   const { t, p } = s;
@@ -652,6 +763,10 @@ const duskveilVictory: Move = (s) => {
   p.armL.rotation = (2.0 + s.sway(7) * 0.15) * back;
   p.armR.rotation = (-2.0 - s.sway(7) * 0.15) * back;
   p.tail.rotation += s.sway(1.8, 1) * 0.5 * back;
+  // Legs.
+  p.legL.rotation += -Math.sin(t * 4.5) * 0.4 * swing;
+  p.legR.rotation += -Math.sin(t * 4.5) * 0.4 * swing;
+  kick(s, back, 7, 0.3);
 };
 
 // --------------------------------------------------------------- Coilemur
@@ -687,6 +802,12 @@ const coilemurEntrance: Move = (s) => {
   p.armL.rotation += 1.0 * ready;
   p.armR.rotation += -1.0 * ready;
   p.tail.rotation += s.sway(5, 1) * 0.3 * ready;
+  // Legs.
+  lift(p.legL, Math.max(0, roll), 0.4, 4);
+  lift(p.legR, Math.max(0, -roll), -0.4, 4);
+  spread(s, 0.4 * arc(t, 0.84, 1.08));
+  lift(p.legR, beckon, -0.3, 3);
+  tap(s, ready, 10, 0.3, 3);
 };
 const coilemurVictory: Move = (s) => {
   const { t, p } = s;
@@ -720,6 +841,13 @@ const coilemurVictory: Move = (s) => {
   p.armR.rotation += (-2.2 - s.sway(14) * 0.1) * flex;
   p.tail.rotation = (0.4 + s.sway(16) * 0.5) * flex;
   if (s.passed(1.9)) s.accent("spark", 4);
+  // Legs.
+  p.legR.rotation -= 0.5 * grab;
+  p.legL.rotation += 0.4 * yank;
+  lift(p.legL, Math.max(0, thump), 0.3, 3);
+  lift(p.legR, Math.max(0, -thump), -0.3, 3);
+  spread(s, 0.6 * arc(t, 1.44, 1.9));
+  tap(s, ease(t, 2.0, 2.2), 7, 0.3, 3);
 };
 
 // ---------------------------------------------------------------- Pyranda
