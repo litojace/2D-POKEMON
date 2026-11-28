@@ -473,6 +473,7 @@
     #pz-treat,
     #pz-album-btn,
     #pz-fish-book2,
+    #pz-fish-today,
     #pz-quests > .pz-qbtn
   ) {
   position: relative;
@@ -506,7 +507,13 @@
 }
 :root[data-ui="poster"]
   .plaza-layer
-  :is(#pz-map-btn, #pz-album-btn, #pz-fish-book2, #pz-quests > .pz-qbtn)
+  :is(
+    #pz-map-btn,
+    #pz-album-btn,
+    #pz-fish-book2,
+    #pz-fish-today,
+    #pz-quests > .pz-qbtn
+  )
   > small,
 :root[data-ui="poster"] .plaza-layer #pz-treat::after {
   color: #f4ead5;
@@ -619,4 +626,31 @@
   .plaza-layer
   #pz-clock:is(:hover, :focus-visible, :active) {
   color: #ffd65b;
+}
+
+/* Fishing: the day's count beside the bare Book is bare too, its number
+   in cream with an ink stroke in a row as tall as Book's fish, so "TODAY"
+   sits level with "BOOK". It is a count, not a button. */
+:root[data-ui="poster"] .plaza-layer #pz-fish-today > b {
+  height: 38px;
+  font: 400 calc(17px * var(--text-scale, 1)) / 1 var(--font-display);
+  letter-spacing: 0.02em;
+  text-shadow:
+    1px 0 0 var(--ink),
+    -1px 0 0 var(--ink),
+    0 1px 0 var(--ink),
+    0 -1px 0 var(--ink),
+    1px 2px 0 rgba(0, 0, 0, 0.55);
+}
+/* The pair's top rows drop by the same 4 px (the old look's 0.3em came
+   out different for a number and an icon). */
+:root[data-ui="poster"]
+  .plaza-layer
+  :is(#pz-fish-today, #pz-fish-book2)
+  > :first-child {
+  margin-top: 4px;
+}
+:root[data-ui="poster"] .plaza-layer #pz-fish-today > b > i {
+  color: inherit;
+  font-weight: 400;
 }
