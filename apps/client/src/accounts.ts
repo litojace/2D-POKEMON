@@ -2368,7 +2368,7 @@ export class AccountUI {
       return;
     }
     this.hooks.openDialog(
-      `<div class="eyebrow">Help us fix it</div><h2>${context.playerName ? `Report ${escape(context.playerName)}` : "Report a problem"}</h2><p>Tell the admins what happened. Your current screen${context.playerName ? " and who you're reporting" : ""}${context.room ? ` and room code ${escape(context.room)}` : ""} are included automatically.</p><form id="report-form" class="account-form"><label>What kind of problem?<select name="category" required>${Object.entries(
+      `<div class="eyebrow">Help us fix it</div><h2>${context.playerName ? `Report ${escape(context.playerName)}` : "Report a problem"}</h2><p>Tell the admins what happened. Your current screen${context.playerName ? " and who you're reporting" : ""}${context.room ? ` and room code ${escape(context.room)}` : ""} ${context.playerName || context.room ? "are" : "is"} included automatically.</p><form id="report-form" class="account-form"><label>What kind of problem?<select name="category" required>${Object.entries(
         REPORT_CATEGORIES,
       )
         .map(
