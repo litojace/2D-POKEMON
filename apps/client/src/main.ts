@@ -224,6 +224,7 @@ import { fighterArt, fighterAvatar, scopeIds } from "./fighter-art";
 import { fighterSkillColor, wornArt } from "./skins/skin-art";
 import { drawCollectionAura } from "./skins/collection-fx";
 import { battleAuraScale } from "./shop-preview-layout";
+import { footprintScale, groundDrop } from "./ground";
 import { colourPreview } from "./colour-preview";
 import { stadiumCrowd } from "./stadium";
 import { setupPWA } from "./pwa";
@@ -8841,12 +8842,20 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
       const giant =
         (state.mutators?.includes("giants") ? MUTATOR_RULES.giants : 1) *
         (serverPlayer.elite ? SPIRE_PARTY.eliteScale : 1);
-      const feetY = y + WORLD_ART.fighterFeet * view.fighterY * 0.7 * giant;
+      // The champion's ground point and footprint (ground.ts), as in the
+      // menus: a rig unit is two art units.
+      const wide = footprintScale(p.character);
+      const feetY =
+        y +
+        (WORLD_ART.fighterFeet + groundDrop(p.character) / 2) *
+          view.fighterY *
+          0.7 *
+          giant;
       g.fillStyle(0x081f19, 0.45 * shown).fillEllipse(
         x,
         feetY,
-        48 - jump * 0.2,
-        18 - jump * 0.1,
+        (48 - jump * 0.2) * wide,
+        (18 - jump * 0.1) * wide,
       );
       g.lineStyle(
         2,
@@ -8982,8 +8991,8 @@ class ArenaScene extends (SceneUntilPhaser as unknown as typeof Phaser.Scene) {
               .save()
               .translateCanvas(x, feetY)
               .scaleCanvas(
-                battleAuraScale(view.fighterX * 0.7 * giant),
-                battleAuraScale(view.fighterY * 0.7 * giant),
+                battleAuraScale(view.fighterX * 0.7 * giant) * wide,
+                battleAuraScale(view.fighterY * 0.7 * giant) * wide,
               );
           // On the shadow's plane (48×18 at the feet): same flatness.
           drawCollectionAura(

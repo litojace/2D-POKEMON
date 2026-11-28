@@ -6,15 +6,19 @@ import {
   proportioned,
   type SkinLook,
 } from "./creature-design";
+import { SHADOW_FLAT, footprint, groundDrop } from "./ground";
 
-/** A borderless contact shadow shared by Home and full fighter previews. */
-/** The menu art's contact shadow (SVG art units), for anything on its plane. */
+/**
+ * The menu art's contact shadow (SVG art units), for anything on its plane:
+ * the champion's ground ellipse (ground.ts), the same shape for every
+ * champion. A floater keeps it; only its body hovers above.
+ */
 export function menuShadow(id: CharacterId) {
-  const hovering = HOVERING.includes(id);
   const pawY = id === "terradon" ? 172 : id === "cindrake" ? 172 : 171;
   const pawX = id === "terradon" ? 65 : id === "cindrake" ? 78 : 80;
   const feet = proportioned("legL", pawX, pawY)[1];
-  return { cx: 100, cy: hovering ? 177 : feet, rx: 32, ry: hovering ? 7 : 4.5 };
+  const rx = footprint(id);
+  return { cx: 100, cy: feet + groundDrop(id), rx, ry: rx * SHADOW_FLAT };
 }
 export function withSoftGround(svg: string, id: CharacterId) {
   // The old floor at y=177 predates the chibi limb proportions. Anchor the

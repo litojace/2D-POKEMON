@@ -16,6 +16,7 @@ import { SKINS } from "./animation/cosmetics";
 import { drawCollectionAura } from "./skins/collection-fx";
 import { auraScale as auraSizeFor } from "./aura-size";
 import { menuShadow } from "./fighter-art";
+import { MENU_GROUND_FLAT, footprintScale, groundDrop } from "./ground";
 import { lowGraphics } from "./graphics-quality";
 import { reducedMotionQuery } from "./reduced-motion";
 import { previewDensity } from "./render-budget";
@@ -620,9 +621,15 @@ export function mountShopPreview(
       // The light itself (glow, lit disc and ring) is the stage's own layer
       // behind the canvas (stage-light.ts, owner's option C): the rig draws
       // only the fighter's contact shadow.
+      const wide = footprintScale(champion);
       this.floor
         .fillStyle(0x040d20, 0.4)
-        .fillEllipse(framing.x, feet, SHOP_SHADOW.width, SHOP_SHADOW.height);
+        .fillEllipse(
+          framing.x,
+          feet + (groundDrop(champion) * framing.scale) / 2,
+          SHOP_SHADOW.width * wide,
+          SHOP_SHADOW.height * wide,
+        );
     }
     update(_time: number, delta: number) {
       if (
@@ -688,9 +695,14 @@ export function mountShopPreview(
         // fighter's shadow.
         auraX = (shadow.cx + 20) * 2;
         auraY = (shadow.cy + 40) * 2;
-        auraScale = auraSizeFor(2) * (shadow.rx / 32);
-        flat = shadow.ry / shadow.rx;
+        auraScale = auraSizeFor(2) * footprintScale(champion);
+        // The menus' one ground plane (ground.ts), whoever stands on it.
+        flat = MENU_GROUND_FLAT;
         lift = 0;
+      } else {
+        // The Shop's stage: the same ground point and footprint.
+        auraY += (groundDrop(champion) * framing.scale) / 2;
+        auraScale *= footprintScale(champion);
       }
       this.aura.setScale(auraScale);
       this.auraFront.setScale(auraScale);
