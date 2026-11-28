@@ -1,0 +1,42 @@
+/* Poster: the level bar under a match's XP ("Your next adventure",
+   adventure-ui.ts levelBar), the audit, 28 Nov. Chromium paints a
+   progress bar through its own parts, so the sheet's flat accent colour
+   never showed: the bar was a teal gradient on navy with round ends. Now
+   a gold fill on an ink track, square, as every progress bar on the ink.
+   The level a red square with white figures, as the header's "Lv" (red
+   is the level badges' colour; it was the sheet's element colour). */
+:root[data-ui="poster"] .journey-level progress {
+  border-radius: 0;
+  background: var(--ink-3);
+}
+:root[data-ui="poster"] .journey-level progress::-webkit-progress-bar {
+  border-radius: 0;
+  background: var(--ink-3);
+}
+:root[data-ui="poster"] .journey-level progress::-webkit-progress-value {
+  border-radius: 0;
+  background: var(--gold);
+}
+:root[data-ui="poster"] .journey-level progress::-moz-progress-bar {
+  border-radius: 0;
+  background: var(--gold);
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .journey-result-xp
+  span.journey-level-badge {
+  background: var(--hot-fill);
+}
+/* (Under .journey-result-xp and with an element, to outweigh the sheet's
+   cream for every word in the XP block.) */
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .journey-result-xp
+  span.journey-level-badge,
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .journey-result-xp
+  .journey-level-badge
+  > :is(small, b) {
+  color: #fff;
+}
