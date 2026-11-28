@@ -12,7 +12,10 @@
   color: var(--ui-text);
   font-variant-numeric: tabular-nums;
 }
-:where(.ui, .ui-panel, .ui-modal) :where(*, *::before, *::after) {
+/* Elements only: pseudo-elements inside :where() are not valid and were
+   always dropped, so the components' ::before / ::after keep the content
+   box they were drawn with (tests/unit/css-pseudo-in-is.test.ts). */
+:where(.ui, .ui-panel, .ui-modal) :where(*) {
   box-sizing: border-box;
 }
 :where(.ui, .ui-panel, .ui-modal) :where(button) {

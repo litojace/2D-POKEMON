@@ -393,3 +393,140 @@ for (const size of [
     }
   });
 }
+
+// An invite seat is a small tilted card: a plus and the word "INVITE". On
+// the shortest phones the seat is 44 px and the word (40 px of ink) ran over
+// its 3 px frame (audit B04): there the seat shows its plus alone. Measured
+// in the seat's own layout (offsets), since the tilt widens every box on
+// screen.
+for (const size of [
+  { width: 844, height: 280, word: false },
+  { width: 568, height: 320, word: false },
+  { width: 640, height: 360, word: true },
+  { width: 667, height: 375, word: true },
+]) {
+  test(`Poster: an invite seat's words stay inside its frame (${size.width}x${size.height})`, async ({
+    browser,
+  }, info) => {
+    const context = await browser.newContext({
+      viewport: { width: size.width, height: size.height },
+      isMobile: true,
+      hasTouch: true,
+    });
+    try {
+      const page = await context.newPage();
+      await skipTour(page);
+      await withPoster(page);
+      const errors = await openHub(page);
+      await page.evaluate(() => document.fonts.ready);
+      await snap(page, info, `poster-invite-${size.width}x${size.height}`);
+      const seats = await page.locator(".lobby-slot").evaluateAll((slots) =>
+        slots
+          .filter((s) => (s as HTMLElement).offsetParent !== null)
+          .map((s) => {
+            const seat = s as HTMLElement;
+            const plus = seat.querySelector<HTMLElement>("span")!;
+            const word = seat.querySelector<HTMLElement>("small")!;
+            const shown = [plus, word].filter((el) => el.offsetHeight > 1);
+            return {
+              size: seat.offsetWidth,
+              room: seat.clientWidth,
+              word: word.offsetHeight > 1,
+              // Each shown line, from the frame's inner edge.
+              lines: shown.map((el) => [
+                el.offsetLeft,
+                el.offsetLeft + el.offsetWidth,
+                el.offsetTop,
+                el.offsetTop + el.offsetHeight,
+              ]),
+              middle: shown.length
+                ? (shown[0].offsetTop +
+                    shown[shown.length - 1].offsetTop +
+                    shown[shown.length - 1].offsetHeight) /
+                  2
+                : -1,
+            };
+          }),
+      );
+      expect(seats.length).toBe(2);
+      for (const seat of seats) {
+        expect(seat.size, "a finger wide").toBeGreaterThanOrEqual(44);
+        expect(seat.word, JSON.stringify(seat)).toBe(size.word);
+        for (const [left, right, top, bottom] of seat.lines) {
+          // Two pixels clear of the frame on each side.
+          expect(left, JSON.stringify(seat)).toBeGreaterThanOrEqual(2);
+          expect(right, JSON.stringify(seat)).toBeLessThanOrEqual(
+            seat.room - 2,
+          );
+          expect(top, JSON.stringify(seat)).toBeGreaterThanOrEqual(2);
+          expect(bottom, JSON.stringify(seat)).toBeLessThanOrEqual(
+            seat.room - 2,
+          );
+        }
+        // What is shown stands in the middle of the card.
+        expect(Math.abs(seat.middle - seat.room / 2)).toBeLessThanOrEqual(1.5);
+      }
+      // With three in the party the fourth seat is an invite card above the
+      // third player: a finger wide too (it was 31 px at 568 x 320, the word
+      // spilling over both sides), under the party bar and clear of the
+      // player below. Under 300 px of height the row has no room for that.
+      if (size.height >= 300) {
+        await page.evaluate(() =>
+          (window as any).__sock.fire("party", {
+            code: "PARTY2",
+            leader: "11111111-1111-4111-8111-111111111111",
+            members: [
+              {
+                id: "11111111-1111-4111-8111-111111111111",
+                name: "tester",
+                character: "voltkit",
+              },
+              {
+                id: "33333333-3333-4333-8333-333333333333",
+                name: "Pal",
+                character: "tidefin",
+              },
+              {
+                id: "66666666-6666-4666-8666-666666666666",
+                name: "Bo",
+                character: "voltkit",
+              },
+            ],
+          }),
+        );
+        const fourth = page.locator("#lobby-slot-2 .lobby-slot");
+        await expect(fourth).toBeVisible();
+        await snap(
+          page,
+          info,
+          `poster-invite-party-${size.width}x${size.height}`,
+        );
+        const party = await page.evaluate(() => {
+          const rect = (sel: string) => {
+            const r = document.querySelector(sel)!.getBoundingClientRect();
+            return { top: r.top, bottom: r.bottom };
+          };
+          const seat = document.querySelector<HTMLElement>(
+            "#lobby-slot-2 .lobby-slot",
+          )!;
+          return {
+            size: seat.offsetWidth,
+            seat: rect("#lobby-slot-2 .lobby-slot"),
+            bar: rect("#lobby-party-bar"),
+            below: rect("#lobby-slot-1 .lobby-member"),
+          };
+        });
+        expect(party.size, JSON.stringify(party)).toBeGreaterThanOrEqual(44);
+        expect(party.seat.top, JSON.stringify(party)).toBeGreaterThanOrEqual(
+          party.bar.bottom,
+        );
+        expect(party.seat.bottom, JSON.stringify(party)).toBeLessThanOrEqual(
+          party.below.top,
+        );
+      }
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+}

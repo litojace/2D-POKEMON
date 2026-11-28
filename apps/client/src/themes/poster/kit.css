@@ -325,6 +325,19 @@
   font-family: var(--font-body);
   font-weight: 700;
 }
+/* Watching a fight on a touch screen: no joystick and no skills, so the
+   toast keeps no gutters for them (ui/components.css). Squeezed between
+   them, "Watching room …" took three lines and rose into the countdown's
+   line under its number (watch-countdown.spec.ts, 667 x 375). It also sits
+   low, in the install pill's row (style.css, #pwa-banner, 6 px up): any
+   higher and at 844 x 390 and 852 x 393 it ran into that line, which sits
+   lower since the kicker stands clear of the number (sheets.css, D13). The
+   pill takes no taps; the toast covers it for its 4.5 s at most. */
+:root[data-ui="poster"] body.battle-active.touch-mode.spectating #toast {
+  --toast-l: calc(var(--safe-left) + 8px);
+  --toast-r: calc(var(--safe-right) + 8px);
+  bottom: calc(var(--safe-bottom) + 6px);
+}
 
 /* ── the update ask (pwa.ts): the banner, and the first ask over the whole
    screen. They were the look underneath's: a rounded teal card the Plaza's

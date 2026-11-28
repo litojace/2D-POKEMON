@@ -395,6 +395,8 @@
   let current = -1;
   let tab = 0;
   let opener = null;
+  /** Where a click outside the panel closed it (x, y), if one did. */
+  let closedAt = null;
   const load = () =>
     (loading ??= fetch("data/champions.json")
       .then((r) => r.json())
@@ -654,6 +656,7 @@
     void open(a.dataset.champion, a);
   });
   dialog.addEventListener("click", (e) => {
+    if (e.target === dialog) closedAt = [e.clientX, e.clientY];
     if (e.target === dialog || e.target.closest("[data-close]")) close();
     const step = e.target.closest("[data-step]");
     if (step) {
@@ -688,6 +691,30 @@
       (data && $(`.roster [data-champion="${data[current]?.id}"]`));
     card?.focus({ preventScroll: true });
     opener = null;
+    // Closed by a click that landed on the champion tape: the tape runs on
+    // under the resting mouse until it leaves (it holds still for a mouse
+    // that comes to it, not for one left there; owner, 27 Nov).
+    const tape = $(".ticker");
+    const at = closedAt;
+    closedAt = null;
+    if (tape && at) {
+      const r = tape.getBoundingClientRect();
+      if (
+        at[0] >= r.left &&
+        at[0] <= r.right &&
+        at[1] >= r.top &&
+        at[1] <= r.bottom
+      ) {
+        tape.classList.add("free");
+        tape.addEventListener(
+          "pointerleave",
+          () => tape.classList.remove("free"),
+          {
+            once: true,
+          },
+        );
+      }
+    }
   });
   // A shared link straight to a champion (#champion-voltkit).
   const deep = location.hash.match(/^#champion-([a-z]+)$/);
