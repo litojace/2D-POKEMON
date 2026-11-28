@@ -12,5 +12,8 @@
 @import "./plaza.css";
 @import "./admin.css";
 @import "./open-beta.css";
+@import "./dialogs.css";
 @import "./badges.css";
 @import "./elements.css";
+@import "./severity.css";
+@import "./rarity.css";

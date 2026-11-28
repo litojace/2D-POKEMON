@@ -220,3 +220,25 @@ game was yellow):
   row's 2 px between tabs is covered by each tab's invisible reach (a
   `::before`), so a tap between two tabs takes one of them
   (`phone-fit.spec.ts`, `spire-safe-area.spec.ts`; #607, #643).
+- **Colour that means something** (owner, 27 Nov 2026: "colour text by how
+  dangerous or important it is, but it must not contradict the look").
+  Colour goes only where it means something: an element (its `--el-*`
+  colour), a rarity (the five `--r-*`, as in `title-tier.ts`), how serious a
+  word is, or a state. Body copy stays ink or cream. The roles of the look's
+  own colours: cream is what is chosen; gold is what to press and coins,
+  and progress on ink only (gold on cream is about 1.2:1); red is the level
+  badge, a sale, leaving and danger.
+  - **How serious** (`severity.css`): neutral and info have no colour of
+    their own (info shows an ⓘ); highlight is weight, not colour; success
+    is green (`--sev-ok`), warning amber (`--sev-warn`), danger the look's
+    red (`--sev-danger`). Each has a darker twin for cream
+    (`--sev-*-paper`), 4.8:1 or more on cream and white and 4.5:1 on gold.
+  - The colour goes on the key word, a mark or a thin edge, never a whole
+    paragraph, and never alone: a tick, a warning sign or a word goes with
+    it. Amber is not gold: a warning always carries its sign and a word,
+    and is never a fill on or beside a gold button.
+  - Toasts take a kind (`toast(message, "ok" | "warn" | "error")` in
+    `main.ts`); a confirm that can't be taken back passes `danger: true`
+    (`confirmModal`); the battle clock's `data-clock` is `ring` (amber, a
+    sign before RING CLOSING) or `low` (the last 10 seconds, red).
+    `tests/visual/severity.spec.ts` measures them on the real surfaces.

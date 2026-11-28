@@ -1,0 +1,154 @@
+/* How serious a word is: colour by danger and importance (owner, 27 Nov
+   2026), on one scale for the whole game. The rule (docs/ui-themes.md,
+   "Colour that means something"):
+
+   - Five levels. Neutral and info have no colour of their own (info shows
+     an ⓘ); highlight is weight, not colour. Success is green, warning amber,
+     danger the look's red.
+   - The colour goes on the key word, the icon or a thin edge, never on a
+     whole paragraph; body copy stays ink or cream.
+   - Never colour alone: a tick, a warning sign or a word goes with it, for
+     players who don't tell red from green.
+   - Each has a darker twin for cream: words hold 4.5:1 on ink and on cream
+     with room to spare (tests/visual/poster-contrast.spec.ts measures them
+     on the real surfaces). Amber is not the gold of what to press: a
+     warning always carries its sign and a word, and is never a fill on or
+     beside a gold button. */
+:root[data-ui="poster"] {
+  --sev-ok: #3ee07a;
+  --sev-warn: #ffa21f;
+  --sev-danger: var(--hot);
+  --sev-ok-paper: #166a33;
+  --sev-warn-paper: #8a4a00;
+  --sev-danger-paper: #b8122d;
+  /* The marks that go with them, drawn in the level's colour (a mask, so a
+     phone can't swap in a coloured emoji). */
+  --sev-tick: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M4 12.5l5 5L20 6.5' fill='none' stroke='%23000' stroke-width='3.4' stroke-linecap='square'/%3E%3C/svg%3E");
+  /* The warning sign's "!" is cut out of the triangle (a mask keeps only
+     what is drawn): it shows the ground under the sign. */
+  --sev-sign: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill-rule='evenodd' d='M12 1.5L23.5 21.5H.5zM10.8 8.5h2.4v6.5h-2.4zM10.8 16.6h2.4v2.4h-2.4z'/%3E%3C/svg%3E");
+}
+
+/* The battle clock (main.ts writes data-clock through hud-dom): amber while
+   the ring closes, with a warning sign before the badge's RING CLOSING · STAY
+   INSIDE; red in a round's last 10 seconds. Poster's clock rule (screens.css)
+   beat the look underneath's #timer.ring-on, so no warning ever showed. Only
+   the colour of one HUD word and a sign beside the next change: no glow, no
+   motion, no :has() (a sibling rule). */
+:root[data-ui="poster"]
+  body.battle-active
+  #battle
+  #hud
+  #timer[data-clock="ring"] {
+  color: var(--sev-warn);
+}
+:root[data-ui="poster"]
+  body.battle-active
+  #battle
+  #hud
+  #timer[data-clock="low"] {
+  color: var(--sev-danger);
+}
+:root[data-ui="poster"]
+  body.battle-active
+  #battle
+  #hud
+  #timer:is([data-clock="ring"], [data-clock="low"])
+  ~ #phase-label::before {
+  content: "";
+  display: inline-block;
+  width: 1.1em;
+  height: 1.1em;
+  margin-right: 0.4em;
+  vertical-align: -0.18em;
+  background: var(--sev-warn);
+  -webkit-mask: var(--sev-sign) center / contain no-repeat;
+  mask: var(--sev-sign) center / contain no-repeat;
+}
+:root[data-ui="poster"]
+  body.battle-active
+  #battle
+  #hud
+  #timer[data-clock="low"]
+  ~ #phase-label::before {
+  background: var(--sev-danger);
+}
+
+/* Toasts (main.ts toast(message, kind)): the edge and a mark before the
+   words in the level's colour; the words stay cream. */
+:root[data-ui="poster"] #toast[data-kind] {
+  border-left-color: var(--sev-colour);
+}
+:root[data-ui="poster"] #toast[data-kind]::before {
+  content: "";
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  margin-right: 0.45em;
+  vertical-align: -0.14em;
+  background: var(--sev-colour);
+  -webkit-mask: var(--sev-mark) center / contain no-repeat;
+  mask: var(--sev-mark) center / contain no-repeat;
+}
+:root[data-ui="poster"] #toast[data-kind="ok"] {
+  --sev-colour: var(--sev-ok);
+  --sev-mark: var(--sev-tick);
+}
+:root[data-ui="poster"] #toast[data-kind="warn"] {
+  --sev-colour: var(--sev-warn);
+  --sev-mark: var(--sev-sign);
+}
+:root[data-ui="poster"] #toast[data-kind="error"] {
+  --sev-colour: var(--sev-danger);
+  --sev-mark: var(--sev-sign);
+}
+
+/* What can't be taken back (Block, a guest logging out): the confirm is a
+   red block with white words, not the primary button. */
+:root[data-ui="poster"] .ui-modal .ui-btn.is-danger,
+:root[data-ui="poster"] #dialog .dialog-actions button.is-danger {
+  background: var(--hot-fill);
+  color: #fff;
+  box-shadow: 4px 4px 0 #000;
+}
+:root[data-ui="poster"] .ui-modal .ui-btn.is-danger svg,
+:root[data-ui="poster"] #dialog .dialog-actions button.is-danger svg {
+  color: #fff;
+}
+
+/* A choice between two (the guest's Save or Log out anyway): one size for
+   both, the widest label's (owner, 28 Nov 2026: buttons side by side share
+   one size). Equal shares of the row, in the dialog's own row or its
+   footer (which shows the row's buttons as its own). */
+:root[data-ui="poster"] #dialog .dialog-actions.is-even > button {
+  flex: 1 1 0;
+  min-width: max-content;
+}
+
+/* A danger button that isn't a confirm (Delete account, Exit test mode,
+   Report): its words in the one danger red, not a pinker one of its own. */
+:root[data-ui="poster"] .ui-btn.is-danger {
+  color: var(--sev-danger);
+}
+
+/* What failed to save (the result sheet's records and XP lines): a danger
+   sign before the words, which stay the sheet's own colour. On a loss's ink
+   sheet the sign is red; on a win's element-colour field it is ink, as red
+   can't hold 3:1 on every element colour, and the words say what failed. */
+:root[data-ui="poster"] :is(.records, .journey-xp-pending).is-error::before {
+  content: "";
+  display: inline-block;
+  width: 1.05em;
+  height: 1.05em;
+  margin-right: 0.4em;
+  vertical-align: -0.16em;
+  background: var(--sev-danger);
+  -webkit-mask: var(--sev-sign) center / contain no-repeat;
+  mask: var(--sev-sign) center / contain no-repeat;
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .is-victory
+  :is(.records, .journey-xp-pending).is-error::before {
+  background: var(--ink);
+}
