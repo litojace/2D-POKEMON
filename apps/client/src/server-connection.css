@@ -83,16 +83,29 @@
 .server-startup-brand {
   display: grid;
   justify-items: center;
+  /* The padding the ink block had stays, so the words keep their place
+     (and the web's BETA tag, at this box's corner, keeps its own). */
   padding: clamp(6px, 1.6vh, 12px) clamp(12px, 2.6vh, 20px)
     clamp(4px, 1.2vh, 9px);
-  background: var(--startup-ink);
-  box-shadow: 5px 5px 0 var(--startup-hot);
 }
+/* No block behind the name (owner, 27 Nov): the words stand on the cover
+   or the painting by themselves, in Poster's sticker lettering, an ink
+   outline and a hard ink shadow, so they read on every painting. */
 .server-startup-brand h1 {
   margin: 0;
   color: #fff;
   font: 400 clamp(27px, 7.2vh, 60px) / 0.95 var(--startup-display);
   text-transform: uppercase;
+  text-shadow:
+    0.05em 0 0 var(--startup-ink),
+    -0.05em 0 0 var(--startup-ink),
+    0 0.05em 0 var(--startup-ink),
+    0 -0.05em 0 var(--startup-ink),
+    0.035em 0.035em 0 var(--startup-ink),
+    -0.035em 0.035em 0 var(--startup-ink),
+    0.035em -0.035em 0 var(--startup-ink),
+    -0.035em -0.035em 0 var(--startup-ink),
+    0.1em 0.1em 0 var(--startup-ink);
 }
 .server-startup-brand h1 > span {
   display: block;
@@ -443,6 +456,9 @@
   flex: none;
   width: clamp(34px, 10vh, 76px);
   height: clamp(34px, 10vh, 76px);
+  /* The star's own hard shadow, as the words'. */
+  filter: drop-shadow(0 0 1.5px var(--startup-ink))
+    drop-shadow(4px 4px 0 var(--startup-ink));
 }
 .server-startup.has-art .server-startup-brand h1 {
   font-size: clamp(24px, 7vh, 54px);
