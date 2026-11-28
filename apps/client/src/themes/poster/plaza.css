@@ -315,3 +315,92 @@
   border-radius: 0;
   box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.45);
 }
+
+/* ── Plaza: the round HUD buttons are bare icons ──
+   Map, the gift box, Album and the Fish book stand in the world, so they
+   are drawn like the battle's corner icons (#648): no dark disc, a cream
+   icon a size up with an ink outline and a hard shadow, its word under it
+   in cream with an ink stroke (owner, 28 Nov: "drop the black circle, keep
+   just the icon a little bigger, with a bit of shadow"). Bare icons in the
+   world, ink blocks on menus and panels. The button keeps its box, so the
+   tap area stays 44 px or more. The gift box's count is a red badge on the
+   icon's corner, and the word Gifts goes under it like the others. */
+:root[data-ui="poster"]
+  .plaza-layer
+  :is(#pz-map-btn, #pz-treat, #pz-album-btn, #pz-fish-book2) {
+  position: relative;
+  min-width: 48px;
+  min-height: 52px;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  color: #f4ead5;
+  gap: 2px;
+}
+:root[data-ui="poster"]
+  .plaza-layer
+  :is(#pz-map-btn, #pz-treat, #pz-album-btn, #pz-fish-book2)
+  > .ico {
+  width: 38px;
+  height: 38px;
+  color: inherit;
+  filter: drop-shadow(1px 0 0 var(--ink)) drop-shadow(-1px 0 0 var(--ink))
+    drop-shadow(0 1px 0 var(--ink)) drop-shadow(0 -1px 0 var(--ink))
+    drop-shadow(2px 3px 0 rgba(0, 0, 0, 0.55));
+}
+:root[data-ui="poster"]
+  .plaza-layer
+  :is(#pz-map-btn, #pz-album-btn, #pz-fish-book2)
+  > small,
+:root[data-ui="poster"] .plaza-layer #pz-treat::after {
+  color: #f4ead5;
+  font: 400 calc(12px * var(--text-scale, 1)) / 1 var(--font-display);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-shadow:
+    1px 0 0 var(--ink),
+    -1px 0 0 var(--ink),
+    0 1px 0 var(--ink),
+    0 -1px 0 var(--ink),
+    1px 2px 0 rgba(0, 0, 0, 0.55);
+}
+:root[data-ui="poster"] .plaza-layer #pz-treat::after {
+  content: "Gifts";
+}
+/* The count: a small red badge on the box's top right corner. */
+:root[data-ui="poster"] .plaza-layer #pz-treat > small {
+  position: absolute;
+  top: 0;
+  right: 2px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  background: var(--hot-fill);
+  color: #fff;
+  font: 800 calc(11px * var(--text-scale, 1)) / 1 var(--font-body);
+  font-variant-numeric: tabular-nums;
+  box-shadow: 1px 1px 0 var(--ink);
+}
+/* A pressed or focused icon in the game's gold, as in battle. */
+:root[data-ui="poster"]
+  .plaza-layer
+  :is(#pz-map-btn, #pz-treat, #pz-album-btn, #pz-fish-book2):is(
+    :hover,
+    :focus-visible,
+    :active
+  ) {
+  color: #ffd65b;
+}
+/* No boxes left today: no badge, and the box a little faded. */
+:root[data-ui="poster"] .plaza-layer #pz-treat.empty > small {
+  display: none;
+}
+:root[data-ui="poster"] .plaza-layer #pz-treat.empty > .ico {
+  opacity: 0.6;
+}
