@@ -116,6 +116,19 @@
       "image": "04-raid-lumiwick-story.jpg"
     },
     {
+      "id": "12-plaza",
+      "at": "2026-12-03T17:40:00-08:00",
+      "kind": "feed",
+      "image": "12-plaza-feed.jpg",
+      "caption": "Hang out between fights. 🎪\n\nThe Plaza is Element Arena's shared playground, up to 40 players at once: bounce pads, a ball pitch, a dash track, a stage, a photo spot, gifts and daily quests. Every 15 minutes there's an Orb Shower: grab as many orbs as you can around the fountain.\n\nOpen beta, free in your browser. Link in bio.\n\n#ElementArena #indiegame #mobilegame #browsergame #gamedev"
+    },
+    {
+      "id": "12-plaza-story",
+      "at": "2026-12-04T11:40:00-08:00",
+      "kind": "story",
+      "image": "12-plaza-story.jpg"
+    },
+    {
       "id": "10-report-bugs",
       "kind": "feed",
       "image": "10-report-bugs-feed.jpg",
@@ -127,6 +140,19 @@
       "kind": "story",
       "image": "10-report-bugs-story.jpg",
       "at": "2026-12-05T11:40:00-08:00"
+    },
+    {
+      "id": "13-friends",
+      "at": "2026-12-05T17:40:00-08:00",
+      "kind": "feed",
+      "image": "13-friends-feed.jpg",
+      "caption": "Bring your friends. 👯\n\nShare your friend code, invite them to your room, jump into theirs, or watch their match live, all from the Lobby. Then team up in 2v2, or settle it in a duel.\n\nOpen beta, free in your browser on phone, tablet or computer. Tag the friend you're bringing. 👇\n\n#ElementArena #indiegame #mobilegame #pvp #browsergame"
+    },
+    {
+      "id": "13-friends-story",
+      "at": "2026-12-06T11:40:00-08:00",
+      "kind": "story",
+      "image": "13-friends-story.jpg"
     },
     {
       "id": "05-teams",

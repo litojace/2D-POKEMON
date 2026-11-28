@@ -55,6 +55,13 @@ The first command records, in Poster:
   frame per tick in `instagram-clips/battles/<scene>/`. Pick each post's
   frame by eye: a big move going off, every fighter still in sight
   (`screen(...)` in `make-posts.mjs`);
+- **the screens outside battle** (`screens.spec.ts`, `SCREEN=plaza,friends`
+  for some): the Plaza during an Orb Shower (the page's clock is set into
+  one) with made-up players placed by the Plaza's own coordinates, clear of
+  lamp posts and the HUD, and the Friends sheet with made-up friends. Every
+  coin count is blurred where it stands (the owner's rule for the website:
+  no amounts of the game's money outside the game), so Journey, Ranks and
+  mission rewards, which show coin amounts, are not used yet;
 - **the three Mythical skins** in the game's fitting room at Stage III, in Poster
   (the spec calls `onPlayersLook()`), frame by frame on the page's own clock
   (about 6 minutes): standing, then each one's Entrance, Victory and
@@ -121,14 +128,15 @@ shows, retake it, look at it, and ship it before its time. The pictures in
 `apps/site/social/` were last made at the commit that last changed them
 (`git log -1 -- apps/site/social/<file>`).
 
-| Post                                                                 | Shows of the game                                                             | Retake with                                         |
-| -------------------------------------------------------------------- | ----------------------------------------------------------------------------- | --------------------------------------------------- |
-| 2 Duels, 5 Teams, 7 Free-for-all, 9 Spire, 11's cover and last slide | a real battle, whole screen: court, fighters, effects, HUD and touch controls | `battles.spec.ts`, then pick the frame again by eye |
-| 3 Roster, 6 Pyranda                                                  | the fighters' drawings, names and elements (packages/shared)                  | `make-posts.mjs`                                    |
-| 8 Skins (Reel)                                                       | the Shop's fitting room in Poster, the Mythical skins                         | `skins.spec.ts`, `make-reel.py`                     |
-| 10 Found a bug?                                                      | the gear menu in Poster and Report a problem                                  | `report.spec.ts`, then `make-posts.mjs`             |
-| 11 Play it like an app                                               | the app icon, and Safari's steps (iOS, not the game)                          | `HOWTO=1 make-posts.mjs`; new iOS: new screenshots  |
-| 1 Welcome, 4 Lumiwick                                                | paintings only                                                                | `make-posts.mjs`                                    |
+| Post                                                                 | Shows of the game                                                                            | Retake with                                         |
+| -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| 2 Duels, 5 Teams, 7 Free-for-all, 9 Spire, 11's cover and last slide | a real battle, whole screen: court, fighters, effects, HUD and touch controls                | `battles.spec.ts`, then pick the frame again by eye |
+| 3 Roster, 6 Pyranda                                                  | the fighters' drawings, names and elements (packages/shared)                                 | `make-posts.mjs`                                    |
+| 8 Skins (Reel)                                                       | the Shop's fitting room in Poster, the Mythical skins                                        | `skins.spec.ts`, `make-reel.py`                     |
+| 10 Found a bug?                                                      | the gear menu in Poster and Report a problem                                                 | `report.spec.ts`, then `make-posts.mjs`             |
+| 11 Play it like an app                                               | the app icon, and Safari's steps (iOS, not the game)                                         | `HOWTO=1 make-posts.mjs`; new iOS: new screenshots  |
+| 12 Plaza, 13 Friends                                                 | the Plaza (made-up players placed by world coordinates), the Friends sheet (made-up friends) | `screens.spec.ts`, then pick the frame again by eye |
+| 1 Welcome, 4 Lumiwick                                                | paintings only                                                                               | `make-posts.mjs`                                    |
 
 Every post's frame copies Poster (colours, fonts, slabs: the CSS in
 `make-posts.mjs`), and captions name places in the game ("the gear, then
@@ -182,6 +190,8 @@ hashtags; five works under either rule.
 | 9. The Spire                | a real Spire floor                                                       |
 | 10. Found a bug? Tell us.   | the game's Menu, rings on the gear and Report a problem (report.spec.ts) |
 | 11. Play it like an app     | a carousel from a real iPhone: Safari's steps to the home screen (above) |
+| 12. The Plaza               | the Plaza in an Orb Shower, with made-up players round the fountain      |
+| 13. Bring your friends      | the Friends sheet: a request, Invite, Join and Watch, the friend code    |
 
 **Post 8**: Post `08-skins-reel.mp4` as a **Reel**, with `08-skins-reel-cover.jpg` as
 its cover: the three skins' Entrance, Victory and Ultimate with their full
@@ -196,9 +206,11 @@ Ultimate's peak) is the still version, for a later post or Story.
 The plan is `scripts/instagram/plan.json`: each item's time, kind (post,
 carousel, Reel or story), its files in `apps/site/social/` and its caption. That file,
 not this page, is what goes out. Launch with three posts on the first day,
-so a visitor from the website finds a full first row, then three a week:
-Monday, Wednesday and Friday at 5:40 PM PT (after school and work on the
-West Coast, 8:40 PM on the East Coast). The day after each post, its story
+so a visitor from the website finds a full first row; a post every day of
+launch week, each showing one more of the game's features (owner, 28 Nov:
+the first days introduce what the game has); then three a week, Monday,
+Wednesday and Friday. Posts go out at 5:40 PM PT (after school and work on
+the West Coast, 8:40 PM on the East Coast). The day after each post, its story
 version goes up at 11:40 AM PT. The API can't add a link sticker, so stories
 point to the link in bio.
 
@@ -209,7 +221,9 @@ point to the link in bio.
 | Mon 30 Nov, 5:40 PM | 11. Play it like an app  |
 | Tue 1 Dec, 5:40 PM  | 3. The roster            |
 | Wed 2 Dec, 5:40 PM  | 4. Raid boss: Lumiwick   |
+| Thu 3 Dec, 5:40 PM  | 12. The Plaza            |
 | Fri 4 Dec, 5:40 PM  | 10. Found a bug? Tell us |
+| Sat 5 Dec, 5:40 PM  | 13. Bring your friends   |
 | Mon 7 Dec, 5:40 PM  | 5. 2v2 teams             |
 | Wed 9 Dec, 5:40 PM  | 6. Pyranda               |
 | Fri 11 Dec, 5:40 PM | 8. The Shop (Reel)       |

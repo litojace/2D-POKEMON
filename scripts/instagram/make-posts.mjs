@@ -1,5 +1,5 @@
 // The Instagram starter pack (docs/instagram.md): the profile picture and
-// the first nine posts, each at the three sizes Instagram shows, in the
+// the posts, each at the three sizes Instagram shows, in the
 // game's look, Poster (docs/ui-themes.md): the fighter's element colour with
 // its halftone, ink slabs and a white stripe, white clippings with hard
 // offset shadows, Anton capitals and Archivo text. Everything comes from the
@@ -88,12 +88,20 @@ const EL = {
 const BATTLES = "instagram-clips/battles";
 const screen = (file) => ({ file: `${BATTLES}/${file}` });
 const PHONE_ASPECT = 2868 / 1320;
+/**
+ * A screen outside battle, whole, from screens.spec.ts (same phone, same
+ * look): the Plaza in an Orb Shower with made-up players (frame 12: every
+ * name in sight, none behind a lamp post), Friends with made-up friends.
+ * Coin counts are blurred where they stand (the owner's rule: no amounts of
+ * the game's money outside the game).
+ */
+const ui = (file) => ({ file: `instagram-clips/screens/${file}` });
 
 /** Painted art: the game's raid splash and loading art (1536 x 1024). */
 const painting = (file, x = 50, y = 50) => ({ painting: file, x, y });
 
 /**
- * The nine posts, in posting order. `kind` picks the layout:
+ * The posts, numbered as planned. `kind` picks the layout:
  * - "art": a painting full bleed above an ink slab that carries the words,
  * - "shot": a real capture of the game as a white clipping on the element
  *   colour,
@@ -212,6 +220,27 @@ const POSTS = [
     eyebrow: "Open beta",
     title: "Found a bug? Tell us.",
     line: "In the game: tap the gear, then Report a problem (with a free account). Or tell us in the comments. Every report gets read.",
+  },
+  {
+    id: 12,
+    name: "plaza",
+    kind: "shot",
+    el: EL.shadow,
+    art: ui("plaza/12.png"),
+    eyebrow: "The Plaza · up to 40 players",
+    title: "Hang out between fights.",
+    line: "Bounce pads, a ball pitch, a dash track, a photo spot, and an Orb Shower every 15 minutes.",
+  },
+  {
+    id: 13,
+    name: "friends",
+    kind: "shot",
+    // Blue: the Lobby behind the sheet is Pyranda's orange.
+    el: EL.water,
+    art: ui("friends/00.png"),
+    eyebrow: "Friends",
+    title: "Bring your friends.",
+    line: "Share your code, invite them to your room, or watch their match live.",
   },
 ];
 
