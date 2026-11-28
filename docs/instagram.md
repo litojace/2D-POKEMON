@@ -1,15 +1,30 @@
-# Instagram starter pack
+# Instagram
 
-The game's first Instagram account, free: a handle, a bio, the profile
-picture, nine posts with captions (one of them a Reel), and three weeks of
-posting. The owner
-creates the account (password, verification codes, CAPTCHA); a Claude
-session runs it through Meta's API (owner, 27 Nov: "Running the account"
-below).
+The game's Instagram, @elementarena.usa: the profile, the posts and the
+plan they go out on, run by Claude sessions through Meta's API ("Running
+the account" below). The owner created the account and the Meta app.
 
 Rules for everything posted (owner, 27 Nov): only the name Element Arena
 and the game's own art and characters. Never compare the game with another
 game or company, and never use their names or hashtags.
+
+**The open beta** (owner, 27 Nov): the web game is an open beta, a first
+taste before the App Store and Google Play apps, which will bring more
+champions, skins and features. So the posts:
+
+- say "open beta", and that it's free in the browser now;
+- say the iPhone and Android apps come later, with more, but never give a
+  date or promise a particular champion, skin or feature;
+- ask players to report bugs: in the game, the gear at the top of the
+  Lobby, then **Report a problem** (it needs a free account), or in the
+  comments, which the scheduled runs thank and pass on to the owner;
+- teach adding the game to the home screen early (the owner: friends keep
+  asking how), with screenshots from a real phone, never drawings. The
+  game's own steps are in the Menu, **Want fullscreen?**
+  (`apps/client/src/fullscreen-help.ts`).
+
+The title screen says "Open beta" after the name on the web (and never in
+the store apps: `title-screen.ts`, `betaTag`).
 
 ## Make the pictures
 
@@ -78,131 +93,34 @@ account, free; category Video Game). Business, not Creator: only a Business
 account can publish Stories through the API (below). It also unlocks
 insights and scheduling.
 
-## The nine posts
+## The posts
 
-Hashtags: at most five per post. Reports since December 2025 say
-Instagram caps posts at five; five works under either rule.
+Their captions are in `scripts/instagram/plan.json`, which is what goes out
+(`tests/unit/instagram-plan.test.ts` keeps them within the rules: at most
+five hashtags, `#ElementArena`, no other game's name, at most 2,200
+characters). Reports since December 2025 say Instagram caps posts at five
+hashtags; five works under either rule.
 
-### 1. Welcome (painted art, the duel at dusk)
+| Post                        | Picture                                                                  |
+| --------------------------- | ------------------------------------------------------------------------ |
+| 1. Welcome                  | the duel at dusk (loading art), "Open beta · free in your browser"       |
+| 2. Duels                    | a real duel, the charged beam into the lightning field                   |
+| 3. The roster               | the 18 fighters' drawings on their elements' colours                     |
+| 4. Raid boss: Lumiwick      | Lumiwick's raid splash                                                   |
+| 5. 2v2 teams                | a real 2v2                                                               |
+| 6. Champion spotlight       | Pyranda and its kit                                                      |
+| 7. Free-for-all             | a real four-way fight in the Ember Forge                                 |
+| 8. The Shop: Mythical skins | a Reel (below)                                                           |
+| 9. The Spire                | a real Spire floor                                                       |
+| 10. Found a bug? Tell us.   | the game's Menu, rings on the gear and Report a problem (report.spec.ts) |
 
-```
-Pick an element. Outplay your friends. ⚔️
-
-Element Arena is a real-time creature battle game: 18 original creatures across 9 elements, live 1v1 duels, 2v2 team fights and raid bosses.
-
-Free to play in your browser on phone, tablet or computer. No download. Link in bio.
-
-#ElementArena #indiegame #mobilegame #pvp #browsergame
-```
-
-### 2. Duels (real capture)
-
-```
-Dodge. Dash. Land the big one. ⚡
-
-Every duel is live: aim your skills, read your rival and time your ultimate. No turns, no waiting.
-
-Play free, link in bio.
-
-#ElementArena #pvp #indiegame #mobilegame #gamedev
-```
-
-### 3. The roster
-
-```
-18 creatures. 9 elements. 🔥💧⚡🌿
-
-Fire, Water, Electric, Nature, Earth, Light, Shadow, Psychic and Aura, two champions each, every one with its own kit.
-
-Who are you picking first? Tell us in the comments 👇
-
-#ElementArena #indiegame #mobilegame #characterdesign #pvp
-```
-
-### 4. Raid boss: Lumiwick (painted art)
-
-```
-Seven bosses, seven puzzles. 🏮
-
-Meet Lumiwick, a lantern with a temper. Every raid boss has one trick to learn: solve it solo or bring up to three friends.
-
-Start with Cragmuff: one clear opens the other six.
-
-#ElementArena #raidboss #indiegame #mobilegame #coop
-```
-
-### 5. 2v2 teams (real capture)
-
-```
-Better with a friend. 🤝
-
-Team up in 2v2, stack your skills and wipe the other side. Tag the friend you'd queue with.
-
-Play free, link in bio.
-
-#ElementArena #pvp #indiegame #mobilegame #multiplayer
-```
-
-### 6. Champion spotlight: Pyranda
-
-```
-Champion spotlight: Pyranda 🔥
-
-A shy red panda with a flame at the tip of its tail. Lobs burning chestnuts from the back line.
-
-🌰 Chestnut Mortar: a burning chestnut over walls
-🔥 Hot Coals: a patch that burns anyone in it
-🧱 Ember Curtain: a wall of embers that burns up enemy shots
-💥 Chestnut Storm (ultimate): five blasts march across the arena
-
-Who should we spotlight next?
-
-#ElementArena #indiegame #mobilegame #characterdesign #pvp
-```
-
-### 7. Free-for-all (real capture)
-
-```
-Four fighters. One winner. 🏆
-
-Everyone against everyone in the Ember Forge. Watch your back.
-
-Play free, link in bio.
-
-#ElementArena #pvp #indiegame #mobilegame #battlegame
-```
-
-### 8. The Shop: Mythical skins (Reel)
-
-Post `08-skins-reel.mp4` as a **Reel**, with `08-skins-reel-cover.jpg` as
+**Post 8**: Post `08-skins-reel.mp4` as a **Reel**, with `08-skins-reel-cover.jpg` as
 its cover: the three skins' Entrance, Victory and Ultimate with their full
 effects, to the game's own hub music. The API can't add Instagram's music
 library, so the Reel carries its own sound; posted by hand, a track from
 the library may replace it (a Business account gets its commercially
 licensed part). `08-skins-feed.jpg` (the three at their
 Ultimate's peak) is the still version, for a later post or Story.
-
-```
-Walk in a legend. ✨
-
-Ashen Warlord, Abyssal Reaver, Hellforge: Mythical skins with their own entrance, victory and ultimate. Win in them to awaken them, stage by stage. Try anything on before you spend a coin.
-
-All cosmetic, never stronger.
-
-#ElementArena #indiegame #mobilegame #characterdesign #gameart
-```
-
-### 9. The Spire (real capture)
-
-```
-70 floors. How high can you climb? 🗼
-
-Seven zones of ten floors, with an elite halfway up and a boss at the top of each.
-
-Play free, link in bio.
-
-#ElementArena #indiegame #mobilegame #indiedev #gamedev
-```
 
 ## Posting plan (US Pacific time)
 
@@ -215,20 +133,23 @@ West Coast, 8:40 PM on the East Coast). The day after each post, its story
 version goes up at 11:40 AM PT. The API can't add a link sticker, so stories
 point to the link in bio.
 
-| Date (PT)           | Post                   |
-| ------------------- | ---------------------- |
-| Mon 30 Nov, 5:40 PM | 1. Welcome             |
-| Mon 30 Nov, 5:40 PM | 2. Duels               |
-| Mon 30 Nov, 5:40 PM | 3. The roster          |
-| Wed 2 Dec, 5:40 PM  | 4. Raid boss: Lumiwick |
-| Fri 4 Dec, 5:40 PM  | 5. 2v2 teams           |
-| Mon 7 Dec, 5:40 PM  | 6. Pyranda             |
-| Wed 9 Dec, 5:40 PM  | 7. Free-for-all        |
-| Fri 11 Dec, 5:40 PM | 8. The Shop (Reel)     |
-| Mon 14 Dec, 5:40 PM | 9. The Spire           |
+| Date (PT)           | Post                     |
+| ------------------- | ------------------------ |
+| Mon 30 Nov, 5:40 PM | 1. Welcome               |
+| Mon 30 Nov, 5:40 PM | 2. Duels                 |
+| Mon 30 Nov, 5:40 PM | 3. The roster            |
+| Wed 2 Dec, 5:40 PM  | 4. Raid boss: Lumiwick   |
+| Fri 4 Dec, 5:40 PM  | 10. Found a bug? Tell us |
+| Mon 7 Dec, 5:40 PM  | 5. 2v2 teams             |
+| Wed 9 Dec, 5:40 PM  | 6. Pyranda               |
+| Fri 11 Dec, 5:40 PM | 8. The Shop (Reel)       |
+| Mon 14 Dec, 5:40 PM | 7. Free-for-all          |
+| Wed 16 Dec, 5:40 PM | 9. The Spire             |
 
 Launch day's three go out in this order, a minute or so apart, so the grid
-(newest first) reads roster, duels, welcome.
+(newest first) reads roster, duels, welcome. The home screen how-to (a
+carousel, and a story each for iPhone and Android) joins launch day once
+the owner's phone screenshots are in.
 
 Week 4: read Insights (Professional dashboard) for which post reached the
 most people, and make more like it: the next champion spotlights, the other
@@ -267,12 +188,15 @@ The owner is busy and handed the posting to Claude sessions: "có chứ"
 - **"Dừng" (stop)** from the owner stops all posting and replies at once.
 
 Comments, checked three times a day: thank people, answer the usual
-questions (where to play: the link in bio; free: yes, in the browser; the
-phone apps: coming soon), and hide spam, scams and abuse. Never promise a
-date, a prize or a feature. Complaints, bugs, payments, accounts or
-personal data, anyone who seems to be a child sharing personal details,
-press and business: no reply from the session; it tells the owner the same
-day. Every Sunday the session sends a short report: reach, the best post,
+questions (where to play: the link in bio; free: yes, in the browser, an
+open beta; the phone apps: later, with more champions, skins and features;
+fullscreen: add it to the home screen, the gear then Want fullscreen?), and
+hide spam, scams and abuse. Never promise a date, a prize or a feature.
+**A bug report** gets a short thank-you ("thanks, passed on to the team")
+and goes to the owner with what the player said. Complaints, payments,
+accounts or personal data, anyone who seems to be a child sharing personal
+details, press and business: no reply from the session; it tells the owner
+the same day. Every Sunday the session sends a short report: reach, the best post,
 new followers, and what needs the owner.
 
 How it works: Meta's Graph API, the official and free route (never a

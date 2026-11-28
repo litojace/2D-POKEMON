@@ -7,7 +7,7 @@
 // painted art and real captures.
 //
 //   VISUAL_UI=poster npx playwright test --config scripts/site-clips/playwright.config.ts scripts/site-clips/scenes.spec.ts
-//   npx playwright test --config scripts/instagram/playwright.config.ts
+//   npx playwright test --config scripts/instagram/playwright.config.ts   # skins, music, the report menu
 //   python3 scripts/instagram/make-reel.py
 //   npx tsx scripts/instagram/make-posts.mjs            # -> instagram/
 //
@@ -26,7 +26,13 @@
 // left and right edges of a feed post; a story keeps its words out of the
 // top 260 px and bottom 330 px, where Instagram draws its own bars.
 import { chromium } from "@playwright/test";
-import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -102,9 +108,9 @@ const POSTS = [
       52,
       50,
     ),
-    eyebrow: "Real-time creature battles",
+    eyebrow: "Open beta · free in your browser",
     title: "Pick an element. Outplay your friends.",
-    line: "18 original creatures, 9 elements. Free to play in your browser.",
+    line: "18 original creatures, 9 elements. The iPhone and Android apps come later.",
   },
   {
     id: 2,
@@ -190,6 +196,18 @@ const POSTS = [
     eyebrow: "The Spire",
     title: "70 floors. How high can you climb?",
     line: "Seven zones of ten floors, an elite halfway up and a boss at the top of each.",
+  },
+  {
+    id: 10,
+    name: "report-bugs",
+    kind: "report",
+    el: EL.light,
+    // report.spec.ts captures the game's Menu and its report form.
+    art: { file: "instagram-clips/report/menu.png" },
+    boxes: "instagram-clips/report/boxes.json",
+    eyebrow: "Open beta",
+    title: "Found a bug? Tell us.",
+    line: "In the game: tap the gear, then Report a problem (with a free account). Or tell us in the comments. Every report gets read.",
   },
 ];
 
@@ -451,12 +469,48 @@ figcaption small { font: 800 ${small ? 15 : 17}px/1 Archivo; text-transform: upp
   );
 }
 
+/**
+ * The open beta's "found a bug?" post: the game's Menu as one clipping,
+ * with rings on the two things to tap (1 the gear, 2 Report a problem),
+ * placed from where report.spec.ts found them (boxes.json). The coin count
+ * is covered: no amounts of the game's money outside the game (owner,
+ * 27 Nov, for the website).
+ */
+function reportPost(post, size) {
+  const small = size === "square";
+  const b = JSON.parse(readFileSync(at(post.boxes), "utf8"));
+  // The crop: from the menu's left edge to the screen's right, from the top
+  // to just under the menu (CSS pixels of the 844 x 390 capture).
+  const c = { x: b.panel.x - 12, y: 0, w: 844 - (b.panel.x - 12) };
+  c.h = b.panel.y + b.panel.height + 10;
+  const pc = (v, of) => `${((v / of) * 100).toFixed(3)}%`;
+  const place = (r, pad = 6) =>
+    `left:${pc(r.x - pad - c.x, c.w)};top:${pc(r.y - pad - c.y, c.h)};width:${pc(r.width + 2 * pad, c.w)};height:${pc(r.height + 2 * pad, c.h)}`;
+  return (
+    `<div class="halftone"></div>` +
+    flow(
+      size,
+      `<div class="chip">${post.eyebrow}</div><h1>${post.title}</h1>`,
+      `<div class="clip shot"><div class="win"><img src="${url(post.art.file)}" style="width:${pc(844, c.w)};left:${pc(-c.x, c.w)};top:${pc(-c.y, c.h)}"><i class="cover" style="${place(b.coins, 0)}"></i><i class="ring" style="${place(b.gear)}"><b>1</b></i><i class="ring right" style="${place(b.report)}"><b>2</b></i></div></div>`,
+      `<p>${post.line}</p>${PLAY}`,
+      `.shot { flex: none; padding: 10px; height: min(100%, ${small ? 560 : 760}px); transform: rotate(-1.5deg); }
+.win { position: relative; height: 100%; aspect-ratio: ${c.w} / ${c.h}; overflow: hidden; }
+.win img { position: absolute; display: block; }
+.cover { position: absolute; background: #0d0d0f; }
+.ring { position: absolute; border: 5px solid var(--hot); box-shadow: 0 0 0 4px #fff; }
+.ring.right b { right: auto; left: calc(100% + 10px); }
+.ring b { position: absolute; right: calc(100% + 10px); top: 50%; transform: translateY(-50%); font: 400 44px/1 Anton; background: var(--hot-fill, #e0143a); color: #fff; padding: 4px 13px; box-shadow: 4px 4px 0 rgba(0,0,0,.5); }`,
+    )
+  );
+}
+
 const LAYOUTS = {
   art: artPost,
   shot: shotPost,
   roster: rosterPost,
   champion: championPost,
   skins: skinsPost,
+  report: reportPost,
 };
 
 /** The profile picture: the app icon's circle-safe (maskable) drawing. */
