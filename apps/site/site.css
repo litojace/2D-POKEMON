@@ -393,11 +393,20 @@ body::before {
   object-fit: cover;
   object-position: 50% 38%;
 }
-.sticker {
+/* "Free to play" and "Open beta" (owner, 28 Nov: the game is marked beta
+   on the web while it is finished; the App Store build is not). */
+.stickers {
   position: absolute;
   z-index: 2;
   right: max(14px, env(safe-area-inset-right, 0px));
   top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+}
+.sticker {
+  display: block;
   padding: 7px 12px 6px;
   background: var(--hot-fill);
   color: var(--paper);
@@ -406,6 +415,12 @@ body::before {
   text-transform: uppercase;
   transform: rotate(-4deg);
   box-shadow: 4px 4px 0 var(--ink);
+}
+.sticker.beta {
+  background: var(--ink);
+  color: var(--brand);
+  transform: rotate(3deg);
+  box-shadow: 4px 4px 0 var(--hot);
 }
 .hero-in {
   width: 100%;
@@ -486,7 +501,7 @@ body::before {
   .hero-art img {
     object-position: 50% 33%;
   }
-  .sticker {
+  .stickers {
     left: max(40px, env(safe-area-inset-left, 0px));
     right: auto;
     top: -14px;
