@@ -632,6 +632,10 @@ for (const size of [SIZES[0], SIZES[2]])
       const errors = await openLobby(page);
       await openWardrobe(page);
       await expect(page.locator(".fit-awaken .ui-btn")).toHaveCount(3);
+      // Where it settles: an opened dialog or panel scales in (ea-pop,
+      // hub-panel's enter), and CI's slow renderer can still be at its
+      // first frame (#715: a 44 px tab read 42.68). settle() finishes it.
+      await settle(page);
       const stages = await page
         .locator(".fit-awaken .ui-btn")
         .evaluateAll((els) =>

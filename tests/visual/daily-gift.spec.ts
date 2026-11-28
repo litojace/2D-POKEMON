@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { openHub, skipTour, snap } from "./helpers";
+import { openHub, settle, skipTour, snap } from "./helpers";
 import { onPlayersLook } from "./players-look";
 
 // In the look players have (players-look.ts).
@@ -102,6 +102,10 @@ for (const size of SIZES) {
       await expect(days.nth(6)).toContainText("Aura");
       // The dialog is whole and inside the safe area; the seven tiles are
       // one row of equal boxes, each one's words inside it.
+      // Where it settles: an opened dialog or panel scales in (ea-pop,
+      // hub-panel's enter), and CI's slow renderer can still be at its
+      // first frame (#715: a 44 px tab read 42.68). settle() finishes it.
+      await settle(page);
       const box = (await modal.boundingBox())!;
       expect(box.x).toBeGreaterThanOrEqual(size.inset?.left ?? 0);
       expect(box.y).toBeGreaterThanOrEqual(0);
