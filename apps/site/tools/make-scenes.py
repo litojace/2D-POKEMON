@@ -6,8 +6,8 @@
 
 The combat scenes are frames from scripts/site-clips/scenes.spec.ts (the
 real client and server simulation, every fighter's ultimate going off),
-picked by eye and cropped to the fight. The Plaza is the App Store capture
-(scripts/app-store). Writes apps/site/img/modes/<name>-480/800.webp/avif. Needs Pillow 11+.
+picked by eye and cropped to the fight. The Plaza is its pond with a fish on
+the line (scripts/site-clips/plaza.spec.ts). Writes apps/site/img/modes/<name>-480/800.webp/avif. Needs Pillow 11+.
 (The skins' loops, the Shop spotlight's too, are make-skin-clips.py's.)
 """
 from pathlib import Path
@@ -26,7 +26,12 @@ PICKS = {
     "raids": ("raids", 14, 0.50, 0.50, 0.58),
     "spire": ("spire", 16, 0.47, 0.61, 0.48),
 }
-PLAZA = ROOT / "app-store-screenshots/raw/iphone-medium/6-plaza.png"
+# The Plaza's picture: the pond, a friend beside the angler and the fish on
+# the line (scripts/site-clips/plaza.spec.ts), the scene without its buttons.
+# One capture for the mode card (16:9, in close on the dock) and the Plaza
+# band (3:2, the whole pond).
+POND = ROOT / "site-clips/plaza/bite-clean.png"
+POND_OUT = ROOT / "apps/site/img/plaza"
 
 
 def crop(im: Image.Image, cx: float, cy: float, share: float) -> Image.Image:
@@ -46,17 +51,34 @@ def save(im: Image.Image, name: str):
         small.save(OUT / f"{name}-{w}.avif", "AVIF", quality=56)
 
 
+def pond():
+    im = Image.open(POND).convert("RGB")
+    # The card: the friends, the angler and the bobber.
+    save(crop(im, 0.30, 0.38, 0.56), "plaza")
+    # The band: the path to the dock and the whole pond, 3:2.
+    h = 0.95 * im.height
+    w = h * 3 / 2
+    x0, y0 = 0, 0.03 * im.height
+    wide = im.crop((round(x0), round(y0), round(x0 + w), round(y0 + h)))
+    POND_OUT.mkdir(parents=True, exist_ok=True)
+    for px in (640, 1280):
+        small = wide.resize((px, round(px * 2 / 3)), Image.LANCZOS)
+        small.save(POND_OUT / f"pond-{px}.webp", "WEBP", quality=80, method=6)
+        small.save(POND_OUT / f"pond-{px}.avif", "AVIF", quality=58)
+
+
 def main():
+    if POND.exists():
+        pond()
+    else:
+        print(f"kept the Plaza pictures: {POND} missing", file=sys.stderr)
     if not SCENES.is_dir():
-        sys.exit(f"{SCENES} missing: run scripts/site-clips/scenes.spec.ts first")
+        print(f"kept the fights' pictures: {SCENES} missing", file=sys.stderr)
+        return
     for name, (scene, frame, cx, cy, share) in PICKS.items():
         src = SCENES / scene / f"{frame:03d}.png"
         save(crop(Image.open(src).convert("RGB"), cx, cy, share), name)
-    if PLAZA.exists():
-        # The square and its players, clear of the banner and the buttons.
-        save(crop(Image.open(PLAZA).convert("RGB"), 0.5, 0.62, 0.5), "plaza")
-    else:
-        print(f"kept the Plaza picture: {PLAZA} missing", file=sys.stderr)
+
 
 if __name__ == "__main__":
     main()

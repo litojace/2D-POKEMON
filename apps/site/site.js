@@ -493,7 +493,7 @@
       "aria-label",
       skin
         ? `${c.name} in ${skin.name}, ${PLAYS[skin.rarity] ?? "in the game's fitting room"}`
-        : `${c.name}, the Classic look, standing ready`,
+        : `${c.name}, the Classic look, playing its entrance and then its victory`,
     );
     const look = $("#champ-look");
     look.replaceChildren(

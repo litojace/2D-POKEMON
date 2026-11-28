@@ -402,6 +402,58 @@ test.describe("website", () => {
     expect(b.right).toBeLessThanOrEqual(art!.x + art!.width);
   });
 
+  // The Plaza is one place on the page (owner, 27 Nov): its card in Ways to
+  // play leads to its band, where hanging out and fishing are told together.
+  for (const [w, h] of [
+    [390, 844],
+    [667, 375],
+  ])
+    test(`the Plaza's card leads to the pond and its Fish book, ${w}x${h}`, async ({
+      page,
+    }) => {
+      await page.emulateMedia({ reducedMotion: "reduce" });
+      await page.setViewportSize({ width: w, height: h });
+      await openSite(page);
+      await page.locator(".modes a[href='#plaza']").click();
+      const band = page.locator("#plaza");
+      await expect(band.locator("h2")).toBeInViewport();
+      await expect(band.locator("h2")).toContainText("Go fishing");
+      // The pond's picture and every fish are drawn, none wider than the
+      // page, and no card's words are cut.
+      const fish = band.locator(".fish-book .fish");
+      await expect(fish).toHaveCount(22);
+      await band.locator(".fish-book").scrollIntoViewIfNeeded();
+      await fish.last().scrollIntoViewIfNeeded();
+      const drawn = await band.locator("img").evaluateAll((imgs) =>
+        Promise.all(
+          (imgs as HTMLImageElement[]).map(async (img) => {
+            img.loading = "eager";
+            await img.decode().catch(() => {});
+            return img.naturalWidth > 0;
+          }),
+        ),
+      );
+      expect(drawn.every(Boolean), "a picture did not load").toBe(true);
+      const cut = await fish.evaluateAll((cards) =>
+        cards
+          .filter((c) =>
+            [...c.querySelectorAll("b, small, span")].some(
+              (el) => el.scrollWidth > el.clientWidth + 1,
+            ),
+          )
+          .map((c) => c.textContent?.trim().slice(0, 30)),
+      );
+      expect(cut).toEqual([]);
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth - innerWidth,
+        ),
+      ).toBeLessThanOrEqual(0);
+      // Its Play button is a finger high.
+      const go = await band.locator(".btn-play").boundingBox();
+      expect(go!.height).toBeGreaterThanOrEqual(44);
+    });
+
   test("a device asking for less motion starts paused; the switch plays", async ({
     page,
   }) => {
