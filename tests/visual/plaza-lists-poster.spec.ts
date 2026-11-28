@@ -10,6 +10,21 @@ import { playersLook } from "./players-look";
 // progress is gold; a map place with a quest has a gold edge.
 const GOLD = "rgb(255, 214, 91)";
 
+/** Wait for a panel's opening animations to end: Plaza today opens from
+ * scale 0.6, and a slow runner measured its rows mid-way (33 px of 44). */
+const settled = (page: Page, selector: string) =>
+  page.evaluate(
+    (selector) =>
+      Promise.all(
+        document
+          .querySelector(selector)!
+          .getAnimations({ subtree: true })
+          .filter((a) => a.effect?.getComputedTiming().iterations !== Infinity)
+          .map((a) => a.finished),
+      ).then(() => undefined),
+    selector,
+  );
+
 async function openCard(page: Page) {
   await page.evaluate(() => {
     const w = window as any,
@@ -65,10 +80,9 @@ for (const size of [
 
       // A player's card.
       const card = await openCard(page);
-      await page.waitForTimeout(300);
+      await settled(page, "#pz-card");
       const buttons = await card.evaluate((c) =>
         [...c.querySelectorAll<HTMLElement>("button")].map((b) => {
-          const r = b.getBoundingClientRect();
           return {
             text: b.textContent!.trim(),
             row: b.closest(".pc-pair")
@@ -78,10 +92,8 @@ for (const size of [
                 : b.closest(".pc-acts")
                   ? "acts"
                   : "head",
-            x: r.x,
-            r: r.right,
-            w: r.width,
-            h: r.height,
+            w: b.offsetWidth,
+            h: b.offsetHeight,
             whole: b.scrollWidth <= b.clientWidth,
           };
         }),
@@ -126,13 +138,12 @@ for (const size of [
       await page.locator("#pz-quests [data-qopen]").click();
       const panel = page.locator("#pz-qpanel");
       await expect(panel).toBeVisible();
-      await page.waitForTimeout(300);
+      await settled(page, "#pz-qpanel");
       const today = await panel.evaluate((p) => ({
         rows: [...p.querySelectorAll<HTMLElement>(".pz-q .row")].map(
-          (r) => r.getBoundingClientRect().height,
+          (r) => r.offsetHeight,
         ),
-        close: p.querySelector<HTMLElement>(".x")!.getBoundingClientRect()
-          .height,
+        close: p.querySelector<HTMLElement>(".x")!.offsetHeight,
         bar: getComputedStyle(p.querySelector(".pz-q .bar i")!).backgroundColor,
       }));
       for (const h of today.rows) expect(h).toBeGreaterThanOrEqual(44);
@@ -146,12 +157,12 @@ for (const size of [
       await page.click("#pz-map-btn");
       const map = page.locator("#pz-map");
       await expect(map).toBeVisible();
-      await page.waitForTimeout(300);
+      await settled(page, "#pz-map");
       const rows = await map.evaluate((m) =>
         [...m.querySelectorAll<HTMLElement>(".pz-map-list button")].map((b) => {
           const c = getComputedStyle(b);
           return {
-            h: b.getBoundingClientRect().height,
+            h: b.offsetHeight,
             quest: b.classList.contains("quest"),
             edge: c.borderLeftColor,
             radius: c.borderTopLeftRadius,
