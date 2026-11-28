@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { openPlaza, snap } from "./helpers";
+import { openPlaza, settle, snap } from "./helpers";
 import { playersLook } from "./players-look";
 
 // A player's card, Plaza today and the Plaza map on a phone, in the look
@@ -7,23 +7,11 @@ import { playersLook } from "./players-look";
 // on one line ("Dance together" and "Invite to party" broke over two lines
 // beside one-line neighbours, at 9.8 px), neighbours share one size, every
 // control is a finger tall, and the card stays clear of Dash. Today's
-// progress is gold; a map place with a quest has a gold edge.
+// progress is gold; a map place with a quest has a gold edge. Each panel is
+// measured once its opening animation has ended (settle: Plaza today opens
+// from scale 0.6, and CI's slow runner once read its rows mid-way), and by
+// layout size, which a transform doesn't change.
 const GOLD = "rgb(255, 214, 91)";
-
-/** Wait for a panel's opening animations to end: Plaza today opens from
- * scale 0.6, and a slow runner measured its rows mid-way (33 px of 44). */
-const settled = (page: Page, selector: string) =>
-  page.evaluate(
-    (selector) =>
-      Promise.all(
-        document
-          .querySelector(selector)!
-          .getAnimations({ subtree: true })
-          .filter((a) => a.effect?.getComputedTiming().iterations !== Infinity)
-          .map((a) => a.finished),
-      ).then(() => undefined),
-    selector,
-  );
 
 async function openCard(page: Page) {
   await page.evaluate(() => {
@@ -80,7 +68,7 @@ for (const size of [
 
       // A player's card.
       const card = await openCard(page);
-      await settled(page, "#pz-card");
+      await settle(page);
       const buttons = await card.evaluate((c) =>
         [...c.querySelectorAll<HTMLElement>("button")].map((b) => {
           return {
@@ -138,7 +126,7 @@ for (const size of [
       await page.locator("#pz-quests [data-qopen]").click();
       const panel = page.locator("#pz-qpanel");
       await expect(panel).toBeVisible();
-      await settled(page, "#pz-qpanel");
+      await settle(page);
       const today = await panel.evaluate((p) => ({
         rows: [...p.querySelectorAll<HTMLElement>(".pz-q .row")].map(
           (r) => r.offsetHeight,
@@ -157,7 +145,7 @@ for (const size of [
       await page.click("#pz-map-btn");
       const map = page.locator("#pz-map");
       await expect(map).toBeVisible();
-      await settled(page, "#pz-map");
+      await settle(page);
       const rows = await map.evaluate((m) =>
         [...m.querySelectorAll<HTMLElement>(".pz-map-list button")].map((b) => {
           const c = getComputedStyle(b);
