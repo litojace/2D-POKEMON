@@ -676,8 +676,9 @@ for (const size of [SIZES[0], SIZES[2]])
           expect(r.down, "stage hit area down").toBeGreaterThanOrEqual(44);
           expect(r.across, "stage hit area across").toBeGreaterThanOrEqual(44);
         }
-        // Round icon buttons: each icon in the middle of its circle (the
-        // -3px nudge for an icon beside a label pulled them 1.5px left).
+        // Bare icon buttons (cream, an ink edge, no disc: owner, 28 Nov):
+        // each icon in the middle of its 40 px box (the -3px nudge for an
+        // icon beside a label pulled them 1.5px left), all one size.
         const centres = await page
           .locator(".fit-plays .ui-btn")
           .evaluateAll((els) =>
@@ -689,6 +690,9 @@ for (const size of [SIZES[0], SIZES[2]])
                 dy: s.top + s.height / 2 - (r.top + r.height / 2),
                 // Its CSS size: the panel still grows in (scale .985).
                 w: getComputedStyle(b.querySelector("svg")!).width,
+                box: getComputedStyle(b).width,
+                disc: getComputedStyle(b).backgroundColor,
+                edge: getComputedStyle(b.querySelector("svg")!).filter,
               };
             }),
           );
@@ -696,7 +700,10 @@ for (const size of [SIZES[0], SIZES[2]])
         for (const c of centres) {
           expect(Math.abs(c.dx), "icon centred across").toBeLessThan(0.5);
           expect(Math.abs(c.dy), "icon centred down").toBeLessThan(0.5);
-          expect(c.w, "icon size").toBe("18px");
+          expect(c.w, "icon size").toBe("26px");
+          expect(c.box, "one size for every stage button").toBe("40px");
+          expect(c.disc, "no disc behind the icon").toBe("rgba(0, 0, 0, 0)");
+          expect(c.edge, "the icon's ink edge").toContain("drop-shadow");
         }
       }
       if (!size.phone) {
@@ -897,3 +904,105 @@ for (const size of [SIZES[2], SIZES[0]])
       await context.close();
     }
   });
+
+// The Shop on a phone held sideways (owner, 28 Nov: "the skin preview box
+// is still cramped: make it a bit wider and line up the right-hand side").
+// themes/poster/shop-stage.css.
+for (const phone of [
+  { name: "667x375", width: 667, height: 375 },
+  { name: "844x390", width: 844, height: 390 },
+  { name: "852x393-island", width: 852, height: 393, island: true },
+  { name: "932x430", width: 932, height: 430 },
+])
+  test(`the Shop on a phone: every tab on its row, a whole card row above the action bar at ${phone.name}`, async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({
+      viewport: { width: phone.width, height: phone.height },
+      isMobile: true,
+      hasTouch: true,
+    });
+    try {
+      const page = await context.newPage();
+      const errors = await openLobby(page);
+      if (phone.island) await setInsets(page, ISLAND);
+      await page.click('.lobby-rail [data-lobby-action="shop"]');
+      await page.click('[data-ui-section="skins"]');
+      await expect(page.locator(".fit-grid .ui-tile").first()).toBeVisible();
+      await settle(page);
+      // Today, Skins, Mythic Hall and Collections: each wholly on the tab
+      // row, none under Close or off its end (Collections was, at 667 and
+      // with the island).
+      const tabs = await page.evaluate(() => {
+        const row = document
+          .querySelector(".fit-head .ui-tabs")!
+          .getBoundingClientRect();
+        const close = document
+          .querySelector(".fit-room [data-ui-close]")!
+          .getBoundingClientRect();
+        return [
+          ...document.querySelectorAll('.fit-head .ui-tabs > [role="tab"]'),
+        ].map((t) => {
+          const b = t.getBoundingClientRect();
+          return {
+            name: t.textContent!.trim(),
+            inRow: b.left >= row.left - 0.5 && b.right <= row.right + 0.5,
+            clearOfClose: b.right <= close.left + 0.5,
+          };
+        });
+      });
+      expect(tabs.map((t) => t.name)).toHaveLength(4);
+      for (const t of tabs) {
+        expect(t.inRow, `${t.name} on the tab row`).toBe(true);
+        expect(t.clearOfClose, `${t.name} clear of Close`).toBe(true);
+      }
+      // One edge: the Shop | Wardrobe switch, the portraits, the filters
+      // and the cards start on the same pixel; the stage is wider than the
+      // 210 px it was wherever the screen has the width.
+      const edges = await page.evaluate(() =>
+        [".fit-head .ui-seg", ".fit-fighters", ".fit-filters", ".fit-grid"].map(
+          (s) =>
+            Math.round(document.querySelector(s)!.getBoundingClientRect().left),
+        ),
+      );
+      expect(new Set(edges).size, `left edges ${edges}`).toBe(1);
+      const stage = await box(page, ".fit-stage");
+      expect(stage.width).toBeGreaterThanOrEqual(
+        Math.min(290, Math.max(210, phone.width * 0.3)) - 1,
+      );
+      // Another fighter's skin chosen: the action bar comes up, and the
+      // first row of cards still shows whole above it, name and price.
+      await page.locator(".fit-fighters .fit-fighter").nth(1).click();
+      await page.locator(".fit-grid .ui-tile").first().click();
+      await expect(page.locator(".fit-room .ui-panel-foot")).toBeVisible();
+      await settle(page);
+      const tile = await box(page, ".fit-grid .ui-tile");
+      const foot = await box(page, ".fit-room .ui-panel-foot");
+      expect(
+        tile.y + tile.height,
+        "the first card row ends above the action bar",
+      ).toBeLessThanOrEqual(foot.y + 0.5);
+      // The chosen card's frame is around the card, not over its name.
+      const frame = await page
+        .locator(".fit-grid .ui-tile")
+        .first()
+        .evaluate((t) => getComputedStyle(t).boxShadow);
+      expect(frame).not.toContain("inset");
+      await snap(page, test.info(), `shop-phone-chosen-${phone.name}`);
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+
+// Equip is the button to press: gold, not the green of "done".
+test("the Wardrobe's Equip is gold", async ({ page }) => {
+  await page.setViewportSize({ width: 844, height: 390 });
+  await openLobby(page);
+  await openWardrobe(page);
+  const equip = page.locator(".fit-room .ui-panel-foot .ui-btn.is-ok");
+  await expect(equip).toBeVisible();
+  expect(await equip.evaluate((b) => getComputedStyle(b).backgroundColor)).toBe(
+    "rgb(255, 214, 91)",
+  );
+});
