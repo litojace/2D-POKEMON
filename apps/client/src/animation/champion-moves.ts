@@ -366,7 +366,7 @@ const tidefinVictory: Move = (s) => {
   // fanned, tail high.
   const hold = ease(t, 1.86, 2.1);
   const rise = bump(t, 1.86, 2.2);
-  s.move(0, -rise * 6 - s.sway(2.6) * 1.2 * hold);
+  s.move(0, -rise * 6 - (1 + s.sway(2.6)) * 1.2 * hold);
   p.armR.rotation += (0.15 + s.sway(4) * 0.08) * hold;
   p.armL.rotation += (2.3 + s.sway(4) * 0.1) * hold;
   p.legR.rotation += 0.32 * hold;
