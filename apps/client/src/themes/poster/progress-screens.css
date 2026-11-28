@@ -42,3 +42,47 @@
   border: 0;
   background: var(--ink-1);
 }
+
+/* Rank tiers are a colour meaning like rarity (owner's answer, 28 Nov): the
+   tier's colour is on its diamond, its shield and its blocks; the words are
+   cream. A tier's name in its own colour was a whole word in colour, which
+   the colour standard keeps for nothing.
+   -webkit-text-fill-color paints the letters and leaves `color` alone, so a
+   colour written on the element itself (the board's rows, the Profile's
+   tag) still reaches the mark beside the words. */
+:root[data-ui="poster"] .rk-rank,
+:root[data-ui="poster"] .rk-tier-name > b {
+  color: var(--paper);
+}
+/* The Ranks board: a small diamond in the tier's colour before its name. */
+:root[data-ui="poster"] .rk-name > small {
+  -webkit-text-fill-color: var(--ui-dim);
+}
+:root[data-ui="poster"] .rk-name > small::before {
+  content: "◆";
+  margin-right: 4px;
+  -webkit-text-fill-color: currentColor;
+}
+/* The Profile's rank tag: the tier's colour as its left edge. */
+:root[data-ui="poster"] .pf-rank-tag {
+  border-left: 4px solid currentColor;
+  -webkit-text-fill-color: var(--paper);
+}
+/* The Lobby's rank chip under the fighter's name: the gem or shield keeps
+   the tier's colour, the rank reads in cream. */
+:root[data-ui="poster"] .lobby-layer .lobby-rank-chip > span {
+  color: var(--paper);
+}
+/* Your own row on the board is a cream block: its rank reads in ink. */
+:root[data-ui="poster"] .rk-row:is(.is-me, .is-pinned) .rk-name > small {
+  -webkit-text-fill-color: var(--ink);
+}
+/* The Profile's Ranked tile: the same diamond before the rank. */
+:root[data-ui="poster"] .pf-mini-row > b[style] {
+  -webkit-text-fill-color: var(--paper);
+}
+:root[data-ui="poster"] .pf-mini-row > b[style]::before {
+  content: "◆";
+  margin-right: 5px;
+  -webkit-text-fill-color: currentColor;
+}
