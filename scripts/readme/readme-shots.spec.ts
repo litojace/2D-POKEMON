@@ -10,7 +10,7 @@
 import { expect, test } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 import { playersLook } from "../../tests/visual/players-look";
-import { openLobby } from "../../tests/visual/helpers";
+import { openLobby, openPlaza } from "../../tests/visual/helpers";
 import {
   INSET,
   SCENES,
@@ -33,9 +33,72 @@ const lobby: Scene = {
     await page.waitForTimeout(2500);
   },
 };
+/**
+ * The Plaza at midday, with players' titles over their names: the player's
+ * own (the one the Lobby's corner shows) and two neighbours' in higher
+ * tiers (title-tier.ts). The App Store's Plaza scene is left as it is.
+ */
+const plaza: Scene = {
+  name: "plaza",
+  caption: "",
+  async capture(page) {
+    await openPlaza(page);
+    await phone(page);
+    await page.evaluate(() => {
+      const w = window as any,
+        world = w.__plazaWorld,
+        me = world.bodyOf("local");
+      const join = (
+        key: string,
+        name: string,
+        title: string,
+        titleColor: string,
+        character: string,
+        dx: number,
+        dy: number,
+      ) => {
+        world.join(key, `acct-${key}`, {
+          name,
+          title,
+          titleColor,
+          level: 31,
+          character,
+          skin: null,
+        });
+        Object.assign(world.bodyOf(key), { x: me.x + dx, y: me.y + dy });
+      };
+      join("mika", "Mika", "Lone Mountain", "#c9a46a", "tidefin", -125, 70);
+      join(
+        "juno",
+        "Juno",
+        "Mountain Conqueror",
+        "#ffcf66",
+        "astrabun",
+        225,
+        96,
+      );
+      const profile = world.profileOf("local");
+      // The Lobby's corner says who the player is: the same name and title here.
+      Object.assign(profile, {
+        name: "Blaze",
+        title: "Cragbreaker",
+        titleColor: "#e5bc73",
+      });
+      w.__sock.fire("plaza-profiles", [profile]);
+    });
+    await expect
+      .poll(() => page.evaluate(() => (window as any).__plaza.P.titleTier))
+      .toBe("rare");
+    await page.waitForTimeout(2500);
+  },
+};
 /** The scenes the README shows (the roster and free-for-all are not used). */
 const README = ["lobby", "duel", "teams", "raid", "plaza"];
-const scenes = [lobby, ...SCENES].filter((s) => README.includes(s.name));
+const scenes = [
+  lobby,
+  ...SCENES.filter((s) => s.name !== "plaza"),
+  plaza,
+].filter((s) => README.includes(s.name));
 const only = process.env.SCENES?.split(",");
 
 for (const scene of scenes.filter((s) => !only || only.includes(s.name)))

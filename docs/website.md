@@ -17,8 +17,8 @@ apps/site/
   index.html          the page (all copy lives here)
   site.css            styles: Poster, the game's look (ink, element colours, Anton, Archivo)
   site.js             the pause switch, skin loops, pickers, champion panel, transitions
-  fonts/              the game's own woff2 files (OFL licences beside them); Barlow
-                      Condensed and DM Sans stay for the Support and Privacy copies
+  fonts/              the game's own woff2 files (OFL licences beside them):
+                      Anton and Archivo, for every page here
   img/                images made from the game's art by tools/make-images.py;
                       img/skins/ the skin loops' posters and thumbnails
   media/skins/        the skin loops (MP4, 60 frames a second), tools/make-skin-clips.py
@@ -231,10 +231,14 @@ Checked by slowing every animation to a quarter (CDP
 Scroll reveals use CSS scroll-driven animations (`animation-timeline:
 view()`, Chrome 115, Safari 26, Firefox 159) on transform and opacity, so
 they run on the compositor at the screen's rate; `site.js`'s
-IntersectionObserver does it elsewhere. They fill forwards only: an element
-below the screen keeps its own look (a full-page capture or a search engine
-sees it whole) and takes the first frame as it starts to enter, where no one
-sees the change.
+IntersectionObserver does it elsewhere. They fill both ways: an element
+below the screen already waits at its first frame, so nothing jumps as it
+starts to enter. They used to fill forwards only, keeping their own look
+until then, which on an iPhone made them blink: Safari draws the page under
+its bottom toolbar too, below the edge the timeline measures, so a title
+seen whole in that band went blank as it crossed the edge and came back in
+(owner, 28 Nov). `website.spec.ts` checks that no entrance changes as it
+starts.
 
 On top of the reveals, the page moves with the reader's scroll (owner,
 27 and 28 Nov: "words and panels gather in as you reach them, then each
@@ -305,6 +309,17 @@ play.elementarenausa.com. Edit those, then run the tool;
 `site.test.ts` fails when the copies drift. Both versions have a Home button
 in the bar (back to elementarenausa.com) and "Element Arena website" beside
 "Back to the game" in the footer.
+
+Their look is Poster, as the rest of the site (owner, 28 Nov: "update
+Support and Privacy too"): the yellow halftone hero with ink words and the
+key word on a slanted ink block, the ink bar with the yellow edge and
+slanted tabs, ink cards, square yellow icons on red shadows, questions that
+open with a yellow plus. It is the game's `apps/client/public/legal.css`,
+so play.elementarenausa.com/support.html and /privacy.html change with
+them. The words are the owner's to change: Privacy is legal text.
+`website.spec.ts` ("Support and Privacy") checks every word at AA, no
+sideways scroll and 44 px controls at 390 × 844, 667 × 375 and
+1440 × 900, with every question open.
 
 ## What we took from big games' sites
 
@@ -439,9 +454,8 @@ at a higher frame rate; study famous games' sites):
       island inset and 1440×900, and each transition mid-way
 - [x] Easy to read (owner, 28 Nov): AA contrast measured on the pixels,
       no words on texture, minimum sizes, plain US wording
-- [ ] Support and Privacy keep the game's own look (they are the game's
-      pages, copied): restyle them with the game's `legal.css` when the
-      game's pages move to Poster
+- [x] Support and Privacy in Poster (owner, 28 Nov), through the game's
+      `legal.css` so both copies change together; their words unchanged
 
 Round 3 (owner, 25 Nov 3:35 PM PT: Arena Dusk; bought elementarenausa.com;
 website at the apex, game at play., one session cookie):
