@@ -7,8 +7,8 @@
   "mediaBase": "https://elementarenausa.com/social/",
   "approval": {
     "sentAt": "2026-11-28T01:30:00Z",
-    "approvedAt": null,
-    "note": "Owner, 27 Nov: a plan goes out once approved, or 24 hours after it was sent with no answer."
+    "approvedAt": "2026-11-28T03:30:00Z",
+    "note": "Owner, 27 Nov: a plan goes out once approved, or 24 hours after it was sent with no answer. At 7:30 PM PT on 27 Nov the owner gave the sessions full say over what helps the game grow (no paid ads), which approves this plan."
   },
   "paused": false,
   "posts": [
@@ -17,21 +17,65 @@
       "at": "2026-11-30T17:40:00-08:00",
       "kind": "feed",
       "image": "01-welcome-feed.jpg",
-      "caption": "Pick an element. Outplay your friends. ⚔️\n\nElement Arena is a real-time creature battle game: 18 original creatures across 9 elements, live 1v1 duels, 2v2 team fights and raid bosses.\n\nFree to play in your browser on phone, tablet or computer. No download. Link in bio.\n\n#ElementArena #indiegame #mobilegame #pvp #browsergame"
+      "caption": "Pick an element. Outplay your friends. ⚔️\n\nElement Arena is in open beta: real-time creature battles you can play free right now, in your browser on phone, tablet or computer. 18 original creatures, 9 elements, live duels, team fights and raid bosses.\n\nThis is the first taste. The iPhone and Android apps come later, with more champions, skins and features. Play now and help shape them: found a bug? In the game, tap the gear, then Report a problem.\n\nLink in bio.\n\n#ElementArena #indiegame #mobilegame #pvp #browsergame"
     },
     {
       "id": "02-duels",
       "at": "2026-11-30T17:40:00-08:00",
       "kind": "feed",
       "image": "02-duels-feed.jpg",
-      "caption": "Dodge. Dash. Land the big one. ⚡\n\nEvery duel is live: aim your skills, read your rival and time your ultimate. No turns, no waiting.\n\nPlay free, link in bio.\n\n#ElementArena #pvp #indiegame #mobilegame #gamedev"
+      "caption": "Dodge. Dash. Land the big one. ⚡\n\nEvery duel is live: aim your skills, read your rival and time your ultimate. No turns, no waiting.\n\nOpen beta, free in your browser. Tip: add it to your home screen and it plays fullscreen, like an app. Our \"Play it like an app\" post shows how. Link in bio.\n\n#ElementArena #pvp #indiegame #mobilegame #gamedev"
     },
     {
-      "id": "03-roster",
+      "id": "11-home-screen",
       "at": "2026-11-30T17:40:00-08:00",
-      "kind": "feed",
-      "image": "03-roster-feed.jpg",
-      "caption": "18 creatures. 9 elements. 🔥💧⚡🌿\n\nFire, Water, Electric, Nature, Earth, Light, Shadow, Psychic and Aura, two champions each, every one with its own kit.\n\nWho are you picking first? Tell us in the comments 👇\n\n#ElementArena #indiegame #mobilegame #characterdesign #pvp"
+      "kind": "carousel",
+      "images": [
+        "11-home-screen-1-feed.jpg",
+        "11-home-screen-2-feed.jpg",
+        "11-home-screen-3-feed.jpg",
+        "11-home-screen-4-feed.jpg",
+        "11-home-screen-5-feed.jpg",
+        "11-home-screen-6-feed.jpg",
+        "11-home-screen-7-feed.jpg"
+      ],
+      "caption": "Play it like an app. 📲\n\nPut Element Arena on your home screen in 30 seconds: it opens fullscreen, with no browser bars and nothing to download. Swipe for the steps, from a real iPhone.\n\niPhone, in Safari:\n1. Open play.elementarenausa.com (link in bio)\n2. Tap the button at the left end of the address bar, then Share\n3. Tap View More, then Add to Home Screen\n4. Keep \"Open as Web App\" on, and tap Add\nNo button there? Tap Share at the bottom of Safari, then Add to Home Screen.\n\nAndroid, in Chrome:\n1. Open play.elementarenausa.com\n2. Tap ⋮ at the top right\n3. Tap Install app (or Add to Home screen), then Install\n\nThen tap the icon, turn your phone sideways and play. 🎮\n\nIt's an open beta, a first taste before the iPhone and Android apps. Found a bug? In the game, tap the gear, then Report a problem.\n\nSave this for later, and send it to the friend who always asks how. 👇\n\n#ElementArena #indiegame #mobilegame #browsergame #gamingtips"
+    },
+    {
+      "id": "11-home-screen-story-1",
+      "at": "2026-11-30T17:45:00-08:00",
+      "kind": "story",
+      "image": "11-home-screen-story-1.jpg"
+    },
+    {
+      "id": "11-home-screen-story-2",
+      "at": "2026-11-30T17:45:00-08:00",
+      "kind": "story",
+      "image": "11-home-screen-story-2.jpg"
+    },
+    {
+      "id": "11-home-screen-story-3",
+      "at": "2026-11-30T17:45:00-08:00",
+      "kind": "story",
+      "image": "11-home-screen-story-3.jpg"
+    },
+    {
+      "id": "11-home-screen-story-4",
+      "at": "2026-11-30T17:45:00-08:00",
+      "kind": "story",
+      "image": "11-home-screen-story-4.jpg"
+    },
+    {
+      "id": "11-home-screen-story-5",
+      "at": "2026-11-30T17:45:00-08:00",
+      "kind": "story",
+      "image": "11-home-screen-story-5.jpg"
+    },
+    {
+      "id": "11-home-screen-story-6",
+      "at": "2026-11-30T17:45:00-08:00",
+      "kind": "story",
+      "image": "11-home-screen-story-6.jpg"
     },
     {
       "id": "01-welcome-story",
@@ -46,8 +90,15 @@
       "image": "02-duels-story.jpg"
     },
     {
+      "id": "03-roster",
+      "at": "2026-12-01T17:40:00-08:00",
+      "kind": "feed",
+      "image": "03-roster-feed.jpg",
+      "caption": "18 creatures. 9 elements. 🔥💧⚡🌿\n\nFire, Water, Electric, Nature, Earth, Light, Shadow, Psychic and Aura, two champions each, every one with its own kit. More are on the way for the iPhone and Android apps.\n\nWho are you picking first? Tell us in the comments 👇\n\n#ElementArena #indiegame #mobilegame #characterdesign #pvp"
+    },
+    {
       "id": "03-roster-story",
-      "at": "2026-12-01T11:40:00-08:00",
+      "at": "2026-12-02T11:40:00-08:00",
       "kind": "story",
       "image": "03-roster-story.jpg"
     },
@@ -56,7 +107,7 @@
       "at": "2026-12-02T17:40:00-08:00",
       "kind": "feed",
       "image": "04-raid-lumiwick-feed.jpg",
-      "caption": "Seven bosses, seven puzzles. 🏮\n\nMeet Lumiwick, a lantern with a temper. Every raid boss has one trick to learn: solve it solo or bring up to three friends.\n\nStart with Cragmuff: one clear opens the other six.\n\n#ElementArena #raidboss #indiegame #mobilegame #coop"
+      "caption": "Seven bosses, seven puzzles. 🏮\n\nMeet Lumiwick, a lantern with a temper. Every raid boss has one trick to learn: solve it solo or bring up to three friends.\n\nStart with Cragmuff: one clear opens the other six. Open beta, free in your browser, link in bio.\n\n#ElementArena #raidboss #indiegame #mobilegame #coop"
     },
     {
       "id": "04-raid-lumiwick-story",
@@ -65,43 +116,69 @@
       "image": "04-raid-lumiwick-story.jpg"
     },
     {
+      "id": "12-plaza",
+      "at": "2026-12-03T17:40:00-08:00",
+      "kind": "feed",
+      "image": "12-plaza-feed.jpg",
+      "caption": "Hang out between fights. 🎪\n\nThe Plaza is Element Arena's shared playground, up to 40 players at once: bounce pads, a ball pitch, a dash track, a stage, a photo spot, gifts and daily quests. Every 15 minutes there's an Orb Shower: grab as many orbs as you can around the fountain.\n\nOpen beta, free in your browser. Link in bio.\n\n#ElementArena #indiegame #mobilegame #browsergame #gamedev"
+    },
+    {
+      "id": "12-plaza-story",
+      "at": "2026-12-04T11:40:00-08:00",
+      "kind": "story",
+      "image": "12-plaza-story.jpg"
+    },
+    {
+      "id": "10-report-bugs",
+      "kind": "feed",
+      "image": "10-report-bugs-feed.jpg",
+      "caption": "Found a bug? Tell us. 🐞\n\nElement Arena is in open beta, so things still break, and every report helps us fix them before the iPhone and Android apps.\n\nIn the game: tap the gear at the top, then Report a problem (it needs a free account). Or tell us in the comments here. Say what you were doing and what went wrong. Every report gets read.\n\n#ElementArena #indiegame #gamedev #indiedev #betatest",
+      "at": "2026-12-04T17:40:00-08:00"
+    },
+    {
+      "id": "10-report-bugs-story",
+      "kind": "story",
+      "image": "10-report-bugs-story.jpg",
+      "at": "2026-12-05T11:40:00-08:00"
+    },
+    {
+      "id": "13-friends",
+      "at": "2026-12-05T17:40:00-08:00",
+      "kind": "feed",
+      "image": "13-friends-feed.jpg",
+      "caption": "Bring your friends. 👯\n\nShare your friend code, invite them to your room, jump into theirs, or watch their match live, all from the Lobby. Then team up in 2v2, or settle it in a duel.\n\nOpen beta, free in your browser on phone, tablet or computer. Tag the friend you're bringing. 👇\n\n#ElementArena #indiegame #mobilegame #pvp #browsergame"
+    },
+    {
+      "id": "13-friends-story",
+      "at": "2026-12-06T11:40:00-08:00",
+      "kind": "story",
+      "image": "13-friends-story.jpg"
+    },
+    {
       "id": "05-teams",
-      "at": "2026-12-04T17:40:00-08:00",
+      "at": "2026-12-07T17:40:00-08:00",
       "kind": "feed",
       "image": "05-teams-feed.jpg",
-      "caption": "Better with a friend. 🤝\n\nTeam up in 2v2, stack your skills and wipe the other side. Tag the friend you'd queue with.\n\nPlay free, link in bio.\n\n#ElementArena #pvp #indiegame #mobilegame #multiplayer"
+      "caption": "Better with a friend. 🤝\n\nTeam up in 2v2, stack your skills and wipe the other side. Tag the friend you'd queue with.\n\nOpen beta, free in your browser, link in bio.\n\n#ElementArena #pvp #indiegame #mobilegame #multiplayer"
     },
     {
       "id": "05-teams-story",
-      "at": "2026-12-05T11:40:00-08:00",
+      "at": "2026-12-08T11:40:00-08:00",
       "kind": "story",
       "image": "05-teams-story.jpg"
     },
     {
       "id": "06-pyranda",
-      "at": "2026-12-07T17:40:00-08:00",
+      "at": "2026-12-09T17:40:00-08:00",
       "kind": "feed",
       "image": "06-pyranda-feed.jpg",
       "caption": "Champion spotlight: Pyranda 🔥\n\nA shy red panda with a flame at the tip of its tail. Lobs burning chestnuts from the back line.\n\n🌰 Chestnut Mortar: a burning chestnut over walls\n🔥 Hot Coals: a patch that burns anyone in it\n🧱 Ember Curtain: a wall of embers that burns up enemy shots\n💥 Chestnut Storm (ultimate): five blasts march across the arena\n\nWho should we spotlight next?\n\n#ElementArena #indiegame #mobilegame #characterdesign #pvp"
     },
     {
       "id": "06-pyranda-story",
-      "at": "2026-12-08T11:40:00-08:00",
-      "kind": "story",
-      "image": "06-pyranda-story.jpg"
-    },
-    {
-      "id": "07-free-for-all",
-      "at": "2026-12-09T17:40:00-08:00",
-      "kind": "feed",
-      "image": "07-free-for-all-feed.jpg",
-      "caption": "Four fighters. One winner. 🏆\n\nEveryone against everyone in the Ember Forge. Watch your back.\n\nPlay free, link in bio.\n\n#ElementArena #pvp #indiegame #mobilegame #battlegame"
-    },
-    {
-      "id": "07-free-for-all-story",
       "at": "2026-12-10T11:40:00-08:00",
       "kind": "story",
-      "image": "07-free-for-all-story.jpg"
+      "image": "06-pyranda-story.jpg"
     },
     {
       "id": "08-skins",
@@ -109,7 +186,7 @@
       "kind": "reel",
       "video": "08-skins-reel.mp4",
       "cover": "08-skins-reel-cover.jpg",
-      "caption": "Walk in a legend. ✨\n\nAshen Warlord, Abyssal Reaver, Hellforge: Mythical skins with their own entrance, victory and ultimate. Win in them to awaken them, stage by stage. Try anything on before you spend a coin.\n\nAll cosmetic, never stronger.\n\n#ElementArena #indiegame #mobilegame #characterdesign #gameart"
+      "caption": "Walk in a legend. ✨\n\nAshen Warlord, Abyssal Reaver, Hellforge: Mythical skins with their own entrance, victory and ultimate. Win in them to awaken them, stage by stage. Try anything on before you spend a coin. More skins are coming with the iPhone and Android apps.\n\nAll cosmetic, never stronger.\n\n#ElementArena #indiegame #mobilegame #characterdesign #gameart"
     },
     {
       "id": "08-skins-story",
@@ -118,15 +195,28 @@
       "image": "08-skins-story.jpg"
     },
     {
-      "id": "09-spire",
+      "id": "07-free-for-all",
       "at": "2026-12-14T17:40:00-08:00",
       "kind": "feed",
+      "image": "07-free-for-all-feed.jpg",
+      "caption": "Four fighters. One winner. 🏆\n\nEveryone against everyone in the Ember Forge. Watch your back.\n\nOpen beta, free in your browser, link in bio.\n\n#ElementArena #pvp #indiegame #mobilegame #battlegame"
+    },
+    {
+      "id": "07-free-for-all-story",
+      "at": "2026-12-15T11:40:00-08:00",
+      "kind": "story",
+      "image": "07-free-for-all-story.jpg"
+    },
+    {
+      "id": "09-spire",
+      "at": "2026-12-16T17:40:00-08:00",
+      "kind": "feed",
       "image": "09-spire-feed.jpg",
-      "caption": "70 floors. How high can you climb? 🗼\n\nSeven zones of ten floors, with an elite halfway up and a boss at the top of each.\n\nPlay free, link in bio.\n\n#ElementArena #indiegame #mobilegame #indiedev #gamedev"
+      "caption": "70 floors. How high can you climb? 🗼\n\nSeven zones of ten floors, with an elite halfway up and a boss at the top of each.\n\nOpen beta, free in your browser, link in bio.\n\n#ElementArena #indiegame #mobilegame #indiedev #gamedev"
     },
     {
       "id": "09-spire-story",
-      "at": "2026-12-15T11:40:00-08:00",
+      "at": "2026-12-17T11:40:00-08:00",
       "kind": "story",
       "image": "09-spire-story.jpg"
     }

@@ -393,11 +393,20 @@ body::before {
   object-fit: cover;
   object-position: 50% 38%;
 }
-.sticker {
+/* "Free to play" and "Open beta" (owner, 28 Nov: the game is marked beta
+   on the web while it is finished; the App Store build is not). */
+.stickers {
   position: absolute;
   z-index: 2;
   right: max(14px, env(safe-area-inset-right, 0px));
   top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+}
+.sticker {
+  display: block;
   padding: 7px 12px 6px;
   background: var(--hot-fill);
   color: var(--paper);
@@ -406,6 +415,12 @@ body::before {
   text-transform: uppercase;
   transform: rotate(-4deg);
   box-shadow: 4px 4px 0 var(--ink);
+}
+.sticker.beta {
+  background: var(--ink);
+  color: var(--brand);
+  transform: rotate(3deg);
+  box-shadow: 4px 4px 0 var(--hot);
 }
 .hero-in {
   width: 100%;
@@ -486,7 +501,7 @@ body::before {
   .hero-art img {
     object-position: 50% 33%;
   }
-  .sticker {
+  .stickers {
     left: max(40px, env(safe-area-inset-left, 0px));
     right: auto;
     top: -14px;
@@ -2160,19 +2175,24 @@ body::before {
 :root:not([data-motion="paused"]) .enter .spot-tx > :nth-child(n + 3) {
   animation-delay: 0.06s;
 }
-/* Fill forwards only: before an element reaches the screen's foot it keeps
-   its own look (a full-page capture, a search engine or a reader who jumps
-   down sees it whole); it takes the animation's first frame as it starts to
-   enter, where no one sees the change. */
+/* Every entrance fills both ways: an element not yet in view already waits
+   at its first frame, so nothing changes at the moment it starts to enter.
+   With forwards only it kept its own look below the screen's foot and
+   snapped to the first frame there, unseen on a desktop, but on an iPhone
+   Safari also draws the page under its bottom toolbar, below the edge the
+   timeline measures: a title or card showed whole in that band, blinked
+   out as it crossed the edge and came back in (owner, 28 Nov). Each one
+   moves only with the scroll, so no state jumps at any point. Leaving needs
+   no such care: its last frame is above the screen's top, under the bar. */
 @supports (animation-timeline: view()) {
   :root:not([data-motion="paused"]) .head > * {
-    animation: wipe-in linear forwards;
+    animation: wipe-in linear both;
     animation-timeline: view();
     animation-range: entry 0% entry 80%;
   }
   :root:not([data-motion="paused"])
     :is(.roster > li, .modes > li, .stores > li, .raid-week, .shop-show) {
-    animation: rise linear forwards;
+    animation: rise linear both;
     animation-timeline: view();
     animation-range: entry var(--lag, 0%) entry calc(60% + var(--lag, 0%));
   }
@@ -2189,7 +2209,7 @@ body::before {
   (animation-range: exit-crossing 0% exit-crossing 100%) {
   :root:not([data-motion="paused"]) .head > * {
     animation:
-      wipe-in linear forwards,
+      wipe-in linear both,
       wipe-out linear none;
     animation-timeline: view(), view();
     animation-range:
@@ -2199,7 +2219,7 @@ body::before {
   :root:not([data-motion="paused"])
     :is(.roster > li, .modes > li, .stores > li) {
     animation:
-      rise linear forwards,
+      rise linear both,
       lift-off linear none;
     animation-timeline: view(), view();
     animation-range:
@@ -2209,7 +2229,7 @@ body::before {
   :root:not([data-motion="paused"]) :is(.raid-week, .shop-show) {
     transform-origin: 50% 100%;
     animation:
-      rise linear forwards,
+      rise linear both,
       ease-back linear none;
     animation-timeline: view(), view();
     animation-range:
@@ -2253,7 +2273,6 @@ body::before {
      a scroller), so what is inside them follows the page. flow-root keeps
      the block formatting context hidden gave them. */
   .hero,
-  .facts,
   .app {
     display: flow-root;
     overflow: clip;
@@ -2289,27 +2308,7 @@ body::before {
     animation-timeline: --hero;
     animation-range: exit-crossing 0% exit-crossing 100%;
   }
-  /* 3. The champion tape slides against its own drift as the page goes by
-     (translate, on top of the drift's transform; its band clips it). Only
-     the drift waits under a mouse or the keyboard. */
-  .ticker {
-    view-timeline: --tape block;
-  }
-  :root:not([data-motion="paused"]) .ticker-run {
-    animation:
-      ticker 70s linear infinite,
-      tape-push linear both;
-    animation-timeline: auto, --tape;
-  }
-  @media (hover: hover) and (pointer: fine) {
-    .ticker:not(.free):hover .ticker-run {
-      animation-play-state: paused, running;
-    }
-  }
-  .ticker:has(:focus-visible) .ticker-run {
-    animation-play-state: paused, running;
-  }
-  /* 4. Cards in a row arrive one after another, left to right; the boss
+  /* 3. Cards in a row arrive one after another, left to right; the boss
      faces come in from above and below in turn. */
   @media (min-width: 640px) and (max-width: 999px) {
     .modes > li:nth-child(2n) {
@@ -2325,7 +2324,7 @@ body::before {
     }
   }
   :root:not([data-motion="paused"]) .pick {
-    animation: face-up linear forwards;
+    animation: face-up linear both;
     animation-timeline: view();
     animation-range: entry 0% cover 28%;
   }
@@ -2333,10 +2332,10 @@ body::before {
     animation-name: face-down;
     animation-range: entry 0% cover 34%;
   }
-  /* 5. The phone straightens up to its own slight lean as it rises. */
+  /* 4. The phone straightens up to its own slight lean as it rises. */
   :root:not([data-motion="paused"]) .phone {
     animation:
-      phone-up linear forwards,
+      phone-up linear both,
       phone-off linear none;
     animation-timeline: view(), view();
     animation-range:
@@ -2360,14 +2359,6 @@ body::before {
 @keyframes word-drift {
   to {
     transform: translate(calc(-50% - 9vw), 38%) rotate(-6deg);
-  }
-}
-@keyframes tape-push {
-  from {
-    translate: calc(-1 * clamp(140px, 18vw, 260px)) 0;
-  }
-  to {
-    translate: 0 0;
   }
 }
 @keyframes face-up {

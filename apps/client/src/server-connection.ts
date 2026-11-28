@@ -1,5 +1,6 @@
 import { ServerStartup, type StartupStatus } from "./server-startup";
 import "./server-connection.css";
+import { betaTag } from "./open-beta";
 import type { CharacterId } from "@arena/shared";
 import type { SkinLook } from "./creature-design";
 import type { LoadingArt } from "./loading-art";
@@ -224,7 +225,7 @@ function renderStatus() {
     panel.setAttribute("aria-label", "Connecting to Element Arena");
     // The bar carries the runner; the status line follows it (under the
     // bar over a painting, server-connection.css).
-    panel.innerHTML = `<img class="server-startup-painting" alt="" decoding="async" draggable="false" hidden><div class="server-startup-card"><header class="server-startup-brand">${crest}<h1 aria-label="Element Arena"><span aria-hidden="true">ELEMENT</span><span aria-hidden="true">ARENA</span></h1></header><div class="server-startup-loading"><h2>Opening the arena…</h2><div class="server-startup-progress" role="progressbar" aria-label="Game server connection" aria-valuemin="0" aria-valuemax="100"><i></i><span class="server-startup-runner" aria-hidden="true"></span></div><p role="status" aria-live="polite"><b class="server-startup-percent" aria-hidden="true"></b></p><button type="button" hidden>Try again</button></div></div>`;
+    panel.innerHTML = `<img class="server-startup-painting" alt="" decoding="async" draggable="false" hidden><div class="server-startup-card"><header class="server-startup-brand">${crest}<h1 aria-label="Element Arena"><span aria-hidden="true">ELEMENT</span><span aria-hidden="true">ARENA</span></h1>${betaTag()}</header><div class="server-startup-loading"><h2>Opening the arena…</h2><div class="server-startup-progress" role="progressbar" aria-label="Game server connection" aria-valuemin="0" aria-valuemax="100"><i></i><span class="server-startup-runner" aria-hidden="true"></span></div><p role="status" aria-live="polite"><b class="server-startup-percent" aria-hidden="true"></b></p><button type="button" hidden>Try again</button></div></div>`;
     runnerAt = 0;
     drawRunner();
     panel.querySelector("button")!.onclick = () => retry?.();

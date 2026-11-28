@@ -290,8 +290,7 @@ test.describe("website", () => {
   // The champion tape stood still after a panel opened from it closed: focus
   // went back to the name (:focus-within held it), and the click that
   // closed the panel left the mouse on it (owner, 27 Nov).
-  /** The drift's state: the first of the tape's animations (the second,
-   * where scroll timelines exist, follows the scroll and never waits). */
+  /** The drift's state (its first animation, should it ever get more). */
   const tapeState = (page: Page) =>
     page
       .locator(".ticker-run")
@@ -374,6 +373,27 @@ test.describe("website", () => {
     } finally {
       await context.close();
     }
+  });
+
+  // Open beta on the web (owner, 28 Nov), beside "Free to play", with one
+  // plain line on what it means. The App Store build carries no such mark
+  // (Apple, Guideline 2.2); that is the game's flag, not this page's.
+  test("the hero says the game is in open beta", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openSite(page);
+    const stickers = page.locator(".hero .stickers .sticker");
+    await expect(stickers).toHaveText(["Free to play", "Open beta"]);
+    await expect(stickers.nth(1)).toBeInViewport();
+    await expect(page.locator(".hero-in .fine").last()).toContainText(
+      "open beta",
+    );
+    // Both stickers sit on the painting, side by side, not on each other.
+    const [a, b] = await stickers.evaluateAll((els) =>
+      els.map((el) => el.getBoundingClientRect().toJSON()),
+    );
+    expect(a.right).toBeLessThanOrEqual(b.left);
+    const art = await page.locator(".hero-art").boundingBox();
+    expect(b.right).toBeLessThanOrEqual(art!.x + art!.width);
   });
 
   test("a device asking for less motion starts paused; the switch plays", async ({
@@ -509,7 +529,7 @@ test.describe("website", () => {
       expect(small).toEqual([]);
     });
   // Scroll-driven motion (owner, 27 Nov): the reading stripe, the hero
-  // leaving, the tape pushed by the scroll, the boss faces and the phone.
+  // leaving, titles and cards in and out, the boss faces and the phone.
   // CSS timelines only; none of it where they are missing or motion is
   // paused.
   test.describe("scroll-driven motion", () => {
@@ -537,7 +557,6 @@ test.describe("website", () => {
     const NEW = [
       "read-on",
       "sink-back",
-      "tape-push",
       "face-up",
       "phone-up",
       "wipe-out",
@@ -587,7 +606,16 @@ test.describe("website", () => {
             )
             .toBe(true);
         };
-        await at(".ticker", "tape-push");
+        // The champion tape only drifts: the scroll never moves it (owner,
+        // 28 Nov: it jerked back as the page went down).
+        expect(
+          await page.evaluate(() =>
+            document
+              .querySelector(".ticker-run")!
+              .getAnimations()
+              .map((a) => a.timeline?.constructor.name),
+          ),
+        ).toEqual(["DocumentTimeline"]);
         await at(".raid-picks", "face-up");
         await at(".phone", "phone-up");
         await page.evaluate(() =>
@@ -652,6 +680,69 @@ test.describe("website", () => {
         ),
       ).toBeLessThanOrEqual(0);
     };
+
+    // No entrance changes at the moment it starts (owner, 28 Nov: on an
+    // iPhone a title at the screen's foot showed whole, blinked out and came
+    // back). Safari draws the page under its bottom toolbar too, below the
+    // edge the timeline measures, so whatever an element looks like just
+    // before that edge is seen: it must be what it looks like just after.
+    test("an entrance never jumps as it starts", async ({ page }) => {
+      await page.setViewportSize({ width: 390, height: 844 });
+      await openSite(page);
+      /** Its look with its top `below` px under the screen's foot. */
+      const lookAt = (sel: string, below: number) =>
+        page.evaluate(
+          async ([sel, below]) => {
+            const el = document.querySelector<HTMLElement>(sel)!;
+            const frame = () =>
+              new Promise((r) => requestAnimationFrame(() => r(null)));
+            // Again until it is where it was asked (lazy pictures above
+            // can still move it).
+            for (let i = 0; i < 6; i++) {
+              const top = el.getBoundingClientRect().top;
+              scrollTo({
+                top: scrollY + top - innerHeight - below,
+                behavior: "instant",
+              });
+              await frame();
+              await frame();
+              if (
+                Math.abs(el.getBoundingClientRect().top - innerHeight - below) <
+                1
+              )
+                break;
+            }
+            const style = getComputedStyle(el);
+            const m = new DOMMatrix(
+              style.transform === "none" ? undefined : style.transform,
+            );
+            return {
+              opacity: Number(style.opacity),
+              x: m.m41,
+              y: m.m42,
+              turn: Math.atan2(m.b, m.a),
+            };
+          },
+          [sel, below] as const,
+        );
+      for (const sel of [
+        "#raids .head > .eyebrow",
+        "#raids .head > h2",
+        ".modes > li:nth-child(3)",
+        ".pick:nth-child(2)",
+        ".phone",
+        ".stores > li",
+      ]) {
+        const before = await lookAt(sel, 4);
+        const after = await lookAt(sel, -2);
+        expect(Math.abs(before.opacity - after.opacity), sel).toBeLessThan(
+          0.25,
+        );
+        expect(Math.abs(before.x - after.x), sel).toBeLessThan(8);
+        expect(Math.abs(before.y - after.y), sel).toBeLessThan(8);
+        expect(Math.abs(before.turn - after.turn), sel).toBeLessThan(0.02);
+      }
+    });
 
     test("with motion paused, nothing follows the scroll", async ({ page }) => {
       await page.emulateMedia({ reducedMotion: "reduce" });
