@@ -319,3 +319,115 @@ for (const mode of ["raid", "spire"] as const)
       await context.close();
     }
   });
+
+// The battle's two corner buttons, chat and the gear, are bare icons in
+// Poster (owner, 27 Nov 2026): no ink square behind them (it covered the
+// playfield's corner, and an iPhone's rounded corner cut the square's own),
+// a cream icon with an ink outline and a hard shadow, and the same 44 px
+// box to tap. Over a whole-screen sheet the chat keeps its ink square.
+for (const size of [
+  { width: 844, height: 390 },
+  {
+    width: 852,
+    height: 393,
+    inset: { left: 59, right: 59, bottom: 21, top: 0 },
+  },
+])
+  test(`Poster: the battle's corner buttons are bare icons with a finger's box (${size.width}x${size.height})`, async ({
+    browser,
+  }) => {
+    test.setTimeout(120_000);
+    const context = await browser.newContext({
+      viewport: { width: size.width, height: size.height },
+      isMobile: true,
+      hasTouch: true,
+    });
+    try {
+      const page = await context.newPage();
+      const errors = await start(page, () =>
+        (window as any).__room("pvp", { mode: "duel", phase: "playing" }),
+      );
+      if (size.inset)
+        await page.evaluate((inset) => {
+          for (const [key, value] of Object.entries(inset))
+            document.documentElement.style.setProperty(
+              `--safe-${key}`,
+              `${value}px`,
+            );
+        }, size.inset);
+      await page.waitForTimeout(600);
+      const buttons = () =>
+        page.evaluate(() =>
+          ["#battle-menu", "#battle-chat"].map((sel) => {
+            const b = document.querySelector<HTMLElement>(sel)!;
+            const r = b.getBoundingClientRect();
+            const style = getComputedStyle(b);
+            const icon = getComputedStyle(b.querySelector("svg")!);
+            const paint = document.createElement("canvas").getContext("2d", {
+              willReadFrequently: true,
+            })!;
+            paint.canvas.width = paint.canvas.height = 1;
+            paint.fillStyle = style.color;
+            paint.fillRect(0, 0, 1, 1);
+            const hits = (x: number, y: number) => {
+              const e = document.elementFromPoint(x, y);
+              return e === b || b.contains(e);
+            };
+            return {
+              sel,
+              width: r.width,
+              height: r.height,
+              background: style.backgroundColor,
+              backdrop: style.backdropFilter,
+              border: style.borderTopWidth,
+              shadow: style.boxShadow,
+              colour: Array.from(
+                paint.getImageData(0, 0, 1, 1).data.slice(0, 3),
+              ).join(","),
+              outlined: icon.filter.includes("drop-shadow"),
+              // The whole box takes the tap, corners included.
+              taps: [
+                [r.left + 2, r.top + 2],
+                [r.right - 2, r.top + 2],
+                [r.left + 2, r.bottom - 2],
+                [r.right - 2, r.bottom - 2],
+                [r.left + r.width / 2, r.top + r.height / 2],
+              ].every(([x, y]) => hits(x, y)),
+              inside:
+                r.left >= 0 &&
+                r.top >= 0 &&
+                r.right <= innerWidth &&
+                r.bottom <= innerHeight,
+            };
+          }),
+        );
+      for (const b of await buttons()) {
+        const where = `${b.sel}: ${JSON.stringify(b)}`;
+        expect(b.background, where).toBe("rgba(0, 0, 0, 0)");
+        expect(b.backdrop, where).toBe("none");
+        expect(b.border, where).toBe("0px");
+        expect(b.shadow, where).toBe("none");
+        expect(b.colour, where).toBe("244,234,213");
+        expect(b.outlined, where).toBe(true);
+        expect(b.width, where).toBeGreaterThanOrEqual(44);
+        expect(b.height, where).toBeGreaterThanOrEqual(44);
+        expect(b.taps, where).toBe(true);
+        expect(b.inside, where).toBe(true);
+      }
+      // A finished match is a whole-screen sheet: the chat is an ink square
+      // there, so it reads on a win's sheet in any fighter's colour.
+      await push(
+        page,
+        `s.phase = "finished"; s.winner = "me"; s.matchId = "m1"; s.scores = { me: 3, p2: 1 };`,
+      );
+      await expect(page.locator("#arena-overlay .match-sheet")).toHaveClass(
+        /\bis-victory\b/,
+      );
+      await page.waitForTimeout(500);
+      const chat = (await buttons()).find((b) => b.sel === "#battle-chat")!;
+      expect(chat.background, JSON.stringify(chat)).toBe("rgb(13, 13, 15)");
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
