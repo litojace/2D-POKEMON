@@ -65,6 +65,26 @@ for (const size of [
           expect(frame!.height).toBeGreaterThanOrEqual(60);
           expect(frame!.width).toBeGreaterThan(100);
         }
+        // The steps' words in Poster (themes/poster/raid-briefing.css): each
+        // cue is cream after a mark in the element colour, not a sentence in
+        // it; the pictures' labels are the game's type in cream.
+        const words = await page.evaluate(() => {
+          const cue = document.querySelector(".rc-steps .rc-step-cue")!;
+          const label = document.querySelector(".raid-guide-scene text");
+          const c = getComputedStyle(cue);
+          return {
+            cue: c.color,
+            mark: getComputedStyle(cue, "::before").content,
+            label: label && getComputedStyle(label).fill,
+            font: label && getComputedStyle(label).fontFamily,
+          };
+        });
+        expect(words.cue).toBe("rgb(244, 234, 213)");
+        expect(words.mark).toBe('"▸ "');
+        if (words.label) {
+          expect(words.label).toBe("rgb(244, 234, 213)");
+          expect(words.font).not.toMatch(/^Inter/);
+        }
         const sprites = page.locator(
           ".raid-guide-scene image[data-guide-sprite]",
         );
