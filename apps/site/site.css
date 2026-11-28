@@ -2174,7 +2174,222 @@ body::before {
     :is(.roster > li, .modes > li, .stores > li, .raid-week, .shop-show) {
     animation: rise linear forwards;
     animation-timeline: view();
-    animation-range: entry 0% entry 60%;
+    animation-range: entry var(--lag, 0%) entry calc(60% + var(--lag, 0%));
+  }
+}
+/* ...and each leaves the way it suits as it goes off the top (owner,
+   28 Nov: "words and panels gather in as you reach them, then each moves
+   off its own way for the next part"): a title wipes out to the left, a
+   card lifts away, a row's cards one after another. Only while it crosses
+   the screen's top edge, and no fill: once off screen, and before, it is
+   its own self. Words stay whole until most of the box has gone. The tall
+   panels (a raid, the Shop) only ease back, never fade, since their lower
+   half is still being read. */
+@supports (animation-timeline: view()) and
+  (animation-range: exit-crossing 0% exit-crossing 100%) {
+  :root:not([data-motion="paused"]) .head > * {
+    animation:
+      wipe-in linear forwards,
+      wipe-out linear none;
+    animation-timeline: view(), view();
+    animation-range:
+      entry 0% entry 80%,
+      exit-crossing 0% exit-crossing 100%;
+  }
+  :root:not([data-motion="paused"])
+    :is(.roster > li, .modes > li, .stores > li) {
+    animation:
+      rise linear forwards,
+      lift-off linear none;
+    animation-timeline: view(), view();
+    animation-range:
+      entry var(--lag, 0%) entry calc(60% + var(--lag, 0%)),
+      exit-crossing var(--lag, 0%) exit-crossing 100%;
+  }
+  :root:not([data-motion="paused"]) :is(.raid-week, .shop-show) {
+    transform-origin: 50% 100%;
+    animation:
+      rise linear forwards,
+      ease-back linear none;
+    animation-timeline: view(), view();
+    animation-range:
+      entry 0% entry 60%,
+      exit-crossing 0% exit-crossing 100%;
+  }
+}
+@keyframes wipe-out {
+  40% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    transform: translate(-48px, -18px) skewX(-8deg);
+  }
+}
+@keyframes lift-off {
+  35% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-56px) scale(0.94);
+  }
+}
+@keyframes ease-back {
+  to {
+    transform: scale(0.95);
+  }
+}
+/* Scroll-driven, part two (owner, 27 Nov: "scroll-driven animation, done
+   properly"). Each one follows the reader's own scroll and nothing else: no
+   pinning, no change to scroll speed, no script. Transform, translate and
+   opacity only, so the compositor draws them. Where these timelines are
+   missing (iOS 18 and older), none of it exists and the page is its own
+   still self; with motion paused, the same. */
+@supports (animation-timeline: view()) and
+  (animation-range: exit-crossing 0% exit-crossing 100%) {
+  /* A view() timeline follows the nearest scroll container, and
+     overflow: hidden makes one: these bands clip instead (the same cut, not
+     a scroller), so what is inside them follows the page. flow-root keeps
+     the block formatting context hidden gave them. */
+  .hero,
+  .facts,
+  .app {
+    display: flow-root;
+    overflow: clip;
+  }
+  /* 1. How far down the page: a red stripe fills the bar's yellow edge. */
+  :root:not([data-motion="paused"]) .bar::after {
+    content: "";
+    position: absolute;
+    inset: auto 0 -3px;
+    height: 3px;
+    background: var(--hot);
+    transform-origin: 0 50%;
+    pointer-events: none;
+    animation: read-on linear both;
+    animation-timeline: scroll(root block);
+  }
+  /* 2. The hero leaves: its painting sinks back and leans, and the
+     outlined name behind it drifts slower than the page. */
+  .hero {
+    view-timeline: --hero block;
+  }
+  .hero-frame {
+    view-timeline: --hero-frame block;
+  }
+  :root:not([data-motion="paused"]) .hero-art {
+    transform-origin: 50% 100%;
+    animation: sink-back linear both;
+    animation-timeline: --hero-frame;
+    animation-range: exit-crossing 0% exit-crossing 85%;
+  }
+  :root:not([data-motion="paused"]) .hero-word {
+    animation: word-drift linear both;
+    animation-timeline: --hero;
+    animation-range: exit-crossing 0% exit-crossing 100%;
+  }
+  /* 3. The champion tape slides against its own drift as the page goes by
+     (translate, on top of the drift's transform; its band clips it). Only
+     the drift waits under a mouse or the keyboard. */
+  .ticker {
+    view-timeline: --tape block;
+  }
+  :root:not([data-motion="paused"]) .ticker-run {
+    animation:
+      ticker 70s linear infinite,
+      tape-push linear both;
+    animation-timeline: auto, --tape;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .ticker:not(.free):hover .ticker-run {
+      animation-play-state: paused, running;
+    }
+  }
+  .ticker:has(:focus-visible) .ticker-run {
+    animation-play-state: paused, running;
+  }
+  /* 4. Cards in a row arrive one after another, left to right; the boss
+     faces come in from above and below in turn. */
+  @media (min-width: 640px) and (max-width: 999px) {
+    .modes > li:nth-child(2n) {
+      --lag: 12%;
+    }
+  }
+  @media (min-width: 1000px) {
+    .modes > li:nth-child(3n + 2) {
+      --lag: 10%;
+    }
+    .modes > li:nth-child(3n) {
+      --lag: 20%;
+    }
+  }
+  :root:not([data-motion="paused"]) .pick {
+    animation: face-up linear forwards;
+    animation-timeline: view();
+    animation-range: entry 0% cover 28%;
+  }
+  :root:not([data-motion="paused"]) .pick:nth-child(2n) {
+    animation-name: face-down;
+    animation-range: entry 0% cover 34%;
+  }
+  /* 5. The phone straightens up to its own slight lean as it rises. */
+  :root:not([data-motion="paused"]) .phone {
+    animation:
+      phone-up linear forwards,
+      phone-off linear none;
+    animation-timeline: view(), view();
+    animation-range:
+      entry 0% cover 45%,
+      exit-crossing 0% exit-crossing 100%;
+  }
+}
+@keyframes read-on {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+@keyframes sink-back {
+  to {
+    transform: scale(0.9) rotate(-1.5deg);
+  }
+}
+@keyframes word-drift {
+  to {
+    transform: translate(calc(-50% - 9vw), 38%) rotate(-6deg);
+  }
+}
+@keyframes tape-push {
+  from {
+    translate: calc(-1 * clamp(140px, 18vw, 260px)) 0;
+  }
+  to {
+    translate: 0 0;
+  }
+}
+@keyframes face-up {
+  from {
+    opacity: 0;
+    transform: translateY(22px);
+  }
+}
+@keyframes face-down {
+  from {
+    opacity: 0;
+    transform: translateY(-22px);
+  }
+}
+@keyframes phone-off {
+  to {
+    transform: translateY(-40px) rotate(4deg) scale(0.96);
+  }
+}
+@keyframes phone-up {
+  from {
+    transform: translateY(56px) rotate(-8deg) scale(0.96);
   }
 }
 @supports not (animation-timeline: view()) {
