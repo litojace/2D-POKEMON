@@ -30,6 +30,13 @@ export interface UiTheme {
   /** The stylesheet itself, for a look that ships with the game's own
    *  script: it is on the page before the first frame, with no wait. */
   css?: string;
+  /**
+   * The look's chrome has colours of its own (Poster: cream, ink, gold and
+   * red; owner, 27 Nov 2026), so the Lobby fighter's element colour is not
+   * written on the root for it: it goes only to the few places that still
+   * show it (FIGHTER_COLOUR_HOSTS).
+   */
+  fixedChrome?: boolean;
 }
 
 /**
@@ -44,6 +51,7 @@ export const UI_THEMES: readonly UiTheme[] = [
     name: "Poster",
     css: posterCss,
     load: async () => ({ css: posterCss }),
+    fixedChrome: true,
   },
 ];
 
@@ -151,25 +159,74 @@ export async function applyUiTheme(): Promise<boolean> {
     delete root.dataset.ui;
     sheet?.remove();
   }
+  // The fighter's colour goes where this look reads it.
+  paintElementColour();
   document.dispatchEvent(new Event(UI_THEME_EVENT));
   return true;
 }
 
 let elementColour = "";
+/** What a look with a fixed chrome shows as the fighter's colour: the
+ *  fighter's own, or the field colour the Lobby gives it (Voltkit). */
+let fieldColour = "";
 /**
- * `--el` on `:root`: the Lobby fighter's element colour, which Poster draws
- * with. The Lobby keeps it in step (lobby-screen.ts); written only when it
- * changes, since a custom property on the root restyles the page.
+ * Where a look with a fixed chrome still shows the Lobby fighter's element
+ * colour, as `--fighter`: the Lobby (its field, the name plate, the seats),
+ * the raid room's backdrop and the battle's sheets (a win is the fighter's
+ * colour). A rule in a style sheet of its own rather than a property on the
+ * root: changing a custom property on the root restyles every element on
+ * the page (about 59 ms on a throttled phone at each fighter switch, 27 Nov
+ * 2026), while a rule's change reaches only what its selector names, and
+ * what is made later still gets it.
  */
-export function setUiElementColour(colour: string) {
-  if (typeof document === "undefined" || colour === elementColour) return;
+export const FIGHTER_COLOUR_HOSTS =
+  ".lobby-layer, .room-screen, #arena-overlay";
+const FIGHTER_SHEET = "ui-fighter-colour";
+function paintElementColour() {
+  if (typeof document === "undefined") return;
+  const root = document.documentElement;
+  let sheet = document.getElementById(FIGHTER_SHEET);
+  if (!themeById(root.dataset.ui)?.fixedChrome) {
+    sheet?.remove();
+    // The look underneath draws with `--el` on the root, on every screen.
+    if (elementColour) root.style.setProperty("--el", elementColour);
+    return;
+  }
+  root.style.removeProperty("--el");
+  if (!elementColour) return;
+  if (!sheet) {
+    sheet = document.createElement("style");
+    sheet.id = FIGHTER_SHEET;
+    document.head.append(sheet);
+  }
+  const rule = `${FIGHTER_COLOUR_HOSTS}{--fighter:${fieldColour}}`;
+  if (sheet.textContent !== rule) sheet.textContent = rule;
+}
+/**
+ * The Lobby fighter's element colour (a `#rrggbb`). The Lobby keeps it in
+ * step (lobby-screen.ts). The look underneath draws its accents with it
+ * (`--el` on the root); Poster shows it only on the fighter's own things
+ * (`--fighter`, above), where `field` stands in for it when the Lobby
+ * gives one. Written only when it changes.
+ */
+export function setUiElementColour(colour: string, field = colour) {
+  if (
+    typeof document === "undefined" ||
+    (colour === elementColour && field === fieldColour)
+  )
+    return;
+  // They are written into a style sheet: a colour and nothing else.
+  const hex = /^#[0-9a-f]{3,8}$/i;
+  if (!hex.test(colour) || !hex.test(field)) return;
   elementColour = colour;
-  document.documentElement.style.setProperty("--el", colour);
+  fieldColour = field;
+  paintElementColour();
 }
 
 /** Tests: forget what the address said and what was applied. */
 export function resetUiThemeForTests(search?: string) {
   query = search === undefined ? undefined : readUiQuery(search);
   elementColour = "";
+  fieldColour = "";
   applying = 0;
 }

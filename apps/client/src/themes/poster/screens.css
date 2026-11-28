@@ -1,9 +1,9 @@
 /* ── POSTER: screen by screen ─────────────────────────────────────────── */
 :root[data-ui="poster"] .ui-panel-head {
-  background: var(--el);
+  background: var(--head-bg);
 }
 :root[data-ui="poster"] .ui-panel-head .ui-chip:not([aria-pressed="true"]) svg {
-  color: #fff;
+  color: var(--paper);
 }
 /* lobby mode menu */
 :root[data-ui="poster"] .lobby-layer .lobby-mode-menu {
@@ -19,13 +19,13 @@
 :root[data-ui="poster"] .lobby-layer .lobby-mode-menu button {
   border-radius: 0;
   background: transparent;
-  color: #fff;
+  color: var(--paper);
 }
 :root[data-ui="poster"] .lobby-layer .lobby-mode-menu b {
   font: 400 calc(15px * var(--text-scale, 1)) / 1.1 var(--font-display);
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: #fff;
+  color: var(--paper);
 }
 /* A locked mode shows its lock pill where the others have a line of small
    text. Poster's names are taller (16.5 px), so with the old look's 16 px
@@ -60,7 +60,7 @@
 :root[data-ui="poster"] dialog#dialog,
 :root[data-ui="poster"] .framed-dialog,
 :root[data-ui="poster"] dialog.card {
-  background: var(--ink);
+  background: var(--board-dots), var(--board);
   border: 0;
   border-radius: 0;
   box-shadow: 10px 10px 0 rgba(0, 0, 0, 0.5);
@@ -69,12 +69,13 @@
   background: rgba(0, 0, 0, 0.55);
 }
 :root[data-ui="poster"] .dialog-toolbar {
-  background: var(--el);
+  background: var(--head-bg);
   border: 0;
+  box-shadow: inset 0 -3px 0 var(--head-ink);
 }
 :root[data-ui="poster"] .dialog-heading,
 :root[data-ui="poster"] .dialog-toolbar h2 {
-  color: var(--ink);
+  color: var(--head-ink);
   font: 400 calc(22px * var(--text-scale, 1)) / 1 var(--font-display);
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -96,15 +97,15 @@
 }
 :root[data-ui="poster"] .dialog-toolbar .close,
 :root[data-ui="poster"] #close-dialog {
-  background: var(--ink);
-  color: #fff;
+  background: var(--head-box);
+  color: var(--paper);
   border: 0;
   border-radius: 0;
   box-shadow: none;
 }
 :root[data-ui="poster"] .dialog-toolbar .close svg,
 :root[data-ui="poster"] #close-dialog svg {
-  color: #fff;
+  color: var(--paper);
 }
 :root[data-ui="poster"] .dialog-footer {
   background: var(--ink-1);
@@ -129,7 +130,7 @@
 /* buttons outside the kit */
 :root[data-ui="poster"]
   button:is(.btn-primary, .primary):not(.lobby-play-button) {
-  background: var(--el);
+  background: var(--gold);
   color: var(--ink);
   border: 0;
   border-radius: 0;
@@ -140,7 +141,7 @@
 }
 :root[data-ui="poster"] button:is(.btn-secondary, .secondary) {
   background: var(--ink-3);
-  color: #fff;
+  color: var(--paper);
   border: 0;
   border-radius: 0;
   box-shadow: none;
@@ -167,7 +168,7 @@
   ),
 :root[data-ui="poster"] textarea {
   background: var(--ink-2);
-  color: #fff;
+  color: var(--paper);
   /* The frame is the field's own border, recoloured, thickened inside by
      a shadow: a 2 px border made fields taller than the screens they sit in
      were laid out for (Friends' add-by-code row pushed its list 2 px down,
@@ -332,7 +333,7 @@
     linear-gradient(100deg, transparent 0 63%, rgba(13, 13, 15, 0) 63%),
     radial-gradient(circle, rgba(0, 0, 0, 0.14) 1.4px, transparent 1.8px) 0 0 /
       9px 9px,
-    var(--el);
+    var(--field);
   color: var(--ink);
 }
 :root[data-ui="poster"]
@@ -344,12 +345,12 @@
     radial-gradient(circle, rgba(255, 255, 255, 0.08) 1.4px, transparent 1.8px)
       0 0 / 9px 9px,
     var(--ink);
-  color: #fff;
+  color: var(--paper);
 }
 :root[data-ui="poster"]
   body.battle-active
   #arena-overlay#arena-overlay.is-sheet {
-  background: var(--el);
+  background: var(--field);
 }
 :root[data-ui="poster"]
   #arena-overlay#arena-overlay.is-sheet
@@ -410,7 +411,7 @@
   border: 0;
   border-radius: 0;
   box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.3);
-  color: #fff;
+  color: var(--paper);
 }
 /* On a defeat's ink sheet the ink card had no edge at all: it ran into the
    sheet, while the places card above it has its line (match-sheet.spec,
@@ -425,7 +426,7 @@
   #arena-overlay#arena-overlay.is-sheet
   table.recap
   :is(th, td) {
-  color: #fff;
+  color: var(--paper);
 }
 :root[data-ui="poster"] #arena-overlay#arena-overlay.is-sheet table.recap td {
   font-family: var(--font-display);
@@ -472,7 +473,7 @@
   border: 0;
   border-radius: 0;
   box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.3);
-  color: #fff;
+  color: var(--paper);
 }
 :root[data-ui="poster"]
   #arena-overlay#arena-overlay.is-sheet
@@ -486,7 +487,7 @@
   #arena-overlay#arena-overlay.is-sheet
   .journey-result-xp
   :is(p, div, small, span, b) {
-  color: #fff;
+  color: var(--paper);
 }
 :root[data-ui="poster"]
   #arena-overlay#arena-overlay.is-sheet
@@ -517,7 +518,7 @@
   position: relative;
   isolation: isolate;
   background: none;
-  color: var(--sheet-cta-ink, var(--el));
+  color: var(--sheet-cta-ink, var(--gold));
   box-shadow: none;
 }
 :root[data-ui="poster"]
@@ -534,14 +535,14 @@
 :root[data-ui="poster"]
   #arena-overlay#arena-overlay.is-sheet
   button:is(.btn-secondary, .secondary) {
-  background: #fff;
+  background: var(--paper);
   color: var(--ink);
   box-shadow: none;
 }
 :root[data-ui="poster"]
   #arena-overlay#arena-overlay.is-sheet
   button.leave-button {
-  background: #fff;
+  background: var(--paper);
   color: #d01836;
   box-shadow: inset 0 0 0 2px #d01836;
 }
@@ -556,7 +557,7 @@
   #arena-overlay#arena-overlay.is-sheet
   .ui-btn.is-primary {
   background: none;
-  color: var(--sheet-cta-ink, var(--el));
+  color: var(--sheet-cta-ink, var(--gold));
 }
 :root[data-ui="poster"]
   #arena-overlay#arena-overlay.is-sheet
@@ -566,7 +567,7 @@
 :root[data-ui="poster"]
   #arena-overlay#arena-overlay.is-sheet
   .ui-btn:not(.is-primary) {
-  background: #fff;
+  background: var(--paper);
   color: var(--ink);
 }
 :root[data-ui="poster"]
@@ -590,7 +591,7 @@
     .rc-safety
   ) {
   background: var(--ink);
-  color: #fff;
+  color: var(--paper);
   border: 0;
   border-radius: 0;
   box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.28);
@@ -689,10 +690,16 @@
     padding-top: 3px;
   }
 }
-/* friends on phones: the tab row is the masthead */
+/* friends on phones: the tab row is the masthead; above a phone's height
+   it is the masthead's second row, so the rule stands under it and not
+   under the head. */
 :root[data-ui="poster"] .friends-sheet > .ui-tabs {
-  background: var(--el);
+  background: var(--head-bg);
   border-bottom: 0;
+  box-shadow: inset 0 -3px 0 var(--head-ink);
+}
+:root[data-ui="poster"] .friends-sheet > .ui-panel-head {
+  box-shadow: none;
 }
 /* As on a panel's masthead (kit.css): the tab is the block under the
    row's top 7 px, and the strip above it still catches a finger. */
@@ -701,7 +708,7 @@
   align-self: flex-end;
   height: calc(100% - 7px);
   min-height: 0;
-  color: var(--on-el-dim);
+  color: var(--head-dim);
   margin: 0;
   padding-top: 0;
   padding-bottom: 0;
@@ -716,8 +723,8 @@
   .friends-sheet
   > .ui-tabs
   > button[aria-selected="true"] {
-  color: var(--el);
-  background: var(--ink);
+  color: var(--ink);
+  background: var(--head-ink);
   transform: skewX(-10deg);
 }
 :root[data-ui="poster"]
@@ -750,16 +757,15 @@
 :root[data-ui="poster"] .friends-sheet .ui-btn > span {
   text-box: trim-both cap alphabetic;
 }
-/* A tab's count: an ink chip with the element colour's words on the
-   masthead (white on a white wash did not read there); the chosen tab's
-   ink block keeps its element-colour chip. */
+/* A tab's count: a chip of the masthead's lighter ink with cream words;
+   the chosen tab's cream block keeps the kit's chip. */
 :root[data-ui="poster"]
   .friends-sheet
   .ui-tabs
   > button:not([aria-selected="true"])
   .ui-tag {
-  background: var(--ink);
-  color: var(--el);
+  background: var(--head-box);
+  color: var(--head-ink);
 }
 /* "10 online · party 1 / 4" is wider than the title under it: on one line,
    not broken after the slash. */
@@ -767,10 +773,10 @@
   white-space: nowrap;
 }
 :root[data-ui="poster"] .friends-sheet .ui-panel-head .ui-icon-btn {
-  background: var(--ink);
+  background: var(--head-box);
 }
 :root[data-ui="poster"] .friends-sheet .ui-panel-head .ui-icon-btn svg {
-  color: #fff;
+  color: var(--paper);
 }
 /* raid results: one board, no nested cards */
 :root[data-ui="poster"] #arena-overlay#arena-overlay.is-sheet .rc-player {
@@ -784,11 +790,11 @@
   #arena-overlay#arena-overlay.is-sheet
   :is(.rc-score, .rc-summary)
   :is(h3, h4, .ui-h) {
-  color: #fff;
+  color: var(--paper);
 }
 :root[data-ui="poster"] #arena-overlay#arena-overlay.is-sheet :is(h3, h4).ui-h,
 :root[data-ui="poster"] #arena-overlay#arena-overlay.is-sheet .rc-card h3 {
-  color: #fff;
+  color: var(--paper);
   font-family: var(--font-display);
   font-weight: 400;
   letter-spacing: 0.05em;
@@ -796,13 +802,20 @@
 :root[data-ui="poster"] body.hub-active .nav-xp > *,
 :root[data-ui="poster"] body.hub-active .nav-xp::before,
 :root[data-ui="poster"] body.hub-active .nav-xp::after {
-  background: var(--el);
+  /* Progress is gold, as coins are. */
+  background: var(--gold);
 }
 /* split screens (fighter details, boss page): the head row is the masthead */
 :root[data-ui="poster"] .ui-split-main {
-  background: linear-gradient(var(--el) 0 44px, var(--ink) 44px);
+  /* The masthead's band behind the head row and the tabs beside it on a
+     phone: ink, with the cream rule along its foot. */
+  background: linear-gradient(
+    var(--head-bg) 0 41px,
+    var(--head-ink) 41px 44px,
+    var(--ink) 44px
+  );
   /* Not under its 1 px frame (unseen, kit.css): the band showed there as a
-     line of the element colour 44 px long, and a head taller than that
+     line of the masthead's colour 44 px long, and a head taller than that
      (the Shop's two rows on a tablet, 64 px on a desktop) stood 1 px inside
      it, a step in the masthead's edge. The frame is the panel's ink, as
      around every other panel's masthead. */
@@ -817,7 +830,16 @@
 :root[data-ui="poster"] .ui-split-main > .ui-tabs {
   min-height: 44px;
   border-bottom: 0;
-  background: var(--el);
+  background: var(--head-bg);
+  box-shadow: inset 0 -3px 0 var(--head-ink);
+}
+/* Above a phone's height the tab row is the masthead's second row: the
+   rule stands under it, not between it and the head. (:has() looks only at
+   the head's next sibling.) */
+@media (min-height: 501px) {
+  :root[data-ui="poster"] .ui-split-main > .ui-panel-head:has(+ .ui-tabs) {
+    box-shadow: none;
+  }
 }
 /* Each tab is the row's full height, so its own box is the 44 px a finger
    needs, centred on what it shows; what it shows is the block under the
@@ -830,7 +852,7 @@
   align-self: stretch;
   height: auto;
   min-height: 0;
-  color: var(--on-el-dim);
+  color: var(--head-dim);
   margin: 0;
   padding-top: 7px;
   padding-bottom: 0;
@@ -849,8 +871,9 @@
   .ui-split-main
   > .ui-tabs
   > button[aria-selected="true"] {
-  color: var(--el);
-  background: linear-gradient(var(--el) 0 7px, transparent 7px) var(--ink);
+  color: var(--ink);
+  background: linear-gradient(var(--head-bg) 0 7px, transparent 7px)
+    var(--head-ink);
   transform: skewX(-10deg);
 }
 :root[data-ui="poster"]
@@ -870,15 +893,15 @@
   .ui-split-main
   .ui-panel-head
   :is(.ui-btn, .ui-icon-btn) {
-  background: var(--ink);
-  color: #fff;
+  background: var(--head-box);
+  color: var(--paper);
 }
 :root[data-ui="poster"]
   .ui-split-main
   .ui-panel-head
   :is(.ui-btn, .ui-icon-btn)
   svg {
-  color: #fff;
+  color: var(--paper);
 }
 :root[data-ui="poster"]
   .ui-split-main
@@ -989,12 +1012,13 @@
 :root[data-ui="poster"] :is(.fit-slot, .fit-slots > *) {
   border-radius: 0;
 }
-/* raid room backdrop: the poster */
+/* raid room backdrop: the poster, in the Lobby fighter's colour as the
+   Lobby's field is */
 :root[data-ui="poster"] body.lobby-active .room-screen {
   background:
     radial-gradient(circle, rgba(0, 0, 0, 0.14) 1.4px, transparent 1.8px) 0 0 /
       9px 9px,
-    var(--el);
+    var(--field);
 }
 /* Phones (667–800 px wide, and any phone held sideways): the rail folds to
    icons with small labels. The text rail is 132 px; on an 844 or 852 px
@@ -1079,7 +1103,7 @@
   border: 0;
   border-radius: 0;
   background: var(--ink);
-  color: #fff;
+  color: var(--paper);
 }
 :root[data-ui="poster"] #arena-overlay#arena-overlay .rw-levelup b {
   color: var(--el);
@@ -1136,7 +1160,7 @@
       cover's picture on the right behind a white stripe (the Lobby's slab).
       The picture itself is onboarding.css's ("The cover"). ── */
 :root[data-ui="poster"] .welcome-gate.is-title {
-  color: #fff;
+  color: var(--paper);
   font-family: var(--font-body);
 }
 :root[data-ui="poster"] .welcome-gate.is-title::before {
@@ -1148,7 +1172,7 @@
   inset: 0;
   block-size: auto;
   z-index: 0;
-  background: #fff;
+  background: var(--paper);
   clip-path: polygon(
     calc(54% + 6px) 0,
     calc(54% + 14px) 0,
@@ -1218,14 +1242,14 @@
   }
 }
 :root[data-ui="poster"] .title-tap:disabled .title-prompt {
-  color: #fff;
+  color: var(--paper);
   animation: none;
 }
 :root[data-ui="poster"] .title-tap:disabled .title-prompt::before {
   background: var(--ink-3);
 }
 :root[data-ui="poster"] .title-tap:focus-visible .title-prompt {
-  outline-color: #fff;
+  outline-color: var(--paper);
   border-radius: 0;
 }
 :root[data-ui="poster"] .title-hint {
@@ -1292,7 +1316,7 @@
   color: var(--el);
 }
 :root[data-ui="poster"] .title-quick-btn {
-  color: #fff;
+  color: var(--paper);
   font: 400 calc(11px * var(--text-scale, 1)) / 1.1 var(--font-display);
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -1304,7 +1328,7 @@
 :root[data-ui="poster"] :is(.title-status, .title-build) {
   padding: 4px 8px;
   background: var(--ink);
-  color: #fff;
+  color: var(--paper);
   text-shadow: none;
 }
 /* The version: quiet words in the body face, here and under the sign-in
@@ -1325,7 +1349,7 @@
 :root[data-ui="poster"] #arena-overlay.is-countdown .live-countdown {
   font-family: var(--font-display);
   font-weight: 400;
-  color: #fff;
+  color: var(--paper);
   text-shadow: 8px 8px 0 var(--ink);
 }
 :root[data-ui="poster"] #arena-overlay.is-countdown .countdown-card > .eyebrow {
@@ -1412,8 +1436,8 @@
     height: 44px;
   }
 }
-/* The Wardrobe's hint sits on the masthead: ink, not the pale grey of the
-   look underneath (2:1 on the element colour). */
+/* The Wardrobe's hint sits on the masthead: its quiet cream, not the pale
+   grey of the look underneath. */
 :root[data-ui="poster"] .fit-head .fit-hint {
-  color: var(--on-el-dim);
+  color: var(--head-dim);
 }
