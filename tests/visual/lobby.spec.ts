@@ -1588,12 +1588,12 @@ for (const viewport of SPIRE_VIEWPORTS)
         await expect(card).not.toHaveAttribute("hidden");
         if (fresh) {
           await expect(card).toContainText("The Spire is open");
-          await expect(card).toContainText("Climb from floor 1");
+          await expect(card).toContainText("Floor 5 → new title");
           await expect(card).toHaveClass(/is-new/);
           await expect(badge).toBeVisible();
         } else {
           await expect(card).toContainText("Start your climb");
-          await expect(card).toContainText("Climb from floor 1");
+          await expect(card).toContainText("Floor 5 → new title");
           await expect(card).not.toHaveClass(/is-new/);
           await expect(badge).toBeHidden();
         }
@@ -1686,7 +1686,7 @@ test("the Spire card opens the Spire's page and stays as a shortcut once seen", 
     const card = page.locator("#lobby-spire-card");
     const badge = page.locator('.lobby-rail [data-badge-for="raids"]');
     await expect(card).toContainText("Zone 2 is open");
-    await expect(card).toContainText("Climb from floor 11");
+    await expect(card).toContainText("Floor 20 → new title");
     await expect(card).toHaveClass(/is-new/);
     await expect(badge).toBeVisible();
     await snap(page, info, "lobby-spire-zone2-badge-844x390");
@@ -1697,8 +1697,8 @@ test("the Spire card opens the Spire's page and stays as a shortcut once seen", 
     await page.keyboard.press("Escape");
     await expect(room).toHaveCount(0);
     await expect(card).toBeVisible();
-    await expect(card).toContainText("Best: floor 10");
-    await expect(card).toContainText("Climb from floor 11");
+    await expect(card).toContainText("Floor 20 → title");
+    await expect(card).toContainText("10 floors to go · best 10");
     await expect(card).not.toHaveClass(/is-new/);
     await expect(badge).toBeHidden();
     // Seen is kept with the account: a reload brings the card, not the news.
@@ -1711,7 +1711,7 @@ test("the Spire card opens the Spire's page and stays as a shortcut once seen", 
       })
       .not.toBe("");
     await expect(card).toBeVisible();
-    await expect(card).toContainText("Best: floor 10");
+    await expect(card).toContainText("Floor 20 → title");
     await expect(card).not.toHaveClass(/is-new/);
     await expect(badge).toBeHidden();
     // And it still goes straight to the Spire.
@@ -1756,7 +1756,7 @@ test("the Spire card stays away before the Spire opens, shows progress while a z
     await expect(room.locator("[data-raid-spire]")).toContainText("3");
     await page.keyboard.press("Escape");
     await expect(card).toBeVisible();
-    await expect(card).toContainText("Best: floor 3");
+    await expect(card).toContainText("Floor 5 → title");
     await expect(card).not.toHaveClass(/is-new/);
     await expect(badge).toBeHidden();
     // Now the Spire opens for this player (a fresh climb): news, and
