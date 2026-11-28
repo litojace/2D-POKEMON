@@ -183,6 +183,37 @@ game was yellow):
   (what single screens, the battle HUD, the result and raid sheets and the
   raid room need). Sweep: `tests/visual/poster.spec.ts`.
 
+- **Bare icons on scenes, blocks in panels** (owner, 27–28 Nov 2026: "drop
+  the black circle, keep just the icon a little bigger, with a bit of
+  shadow"; then "this icon style fits, where else does it apply?"):
+  - **Bare:** a control drawn straight on a scene (the playfield, the
+    Plaza, the Lobby's field, a fighter's stage) has no block behind it.
+    Its icon is cream with an ink outline and a hard drop, a size up from
+    its block version. Its word (if it has one) is cream with an ink
+    stroke, and it turns gold under a finger or while it is open. Today:
+    the battle's chat and gear, the Plaza's HUD (Map, Gifts, Album, Today,
+    the clock, the fishing count), the top bar's chat and gear, and the ‹ ›
+    beside the Lobby fighter and on the Fighters stage.
+  - **One recipe** (`tokens.css`): `--bare-ink` (cream), `--bare-hot`
+    (gold), `--bare-icon-edge` (the outline, a `filter` for an icon),
+    `--bare-word-edge` (the same as a `text-shadow` for words) and
+    `--bare-chevron` (a drawn ‹, as a `clip-path`). A new bare control
+    reads these: no copies of the shadows.
+  - **The box stays:** a bare button keeps its box, so its tap area stays
+    44 px (with `phone-fit.css`'s reach on a phone) and nothing beside it
+    moves.
+  - **Blocks stay** for what is not an icon on a scene: menus, panels and
+    dialogs (ink blocks), the touch controls in a fight, currency (the coin
+    pill), counters and cards, and calls to action (PLAY, Buy). An icon
+    beside its word on a stage on a desktop (Entrance, Victory) is a text
+    button, and stays a block.
+  - **Badges** on a bare icon are Poster's one indicator (the red square
+    with an ink edge, as on the Plaza); this recipe doesn't style them.
+  - **The Lobby's rail stays on its ink slab** (coordinator for the owner,
+    28 Nov): its icons and words already stand bare on the slab, with no
+    block per button, and the slab with its cream stripe is G's main shape.
+    The open screen keeps its slanted cream block, the clearest "you are
+    here".
 - The Lobby's ink slab and its white stripe are pseudo-elements; the only
   markup the look adds is `.lobby-bigname` in the Lobby's backdrop (the
   fighter's name, hidden in the look underneath).
