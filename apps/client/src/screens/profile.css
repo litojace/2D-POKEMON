@@ -61,8 +61,8 @@
   text-align: center;
   min-width: 0;
 }
-/* The title as it reads above your fighter, without its arena animation. */
-.pf-card-title.player-title {
+/* The title, in its tier's lettering (title-tag.ts). */
+.pf-card-title {
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -577,7 +577,7 @@
     gap: 3px;
     padding: 6px 8px 8px;
   }
-  .pf-card-title.player-title {
+  .pf-card-title {
     font-size: var(--fs-micro);
   }
   .pf-card-name {
