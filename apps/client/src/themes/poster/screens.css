@@ -1010,34 +1010,6 @@
 :root[data-ui="poster"] :is(.fit-slot, .fit-slots > *) {
   border-radius: 0;
 }
-/* The stage's round buttons on a phone (Entrance, Victory, Ultimate and
-   Your look, drawn by fitting-room.css as 40 px circles holding only an
-   icon): bare icons on the fighter's stage (docs/ui-themes.md, "Bare
-   icons"), the one playing in gold. The button keeps its 40 px box. On a
-   wider screen they are words, and stay blocks. */
-@media (max-height: 500px) {
-  :root[data-ui="poster"] .fit-plays .ui-btn.is-s {
-    border: 0;
-    border-radius: 0;
-    background: none;
-    box-shadow: none;
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-    color: var(--bare-ink);
-  }
-  :root[data-ui="poster"] .fit-plays .ui-btn.is-s > svg {
-    width: 26px;
-    height: 26px;
-    color: inherit;
-    filter: var(--bare-icon-edge);
-  }
-  :root[data-ui="poster"]
-    .fit-plays
-    .ui-btn.is-s:is([aria-pressed="true"], :hover, :focus-visible, :active) {
-    background: none;
-    color: var(--bare-hot);
-  }
-}
 /* The Fighters stage's ‹ and ›: bare chevrons on the stage, drawn as the
    Lobby's are (--bare-chevron; docs/ui-themes.md, "Bare icons"). Each
    keeps its box; where a phone makes it 30 px, components.css's hit area

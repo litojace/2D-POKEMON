@@ -168,9 +168,8 @@ game was yellow):
     its block version. Its word (if it has one) is cream with an ink
     stroke, and it turns gold under a finger or while it is open. Today:
     the battle's chat and gear, the Plaza's HUD (Map, Gifts, Album, Today,
-    the clock, the fishing count), the top bar's chat and gear, the ‹ ›
-    beside the Lobby fighter and on the Fighters stage, and the Shop
-    stage's icon-only buttons on a phone.
+    the clock, the fishing count), the top bar's chat and gear, and the ‹ ›
+    beside the Lobby fighter and on the Fighters stage.
   - **One recipe** (`tokens.css`): `--bare-ink` (cream), `--bare-hot`
     (gold), `--bare-icon-edge` (the outline, a `filter` for an icon),
     `--bare-word-edge` (the same as a `text-shadow` for words) and
