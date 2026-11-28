@@ -765,6 +765,12 @@
 /* split screens (fighter details, boss page): the head row is the masthead */
 :root[data-ui="poster"] .ui-split-main {
   background: linear-gradient(var(--el) 0 44px, var(--ink) 44px);
+  /* Not under its 1 px frame (unseen, kit.css): the band showed there as a
+     line of the element colour 44 px long, and a head taller than that
+     (the Shop's two rows on a tablet, 64 px on a desktop) stood 1 px inside
+     it, a step in the masthead's edge. The frame is the panel's ink, as
+     around every other panel's masthead. */
+  background-clip: padding-box;
 }
 /* The tab row is part of the masthead wherever it sits. Above a phone's
    height it takes a row of its own under the head, below the 44 px band,
@@ -1339,7 +1345,9 @@
     grid-column: 1 / -1;
     align-self: stretch;
     height: 44px;
-    margin-left: 0;
+    /* No 6 px after Shop | Wardrobe here (kit.css takes back only the
+       row's lean room). */
+    --tabs-start: 0px;
   }
   /* With a row to themselves the tabs have room for a finger each. */
   :root[data-ui="poster"]

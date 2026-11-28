@@ -64,6 +64,41 @@
 :root[data-ui="poster"] .ui-panel-head .ui-tabs {
   border-bottom: 0;
   gap: 2px;
+  /* Room for the chosen tab's lean. Skewed about its middle, the block's
+     foot reaches half its lean to the left and its top as far to the right
+     (3.2 px on a 36 px tab, 4.9 px on a desktop's 56 px), and the row cuts
+     what leaves it (it scrolls sideways). A masthead's row had no padding:
+     the first tab's slanted edge ended in an upright stub at its foot, the
+     last tab's at its top, and that corner made the row scroll by 4 px and
+     fade its edge (the Shop's TODAY and COLLECTIONS, the Profile's
+     OVERVIEW; owner, 27 Nov).
+     The padding is taken back by a margin as wide, so no tab moves and the
+     row asks for no more room: the Shop's row fits to the pixel at
+     852 x 393 with the Dynamic Island, the Profile's at 812 x 375. A screen
+     that places the row with a margin of its own says so through
+     --tabs-start (the Shop), or sets its margin again after this rule (the
+     Journey's auto). */
+  --tab-lean: 5px;
+  padding-inline: var(--tab-lean);
+  margin-inline: calc(var(--tabs-start, 0px) - var(--tab-lean))
+    calc(-1 * var(--tab-lean));
+}
+@media (max-height: 500px) {
+  :root[data-ui="poster"] .ui-panel-head .ui-tabs {
+    --tab-lean: 4px;
+  }
+}
+/* The Journey's tabs stand at the head's far end (journey.css). */
+:root[data-ui="poster"] .journey-room .ui-panel-head .ui-tabs {
+  margin-left: auto;
+}
+/* The Shop's stand 6 px after Shop | Wardrobe above a phone's height
+   (fitting-room.css); not on a tablet, where they have their own row
+   (screens.css). */
+@media (min-height: 501px) {
+  :root[data-ui="poster"] .fit-head .ui-tabs {
+    --tabs-start: 6px;
+  }
 }
 /* A masthead tab is the block under its row's top 8 px: the chosen one's
    ink block, which runs into the page below, with its label in the middle.
@@ -98,13 +133,17 @@
   > * {
   transform: skewX(10deg);
 }
+/* Chrome on a desktop drew the block's left slant in 1 px steps wherever
+   the row is not a scrolling layer of its own (the Shop's on a tablet-wide
+   window, once its last tab's corner no longer made it one); an unseen
+   outline has it draw both slants smooth. Not while the tab shows its
+   focus ring. */
 :root[data-ui="poster"]
   .ui-panel-head
   .ui-tabs
-  > button[aria-selected="true"]::after {
-  display: none;
+  > button[aria-selected="true"]:not(:focus-visible) {
+  outline: 1px solid transparent;
 }
-
 /* ── what sits on the masthead: ink blocks ── */
 :root[data-ui="poster"] .ui-panel-head .ui-icon-btn {
   background: var(--ink);
