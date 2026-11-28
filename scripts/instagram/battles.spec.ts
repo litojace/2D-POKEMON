@@ -70,7 +70,10 @@ for (const s of SCENES.filter(
       await expect(
         page.locator("#mobile-controls .touch-buttons button").first(),
       ).toBeVisible();
-      await expect(page.locator("#hud")).toBeVisible();
+      // The match's HUD: #hud in PvP, #raid-hud in a raid or the Spire.
+      await expect(
+        page.locator("#hud:visible, #raid-hud:visible").first(),
+      ).toBeVisible();
       const dir = `${OUT}/${s.name}`;
       mkdirSync(dir, { recursive: true });
       for (let f = 0; f <= TICKS; f++) {

@@ -79,7 +79,11 @@ const EL = {
  * 28 Nov), from battles.spec.ts at the owner's iPhone size held sideways
  * (2868 x 1320). Each frame is picked by eye from the scene's 37 (owner,
  * 27 Nov): a big move going off, with every fighter still in sight, never
- * one buried under a flash.
+ * one buried under a flash. Duels 8 (the charged beam into the lightning
+ * field), teams 8 (Blaze charging in its rings, all four in sight; from 9
+ * the pillar hides Blaze), free-for-all 11 (the chestnut storm, Sunny's
+ * orb and Ink's tendrils), Spire 11 (the beam beside Echo Wombolder; from
+ * 13 its flash covers it).
  */
 const BATTLES = "instagram-clips/battles";
 const screen = (file) => ({ file: `${BATTLES}/${file}` });
@@ -192,7 +196,7 @@ const POSTS = [
     name: "spire",
     kind: "shot",
     el: EL.aura,
-    art: screen("spire/015.png"),
+    art: screen("spire/011.png"),
     eyebrow: "The Spire",
     title: "70 floors. How high can you climb?",
     line: "Seven zones of ten floors, an elite halfway up and a boss at the top of each.",
@@ -565,8 +569,8 @@ const HOWTO_SHOTS = {
   cover: screen("duels/026.png"),
   done: screen("ffa/018.png"),
 };
-function iconAndGame(phone, size, shot) {
-  const w = size === "story" ? 900 : 800;
+function iconAndGame(phone, size, shot, feedWidth = 800) {
+  const w = size === "story" ? 900 : feedWidth;
   return `<div class="pair" style="width:${w}px"><div class="icon-shot"><img src="${url(`${PHONE}/${phone.icon.file}`)}"></div><div class="land" style="width:${w}px"><img src="${url(shot.file)}"></div></div>`;
 }
 const PAIR_CSS = `
@@ -597,7 +601,8 @@ function howtoDone(size, phone) {
     flow(
       size,
       `<div class="chip">Done</div><h1>Tap the icon. Turn it sideways. Play.</h1>`,
-      iconAndGame(phone, size, HOWTO_SHOTS.done),
+      // Narrower in the feed: the last slide's words take three lines.
+      iconAndGame(phone, size, HOWTO_SHOTS.done, 720),
       `<p>Fullscreen, no browser bars. On Android: Chrome's menu, then <b>Install app</b>. Found a bug? Tap the gear, then <b>Report a problem</b>.</p>${PLAY}`,
       PAIR_CSS + `h1 { font-size: ${size === "story" ? 110 : 96}px; }`,
     )
