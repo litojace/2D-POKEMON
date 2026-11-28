@@ -6,86 +6,123 @@
     <meta name="color-scheme" content="dark" />
     <meta name="supported-color-schemes" content="dark" />
     <style>
-      /* Always dark (see README). Gradients are background images, which mail
+      /* Always dark, in Poster: ink, the page's yellow, hot red for the hard
+         shadows (see README). Gradients are background images, which mail
          apps that invert colours (Gmail on iPhone) leave alone. */
       :root { color-scheme: dark; supported-color-schemes: dark; }
-      .bg-page { background-image: linear-gradient(#0b1020, #0b1020) !important; }
-      .bg-card { background-image: linear-gradient(#121a31, #121a31) !important; }
-      .bg-panel { background-image: linear-gradient(#0e1530, #0e1530) !important; }
-      .bg-line { background-image: linear-gradient(#26304d, #26304d) !important; }
-      .bg-gold { background-image: linear-gradient(#ffd65b, #ffd65b) !important; }
-      .bg-ember { background-image: linear-gradient(#ff7a3d, #ff7a3d) !important; }
-      .bg-sky { background-image: linear-gradient(#4fb8ff, #4fb8ff) !important; }
+      .bg-page { background-image: linear-gradient(#0d0d0f, #0d0d0f) !important; }
+      .bg-card { background-image: linear-gradient(#1e1e22, #1e1e22) !important; }
+      .bg-panel { background-image: linear-gradient(#2a2a30, #2a2a30) !important; }
+      .bg-line { background-image: linear-gradient(#3a3a42, #3a3a42) !important; }
+      .bg-gold { background-image: linear-gradient(#ffd84a, #ffd84a) !important; }
+      .bg-hot { background-image: linear-gradient(#e0143a, #e0143a) !important; }
+      .bg-paper { background-image: linear-gradient(#ffffff, #ffffff) !important; }
       /* Gmail only (u + .body): paint text with a gradient clipped to the
          letters, so its colour survives Gmail's dark-mode inversion. */
       u + .body .t-white { background-image: linear-gradient(#ffffff, #ffffff); }
-      u + .body .t-ink { background-image: linear-gradient(#e9edf7, #e9edf7); }
-      u + .body .t-muted { background-image: linear-gradient(#a9b4c9, #a9b4c9); }
-      u + .body .t-dim { background-image: linear-gradient(#8a95ad, #8a95ad); }
-      u + .body .t-gold { background-image: linear-gradient(#ffd65b, #ffd65b); }
-      u + .body .t-warn { background-image: linear-gradient(#ffb36b, #ffb36b); }
-      u + .body .t-link { background-image: linear-gradient(#8fc8ff, #8fc8ff); }
-      u + .body .t-dark { background-image: linear-gradient(#0b1020, #0b1020); }
-      u + .body .t-white, u + .body .t-ink, u + .body .t-muted, u + .body .t-dim,
-      u + .body .t-gold, u + .body .t-warn, u + .body .t-link, u + .body .t-dark {
+      u + .body .t-ink { background-image: linear-gradient(#f2f2f5, #f2f2f5); }
+      u + .body .t-muted { background-image: linear-gradient(#c8c8d0, #c8c8d0); }
+      u + .body .t-dim { background-image: linear-gradient(#9a9aa3, #9a9aa3); }
+      u + .body .t-gold { background-image: linear-gradient(#ffd84a, #ffd84a); }
+      u + .body .t-warn { background-image: linear-gradient(#ff6b81, #ff6b81); }
+      u + .body .t-dark { background-image: linear-gradient(#0d0d0f, #0d0d0f); }
+      u + .body .t-white, u + .body .t-ink, u + .body .t-muted, u + .body .t-dim, u + .body .t-gold, u + .body .t-warn, u + .body .t-dark {
         -webkit-background-clip: text; background-clip: text; color: transparent !important;
       }
       /* Outlook apps recolour and mark what they changed: put ours back. */
-      [data-ogsb] .bg-page { background-color: #0b1020 !important; }
-      [data-ogsb] .bg-card { background-color: #121a31 !important; }
-      [data-ogsb] .bg-panel { background-color: #0e1530 !important; }
-      [data-ogsb] .bg-line { background-color: #26304d !important; }
-      [data-ogsb] .bg-gold { background-color: #ffd65b !important; }
-      [data-ogsc] .t-dark { color: #0b1020 !important; }
-      [data-ogsc] .t-gold { color: #ffd65b !important; }
+      [data-ogsb] .bg-page { background-color: #0d0d0f !important; }
+      [data-ogsb] .bg-card { background-color: #1e1e22 !important; }
+      [data-ogsb] .bg-panel { background-color: #2a2a30 !important; }
+      [data-ogsb] .bg-line { background-color: #3a3a42 !important; }
+      [data-ogsb] .bg-gold { background-color: #ffd84a !important; }
+      [data-ogsb] .bg-hot { background-color: #e0143a !important; }
+      [data-ogsb] .bg-paper { background-color: #ffffff !important; }
+      /* Phones under 480 px: less side padding, so the code and the
+         button's words keep one line. */
+      @media screen and (max-width: 480px) {
+        .pad { padding-left: 20px !important; padding-right: 20px !important; }
+        .btn { padding-left: 16px !important; padding-right: 16px !important; }
+      }
+      [data-ogsc] .t-dark { color: #0d0d0f !important; }
+      [data-ogsc] .t-gold { color: #ffd84a !important; }
+      [data-ogsc] .t-white { color: #ffffff !important; }
     </style>
     <title>Your Element Arena verification code</title>
   </head>
-  <body class="body bg-page" style="margin:0;padding:0;background-color:#0b1020;">
+  <body class="body bg-page" style="margin:0;padding:0;background-color:#0d0d0f;">
     <!-- Preview text shown next to the subject in the inbox -->
     <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">
       Your Element Arena verification code is inside. Never share it.
     </div>
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#0b1020" class="bg-page" style="background-color:#0b1020;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#0d0d0f" class="bg-page" style="background-color:#0d0d0f;">
       <tr>
-        <td align="center" class="bg-page" bgcolor="#0b1020" style="padding:24px 12px 32px 12px;background-color:#0b1020;">
-          <!-- Brand row -->
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;">
+        <td align="center" class="bg-page" bgcolor="#0d0d0f" style="padding:24px 12px 32px 12px;background-color:#0d0d0f;">
+          <!-- Brand row: the game's icon on a yellow frame, the name in capitals -->
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:608px;">
             <tr>
-              <td style="padding:0 4px 16px 4px;">
+              <td style="padding:0 0 16px 0;">
                 <a href="https://play.elementarenausa.com" target="_blank" style="text-decoration:none;">
-                  <img src="https://play.elementarenausa.com/icons/arena-192.png" width="36" height="36" alt="" style="display:inline-block;vertical-align:middle;border:0;border-radius:9px;" />
-                  <span class="t-gold" style="display:inline-block;vertical-align:middle;padding-left:10px;font-family:Helvetica,Arial,sans-serif;font-size:17px;font-weight:bold;letter-spacing:2px;color:#ffd65b;text-transform:uppercase;">Element Arena</span>
+                  <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                    <tr>
+                      <td class="bg-gold" bgcolor="#ffd84a" style="padding:2px;line-height:0;font-size:0;background-color:#ffd84a;">
+                        <img src="https://play.elementarenausa.com/icons/arena-192.png" width="34" height="34" alt="" style="display:block;border:0;" />
+                      </td>
+                      <td style="padding-left:12px;">
+                        <span class="t-white" style="font-family:'Arial Black','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:19px;font-weight:900;letter-spacing:1px;text-transform:uppercase;color:#ffffff;">Element Arena</span>
+                      </td>
+                    </tr>
+                  </table>
                 </a>
               </td>
             </tr>
           </table>
-          <!-- Card: a 1px frame (bg-line) around the card, drawn as backgrounds so inverting apps keep it -->
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;">
+          <!-- Card, on a hard red shadow drawn with cells: the right column and
+               the bottom row are red with a page-coloured notch at their start -->
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:608px;">
             <tr>
-              <td class="bg-line" bgcolor="#26304d" style="padding:1px;border-radius:14px;background-color:#26304d;">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#121a31" class="bg-card" style="background-color:#121a31;border-radius:13px;overflow:hidden;">
+              <td style="padding:0;vertical-align:top;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#1e1e22" class="bg-card" style="background-color:#1e1e22;">
             <tr>
               <td style="padding:0;line-height:0;font-size:0;">
-                <img src="https://play.elementarenausa.com/email/hero.jpg" width="600" alt="Element Arena champions shopping together at a sunny market" style="display:block;width:100%;max-width:600px;height:auto;border:0;border-radius:13px 13px 0 0;" />
+                <img src="https://play.elementarenausa.com/email/hero.jpg" width="600" alt="Element Arena champions shopping together at a sunny market" style="display:block;width:100%;max-width:600px;height:auto;border:0;" />
               </td>
             </tr>
+            <!-- The title on the page's yellow, as the website's hero -->
             <tr>
-              <td style="padding:28px 32px 4px 32px;font-family:Helvetica,Arial,sans-serif;">
-                <div class="t-gold" style="font-size:12px;font-weight:bold;letter-spacing:1.5px;color:#ffd65b;text-transform:uppercase;padding-bottom:10px;">Account security</div>
-                <h1 class="t-white" style="margin:0 0 14px 0;font-size:26px;line-height:1.25;font-weight:bold;color:#ffffff;">Your verification code</h1>
-                <p class="t-muted" style="margin:0 0 8px 0;font-size:16px;line-height:1.6;color:#a9b4c9;">Type this code where Element Arena asks for it, to confirm it's you before a password is set or changed on <strong class="t-ink" style="color:#e9edf7;">{{ .Email }}</strong>.</p>
-              </td>
-            </tr>
-            <tr>
-              <td align="center" style="padding:16px 32px 4px 32px;">
+              <td class="bg-gold pad" bgcolor="#ffd84a" style="padding:26px 32px 24px 32px;background-color:#ffd84a;">
                 <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                   <tr>
-                    <td class="bg-gold" bgcolor="#ffd65b" style="padding:2px;border-radius:12px;background-color:#ffd65b;">
-                      <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                    <td class="bg-page" bgcolor="#0d0d0f" style="padding:6px 10px 5px 10px;background-color:#0d0d0f;">
+                      <span class="t-gold" style="font-family:'Arial Black','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:12px;font-weight:900;letter-spacing:2px;text-transform:uppercase;color:#ffd84a;">Account security</span>
+                    </td>
+                    <td width="3" valign="top" class="bg-hot" bgcolor="#e0143a" style="width:3px;font-size:0;line-height:0;vertical-align:top;background-color:#e0143a;">
+                      <table role="presentation" width="3" cellpadding="0" cellspacing="0" border="0"><tr><td height="3" class="bg-gold" bgcolor="#ffd84a" style="height:3px;font-size:0;line-height:0;background-color:#ffd84a;">&nbsp;</td></tr></table>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td height="3" class="bg-hot" bgcolor="#e0143a" style="height:3px;font-size:0;line-height:0;background-color:#e0143a;">
+                      <table role="presentation" width="3" cellpadding="0" cellspacing="0" border="0"><tr><td height="3" class="bg-gold" bgcolor="#ffd84a" style="height:3px;font-size:0;line-height:0;background-color:#ffd84a;">&nbsp;</td></tr></table>
+                    </td>
+                    <td width="3" height="3" class="bg-hot" bgcolor="#e0143a" style="width:3px;height:3px;font-size:0;line-height:0;background-color:#e0143a;">&nbsp;</td>
+                  </tr>
+                </table>
+                <h1 class="t-dark" style="margin:16px 0 0 0;font-family:'Arial Black','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:30px;line-height:1.1;font-weight:900;text-transform:uppercase;color:#0d0d0f;">Your verification code</h1>
+              </td>
+            </tr>
+            <tr>
+              <td class="pad" style="padding:26px 32px 4px 32px;font-family:Arial,Helvetica,sans-serif;">
+                <p class="t-muted" style="margin:0 0 8px 0;font-size:16px;line-height:1.6;color:#c8c8d0;">Type this code where Element Arena asks for it, to confirm it's you before a password is set or changed on <strong class="t-ink" style="color:#f2f2f5;">{{ .Email }}</strong>.</p>
+              </td>
+            </tr>
+            <tr>
+              <td class="pad" style="padding:16px 32px 24px 32px;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                  <tr>
+                    <td align="center" class="bg-gold" bgcolor="#ffd84a" style="padding:3px;background-color:#ffd84a;">
+                      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                         <tr>
-                          <td align="center" bgcolor="#0b1020" class="bg-page" style="border-radius:10px;background-color:#0b1020;padding:14px 22px;">
-                            <span class="t-gold" style="font-family:'Courier New',Courier,monospace;font-size:34px;line-height:1.2;font-weight:bold;letter-spacing:6px;white-space:nowrap;color:#ffd65b;">{{ .Token }}</span>
+                          <td align="center" class="bg-page" bgcolor="#0d0d0f" style="padding:20px 12px;background-color:#0d0d0f;">
+                            <span class="t-gold" style="font-family:'Courier New',Courier,monospace;font-size:32px;line-height:1.2;font-weight:bold;letter-spacing:5px;white-space:nowrap;color:#ffd84a;">{{ .Token }}</span>
                           </td>
                         </tr>
                       </table>
@@ -95,29 +132,38 @@
               </td>
             </tr>
             <tr>
-              <td style="padding:20px 32px 0 32px;">
-                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td class="bg-line" bgcolor="#26304d" style="height:1px;line-height:1px;font-size:0;background-color:#26304d;">&nbsp;</td></tr></table>
+              <td class="pad" style="padding:22px 32px 0 32px;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td class="bg-line" bgcolor="#3a3a42" style="height:2px;line-height:2px;font-size:0;background-color:#3a3a42;">&nbsp;</td></tr></table>
               </td>
             </tr>
             <tr>
-              <td style="padding:16px 32px 28px 32px;font-family:Helvetica,Arial,sans-serif;">
-                <p class="t-muted" style="margin:0;font-size:13px;line-height:1.6;color:#a9b4c9;">
-                  <strong class="t-warn" style="color:#ffb36b;">Never share this code.</strong> Element Arena staff will never ask for it.
+              <td class="pad" style="padding:16px 32px 28px 32px;font-family:Arial,Helvetica,sans-serif;">
+                <p class="t-muted" style="margin:0;font-size:13px;line-height:1.6;color:#c8c8d0;">
+                  <strong class="t-warn" style="color:#ff6b81;">Never share this code.</strong> Element Arena staff will never ask for it.
                   The code expires soon and works once. Didn't ask for it? Ignore this email and change your password.
                 </p>
               </td>
             </tr>
           </table>
               </td>
+              <td width="8" valign="top" class="bg-hot" bgcolor="#e0143a" style="width:8px;padding:0;font-size:0;line-height:0;vertical-align:top;background-color:#e0143a;">
+                <table role="presentation" width="8" cellpadding="0" cellspacing="0" border="0"><tr><td height="8" class="bg-page" bgcolor="#0d0d0f" style="height:8px;font-size:0;line-height:0;background-color:#0d0d0f;">&nbsp;</td></tr></table>
+              </td>
+            </tr>
+            <tr>
+              <td height="8" class="bg-hot" bgcolor="#e0143a" style="height:8px;padding:0;font-size:0;line-height:0;background-color:#e0143a;">
+                <table role="presentation" width="8" cellpadding="0" cellspacing="0" border="0"><tr><td height="8" class="bg-page" bgcolor="#0d0d0f" style="height:8px;font-size:0;line-height:0;background-color:#0d0d0f;">&nbsp;</td></tr></table>
+              </td>
+              <td width="8" height="8" class="bg-hot" bgcolor="#e0143a" style="width:8px;height:8px;padding:0;font-size:0;line-height:0;background-color:#e0143a;">&nbsp;</td>
             </tr>
           </table>
           <!-- Footer -->
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:608px;">
             <tr>
-              <td align="center" class="t-dim" style="padding:20px 16px 0 16px;font-family:Helvetica,Arial,sans-serif;font-size:12px;line-height:1.7;color:#8a95ad;">
-                <a href="https://play.elementarenausa.com" target="_blank" class="t-muted" style="color:#a9b4c9;text-decoration:underline;">Play Element Arena</a>
+              <td align="center" class="t-dim" style="padding:22px 16px 0 16px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.7;color:#9a9aa3;">
+                <a href="https://play.elementarenausa.com" target="_blank" class="t-muted" style="color:#c8c8d0;text-decoration:underline;">Play Element Arena</a>
                 &nbsp;&middot;&nbsp;
-                <a href="https://play.elementarenausa.com/privacy.html" target="_blank" class="t-muted" style="color:#a9b4c9;text-decoration:underline;">Privacy</a>
+                <a href="https://play.elementarenausa.com/privacy.html" target="_blank" class="t-muted" style="color:#c8c8d0;text-decoration:underline;">Privacy</a>
                 <br />
                 Sent to {{ .Email }} because of activity on your Element Arena account.<br />
                 This is an automated message, so replies aren't read.
