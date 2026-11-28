@@ -106,6 +106,30 @@ battle canvas, which no look touches) and the frame-rate profiles
     (`ui/light-effects.css`). The unit test names this one animation and
     fails on any other; `tests/visual/poster-title.spec.ts` checks where it
     runs and where it stops.
+  - **A second motion that never ends, also by the owner's leave (27 Nov
+    2026):** the glint on the Lobby's PLAY and the title's "Tap to start",
+    a hard-edged bar of light that crosses the button behind its word about
+    every 5 s for as long as the button shows. It is **not** a CSS
+    animation that runs for ever, and the unit test still fails on one:
+    `glint.ts` puts `.is-glinting` on the button for one 0.7 s sweep
+    (`poster-glint` in `lobby.css`, `poster-glint-prompt` in `screens.css`)
+    and takes it off again, so between sweeps nothing of it animates. Its
+    timer stops when the button does not show (the Lobby covered by a
+    panel, or closed for a battle or the Plaza; the title gone), while the
+    page is hidden, with Reduce motion and on Low graphics. Only transform
+    and opacity move. Keep it to those two buttons, so the shine still
+    means "press here". `tests/unit/glint.test.ts`,
+    `tests/visual/poster-glint.spec.ts`.
+    Measured over 30 s at 4× CPU (28 Nov 2026, headless Chrome, 844×390).
+    On a screen where nothing else moves, the timed sweeps cost 264 drawn
+    frames and 271 style recalculations; the same sweep as a CSS `infinite`
+    costs 258 and 1,793 on PLAY (a running animation is restyled on every
+    frame, through its still part too) and 642 and 1,799 on the title's
+    prompt. In the Lobby on High graphics the fighter already keeps the
+    main thread busy and the glint adds about 190 drawn frames in 30 s
+    either way; on the title the sunburst already draws every frame and the
+    glint adds nothing measurable. On Low graphics and with Reduce motion,
+    the only settings where those screens rest, there is no glint.
 - Fonts are self-hosted woff2 (latin and Vietnamese subsets) with their OFL
   licence files, inside the folder (`font-src 'self'` is already allowed).
 - Markup Poster needs that the look underneath doesn't goes into the shared

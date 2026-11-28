@@ -425,9 +425,48 @@
   background: color-mix(in srgb, var(--ai) 35%, transparent);
 }
 
-:root[data-ui="poster"] .lobby-layer .lobby-play::before,
-:root[data-ui="poster"] .lobby-layer .lobby-play-button::after {
+:root[data-ui="poster"] .lobby-layer .lobby-play::before {
   display: none;
+}
+/* PLAY's glint (owner, 27 Nov 2026: "give the important buttons a light
+   sheen again", then: for as long as the button shows): a hard-edged bar of
+   light that crosses the button behind its word, in place of the look
+   underneath's soft shine and glow. It lies inside the button, so it leans
+   as the button does and needs no clipping; it fades in at one end and out
+   at the other. Only its transform and opacity move.
+   At rest the bar is unseen and nothing animates: glint.ts puts
+   .is-glinting on the button for one sweep about every 5 s while PLAY
+   shows, instead of an animation that runs for ever (docs/ui-themes.md).
+   ui/light-effects.css stops it on Low graphics and with Reduce motion, as
+   it stops the shine underneath. */
+:root[data-ui="poster"] .lobby-layer .lobby-play-button::after {
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 16%;
+  background: rgba(255, 255, 255, 0.2);
+  opacity: 0;
+  transform: none;
+  animation: none;
+}
+:root[data-ui="poster"] .lobby-layer .lobby-play-button.is-glinting::after {
+  animation: poster-glint 0.7s linear 1;
+}
+/* The bar is 16% of the button: 525% of its own width takes it from the
+   left edge to the right one. */
+@keyframes poster-glint {
+  0% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  14%,
+  86% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(525%);
+    opacity: 0;
+  }
 }
 :root[data-ui="poster"] .lobby-layer .lobby-play-button {
   background: var(--ink);
