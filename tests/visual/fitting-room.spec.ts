@@ -978,10 +978,12 @@ for (const phone of [
       await settle(page);
       const tile = await box(page, ".fit-grid .ui-tile");
       const foot = await box(page, ".fit-room .ui-panel-foot");
+      // With air between a price and the bar: at 932×430 the row's foot
+      // sat on the bar's top edge (0 px), which read as touching.
       expect(
-        tile.y + tile.height,
-        "the first card row ends above the action bar",
-      ).toBeLessThanOrEqual(foot.y + 0.5);
+        foot.y - (tile.y + tile.height),
+        "air between the first card row and the action bar",
+      ).toBeGreaterThanOrEqual(6);
       // The chosen card's frame is around the card, not over its name.
       const frame = await page
         .locator(".fit-grid .ui-tile")
