@@ -1,0 +1,46 @@
+/* The BETA sticker beside the ELEMENT ARENA wordmark (open-beta.ts): the
+   web build only. Poster's red badge, white Anton capitals on --hot-fill
+   (4.85:1), a slight turn and a hard ink shadow; it sits on the wordmark's
+   top right corner, clear of its letters. index.html's boot screen draws
+   the same sticker with these numbers, so nothing moves when the curtain
+   takes over. Where it sits on the title and sign-in screens is Poster's
+   (themes/poster/open-beta.css). */
+.beta-tag {
+  position: absolute;
+  z-index: 1;
+  padding: 0.3em 0.5em 0.22em;
+  background: #e0143a;
+  color: #fff;
+  font:
+    400 clamp(11px, 2.3vh, 16px) / 1 "Anton",
+    Impact,
+    "Arial Narrow",
+    sans-serif;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transform: rotate(6deg);
+  box-shadow: 2px 2px 0 #0d0d0f;
+  /* Inside a name that has its own lettering shadow (the title, sign-in). */
+  text-shadow: none;
+  pointer-events: none;
+}
+/* The loading curtain: hanging off the name block's top right corner. */
+.server-startup-brand {
+  position: relative;
+}
+/* It starts 0.5em inside the block's right edge: less than the block's
+   side padding (12 px at least), so it never reaches a letter, however
+   short the screen (844 x 280: the tag at its 11 px). */
+.server-startup-brand > .beta-tag {
+  top: -0.5em;
+  left: calc(100% - 0.5em);
+}
+/* Over a painting the name sits in the screen's top right corner: there the
+   tag hangs just under the block's right end instead, inside the screen. */
+.server-startup.has-art .server-startup-brand > .beta-tag {
+  top: 100%;
+  left: auto;
+  right: 0.5em;
+  margin-top: 0.15em;
+}

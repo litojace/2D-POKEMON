@@ -47,6 +47,17 @@ footer), slanted tabs (the nav, the element filter), the red rotated badge
 their element's colour, and slanted slab edges (the raid panel, the roster
 cards' art).
 
+## Open beta (owner, 28 Nov)
+
+The hero carries an "Open beta" sticker beside "Free to play" (ink with the
+page's yellow, leaning the other way), and one line under the buttons: the
+game is in open beta, still being added to and polished, and progress
+carries over through every update. That last part is true of the code:
+progress lives on the server, and nothing plans a wipe (the only reset is
+the monthly ranked soft reset, `arena_season_reset()`). The App Store build
+of the game shows no beta mark (Apple's Guideline 2.2); that switch is the
+game's, not this page's.
+
 ## Easy to read (owner, 28 Nov: "đảm bảo nội dung text dễ đọc cho khách hàng")
 
 - **Contrast, measured on the pixels:** `tests/visual/website.spec.ts`
@@ -235,9 +246,6 @@ no script:
   (`scroll(root)`);
 - the hero's painting sinks back and leans as it leaves, and the outlined
   "Element Arena" behind it drifts slower than the page (from 600 px);
-- the champion tape is pushed against its own drift (`translate`, on top of
-  the drift's `transform`; only the drift waits under a mouse or the
-  keyboard);
 - section titles wipe out to the left, cards lift away one column after
   another, and the raid and Shop panels ease back as they cross the top
   edge, with no fill, so before and after they are their own selves; the
@@ -246,12 +254,13 @@ no script:
   straightens to its own slight lean as it rises, and tilts away as it goes.
 
 A `view()` timeline follows the nearest scroll container, and
-`overflow: hidden` makes one: `.hero`, `.facts` and `.app` clip with
+`overflow: hidden` makes one: `.hero` and `.app` clip with
 `overflow: clip` instead where these timelines exist (with `display:
 flow-root`, the block formatting context hidden gave them), or their
 contents would follow a box that never scrolls. Nothing pins a section or
 snaps the scroll. `tests/visual/website.spec.ts` ("scroll-driven motion")
-checks each follows the page, that paused motion and a browser without the
+checks each follows the page, that the champion tape only drifts (owner,
+28 Nov: pushed by the scroll, it jerked back as the page went down), that paused motion and a browser without the
 timelines get the still page, and no sideways scroll at phone sizes.
 
 ### Motion and the pause switch
