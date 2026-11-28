@@ -322,6 +322,104 @@
   :is(#battle-menu, #battle-chat):is(:focus-visible, [aria-expanded="true"]) {
   color: var(--bare-hot);
 }
+/* A raid's or a Spire floor's clock, under the gear: bare digits as the
+   Plaza's clock, cream Anton with an ink stroke drawn on the fight, no
+   pill (the old look's navy pill, then an ink one). The box keeps its
+   place under the gear; the ids outweigh the glass rule in ui/aero.css,
+   whose :is() list weighs two ids. */
+:root[data-ui="poster"]
+  body.battle-raid
+  #battle
+  #raid-hud#raid-hud#raid-hud
+  .raid-elapsed {
+  width: auto;
+  min-width: 44px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--bare-ink);
+}
+:root[data-ui="poster"]
+  body.battle-raid
+  #battle
+  #raid-hud#raid-hud#raid-hud
+  .raid-elapsed
+  b {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  font: 400 calc(18px * var(--text-scale, 1)) / 1 var(--font-display);
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+  text-shadow: var(--bare-word-edge);
+}
+/* The narrowest phones: the name and its labels as one centred row. In
+   the old look's grid the name sits on the bar's middle and the phase
+   hangs off its right; at 11 px a Spire floor's wave line ("Floor 2 ·
+   Wave 1/2 · 2 Echoes") then ran past the HUD into the gear at 568x320,
+   and to its edge at 667x375. As a row, the three are centred together.
+   Wider screens keep the name on the bar's middle (raid-layout.spec). */
+@media (max-width: 700px) {
+  :root[data-ui="poster"]
+    body.battle-raid
+    #battle
+    #raid-hud#raid-hud
+    .raid-boss-heading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+  }
+  :root[data-ui="poster"]
+    body.battle-raid
+    #battle
+    #raid-hud#raid-hud
+    .raid-boss-heading
+    > b {
+    flex: 0 1 auto;
+  }
+  :root[data-ui="poster"]
+    body.battle-raid
+    #battle
+    #raid-hud#raid-hud
+    .raid-boss-heading
+    > span {
+    flex: none;
+  }
+  :root[data-ui="poster"]
+    body.battle-raid
+    #battle
+    #raid-hud#raid-hud
+    .raid-boss-peril {
+    order: -1;
+  }
+}
+/* The boss's phase (or the Spire floor's wave) and its peril beside the
+   name: square ink labels with cream words, as Poster's kickers, in place
+   of the old look's navy pills. Never under 11 px (the small print on phones): on a phone the scaled
+   size came out at 8 px ("FLOOR 2 · WAVE 1/2 · 2 ECHOES"). */
+:root[data-ui="poster"]
+  body.battle-raid
+  #battle
+  #raid-hud#raid-hud
+  .raid-boss-heading
+  > span {
+  /* As tall as the old pill (12 px on a phone, where the compact HUD has
+     48 px in all: tests/visual/raid-layout.spec.ts). */
+  padding: 0 6px;
+  border: 0;
+  border-radius: 0;
+  background: var(--ink);
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.45);
+  color: var(--paper);
+  font: 800 max(11px, calc(11px * var(--text-scale, 1))) / 12px var(--font-body);
+  letter-spacing: 0.06em;
+}
 :root[data-ui="poster"] .touch-buttons > button {
   box-shadow:
     0 0 0 3px var(--ink),
