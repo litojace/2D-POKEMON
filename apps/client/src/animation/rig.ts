@@ -132,7 +132,13 @@ export const UPRIGHT_PROP_ARM: Partial<
     { front: number; side: number; swing: number; sideSwing?: number }
   >
 > = {
-  astrabun: { front: -0.35, side: 0.35, swing: 0.4 },
+  // (Measured by sweeping the arm, 28 Nov 2026. The owner: "the mallet arm
+  // can't move, it looks paralysed". Seen from the front or back the mallet
+  // clears the body from held high beside the head (-0.55) to swung out
+  // level (1.15); side on it sits behind the back, clear from over the
+  // shoulder (0.45) down to the ground behind (-1.25). So the arm swings
+  // freely in that range; `front` and `side` are its middle.)
+  astrabun: { front: 0.3, side: -0.4, swing: 0.85 },
   // Tidefin's blade is painted on the near paw too. Seen from the front it
   // clears the body only while that arm turns outward (about -0.4 to 1.6
   // rad): turned inward, the blade lies across the chest (owner, 28 Nov
@@ -911,7 +917,10 @@ export class FighterRig {
     if (prop !== undefined && attack && (dir === "down" || dir === "up")) {
       const inner = prop - UPRIGHT_PROP_ARM[this.character]!.swing;
       if (armR.rotation < inner)
-        armR.rotation = Math.min(prop + 1.4, 2 * inner - armR.rotation);
+        armR.rotation = Math.min(
+          prop + UPRIGHT_PROP_ARM[this.character]!.swing,
+          2 * inner - armR.rotation,
+        );
     }
     // Side drawings are mirrored; their local limb poses must mirror too.
     // World-space lean, lunge and wind already use the aiming direction.

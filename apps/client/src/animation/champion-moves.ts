@@ -1116,6 +1116,17 @@ const sunbaraVictory: Move = (s) => {
   kick(s, ease(t, 1.2, 1.6), 6, 0.12);
 };
 
+/**
+ * Astrabun's mallet arm, from held high (k = 0) to swung right down (k = 1).
+ * The mallet is painted on that paw, so the arm swings where the mallet
+ * clears the body (UPRIGHT_PROP_ARM in rig.ts, which clamps it): out to the
+ * side seen from the front or back, behind its back seen side on.
+ */
+const mallet = (s: MoveStage, k: number) => {
+  const front = s.facing === "down" || s.facing === "up";
+  const [high, low] = front ? [-0.5, 1.1] : [0.4, -1.2];
+  s.p.armR.rotation = high + (low - high) * Math.min(1, Math.max(0, k));
+};
 // --------------------------------------------------------------- Astrabun
 // Bubbly and bouncy, with the moon's gravity in its legs.
 const astrabunEntrance: Move = (s) => {
@@ -1150,6 +1161,18 @@ const astrabunEntrance: Move = (s) => {
   // Legs.
   spread(s, 0.4 * (arc(t, 0, 0.4) + arc(t, 0.4, 0.95)));
   spread(s, 0.35 * Math.max(0, s.sway(9)) * perk);
+  // The mallet: flung high on each hop, bouncing down as it lands, then a
+  // little flourish and a ready bob.
+  const flung = arc(t, 0, 0.4) + arc(t, 0.4, 0.95) + arc(t, 0.95, 1.7);
+  const thud = bump(t, 0.4, 0.6) + bump(t, 0.95, 1.15) + bump(t, 1.7, 1.95);
+  mallet(
+    s,
+    0.3 -
+      0.3 * flung +
+      0.45 * thud +
+      Math.sin(t * 13) * 0.22 * bump(t, 1.95, 2.5) +
+      s.sway(9, 1) * 0.12 * ease(t, 2.4, 2.6),
+  );
 };
 const astrabunVictory: Move = (s) => {
   const { t, p } = s;
@@ -1182,6 +1205,18 @@ const astrabunVictory: Move = (s) => {
   // Legs.
   spread(s, 0.5 * (arc(t, 0, 0.36) + arc(t, 0.42, 0.78)));
   lift(p.legR, Math.max(0, s.sway(16)) * ease(t, 2.05, 2.25), -0.3, 3);
+  // The mallet does the pounding: up with each jump, slammed down as it
+  // lands, waved high through the moon jump, one last slam, then pumping.
+  const slam = (at: number) =>
+    ease(t, at - 0.1, at) * (1 - ease(t, at + 0.1, at + 0.28));
+  mallet(
+    s,
+    0.3 -
+      0.3 * (arc(t, 0, 0.3) + arc(t, 0.42, 0.72)) +
+      0.7 * (slam(0.36) + slam(0.78) + slam(1.95)) -
+      (0.2 + Math.sin(t * 14) * 0.12) * up +
+      s.sway(8, 1) * 0.2 * ease(t, 2.2, 2.4),
+  );
 };
 
 // -------------------------------------------------------------- Wombolder
