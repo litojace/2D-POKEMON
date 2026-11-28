@@ -10,6 +10,8 @@ const title = (n: number, name: string, color: string) => ({
   active: true,
 });
 const API: Record<string, unknown> = {
+  // The tiers administrators gave the titles they made: none here.
+  "/api/title-tiers": {},
   "/api/account": {
     id: U,
     displayName: "tester",
@@ -355,6 +357,8 @@ window.fetch = async (input, init) => {
       __friendsBoard?: unknown;
       __recent?: unknown;
       __accountPatch?: object;
+      /** The tiers administrators gave their titles: { name: tier }. */
+      __titleTiers?: object;
       __economyPatch?: object;
       __progress?: unknown;
       __nameStatus?: unknown;
@@ -376,20 +380,26 @@ window.fetch = async (input, init) => {
               ? w.__raids
               : url.pathname === "/api/spire" && w.__spire
                 ? w.__spire
-                : url.pathname === "/api/account/name" && w.__nameStatus
-                  ? w.__nameStatus
-                  : url.pathname === "/api/account" && w.__accountPatch
-                    ? { ...(API[url.pathname] as object), ...w.__accountPatch }
-                    : url.pathname === "/api/progress" && w.__progress
-                      ? w.__progress
-                      : url.pathname === "/api/leaderboard" && w.__board
-                        ? w.__board
-                        : url.pathname === "/api/leaderboard/friends" &&
-                            w.__friendsBoard
-                          ? w.__friendsBoard
-                          : url.pathname === "/api/friends/recent" && w.__recent
-                            ? w.__recent
-                            : API[url.pathname];
+                : url.pathname === "/api/title-tiers" && w.__titleTiers
+                  ? w.__titleTiers
+                  : url.pathname === "/api/account/name" && w.__nameStatus
+                    ? w.__nameStatus
+                    : url.pathname === "/api/account" && w.__accountPatch
+                      ? {
+                          ...(API[url.pathname] as object),
+                          ...w.__accountPatch,
+                        }
+                      : url.pathname === "/api/progress" && w.__progress
+                        ? w.__progress
+                        : url.pathname === "/api/leaderboard" && w.__board
+                          ? w.__board
+                          : url.pathname === "/api/leaderboard/friends" &&
+                              w.__friendsBoard
+                            ? w.__friendsBoard
+                            : url.pathname === "/api/friends/recent" &&
+                                w.__recent
+                              ? w.__recent
+                              : API[url.pathname];
     // window.__serverTime: the server's clock, sent as the real server does
     // (X-Server-Time); otherwise no header, so the device clock is used.
     const headers: Record<string, string> = {

@@ -19,6 +19,7 @@ beforeAll(async () => {
     "001_arena_accounts.sql",
     "002_admin_cleanup_reports.sql",
     "003_titles.sql",
+    "20261128060000_title_tier.sql",
   ])
     await db.exec(await readFile(`supabase/migrations/${migration}`, "utf8"));
   await db.exec(`insert into public.arena_admins values('${admin}');`);
@@ -49,6 +50,83 @@ it("ignores signup role metadata and prevents direct privilege changes", async (
   );
   await db.exec(`reset role;set role anon;`);
   await expect(db.query("select public.arena_me()")).rejects.toThrow();
+});
+it("an administrator gives a title its tier; nobody else can, and only one of the five", async () => {
+  await asUser(admin);
+  const tierOf = async (id: string) =>
+    (
+      await db.query<{ value: { id: string; tier: string }[] }>(
+        "select public.arena_admin_titles() as value",
+      )
+    ).rows[0].value.find((t) => t.id === id)?.tier;
+  // Created with a tier, and with none (Common).
+  const founder = (
+    await db.query<{ id: string }>(
+      "select public.arena_admin_save_title(null,'Founder','Here from the start','#ffd65b',true,'legendary') as id",
+    )
+  ).rows[0].id;
+  const plain = (
+    await db.query<{ id: string }>(
+      "select public.arena_admin_save_title(null,'Helper','Lent a hand','#9fe8dd',true) as id",
+    )
+  ).rows[0].id;
+  expect(await tierOf(founder)).toBe("legendary");
+  expect(await tierOf(plain)).toBe("common");
+  // A save without a tier (a game server from before the migration) keeps
+  // the tier; a save with one changes it.
+  await db.query(
+    "select public.arena_admin_save_title($1,'Founder','Here from the start','#ffd65b',false)",
+    [founder],
+  );
+  expect(await tierOf(founder)).toBe("legendary");
+  await db.query(
+    "select public.arena_admin_save_title($1,'Founder','Here from the start','#ffd65b',true,'mythic')",
+    [founder],
+  );
+  expect(await tierOf(founder)).toBe("mythic");
+  // Called by name with five arguments, as the server before this change
+  // does: one function answers.
+  await db.query(
+    "select public.arena_admin_save_title(p_title_id => $1, p_name => 'Helper', p_description => 'Lent a hand', p_color => '#9fe8dd', p_active => true)",
+    [plain],
+  );
+  // Not one of the five.
+  for (const bad of ["godlike", "Legendary", ""])
+    await expect(
+      db.query(
+        "select public.arena_admin_save_title(null,'Nope','x','#123456',true,$1)",
+        [bad],
+      ),
+    ).rejects.toThrow("Invalid title");
+  await expect(
+    db.query(`update public.arena_titles set tier='godlike' where id=$1`, [
+      plain,
+    ]),
+  ).rejects.toThrow();
+  // The game reads names and tiers above Common, nothing else.
+  await asUser(player);
+  const tiers = await db.query<{ value: Record<string, string> }>(
+    "select public.arena_title_tiers() as value",
+  );
+  expect(tiers.rows[0].value).toEqual({ Founder: "mythic" });
+  // A player can't set a tier, by the function or on the table.
+  await expect(
+    db.query(
+      "select public.arena_admin_save_title($1,'Founder','x','#ffd65b',true,'common')",
+      [founder],
+    ),
+  ).rejects.toThrow("Admin");
+  await expect(
+    db.query(`update public.arena_titles set tier='mythic' where id=$1`, [
+      plain,
+    ]),
+  ).rejects.toThrow();
+  // Signed out: not even the list.
+  await db.exec(`reset role;set role anon;`);
+  await expect(db.query("select public.arena_title_tiers()")).rejects.toThrow();
+  await asUser(admin);
+  for (const id of [founder, plain])
+    await db.query("select public.arena_admin_delete_title($1)", [id]);
 });
 it("creates, grants, equips, retires and revokes titles with ownership enforced", async () => {
   await asUser(admin);

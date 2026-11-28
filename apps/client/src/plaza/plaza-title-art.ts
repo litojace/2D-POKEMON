@@ -217,12 +217,15 @@ export function plazaTitleArt(
   // A webfont that arrives later repaints (its key changes once it's there).
   const font = document.fonts?.check?.(FONT) ? 1 : 0;
   const c = color && /^#[0-9a-fA-F]{6}$/.test(color) ? color : "#ffd65b";
-  const key = `${title}|${c}|${res}|${font}`;
+  // Its tier is part of the key: an administrator's tier for a title they
+  // made can arrive, or change, after the title was first painted.
+  const tier = titleTier(title);
+  const key = `${title}|${c}|${res}|${font}|${tier}`;
   let art = cache.get(key);
   if (!art) {
     // A zoom or a resize leaves old sizes behind: start over now and then.
     if (cache.size > 240) cache.clear();
-    art = paint(title, c, titleTier(title), res);
+    art = paint(title, c, tier, res);
     cache.set(key, art);
   }
   return art;

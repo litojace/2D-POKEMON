@@ -104,6 +104,7 @@ import {
 import type { FriendsData, FriendsRoom } from "./screens/friends-view";
 import { noteServerTime } from "./server-clock";
 import { titleTag } from "./title-tag";
+import { setStoredTitleTiers } from "../../../packages/shared/src/title-tier";
 import {
   authRedirectUrl,
   authErrorMessage,
@@ -524,6 +525,9 @@ export class AccountUI {
         if (version !== this.generation) return;
         freshAccount = true;
         this.account = account;
+        // The tiers administrators gave the titles they made (migration
+        // 20261128060000): none before it, and never in the way.
+        void this.loadTitleTiers();
         // Announcements still running (migration 20261122120000); none
         // before it, and never in the way of signing in.
         void this.api("/api/announcements").then(
@@ -916,6 +920,16 @@ export class AccountUI {
       raidClears: this.raidClears,
     });
     avatar.dataset.avatarLook = key;
+  }
+  /** The tiers of admin-made titles, for every place a title shows
+   *  (title-tier.ts); the corner is drawn again once they are here. */
+  async loadTitleTiers() {
+    try {
+      setStoredTitleTiers(await this.api("/api/title-tiers"));
+      this.renderNav();
+    } catch {
+      // An older server, or offline: admin-made titles stay Common.
+    }
   }
   renderNav() {
     const root = element("account-nav");
@@ -2420,6 +2434,7 @@ export class AccountUI {
       }
       this.adminPanel ??= new panel.AdminPanel({
         api: (path, body) => this.api(path, body),
+        titlesChanged: () => void this.loadTitleTiers(),
         openDialog: (html) => this.hooks.openDialog(html),
         fighterName: (id) => CHARACTERS[id as CharacterId]?.name ?? id,
       });
