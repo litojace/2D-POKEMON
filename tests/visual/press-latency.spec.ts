@@ -76,12 +76,14 @@ async function play(page: Page, cdp: CDPSession, stale: boolean) {
     type: "touchStart",
     touchPoints: [stick],
   });
-  let thumbMoved = now();
+  // The thumb's last move, stamped with the time WebKit later hands the
+  // taps (the same value, as anyObject's timestamp is).
+  const thumbMoved = now();
   await cdp.send("Input.dispatchTouchEvent", {
     type: "touchMove",
     touchPoints: [{ ...stick, x: stick.x + 30 }],
+    timestamp: thumbMoved,
   });
-  thumbMoved = now();
   const thumb = { ...stick, x: stick.x + 30 };
   for (let i = 0; i < TAPS; i++) {
     await page.waitForTimeout(350 + (i % 3) * 150);
