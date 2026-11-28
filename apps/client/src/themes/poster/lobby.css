@@ -80,7 +80,9 @@
 :root[data-ui="poster"] .hub-scenes {
   background: var(--ink);
   border: 0;
-  border-radius: 4px;
+  /* Square, as every Poster block is (audit C03: these three were the
+     last 4 px corners on the top bar). */
+  border-radius: 0;
   box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.25);
   color: var(--paper);
 }
