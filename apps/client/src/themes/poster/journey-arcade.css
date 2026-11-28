@@ -1,0 +1,19 @@
+/* Poster: the week's arcade on Journey (the audit, 28 Nov). The card was a
+   gradient of the week's colour (--arcade, arcade.ts) with a tinted rim, a
+   soft glow behind its star and its tagline in that colour. The colour now
+   marks it, as the standard says: a thick left edge and the star. The card
+   is a flat ink block and the tagline cream. */
+:root[data-ui="poster"] .journey-arcade {
+  border: 0;
+  border-left: 6px solid var(--arcade);
+  border-radius: 0;
+  background: var(--ink-2);
+}
+:root[data-ui="poster"] .journey-arcade-art {
+  border-radius: 0;
+  background: var(--ink-1);
+  color: var(--ui-text);
+}
+:root[data-ui="poster"] .journey-arcade-art span {
+  color: var(--arcade);
+}
