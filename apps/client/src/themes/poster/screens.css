@@ -276,6 +276,22 @@
   background: var(--ink);
   border: 0;
 }
+/* A phone held sideways: the settings square level with the quick-chat
+   square across the top (10 px down, chat/chat.css), and 8 px in from the
+   safe edge. At 4 px from the top and the side's 32 px (notch-insets.ts),
+   its corner met an iPhone's rounded screen corner and looked cut (owner,
+   27 Nov); a circle there had cleared it. The bars beside it keep their
+   8 px gap. (tests/visual/iphone-corners.spec.ts) */
+@media (orientation: landscape) {
+  :root[data-ui="poster"] body.battle-active.touch-mode #battle-menu {
+    top: max(10px, calc(var(--safe-top, 0px) + 8px));
+    right: calc(var(--safe-right, 0px) + 8px);
+  }
+  :root[data-ui="poster"] body.battle-active.touch-mode:not(.battle-raid) #hud,
+  :root[data-ui="poster"] body.battle-active.touch-mode.battle-raid #raid-hud {
+    right: calc(var(--safe-right, 0px) + 60px);
+  }
+}
 :root[data-ui="poster"] .touch-buttons > button {
   box-shadow:
     0 0 0 3px var(--ink),
