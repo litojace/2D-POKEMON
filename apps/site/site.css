@@ -2253,7 +2253,6 @@ body::before {
      a scroller), so what is inside them follows the page. flow-root keeps
      the block formatting context hidden gave them. */
   .hero,
-  .facts,
   .app {
     display: flow-root;
     overflow: clip;
@@ -2289,27 +2288,7 @@ body::before {
     animation-timeline: --hero;
     animation-range: exit-crossing 0% exit-crossing 100%;
   }
-  /* 3. The champion tape slides against its own drift as the page goes by
-     (translate, on top of the drift's transform; its band clips it). Only
-     the drift waits under a mouse or the keyboard. */
-  .ticker {
-    view-timeline: --tape block;
-  }
-  :root:not([data-motion="paused"]) .ticker-run {
-    animation:
-      ticker 70s linear infinite,
-      tape-push linear both;
-    animation-timeline: auto, --tape;
-  }
-  @media (hover: hover) and (pointer: fine) {
-    .ticker:not(.free):hover .ticker-run {
-      animation-play-state: paused, running;
-    }
-  }
-  .ticker:has(:focus-visible) .ticker-run {
-    animation-play-state: paused, running;
-  }
-  /* 4. Cards in a row arrive one after another, left to right; the boss
+  /* 3. Cards in a row arrive one after another, left to right; the boss
      faces come in from above and below in turn. */
   @media (min-width: 640px) and (max-width: 999px) {
     .modes > li:nth-child(2n) {
@@ -2333,7 +2312,7 @@ body::before {
     animation-name: face-down;
     animation-range: entry 0% cover 34%;
   }
-  /* 5. The phone straightens up to its own slight lean as it rises. */
+  /* 4. The phone straightens up to its own slight lean as it rises. */
   :root:not([data-motion="paused"]) .phone {
     animation:
       phone-up linear forwards,
@@ -2360,14 +2339,6 @@ body::before {
 @keyframes word-drift {
   to {
     transform: translate(calc(-50% - 9vw), 38%) rotate(-6deg);
-  }
-}
-@keyframes tape-push {
-  from {
-    translate: calc(-1 * clamp(140px, 18vw, 260px)) 0;
-  }
-  to {
-    translate: 0 0;
   }
 }
 @keyframes face-up {
