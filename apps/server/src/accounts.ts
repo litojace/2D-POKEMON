@@ -74,6 +74,7 @@ import {
   resolveReportSchema,
   titleUpdateSchema,
   titleGrantSchema,
+  titleTierSchema,
   adminCoinsSchema,
   announceSchema,
   equipTitleSchema,
@@ -652,6 +653,26 @@ export function installAccountRoutes(
     "/api/account",
     route(false, async (_req, res, _token, account) => {
       res.json(account);
+    }),
+  );
+  // The tiers administrators gave the titles they made: { name: tier }.
+  // Names and tiers only. Before migration 20261128060000 the function is
+  // missing: no tiers then, and nothing fails.
+  app.get(
+    "/api/title-tiers",
+    route(false, async (_req, res, token) => {
+      let tiers: unknown = {};
+      try {
+        tiers = await provider.rpc(token, "arena_title_tiers", {});
+      } catch {
+        tiers = {};
+      }
+      const out: Record<string, string> = {};
+      if (tiers && typeof tiers === "object")
+        for (const [name, tier] of Object.entries(tiers))
+          if (titleTierSchema.safeParse(tier).success)
+            out[name] = tier as string;
+      res.json(out);
     }),
   );
   app.post(
@@ -1559,6 +1580,9 @@ export function installAccountRoutes(
           p_description: data.description,
           p_color: data.color,
           p_active: data.active,
+          // The tier the administrator chose (migration 20261128060000);
+          // null keeps the one the title has.
+          p_tier: data.tier ?? null,
         }),
       );
     }),

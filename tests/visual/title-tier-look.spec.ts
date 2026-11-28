@@ -106,6 +106,67 @@ test("Reduce motion holds the Profile's title still", async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
+// A title an administrator made has the tier they chose for it (migration
+// 20261128060000; the game reads the tiers from /api/title-tiers when a
+// player signs in); without one it is Common.
+test("an admin-made title wears the tier its administrator chose", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 844, height: 390 });
+  await page.addInitScript(() => {
+    const w = window as any;
+    const title = (n: number, name: string) => ({
+      id: `00000000-0000-4000-8000-00000000001${n}`,
+      name,
+      description: "",
+      color: "#ffd65b",
+      active: true,
+      createdAt: null,
+    });
+    w.__accountPatch = {
+      title: "Friend of the Owner",
+      titleColor: "#ffd65b",
+      ownedTitles: [title(1, "Friend of the Owner"), title(2, "Helper")],
+    };
+    // "Cragbreaker" is the game's own: its rule (Rare) stands.
+    w.__titleTiers = {
+      "Friend of the Owner": "legendary",
+      Cragbreaker: "mythic",
+    };
+  });
+  const errors = await openLobby(page);
+  await expect(
+    page.locator(
+      '#account-profile .nav-title .title-tag[data-tier="legendary"]',
+    ),
+  ).toHaveCount(1);
+  expect(await tag(page, "#account-profile .nav-title .title-tag")).toEqual({
+    tier: "legendary",
+    stars: 2,
+    moving: false,
+    plate: false,
+    title: "Friend of the Owner",
+  });
+  await page.click("#account-profile");
+  await page.locator('[data-ui-profile-tab="titles"]').click();
+  const chips = page.locator(".pf-title-chip .title-tag");
+  await expect(chips).toHaveCount(2);
+  expect(
+    await chips.evaluateAll((els) =>
+      els.map((el) => [
+        el.querySelector(":scope > span")!.textContent,
+        (el as HTMLElement).dataset.tier,
+      ]),
+    ),
+  ).toEqual(
+    expect.arrayContaining([
+      ["Friend of the Owner", "legendary"],
+      ["Helper", "common"],
+    ]),
+  );
+  expect(errors).toEqual([]);
+});
+
 // The corner's card is narrow: its title is set in the condensed face the
 // Plaza's titles have, so an eighteen-letter title reads in full even on
 // the smallest phone (it was cut to "MOUNTAIN CONQUE…").
