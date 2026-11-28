@@ -206,26 +206,29 @@ Play free, link in bio.
 
 ## Posting plan (US Pacific time)
 
-Launch with three posts on the first day, so a visitor from the website
-finds a full first row, then three a week: Monday, Wednesday and Friday at
-6:00 PM PT (after school and work on the West Coast, 9 PM on the East
-Coast). The day after each post, share its story version at 12:00 PM PT
-with a link sticker to https://play.elementarenausa.com.
+The plan is `scripts/instagram/plan.json`: each item's time, kind (post,
+Reel or story), its file in `apps/site/social/` and its caption. That file,
+not this page, is what goes out. Launch with three posts on the first day,
+so a visitor from the website finds a full first row, then three a week:
+Monday, Wednesday and Friday at 5:40 PM PT (after school and work on the
+West Coast, 8:40 PM on the East Coast). The day after each post, its story
+version goes up at 11:40 AM PT. The API can't add a link sticker, so stories
+point to the link in bio.
 
 | Date (PT)           | Post                   |
 | ------------------- | ---------------------- |
-| Mon 30 Nov, 4:00 PM | 1. Welcome             |
-| Mon 30 Nov, 5:00 PM | 2. Duels               |
-| Mon 30 Nov, 6:00 PM | 3. The roster          |
-| Wed 2 Dec, 6:00 PM  | 4. Raid boss: Lumiwick |
-| Fri 4 Dec, 6:00 PM  | 5. 2v2 teams           |
-| Mon 7 Dec, 6:00 PM  | 6. Pyranda             |
-| Wed 9 Dec, 6:00 PM  | 7. Free-for-all        |
-| Fri 11 Dec, 6:00 PM | 8. The Shop (Reel)     |
-| Mon 14 Dec, 6:00 PM | 9. The Spire           |
+| Mon 30 Nov, 5:40 PM | 1. Welcome             |
+| Mon 30 Nov, 5:40 PM | 2. Duels               |
+| Mon 30 Nov, 5:40 PM | 3. The roster          |
+| Wed 2 Dec, 5:40 PM  | 4. Raid boss: Lumiwick |
+| Fri 4 Dec, 5:40 PM  | 5. 2v2 teams           |
+| Mon 7 Dec, 5:40 PM  | 6. Pyranda             |
+| Wed 9 Dec, 5:40 PM  | 7. Free-for-all        |
+| Fri 11 Dec, 5:40 PM | 8. The Shop (Reel)     |
+| Mon 14 Dec, 5:40 PM | 9. The Spire           |
 
-The grid shows the newest post first, so after launch day the first row
-reads roster, duels, welcome.
+Launch day's three go out in this order, a minute or so apart, so the grid
+(newest first) reads roster, duels, welcome.
 
 Week 4: read Insights (Professional dashboard) for which post reached the
 most people, and make more like it: the next champion spotlights, the other
@@ -272,16 +275,36 @@ press and business: no reply from the session; it tells the owner the same
 day. Every Sunday the session sends a short report: reach, the best post,
 new followers, and what needs the owner.
 
-How it works: Meta's **Instagram API with Instagram login**, the official
-and free route (never a password: logging in as a person from a server
-breaks Instagram's terms and gets accounts locked). The owner makes a Meta
-app at developers.facebook.com, adds the game's account under Instagram →
-API setup with Instagram business login, and generates its token (60 days,
-renewed by the session with `refresh_access_token` before it lapses; a
-lapsed one needs the owner to generate it again). The token goes into the
-cloud environment's secure credential form, never into a chat or the repo.
-The API publishes photos, carousels, Reels and Stories (Stories only from a
-Business account) and reads, answers and hides comments. It can't add
-Instagram's music library, link or poll stickers, or answer DMs, so a Reel
-carries its own sound (the game's own music, `music.spec.ts`) and
-links stay in the bio. Pictures are fetched by Meta from a public address.
+How it works: Meta's Graph API, the official and free route (never a
+password: logging in as a person from a server breaks Instagram's terms and
+gets accounts locked).
+
+- **The Meta app** "Element Arena Social" (developers.facebook.com), in the
+  business portfolio "elementarena.usa", use case Instagram API, **API setup
+  with Unified login** (apps made since late October 2026 no longer offer
+  "Instagram login"). Its configuration: a **system-user access token** that
+  **never expires**, for the Instagram account @elementarena.usa (id
+  `17841460513990684`), with `instagram_basic`,
+  `instagram_content_publish`, `instagram_manage_comments` (and
+  `instagram_manage_messages`, unused). No App Review: the app serves only
+  the owner's own account.
+- **The token** is a network secret on the cloud environment ELEMENT_ARENA
+  for `graph.facebook.com`: its proxy adds it to every request, so no
+  session, file or chat ever holds it. To revoke it, remove it in the
+  environment's settings or the system user in the business portfolio.
+- **Posting**: `node scripts/instagram/publish.mjs due` posts what is due
+  (`list` shows the plan against the account; `due --dry` shows what would
+  go; `check <id>` has Meta fetch one item without publishing). Node's
+  fetch needs `NODE_USE_ENV_PROXY=1` to go through the cloud's proxy. It
+  keeps the rules above: `paused` in plan.json stops everything; nothing
+  goes before `approval.approvedAt`, or 24 hours after `approval.sentAt`;
+  nothing is posted twice; a post more than 48 hours late, or a story more
+  than 20, is left and reported. `tests/unit/instagram-plan.test.ts` checks
+  the plan (every file served, captions within the limits and the rules).
+- **The pictures** are in `apps/site/social/`, served by the website at
+  `https://elementarenausa.com/social/`, where Meta fetches them; a new plan
+  copies its files there in the same pull request.
+- **Not through the API**: the profile (name, bio, link, picture: the owner
+  sets them in the app), music from Instagram's library, link and poll
+  stickers, and DMs. So a Reel carries its own sound (the game's own music,
+  `music.spec.ts`) and links stay in the bio.
