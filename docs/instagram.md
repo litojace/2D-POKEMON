@@ -62,6 +62,11 @@ The first command records, in Poster:
   coin count is blurred where it stands (the owner's rule for the website:
   no amounts of the game's money outside the game), so Journey, Ranks and
   mission rewards, which show coin amounts, are not used yet;
+- **a champion's skill buttons** (`kit.spec.ts`, `CHAMP=pyranda`): the
+  free-for-all scene with the player as that champion, nobody casting and
+  the ultimate charged, each button saved as it looks in battle, for the
+  champion spotlights (owner, 28 Nov: show what the skill buttons look
+  like);
 - **the three Mythical skins** in the game's fitting room at Stage III, in Poster
   (the spec calls `onPlayersLook()`), frame by frame on the page's own clock
   (about 6 minutes): standing, then each one's Entrance, Victory and
@@ -128,15 +133,16 @@ shows, retake it, look at it, and ship it before its time. The pictures in
 `apps/site/social/` were last made at the commit that last changed them
 (`git log -1 -- apps/site/social/<file>`).
 
-| Post                                                                 | Shows of the game                                                                            | Retake with                                         |
-| -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| 2 Duels, 5 Teams, 7 Free-for-all, 9 Spire, 11's cover and last slide | a real battle, whole screen: court, fighters, effects, HUD and touch controls                | `battles.spec.ts`, then pick the frame again by eye |
-| 3 Roster, 6 Pyranda                                                  | the fighters' drawings, names and elements (packages/shared)                                 | `make-posts.mjs`                                    |
-| 8 Skins (Reel)                                                       | the Shop's fitting room in Poster, the Mythical skins                                        | `skins.spec.ts`, `make-reel.py`                     |
-| 10 Found a bug?                                                      | the gear menu in Poster and Report a problem                                                 | `report.spec.ts`, then `make-posts.mjs`             |
-| 11 Play it like an app                                               | the app icon, and Safari's steps (iOS, not the game)                                         | `HOWTO=1 make-posts.mjs`; new iOS: new screenshots  |
-| 12 Plaza, 13 Friends                                                 | the Plaza (made-up players placed by world coordinates), the Friends sheet (made-up friends) | `screens.spec.ts`, then pick the frame again by eye |
-| 1 Welcome, 4 Lumiwick                                                | paintings only                                                                               | `make-posts.mjs`                                    |
+| Post                                                                 | Shows of the game                                                                            | Retake with                                          |
+| -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| 2 Duels, 5 Teams, 7 Free-for-all, 9 Spire, 11's cover and last slide | a real battle, whole screen: court, fighters, effects, HUD and touch controls                | `battles.spec.ts`, then pick the frame again by eye  |
+| 3 Roster                                                             | the fighters' drawings, names and elements (packages/shared)                                 | `make-posts.mjs`                                     |
+| 6 Pyranda (champion spotlights)                                      | the drawing, and each skill's button as a phone shows it in battle (owner, 28 Nov)           | `CHAMP=pyranda` `kit.spec.ts`, then `make-posts.mjs` |
+| 8 Skins (Reel)                                                       | the Shop's fitting room in Poster, the Mythical skins                                        | `skins.spec.ts`, `make-reel.py`                      |
+| 10 Found a bug?                                                      | the gear menu in Poster and Report a problem                                                 | `report.spec.ts`, then `make-posts.mjs`              |
+| 11 Play it like an app                                               | the app icon, and Safari's steps (iOS, not the game)                                         | `HOWTO=1 make-posts.mjs`; new iOS: new screenshots   |
+| 12 Plaza, 13 Friends                                                 | the Plaza (made-up players placed by world coordinates), the Friends sheet (made-up friends) | `screens.spec.ts`, then pick the frame again by eye  |
+| 1 Welcome, 4 Lumiwick                                                | paintings only                                                                               | `make-posts.mjs`                                     |
 
 Every post's frame copies Poster (colours, fonts, slabs: the CSS in
 `make-posts.mjs`), and captions name places in the game: when Poster's
