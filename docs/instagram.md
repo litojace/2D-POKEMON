@@ -38,21 +38,32 @@ its rules and skin names (packages/shared), its fonts
 (apps/client/public/assets/fighters), its painted art and real captures.
 
 ```bash
-VISUAL_UI=poster npx playwright test --config scripts/site-clips/playwright.config.ts scripts/site-clips/scenes.spec.ts
 npx playwright test --config scripts/instagram/playwright.config.ts
 python3 scripts/instagram/make-reel.py
 npx tsx scripts/instagram/make-posts.mjs
 ```
 
-The first command records the real battles in Poster (the same scenes as
-the website's "Ways to play", about 7 minutes; the court is drawn by the
-game's canvas, so the look doesn't change it). The second records the
-three Mythical skins in the game's fitting room at Stage III, in Poster
-(the spec calls `onPlayersLook()`), frame by frame on the page's own clock
-(about 6 minutes): standing, then each one's Entrance, Victory and
-Ultimate with their effects as the game draws them; the same config's
-`music.spec.ts` renders the game's own hub music (the tune the Shop plays)
-through the game's synth into `instagram-clips/music.wav`. `make-reel.py`
+The first command records, in Poster:
+
+- **the battles** (`battles.spec.ts`, about 8 minutes; `SCENE=duels,ffa`
+  for some): the website's scenes (`scripts/site-clips/scenes.ts`, every
+  fighter firing its ultimate within a few ticks), but as a phone shows
+  them: **the whole screen, with the HUD, joystick, skill buttons and
+  scoreboard** (owner, 28 Nov: battle pictures are full screen with every
+  button, never cropped to the court), at the owner's iPhone size held
+  sideways (956 × 440 at 3×, with the Dynamic Island's safe areas), one
+  frame per tick in `instagram-clips/battles/<scene>/`. Pick each post's
+  frame by eye: a big move going off, every fighter still in sight
+  (`screen(...)` in `make-posts.mjs`);
+- **the three Mythical skins** in the game's fitting room at Stage III, in Poster
+  (the spec calls `onPlayersLook()`), frame by frame on the page's own clock
+  (about 6 minutes): standing, then each one's Entrance, Victory and
+  Ultimate with their effects as the game draws them;
+- `music.spec.ts` renders the game's own hub music (the tune the Shop plays)
+  through the game's synth into `instagram-clips/music.wav`; `report.spec.ts`
+  captures the Menu for post 10.
+
+`make-reel.py`
 cuts the recordings into the skins Reel, puts the music under it (faded,
 levelled to -14 LUFS) and picks each skin's still at its Ultimate's peak; `make-posts.mjs` (run with tsx, as it reads packages/shared) puts the
 stills on post 8.
@@ -88,9 +99,10 @@ HOWTO=1 POSTS=0 npx tsx scripts/instagram/make-posts.mjs
 share sheet's contacts), crops each step and writes where to ring what to
 tap (`scripts/instagram/phone/steps.json`; `--preview` draws the rings on
 `instagram-clips/phone/steps-preview.jpg` to check). Only Safari's steps and the icon come from
-the phone: the game itself is shown from our own captures of big moves
-(`HOWTO_SHOTS` in `make-posts.mjs`: the duel's lightning field, the
-four-way fight's chestnut storm), never the owner's battle or Lobby
+the phone: the game itself is shown from our own battles, the whole
+screen with its HUD (`HOWTO_SHOTS` in `make-posts.mjs`: the duel's
+lightning field, the four-way fight's chestnut storm), with the icon above
+the phone so it covers nothing, never the owner's battle or Lobby
 screenshots (the owner, 28 Nov; they also show their player name and
 coins). `make-posts.mjs` then makes the carousel, `11-home-screen-1-feed.jpg`
 to `-7-feed.jpg` (cover, five steps, done), and a story for each step and
@@ -109,14 +121,14 @@ shows, retake it, look at it, and ship it before its time. The pictures in
 `apps/site/social/` were last made at the commit that last changed them
 (`git log -1 -- apps/site/social/<file>`).
 
-| Post                                                                 | Shows of the game                                            | Retake with                                                     |
-| -------------------------------------------------------------------- | ------------------------------------------------------------ | --------------------------------------------------------------- |
-| 2 Duels, 5 Teams, 7 Free-for-all, 9 Spire, 11's cover and last slide | a real battle: court, fighters, effects, the battle HUD      | `scenes.spec.ts` (site-clips), then pick the frame again by eye |
-| 3 Roster, 6 Pyranda                                                  | the fighters' drawings, names and elements (packages/shared) | `make-posts.mjs`                                                |
-| 8 Skins (Reel)                                                       | the Shop's fitting room in Poster, the Mythical skins        | `skins.spec.ts`, `make-reel.py`                                 |
-| 10 Found a bug?                                                      | the gear menu in Poster and Report a problem                 | `report.spec.ts`, then `make-posts.mjs`                         |
-| 11 Play it like an app                                               | the app icon, and Safari's steps (iOS, not the game)         | `HOWTO=1 make-posts.mjs`; new iOS: new screenshots              |
-| 1 Welcome, 4 Lumiwick                                                | paintings only                                               | `make-posts.mjs`                                                |
+| Post                                                                 | Shows of the game                                                             | Retake with                                         |
+| -------------------------------------------------------------------- | ----------------------------------------------------------------------------- | --------------------------------------------------- |
+| 2 Duels, 5 Teams, 7 Free-for-all, 9 Spire, 11's cover and last slide | a real battle, whole screen: court, fighters, effects, HUD and touch controls | `battles.spec.ts`, then pick the frame again by eye |
+| 3 Roster, 6 Pyranda                                                  | the fighters' drawings, names and elements (packages/shared)                  | `make-posts.mjs`                                    |
+| 8 Skins (Reel)                                                       | the Shop's fitting room in Poster, the Mythical skins                         | `skins.spec.ts`, `make-reel.py`                     |
+| 10 Found a bug?                                                      | the gear menu in Poster and Report a problem                                  | `report.spec.ts`, then `make-posts.mjs`             |
+| 11 Play it like an app                                               | the app icon, and Safari's steps (iOS, not the game)                          | `HOWTO=1 make-posts.mjs`; new iOS: new screenshots  |
+| 1 Welcome, 4 Lumiwick                                                | paintings only                                                                | `make-posts.mjs`                                    |
 
 Every post's frame copies Poster (colours, fonts, slabs: the CSS in
 `make-posts.mjs`), and captions name places in the game ("the gear, then

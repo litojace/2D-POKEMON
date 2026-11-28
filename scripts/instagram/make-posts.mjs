@@ -6,14 +6,14 @@
 // game itself: its rules (packages/shared), fonts, fighters' drawings,
 // painted art and real captures.
 //
-//   VISUAL_UI=poster npx playwright test --config scripts/site-clips/playwright.config.ts scripts/site-clips/scenes.spec.ts
-//   npx playwright test --config scripts/instagram/playwright.config.ts   # skins, music, the report menu
+//   npx playwright test --config scripts/instagram/playwright.config.ts   # battles, skins, music, the report menu
 //   python3 scripts/instagram/make-reel.py
 //   npx tsx scripts/instagram/make-posts.mjs            # -> instagram/
 //
-// The first command records the real battles in Poster (the same scenes as
-// the website's "Ways to play"); the next two record the Mythical skins and
-// cut their stills (post 8). A post whose capture is missing is skipped with
+// The first command records, in Poster, the real battles as a phone shows
+// them, whole screen and touch controls included (battles.spec.ts, the
+// website's scenes), the Mythical skins, the game's music and its menu;
+// make-reel.py cuts the skins' Reel and stills (post 8). A post whose capture is missing is skipped with
 // a note. POSTS=1,4 renders only those. PW_CHROMIUM points at a Chromium
 // already on the machine, as in tests/visual. Run with tsx: the champions'
 // data is read from packages/shared.
@@ -74,16 +74,16 @@ const EL = {
 };
 
 /**
- * A real capture of the game (2622 x 1206), cropped to 16:9 like make-scenes.py.
- * Each post's frame is picked by eye from the scene's 37 (owner, 27 Nov): a
- * big move going off, with every fighter still in sight, never one buried
- * under a flash. Duels 8 (the charged beam into the lightning field; from 14
- * on the flash hides Frost), teams 8 (from 9 the pillar's glow hides Blaze),
- * free-for-all 11 (the chestnut storm, Sunny's orb and Ink's tendrils, all
- * four in sight), Spire 15 (the beam beside Echo Wombolder, not on it).
+ * A real battle as the player sees it: the whole phone screen, HUD,
+ * joystick, skill buttons and scoreboard included, never cropped (owner,
+ * 28 Nov), from battles.spec.ts at the owner's iPhone size held sideways
+ * (2868 x 1320). Each frame is picked by eye from the scene's 37 (owner,
+ * 27 Nov): a big move going off, with every fighter still in sight, never
+ * one buried under a flash.
  */
-const capture = (file, cx, cy, share) => ({ file, cx, cy, share });
-const SCENES = "site-clips/scenes";
+const BATTLES = "instagram-clips/battles";
+const screen = (file) => ({ file: `${BATTLES}/${file}` });
+const PHONE_ASPECT = 2868 / 1320;
 
 /** Painted art: the game's raid splash and loading art (1536 x 1024). */
 const painting = (file, x = 50, y = 50) => ({ painting: file, x, y });
@@ -117,7 +117,7 @@ const POSTS = [
     name: "duels",
     kind: "shot",
     el: EL.water,
-    art: capture(`${SCENES}/duels/008.png`, 0.53, 0.47, 0.42),
+    art: screen("duels/008.png"),
     eyebrow: "1v1 duels",
     title: "Dodge. Dash. Land the big one.",
     line: "Every fight is live: aim your skills, read your rival, time your ultimate.",
@@ -147,7 +147,7 @@ const POSTS = [
     name: "teams",
     kind: "shot",
     el: EL.nature,
-    art: capture(`${SCENES}/teams/008.png`, 0.5, 0.36, 0.56),
+    art: screen("teams/008.png"),
     eyebrow: "2v2 team battles",
     title: "Better with a friend.",
     line: "Team up, stack your skills and wipe the other side.",
@@ -171,7 +171,7 @@ const POSTS = [
     name: "free-for-all",
     kind: "shot",
     el: EL.psychic,
-    art: capture(`${SCENES}/ffa/011.png`, 0.57, 0.4, 0.46),
+    art: screen("ffa/011.png"),
     eyebrow: "Free-for-all",
     title: "Four fighters. One winner.",
     line: "Everyone against everyone in the Ember Forge.",
@@ -192,7 +192,7 @@ const POSTS = [
     name: "spire",
     kind: "shot",
     el: EL.aura,
-    art: capture(`${SCENES}/spire/015.png`, 0.47, 0.61, 0.48),
+    art: screen("spire/015.png"),
     eyebrow: "The Spire",
     title: "70 floors. How high can you climb?",
     line: "Seven zones of ten floors, an elite halfway up and a boss at the top of each.",
@@ -299,24 +299,10 @@ ${size === "square" ? SQUARE.replace(/h1 \{[^}]*\}/, "") : ""}
 }
 
 /**
- * The crop of a capture (16:9 unless `aspect` says) as CSS for an <img> in
- * a window of that shape, in shares of the window, so the window can take
- * whatever size fits.
- */
-function cropStyle({ cx, cy, share }, aspect = 16 / 9) {
-  const [iw, ih] = [2622, 1206];
-  const cw = share * iw;
-  const ch = cw / aspect;
-  const x0 = Math.min(Math.max(0, cx * iw - cw / 2), iw - cw);
-  const y0 = Math.min(Math.max(0, cy * ih - ch / 2), ih - ch);
-  const pc = (v) => `${(v * 100).toFixed(3)}%`;
-  return `width:${pc(iw / cw)};left:${pc(-x0 / cw)};top:${pc(-y0 / ch)}`;
-}
-
-/**
- * A capture as a white clipping on the element colour. The clipping takes
- * the room the words leave, up to its full width, so a title that wraps to
- * three lines shrinks the picture instead of running into it.
+ * A battle's whole phone screen as a white clipping on the element colour.
+ * The clipping takes the room the words leave, up to its full width, so a
+ * title that wraps to three lines shrinks the picture instead of running
+ * into it.
  */
 function shotPost(post, size) {
   const cardW = size === "square" ? 700 : 880;
@@ -325,11 +311,11 @@ function shotPost(post, size) {
     flow(
       size,
       `<div class="chip">${post.eyebrow}</div><h1>${post.title}</h1>`,
-      `<div class="clip shot"><div class="window"><img src="${url(post.art.file)}" style="${cropStyle(post.art)}"></div></div>`,
+      `<div class="clip shot"><div class="window"><img src="${url(post.art.file)}"></div></div>`,
       `<p>${post.line}</p>${PLAY}`,
-      `.shot { flex: none; padding: 10px; height: min(100%, ${(cardW * 9) / 16 + 30}px); transform: rotate(-1.5deg); }
-.window { position: relative; height: 100%; aspect-ratio: 16 / 9; overflow: hidden; }
-.window img { position: absolute; height: auto; }`,
+      `.shot { flex: none; padding: 10px; height: min(100%, ${Math.round(cardW / PHONE_ASPECT) + 20}px); transform: rotate(-1.5deg); }
+.window { position: relative; height: 100%; aspect-ratio: 2868 / 1320; overflow: hidden; }
+.window img { width: 100%; height: 100%; display: block; }`,
     )
   );
 }
@@ -568,31 +554,27 @@ function howtoStep(size, n, phone) {
 }
 
 /**
- * The icon on the home screen, and the game held sideways: our own capture
- * of a big move (the owner, 28 Nov: not their battle screenshots), cropped
- * to an iPhone's landscape screen. The cover has the duel's lightning field
- * going off between both fighters, the last slide the four-way fight's
- * chestnut storm with all four in sight.
+ * The icon on the home screen, over the game held sideways: our own
+ * battle, the whole screen with its HUD and touch controls (the owner,
+ * 28 Nov: not their screenshots, and never cropped). The icon sits above
+ * the phone, so it covers nothing on its screen. The cover has the duel's
+ * lightning field going off between both fighters, the last slide the
+ * four-way fight's chestnut storm with all four in sight.
  */
-const PHONE_ASPECT = 2868 / 1320;
 const HOWTO_SHOTS = {
-  cover: { ...capture(`${SCENES}/duels/026.png`, 0.555, 0.43, 0.4), icon: 0.5 },
-  // The icon over the empty floor at the left, clear of Ink's and Sunny's labels.
-  done: { ...capture(`${SCENES}/ffa/018.png`, 0.56, 0.39, 0.5), icon: 0.16 },
+  cover: screen("duels/026.png"),
+  done: screen("ffa/018.png"),
 };
 function iconAndGame(phone, size, shot) {
-  const w = size === "story" ? 860 : 720;
-  // `icon`: where the icon's middle sits, as a share of the screen's width.
-  const iconLeft = Math.round(shot.icon * w - 120);
-  return `<div class="pair" style="width:${w}px"><div class="icon-shot" style="margin-left:${iconLeft}px"><img src="${url(`${PHONE}/${phone.icon.file}`)}"></div><div class="land" style="width:${w}px"><img src="${url(shot.file)}" style="${cropStyle(shot, PHONE_ASPECT)}"></div></div>`;
+  const w = size === "story" ? 900 : 800;
+  return `<div class="pair" style="width:${w}px"><div class="icon-shot"><img src="${url(`${PHONE}/${phone.icon.file}`)}"></div><div class="land" style="width:${w}px"><img src="${url(shot.file)}"></div></div>`;
 }
 const PAIR_CSS = `
-.pair { position: relative; display: grid; justify-items: start; gap: 0; }
-.icon-shot { position: relative; z-index: 2; width: 220px; padding: 10px; background: var(--ink); border-radius: 30px; box-shadow: 10px 10px 0 rgba(0,0,0,.35); transform: rotate(-4deg); margin-bottom: -60px; }
-.icon-shot img { width: 100%; display: block; border-radius: 22px; }
+.pair { position: relative; display: grid; justify-items: center; gap: 14px; }
+.icon-shot { position: relative; z-index: 2; width: 170px; padding: 9px; background: var(--ink); border-radius: 26px; box-shadow: 8px 8px 0 rgba(0,0,0,.35); transform: rotate(-4deg); }
+.icon-shot img { width: 100%; display: block; border-radius: 18px; }
 .land { aspect-ratio: 2868 / 1320; border: 14px solid var(--ink); border-radius: 44px; overflow: hidden; box-shadow: 16px 16px 0 rgba(0,0,0,.35); transform: rotate(-1.5deg); background: var(--ink); }
-.land { position: relative; }
-.land img { position: absolute; max-width: none; display: block; }
+.land img { width: 100%; height: 100%; display: block; }
 p b { font-weight: 800; }
 `;
 
