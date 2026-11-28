@@ -188,11 +188,20 @@ for (const size of SIZES) {
             return { left: r.left, top: r.top, bottom: r.bottom };
           });
           const x = Math.round(head.left) - 1;
-          const [high, low] = await pixels(page, [
-            [x, Math.round(head.top) + 6],
-            [x, Math.round(head.bottom) - 6],
+          // The board behind the screen has a halftone of dots every 9 px
+          // (tokens.css, --board-dots), and this column can run through
+          // one: the two points are a whole number of dots apart, so both
+          // see the same part of the pattern. (With the Shop's stage wider
+          // on phones the column moved onto a dot, and 6 px from each end
+          // compared a dot's middle with the board between two dots.)
+          const high = Math.round(head.top) + 6;
+          const span = Math.round(head.bottom) - 6 - high;
+          const [top, foot] = [high, high + Math.floor(span / 9) * 9];
+          const [highPx, low] = await pixels(page, [
+            [x, top],
+            [x, foot],
           ]);
-          expect(low, `beside the head's foot (${name})`).toBe(high);
+          expect(low, `beside the head's foot (${name})`).toBe(highPx);
         }
         if (screen !== "fighter") await closeTop(page);
       }

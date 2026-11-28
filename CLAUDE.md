@@ -72,6 +72,12 @@ them box by box:
   lines in a narrow column. Make the box wider or the layout simpler first.
 - Rows line up: same height, icons in one column, numbers right-aligned
   with tabular figures; badges and rings match the Lobby's.
+- Buttons fit their words, and neighbours match (owner, 28 Nov): a button
+  is long and tall enough for its label and icon, with even padding.
+  Buttons side by side, in one column or in one panel share one size (the
+  widest label's) and line up on one edge, so the panel reads as one set
+  (Settings: PLAYER CARD and LOG OUT the same width, every row's button on
+  its column's right edge).
 - Nothing overlaps or covers another control, the safe areas or the
   playfield's middle; touch targets stay at least 44 px.
 - Fewer buttons beat more: when two controls do the same job, keep the one

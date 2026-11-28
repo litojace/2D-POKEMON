@@ -56,6 +56,16 @@ export function setDialogContent(dialog: HTMLDialogElement, html: string) {
     footer.append(action);
   }
   dialog.classList.toggle("has-dialog-footer", footer.childElementCount > 0);
+  // How wide the dialog may be, as its content asks (data-dialog-size="s" or
+  // "m" on any element in it): a short dialog sizes to what it holds instead
+  // of spanning a phone held sideways. On the dialog itself, so a look's CSS
+  // needs no :has() on a dialog (CLAUDE.md, battle style).
+  const size = (
+    content.querySelector<HTMLElement>("[data-dialog-size]") ??
+    toolbar.querySelector<HTMLElement>("[data-dialog-size]")
+  )?.dataset.dialogSize;
+  if (size) dialog.dataset.size = size;
+  else delete dialog.dataset.size;
   dialog.replaceChildren(
     toolbar,
     ...(tabs && !inlineTabs ? [tabs] : []),

@@ -337,8 +337,14 @@ test.describe("website", () => {
     await expect(dialog).toHaveJSProperty("open", false);
     await expect(html).not.toHaveAttribute("data-vt", /./);
     await expect.poll(() => tapeState(page)).toBe("running");
+    // The dialog's "close" event is what lets the tape run under the resting
+    // mouse (.free, until the mouse leaves), and it comes a task after
+    // `open` turns false. Wait for it: a mouse that left before it and came
+    // back after would find the tape still free, and never hold it.
+    await expect(page.locator(".ticker")).toHaveClass(/\bfree\b/);
     // A mouse that comes to the tape still holds it, to pick a name.
     await page.mouse.move(spot.x, 5);
+    await expect(page.locator(".ticker")).not.toHaveClass(/\bfree\b/);
     await page.mouse.move(spot.x, spot.y);
     await expect.poll(() => tapeState(page)).toBe("paused");
     await page.mouse.move(spot.x, 5);
@@ -444,6 +450,15 @@ test.describe("website", () => {
         for (let y = 0; y < height; y += Math.round(h * 0.7)) {
           await page.evaluate((y) => scrollTo(0, y), y);
           await page.waitForTimeout(150);
+          // Two frames, so site.js's observers have answered the scroll (the
+          // nav's current link) before we look: on a slow renderer 150 ms
+          // can pass without one.
+          await page.evaluate(
+            () =>
+              new Promise((done) =>
+                requestAnimationFrame(() => requestAnimationFrame(done)),
+              ),
+          );
           await settle(page);
           low.push(...(await lowContrast(page, `page@${y}`)));
         }
