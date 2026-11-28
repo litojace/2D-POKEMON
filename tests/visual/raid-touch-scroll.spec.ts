@@ -256,7 +256,9 @@ for (const size of SIZES)
       for (const tab of ["party", "attacks", "rewards", "guide"]) {
         await page.click(`[data-ui-raid-tab="${tab}"]`);
         await page.waitForTimeout(500);
-        results[`boss-${tab}`] = await swipe(page, ".rh-body > *");
+        // The boss's line (.rh-lede) heads the body on a desktop and is
+        // left out on a phone held sideways: swipe the content under it.
+        results[`boss-${tab}`] = await swipe(page, ".rh-body > :not(.rh-lede)");
         cuts[`boss-${tab}`] = await clipped(page, ".rh-room");
       }
       // The raid room: the seats and the picker.
