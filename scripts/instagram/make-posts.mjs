@@ -268,7 +268,8 @@ html, body { margin: 0; overflow: hidden; background: var(--ink); color: var(--i
 h1 { margin: 0; font: 400 124px/.92 Anton; text-transform: uppercase; color: var(--ink); text-wrap: balance; }
 p { margin: 0; font: 600 34px/1.3 Archivo; color: var(--ink); text-wrap: pretty; }
 .play { align-self: flex-start; background: var(--ink); padding: 18px 40px; transform: skewX(-10deg); box-shadow: 12px 10px 0 var(--hot); }
-.play span { display: block; transform: skewX(10deg); font: 400 46px/1 Anton; text-transform: uppercase; letter-spacing: .02em; color: var(--el); white-space: nowrap; }
+.play span { display: block; transform: skewX(10deg); font: 400 46px/1 Anton; text-transform: uppercase; letter-spacing: .02em; color: #ffd65b; white-space: nowrap; }
+/* PLAY's word is gold for every fighter, as the game's PLAY (#673). */
 /* A word huge and outlined behind the picture, as the Lobby's fighter name. */
 .big { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) rotate(-7deg); font: 400 var(--big, 420px)/.8 Anton; text-transform: uppercase; white-space: nowrap; color: rgba(255,255,255,.42); -webkit-text-stroke: 4px rgba(13,13,15,.55); }
 /* A white clipping: the Lobby's cards. */
