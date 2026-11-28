@@ -1280,6 +1280,51 @@
 :root[data-ui="poster"] .title-tap:disabled .title-prompt::before {
   background: var(--ink-3);
 }
+/* The same glint as PLAY's (lobby.css) on "Tap to start": a bar of light
+   behind the words, cut to the block's own slant so it never leaves the
+   block. Unseen and still at rest; glint.ts puts .is-glinting on the
+   prompt for one sweep about every 5 s while the title waits for the tap.
+   Not while the title waits for the server, with Reduce motion, or on Low
+   graphics. */
+:root[data-ui="poster"] .title-prompt::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: -1;
+  /* 14 px of lean at each end, as the block; 22% of it keeps a body
+     between them (the block is 190 px or more). */
+  width: 22%;
+  background: rgba(255, 255, 255, 0.45);
+  clip-path: polygon(14px 0, 100% 0, calc(100% - 14px) 100%, 0 100%);
+  opacity: 0;
+  pointer-events: none;
+}
+:root[data-ui="poster"] .title-prompt.is-glinting::after {
+  animation: poster-glint-prompt 0.7s linear 1;
+}
+/* The bar is 22% of the block: 354% of its own width takes it from the
+   block's left edge to its right one. */
+@keyframes poster-glint-prompt {
+  0% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  14%,
+  86% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(354.5%);
+    opacity: 0;
+  }
+}
+:root[data-ui="poster"] .title-tap:disabled .title-prompt::after,
+:root[data-ui="poster"]:where([data-motion="reduced"]) .title-prompt::after,
+:root[data-ui="poster"][data-ui-effects="light"] .title-prompt::after {
+  animation: none;
+}
 :root[data-ui="poster"] .title-tap:focus-visible .title-prompt {
   outline-color: var(--paper);
   border-radius: 0;

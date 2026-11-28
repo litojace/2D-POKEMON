@@ -1,0 +1,42 @@
+/* Dialogs on a phone: as wide as what they hold (owner, 27 Nov: "Invite a
+   friend" spanned a phone held sideways for two lines and one button).
+   A dialog says how wide it may be with data-dialog-size on an element of
+   its content (dialog.ts puts it on the dialog): "s" for a few lines and a
+   button, "m" for a short form or a few paragraphs. Every other dialog
+   (Settings, How to play, the catalogues) keeps the width it had. The
+   phone's landscape rule (style.css) widened every dialog to 1000 px, and
+   its dialog:has(#report-form, .credits-screen, …) twin carries an id's
+   weight: #dialog here outweighs it. */
+:root[data-ui="poster"] dialog#dialog[open].framed-dialog[data-size="s"] {
+  width: min(440px, calc(100vw - var(--safe-left) - var(--safe-right) - 24px));
+}
+:root[data-ui="poster"] dialog#dialog[open].framed-dialog[data-size="m"] {
+  width: min(560px, calc(100vw - var(--safe-left) - var(--safe-right) - 24px));
+}
+
+/* No frosted glass behind a dialog or a sheet: Poster's dim is flat (audit
+   C01). The old look blurred the Lobby behind it by 2–5 px. */
+:root[data-ui="poster"] dialog::backdrop,
+:root[data-ui="poster"] .ui-scrim {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* In a small dialog the steps to add the game to the home screen run in one
+   column, at the dialog's reading size (two columns at 16 px read four
+   words a line in 440 px). */
+:root[data-ui="poster"] dialog#dialog[data-size="s"] .fullscreen-steps {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+  font-size: calc(13px * var(--text-scale, 1));
+}
+
+/* In a match the shared dialog (Settings from the gear, Your skills,
+   Change fighter…) took the look underneath's navy glass (ui/aero.css, a
+   rule with an id's weight): Poster's ink board and hard shadow there too,
+   as in the Lobby (screens.css, "dialogs"). */
+:root[data-ui="poster"] body.battle-active dialog#dialog[open] {
+  background: var(--board-dots), var(--board);
+  border-color: transparent;
+  box-shadow: 10px 10px 0 rgba(0, 0, 0, 0.5);
+}

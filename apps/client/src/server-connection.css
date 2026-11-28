@@ -83,16 +83,29 @@
 .server-startup-brand {
   display: grid;
   justify-items: center;
+  /* The padding the ink block had stays, so the words keep their place
+     (and the web's BETA tag, at this box's corner, keeps its own). */
   padding: clamp(6px, 1.6vh, 12px) clamp(12px, 2.6vh, 20px)
     clamp(4px, 1.2vh, 9px);
-  background: var(--startup-ink);
-  box-shadow: 5px 5px 0 var(--startup-hot);
 }
+/* No block behind the name (owner, 27 Nov): the words stand on the cover
+   or the painting by themselves, in Poster's sticker lettering, an ink
+   outline and a hard ink shadow, so they read on every painting. */
 .server-startup-brand h1 {
   margin: 0;
   color: #fff;
   font: 400 clamp(27px, 7.2vh, 60px) / 0.95 var(--startup-display);
   text-transform: uppercase;
+  text-shadow:
+    0.05em 0 0 var(--startup-ink),
+    -0.05em 0 0 var(--startup-ink),
+    0 0.05em 0 var(--startup-ink),
+    0 -0.05em 0 var(--startup-ink),
+    0.035em 0.035em 0 var(--startup-ink),
+    -0.035em 0.035em 0 var(--startup-ink),
+    0.035em -0.035em 0 var(--startup-ink),
+    -0.035em -0.035em 0 var(--startup-ink),
+    0.1em 0.1em 0 var(--startup-ink);
 }
 .server-startup-brand h1 > span {
   display: block;
@@ -165,7 +178,12 @@
 .server-startup-percent:empty {
   display: none;
 }
-/* The bar: square, an ink frame, Poster's red inside, a hard shadow. */
+/* The bar: square, an ink frame, cream inside, a hard shadow. Red is kept
+   for danger, leaving and the level badge (the owner's colour standard,
+   28 Nov 2026), so the fill is no longer Poster's red. The standard's own
+   colour for progress on ink is gold, but this page is gold: a gold fill
+   read as a hole in the bar, the page showing through. Cream stands apart
+   from both the ink and the page. Over a painting the fill is gold (below). */
 .server-startup-progress {
   position: relative;
   width: 100%;
@@ -178,7 +196,7 @@
   display: block;
   width: calc(var(--startup-progress, 0.08) * 100%);
   height: 100%;
-  background: var(--startup-hot);
+  background: #f4ead5;
   transition: width 600ms ease-out;
 }
 .server-startup[data-status="failed"] .server-startup-progress > i {
@@ -226,18 +244,25 @@
   height: 100%;
   overflow: visible;
 }
+/* Arms, legs and the tail turn about their joints (the shoulder, the hip,
+   the tail's root), which startup-runner.ts writes on each part in the
+   drawing's own units: the battle rig's pivots. */
 .server-startup-runner
-  :is(.fighter-armL, .fighter-armR, .fighter-legL, .fighter-legR) {
-  transform-box: fill-box;
-  transform-origin: 50% 14%;
+  :is(
+    .fighter-armL,
+    .fighter-armR,
+    .fighter-legL,
+    .fighter-legR,
+    .fighter-tail
+  ) {
+  transform-box: view-box;
+  transform-origin: var(--joint);
 }
 .server-startup-runner :is(.fighter-torso, .fighter-character) {
   transform-box: fill-box;
   transform-origin: 50% 90%;
 }
 .server-startup-runner .fighter-tail {
-  transform-box: fill-box;
-  transform-origin: 80% 70%;
   animation: server-runner-tail 1.05s ease-in-out infinite alternate;
 }
 .server-startup-runner.is-running .fighter-armL {
@@ -443,6 +468,9 @@
   flex: none;
   width: clamp(34px, 10vh, 76px);
   height: clamp(34px, 10vh, 76px);
+  /* The star's own hard shadow, as the words'. */
+  filter: drop-shadow(0 0 1.5px var(--startup-ink))
+    drop-shadow(4px 4px 0 var(--startup-ink));
 }
 .server-startup.has-art .server-startup-brand h1 {
   font-size: clamp(24px, 7vh, 54px);

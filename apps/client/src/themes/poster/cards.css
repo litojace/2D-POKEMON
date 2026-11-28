@@ -1,0 +1,157 @@
+/* Poster audit, slice 1 (28 Nov 2026): the small cards and tags that had
+   never moved to Poster and still wore the look underneath: navy, rounded,
+   soft shadows. Each becomes G's vocabulary: an ink block, cream words, a
+   hard offset shadow, nothing rounded; gold only on what is pressed, red
+   only on leaving. The look underneath keeps its own rules (quick-match.css,
+   room-invites.css, announcements.css, feature-unlocks.css, lobby.css). */
+
+/* The shared small tag ("Gold Voltkit", "2 waves", "1/24", a raid's lock):
+   it was a see-through navy (#0b1020 at 85%). Its variants with a meaning
+   (new, owned, sale) keep their own colours, and :where() keeps this as
+   light as the tag's own rule, so a screen that colours its tags itself (a
+   chosen tab's count, a room seat's pick) still does. */
+:root[data-ui="poster"]
+  :where(.ui-tag:not(.is-new, .is-ok, .is-sale, .roster-locked)) {
+  background: var(--ink-3);
+}
+
+/* Quick Match's search card and the room or party invitation: both stand
+   over the Lobby's field, bottom right. */
+:root[data-ui="poster"] :is(.quick-search, .room-invite-notice) {
+  border: 0;
+  border-left: 6px solid var(--paper);
+  border-radius: 0;
+  background: var(--ink);
+  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.4);
+  color: var(--paper);
+}
+:root[data-ui="poster"] .quick-search .quick-title,
+:root[data-ui="poster"] .room-invite-heading {
+  color: var(--paper);
+  font-family: var(--font-display);
+  font-size: calc(20px * var(--text-scale, 1));
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+:root[data-ui="poster"] .quick-search .quick-online,
+:root[data-ui="poster"] .room-invite-heading > small,
+:root[data-ui="poster"] .room-invite-mode,
+:root[data-ui="poster"] .room-invite-status {
+  color: var(--ui-dim);
+}
+:root[data-ui="poster"] .room-invite-heading > small {
+  font-family: var(--font-body);
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+/* The seconds until bots fill in: weight says it matters, not a colour. */
+:root[data-ui="poster"] .quick-search .quick-fill,
+:root[data-ui="poster"] .quick-search .quick-fill b {
+  color: var(--paper);
+}
+:root[data-ui="poster"] .quick-search .quick-fill b {
+  font-weight: 900;
+}
+
+/* An admin's announcement, at the top of every screen. */
+:root[data-ui="poster"] .announcement-banner {
+  border: 0;
+  border-left: 6px solid var(--paper);
+  border-radius: 0;
+  background: var(--ink);
+  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.4);
+  color: var(--paper);
+}
+:root[data-ui="poster"] .announcement-banner:not(.tone-warning) > svg {
+  color: var(--paper);
+}
+:root[data-ui="poster"] .announcement-text b {
+  color: var(--ui-dim);
+}
+:root[data-ui="poster"]
+  .announcement-banner
+  :is(.announcement-ok, .announcement-go) {
+  border-radius: 0;
+  background: var(--gold);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+:root[data-ui="poster"] .announcement-banner .announcement-ok.is-quiet {
+  border: 0;
+  background: var(--ink-3);
+  color: var(--paper);
+}
+
+/* The party over the Lobby's stage: its bar (faces, size, Leave party) and
+   the name under each member. Leaving is red, on the bar's own ink. */
+:root[data-ui="poster"] .lobby-layer .lobby-party-bar {
+  border: 0;
+  border-radius: 0;
+  background: var(--ink);
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.35);
+  color: var(--paper);
+}
+:root[data-ui="poster"] .lobby-layer .lobby-party-bar button {
+  border-radius: 0;
+  background: var(--ink);
+  color: var(--hot);
+}
+/* Rejoin room and Leave party stand side by side: one width, the longer
+   label's (owner, 28 Nov: neighbours match). */
+:root[data-ui="poster"] .lobby-layer .lobby-party-bar button {
+  justify-content: center;
+  min-width: 11em;
+}
+:root[data-ui="poster"] .lobby-layer .lobby-party-bar .lobby-rejoin {
+  background: var(--ink-3);
+  color: var(--paper);
+}
+:root[data-ui="poster"] .lobby-layer .lobby-member figcaption {
+  border-radius: 0;
+  background: var(--ink);
+  color: var(--paper);
+}
+
+/* The padlock a locked button wears ("Lv 3"). */
+:root[data-ui="poster"] .feature-lock {
+  border: 0;
+  border-radius: 0;
+  background: var(--ink-3);
+  color: var(--paper);
+}
+
+/* The "Unlocked" sheet: the feature's icon in a square frame, no glow. */
+:root[data-ui="poster"] .unlock-art {
+  border: 2px solid var(--paper);
+  border-radius: 0;
+  background: var(--ink-3);
+  box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.4);
+  color: var(--paper);
+}
+/* Its art panel: flat ink, not a spotlight (every sheet with a picture). */
+:root[data-ui="poster"] .ui-modal-art {
+  background: var(--ink-2);
+}
+
+/* In someone's party the leader's name ("♛ You") takes the element chip's
+   place under the fighter: a chip like the rank's beside it. */
+:root[data-ui="poster"] .lobby-layer .lobby-name.is-host .lobby-host-name {
+  border: 0;
+  border-radius: 0;
+  background: var(--ink);
+  color: var(--paper);
+}
+
+/* Quick Match's "Fight a bot" reads like the buttons beside it. */
+:root[data-ui="poster"] .quick-search .quick-actions button.primary {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}

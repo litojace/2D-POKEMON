@@ -38,3 +38,81 @@
 :root[data-ui="poster"] .st-action .st-brand-icon {
   opacity: 1;
 }
+
+/* Switches (Vibration, Full screen, Reduce motion): square. Off is an ink
+   block with a cream edge and cream words (the look underneath's navy and
+   blue are not Poster's); On is the accent block with ink words, as a
+   chosen tab or chip is. Graphics' Auto / High / Low: one square ink strip,
+   the chosen one the accent block, as Poster's other segmented choices
+   (kit.css, .ui-seg). --ui-text is the cream (white before the one chrome
+   of #673). */
+:root[data-ui="poster"] .prefs-switch {
+  border: 2px solid var(--ui-text);
+  border-radius: 0;
+  background: var(--ink);
+  color: var(--ui-text);
+  font-family: var(--font-body);
+  font-weight: 800;
+}
+:root[data-ui="poster"] .prefs-switch[aria-checked="true"] {
+  border-color: var(--el);
+  background: var(--el);
+  color: var(--ink);
+}
+:root[data-ui="poster"] .prefs-choice {
+  border: 0;
+  border-radius: 0;
+  background: var(--ink);
+}
+:root[data-ui="poster"] .framed-dialog .prefs-choice > button {
+  border: 0;
+  border-radius: 0;
+  color: var(--ui-text);
+  font-family: var(--font-body);
+  font-weight: 800;
+}
+:root[data-ui="poster"]
+  .framed-dialog
+  .prefs-choice
+  > button[aria-checked="true"] {
+  background: var(--el);
+  color: var(--ink);
+}
+
+/* One size for every button in Settings' rows, on every tab, in the Lobby
+   and in a match (owner, 28 Nov: "buttons next to each other or in the
+   same panel should be the same size"). Each is as wide as the widest
+   label, PLAYER CARD, with even padding, and 44 px tall. Each stands
+   against its column's edge (settings-screen.css ends every row with its
+   control), so the buttons make one straight column per side. The
+   switches are one size, and they and Graphics' strip are as tall as the
+   buttons. settings-tabs.spec holds all of it. In ems, so it grows with
+   the text size. */
+:root[data-ui="poster"]
+  .st-row
+  > :is(.st-action, #settings-practice, #settings-skills) {
+  width: 9.25em;
+  min-width: 0;
+  height: 44px;
+  min-height: 44px;
+  padding: 0 10px;
+  white-space: nowrap;
+}
+:root[data-ui="poster"] .st-row > .prefs-switch {
+  width: 72px;
+  height: 44px;
+}
+:root[data-ui="poster"] .st-graphics .prefs-choice {
+  box-sizing: border-box;
+  height: 44px;
+  padding: 3px;
+}
+:root[data-ui="poster"] .framed-dialog .st-graphics .prefs-choice > button {
+  height: 100%;
+  min-height: 0;
+}
+/* Log out is leaving: red words and icon on ink, as Leave party is. */
+:root[data-ui="poster"] .st-row > #settings-logout {
+  background: var(--ink);
+  color: var(--hot);
+}

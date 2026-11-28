@@ -467,9 +467,23 @@ for (const art of ["", "duel-storm-vs-forge"] as const)
             await at("#app-boot p"),
             await at("#app-boot .boot-progress"),
           ];
+      // No block behind the name (owner, 27 Nov): the words carry their
+      // own ink outline and shadow, the same on both screens.
+      const lettering = (brand: string) =>
+        page.evaluate((b) => {
+          const box = getComputedStyle(document.querySelector(b)!);
+          const h1 = getComputedStyle(document.querySelector(`${b} h1`)!);
+          return [box.backgroundColor, box.boxShadow, h1.textShadow];
+        }, brand);
+      const bootLettering = await lettering("#app-boot .boot-brand");
+      expect(bootLettering.slice(0, 2)).toEqual(["rgba(0, 0, 0, 0)", "none"]);
+      expect(bootLettering[2]).toMatch(/rgb\(13, 13, 15\)/);
       release();
       await page.waitForSelector(
         `#server-startup${art ? ".has-art" : ""} .server-startup-brand h1`,
+      );
+      expect(await lettering("#server-startup .server-startup-brand")).toEqual(
+        bootLettering,
       );
       await page.evaluate(() => document.fonts.ready);
       expect(

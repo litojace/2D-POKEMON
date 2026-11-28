@@ -1,0 +1,87 @@
+/* Poster audit, slice 4 (28 Nov 2026): what the raid list and the Spire's
+   page still took from the look underneath: a navy pill, glows, sheens,
+   round see-through icons. The Spire's violet and a boss's colour stay on
+   their own things; a route node's shape stays too, because the shape says
+   what waits there (a wave, an elite, a boss). raid-hall.css and spire.css
+   keep their rules for the look underneath. */
+
+/* A boss's difficulty stars, on its card and beside its name. */
+:root[data-ui="poster"] .rh-stars {
+  border-radius: 0;
+  background: var(--ink-3);
+}
+
+/* The Spire's "0 / 70" panel over its picture. */
+:root[data-ui="poster"] .sp-ascent {
+  border: 0;
+  border-radius: 0;
+  background: var(--ink);
+  box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.4);
+  color: var(--paper);
+}
+
+/* The chosen zone: its colour as a frame, no glow. */
+:root[data-ui="poster"] .sp-zone.is-on {
+  box-shadow: inset 0 0 0 1px var(--zone);
+}
+
+/* The route of a zone's ten floors: a flat ink strip; nodes are flat, with
+   no bevel and no glow. The next floor is the cream block every chosen
+   thing is; a cleared one keeps its green edge. */
+:root[data-ui="poster"] .sp-route {
+  border: 0;
+  border-radius: 0;
+  background: var(--ink-1);
+  box-shadow: none;
+}
+:root[data-ui="poster"] .sp-node {
+  background: var(--ink-3);
+  box-shadow: none;
+}
+:root[data-ui="poster"] .sp-milestone.is-done .sp-node {
+  background: var(--ink-3);
+}
+:root[data-ui="poster"] .sp-milestone.is-done .sp-route-link {
+  background: var(--ui-ok);
+  box-shadow: none;
+}
+:root[data-ui="poster"] .sp-milestone.is-next .sp-node {
+  border-color: var(--paper);
+  background: var(--paper);
+  box-shadow: none;
+  color: var(--ink);
+}
+:root[data-ui="poster"] .sp-milestone.is-next .sp-node-caption {
+  color: var(--paper);
+}
+:root[data-ui="poster"] .sp-milestone.is-boss .sp-node {
+  background: var(--ink-3);
+}
+
+/* The floor that waits next: flat ink, the Spire's colour as one edge. */
+:root[data-ui="poster"] .sp-preview {
+  border: 0;
+  border-left: 6px solid var(--boss, var(--paper));
+  border-radius: 0;
+  background: var(--ink-1);
+}
+
+/* A blessing: its icon in an ink square (a round, see-through violet). */
+:root[data-ui="poster"] .sp-blessing {
+  border: 0;
+  border-left: 4px solid var(--ink-3);
+  border-radius: 0;
+}
+:root[data-ui="poster"] .sp-blessing-icon {
+  border-radius: 0;
+  background: var(--ink-3);
+}
+/* The floor you picked on the route: a cream outline, no glow. Its number
+   stays ink when it is also the next floor's cream block. */
+:root[data-ui="poster"] .sp-milestone[aria-pressed="true"] .sp-node {
+  outline-color: var(--paper);
+  box-shadow: none;
+}
+:root[data-ui="poster"] .sp-milestone.is-next[aria-pressed="true"] .sp-node {
+  color: var(--ink);
+}

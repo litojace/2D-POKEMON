@@ -22,6 +22,7 @@ const SIZES = [
   { width: 667, height: 375, phone: true, island: false },
   { width: 844, height: 390, phone: true, island: false },
   { width: 852, height: 393, phone: true, island: true },
+  { width: 932, height: 430, phone: true, island: false },
   { width: 1440, height: 900, phone: false, island: false },
 ];
 const label = (s: (typeof SIZES)[number]) =>
@@ -57,6 +58,66 @@ const head = (page: Page) =>
       sideways: content.scrollWidth - content.clientWidth,
     };
   });
+
+/**
+ * Every control that ends a row of Settings, on every tab at once (a tab
+ * out of sight keeps its layout: data-pane-off). The owner, 28 Nov:
+ * "buttons next to each other or in the same panel should be the same
+ * size". So: one size for the buttons, wide enough for each label, a
+ * finger tall; one size for the switches; switches, Graphics' strip and
+ * buttons one height; each control against its row's (its column's) edge.
+ */
+async function sameSizes(page: Page) {
+  const all = await page.evaluate(() =>
+    Array.from(
+      document.querySelectorAll<HTMLElement>(
+        "#dialog .settings-pane .st-row > :is(button, .prefs-choice):last-child",
+      ),
+    ).map((c) => {
+      const r = c.getBoundingClientRect();
+      const row = c.parentElement!.getBoundingClientRect();
+      return {
+        id: c.id || c.className,
+        kind: c.classList.contains("prefs-switch")
+          ? "switch"
+          : c.classList.contains("prefs-choice")
+            ? "strip"
+            : "button",
+        // Layout sizes, not the box on screen: a dialog grows in (a scale
+        // under 1 while it opens), and on CI's slow renderer the check
+        // could land mid-way (43.05 px for a 44 px switch in a match).
+        // The edge is a difference within one row, so the scale can't
+        // move it off its 0.
+        w: c.offsetWidth,
+        h: c.offsetHeight,
+        edge: row.right - r.right,
+        whole: c.scrollWidth <= c.clientWidth + 1,
+      };
+    }),
+  );
+  const buttons = all.filter((c) => c.kind === "button");
+  const switches = all.filter((c) => c.kind === "switch");
+  expect(buttons.length).toBeGreaterThan(3);
+  const spread = (xs: number[]) => Math.max(...xs) - Math.min(...xs);
+  expect(
+    spread(buttons.map((b) => b.w)),
+    `button widths: ${buttons.map((b) => `${b.id} ${b.w.toFixed(1)}`).join(", ")}`,
+  ).toBeLessThanOrEqual(1);
+  if (switches.length)
+    expect(
+      spread(switches.map((b) => b.w)),
+      "switch widths",
+    ).toBeLessThanOrEqual(1);
+  expect(
+    spread(all.map((c) => c.h)),
+    `heights: ${all.map((c) => `${c.id} ${c.h.toFixed(1)}`).join(", ")}`,
+  ).toBeLessThanOrEqual(1);
+  for (const c of all) {
+    expect(c.h, `${c.id} a finger tall`).toBeGreaterThanOrEqual(43.5);
+    expect(c.edge, `${c.id} at its column's edge`).toBeLessThanOrEqual(1);
+    expect(c.whole, `${c.id}'s label whole`).toBe(true);
+  }
+}
 
 for (const size of SIZES)
   test(`the gear opens Settings, its tabs whole on the masthead at ${label(size)}`, async ({
@@ -139,6 +200,7 @@ for (const size of SIZES)
           `settings-tabs-${tab.toLowerCase()}-${label(size)}`,
         );
       }
+      await sameSizes(page);
       // The arrow keys move between the tabs.
       await page.locator('[data-settings-tab="about"]').focus();
       await page.keyboard.press("ArrowRight");
@@ -188,6 +250,7 @@ test("in a match Settings has no Account tab, nor Getting started", async ({
     await page.locator('[data-settings-tab="help"]').click();
     await expect(page.locator("#settings-guide")).toHaveCount(0);
     await expect(page.locator("#open-controls")).toBeVisible();
+    await sameSizes(page);
     const h = await head(page);
     expect(h.scroll).toBeLessThanOrEqual(1);
     await snap(page, info, "settings-tabs-match-help-844x390");
