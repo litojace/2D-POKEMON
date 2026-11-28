@@ -23,6 +23,13 @@ import { REPORT_CATEGORIES } from "../../../packages/shared/src/accounts";
 import { photoIdOf } from "../../../packages/shared/src/avatars";
 import { buttonIcon, type IconName } from "./menu-icons";
 import { TITLE_PRESETS, sortTitles } from "./player-nameplate";
+import {
+  COSMETIC_TIERS,
+  TIER_COLORS,
+  TIER_NAMES,
+} from "../../../packages/shared/src/cosmetic-tier";
+import { titleKnown, titleTier } from "../../../packages/shared/src/title-tier";
+import { titleTierSchema } from "../../../packages/shared/src/accounts";
 import { focusForTyping } from "./screen-pin";
 import {
   ACTIVITY_LABELS,
@@ -52,8 +59,27 @@ export interface AdminView {
 }
 export interface AdminHooks {
   api(path: string, body?: unknown): Promise<unknown>;
+  /** A title was saved or deleted: the game reads the tiers again. */
+  titlesChanged?(): void;
   openDialog(html: string): void;
   fighterName(id: string): string;
+}
+
+/** A title's tier in the list: the game's rule for its own titles, the
+ *  administrator's choice for the rest. */
+function tierLabel(t: Title) {
+  const tier = titleKnown(t.name) ? titleTier(t.name) : (t.tier ?? "common");
+  return `<span class="adm-tier" data-tier="${tier}" style="--tier:${TIER_COLORS[tier]}">${TIER_NAMES[tier]}</span>`;
+}
+/** The tier picker of the title form: the five tiers, Common first. One of
+ *  the game's own titles shows its tier instead: the rule decides it. */
+function tierPicker(title: Title | null) {
+  if (title && titleKnown(title.name)) {
+    const tier = titleTier(title.name);
+    return `<span class="adm-tier-fixed" data-tier="${tier}" style="--tier:${TIER_COLORS[tier]}"><b>${TIER_NAMES[tier]}</b> · set by the game's rules</span>`;
+  }
+  const now = title?.tier ?? "common";
+  return `<label class="adm-tier-pick"><span>Tier</span><select name="tier" aria-label="Title tier">${COSMETIC_TIERS.map((t) => `<option value="${t}"${t === now ? " selected" : ""}>${TIER_NAMES[t]}</option>`).join("")}</select></label>`;
 }
 
 const PAGE = 50;
@@ -907,7 +933,7 @@ export class AdminPanel {
           pending === `title-delete:${t.id}`
             ? `<div class="admin-confirm adm-confirm"><p><b>Delete “${escape(t.name)}”?</b> It is removed from every player who has it. This cannot be undone.</p><div class="admin-actions"><button type="button" class="adm-btn adm-btn-danger" data-confirm data-act="title-delete-yes" data-id="${t.id}">Delete title</button><button type="button" class="adm-btn" data-act="cancel">Cancel</button></div></div>`
             : "";
-        return `<article class="adm-title${t.active ? "" : " is-off"}" data-title-row="${t.id}"><span class="adm-swatch" style="--chip:${escape(t.color)}" aria-hidden="true"></span><div class="adm-title-text"><span class="title-chip" style="--chip:${escape(t.color)}">${escape(t.name)}</span><small>${escape(t.description || "No description")}</small></div><button type="button" class="adm-switch" role="switch" aria-checked="${t.active}" data-act="title-active" data-id="${t.id}" aria-label="${escape(t.name)} can be granted">${t.active ? "On" : "Off"}</button><button type="button" class="adm-icon-btn" data-act="title-edit" data-id="${t.id}" aria-label="Edit ${escape(t.name)}" title="Edit">${icon("edit")}</button><button type="button" class="adm-icon-btn adm-danger-icon" data-act="title-delete" data-id="${t.id}" aria-label="Delete ${escape(t.name)}" title="Delete">${icon("trash")}</button>${confirm}</article>`;
+        return `<article class="adm-title${t.active ? "" : " is-off"}" data-title-row="${t.id}"><span class="adm-swatch" style="--chip:${escape(t.color)}" aria-hidden="true"></span><div class="adm-title-text"><span class="title-chip" style="--chip:${escape(t.color)}">${escape(t.name)}</span>${tierLabel(t)}<small>${escape(t.description || "No description")}</small></div><button type="button" class="adm-switch" role="switch" aria-checked="${t.active}" data-act="title-active" data-id="${t.id}" aria-label="${escape(t.name)} can be granted">${t.active ? "On" : "Off"}</button><button type="button" class="adm-icon-btn" data-act="title-edit" data-id="${t.id}" aria-label="Edit ${escape(t.name)}" title="Edit">${icon("edit")}</button><button type="button" class="adm-icon-btn adm-danger-icon" data-act="title-delete" data-id="${t.id}" aria-label="Delete ${escape(t.name)}" title="Delete">${icon("trash")}</button>${confirm}</article>`;
       })
       .join("");
     return `${form}<p class="adm-hint">Titles that are off stay with the players who have them but can't be granted.</p><div class="adm-list adm-titles">${
@@ -930,7 +956,7 @@ export class AdminPanel {
       mode === "save"
         ? `<input name="description" maxlength="160" placeholder="Description (optional)" value="${escape(title?.description ?? "")}" aria-label="Title description">`
         : ""
-    }<div class="adm-actions"><button class="adm-btn adm-btn-primary">${icon("save")}<span>${mode === "grant" ? "Create &amp; grant" : title ? "Save" : "Create"}</span></button><button type="button" class="adm-btn" data-act="cancel">Cancel</button></div></form>`;
+    }${tierPicker(title)}<div class="adm-actions"><button class="adm-btn adm-btn-primary">${icon("save")}<span>${mode === "grant" ? "Create &amp; grant" : title ? "Save" : "Create"}</span></button><button type="button" class="adm-btn" data-act="cancel">Cancel</button></div></form>`;
   }
 
   // -------------------------------------------------------------- events
@@ -1150,7 +1176,10 @@ export class AdminPanel {
         const name = titleName(id);
         return this.act(
           button,
-          () => api("/api/admin/titles/delete", { id, confirm: true }),
+          async () => {
+            await api("/api/admin/titles/delete", { id, confirm: true });
+            this.hooks.titlesChanged?.();
+          },
           `Title “${name}” was deleted.`,
         );
       }
@@ -1347,8 +1376,11 @@ export class AdminPanel {
     const name = String(fields.get("name") ?? "").trim();
     const color = String(fields.get("color") ?? "#ffe58f");
     const existing = this.titles.find((t) => t.id === form.dataset.id);
-    const save = () =>
-      this.hooks.api("/api/admin/titles", {
+    // The tier the administrator picked. One of the game's own titles has
+    // no picker (its tier is the game's rule), so none is sent for it.
+    const picked = titleTierSchema.safeParse(fields.get("tier"));
+    const save = async () => {
+      const id = (await this.hooks.api("/api/admin/titles", {
         id: existing?.id ?? null,
         name,
         description:
@@ -1357,7 +1389,11 @@ export class AdminPanel {
           "An arena honor awarded by an administrator.",
         color,
         active: existing?.active ?? true,
-      }) as Promise<string>;
+        ...(picked.success ? { tier: picked.data } : {}),
+      })) as string;
+      this.hooks.titlesChanged?.();
+      return id;
+    };
     if (form.dataset.mode === "grant") {
       const row = this.row(form);
       if (!row) return;

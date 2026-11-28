@@ -39,8 +39,9 @@ import { SPIRE_REWARDS } from "./spire.js";
  *    first names, the Farm's, renamed raid titles) are named in
  *    NAMED_TITLE_TIERS: one line each.
  *
- * A title this table doesn't know (one an admin made by hand) is Common: it
- * shows in its own colour, with no effect. A new title gets its tier by its
+ * A title this table doesn't know (one an administrator made by hand) has
+ * the tier the administrator chose for it (setStoredTitleTiers), Common
+ * unless they chose another. A new title gets its tier by its
  * rule; tests/unit/title-tier.test.ts fails on one a migration adds that
  * has none.
  */
@@ -191,12 +192,32 @@ export const TITLE_TIER_ROWS: readonly TitleTierRow[] = [
 
 const BY_NAME = new Map(TITLE_TIER_ROWS.map((r) => [r.name, r.tier]));
 
+/**
+ * Titles an administrator made, with the tier they chose for each (the
+ * database's arena_titles.tier, read through arena_title_tiers). Only for
+ * titles this table doesn't know: the game's own keep their rule.
+ */
+let stored = new Map<string, TitleTier>();
+/** Take the administrators' tiers ({ name: tier }); anything else in it is dropped. */
+export function setStoredTitleTiers(tiers: unknown) {
+  const next = new Map<string, TitleTier>();
+  if (tiers && typeof tiers === "object")
+    for (const [name, tier] of Object.entries(tiers))
+      if ((COSMETIC_TIERS as string[]).includes(tier as string))
+        next.set(name, tier as TitleTier);
+  stored = next;
+}
+
 /** Whether the table knows this title (an admin's hand-made one it doesn't). */
 export const titleKnown = (name: string) => BY_NAME.has(name);
 
-/** A title's tier, by its name; Common for none and for one not in the table. */
+/**
+ * A title's tier, by its name: the table's for the game's own titles, the
+ * administrator's choice for one they made, Common for none and for one
+ * nobody gave a tier.
+ */
 export function titleTier(name: string | null | undefined): TitleTier {
-  return (name && BY_NAME.get(name)) || "common";
+  return (name && (BY_NAME.get(name) ?? stored.get(name))) || "common";
 }
 
 /** 0 (Common) to 4 (Mythical). */
