@@ -177,21 +177,21 @@ five hashtags, `#ElementArena`, no other game's name, at most 2,200
 characters). Reports since December 2025 say Instagram caps posts at five
 hashtags; five works under either rule.
 
-| Post                        | Picture                                                                  |
-| --------------------------- | ------------------------------------------------------------------------ |
-| 1. Welcome                  | the duel at dusk (loading art), "Open beta · free in your browser"       |
-| 2. Duels                    | a real duel, the charged beam into the lightning field                   |
-| 3. The roster               | the 18 fighters' drawings on their elements' colours                     |
-| 4. Raid boss: Lumiwick      | Lumiwick's raid splash                                                   |
-| 5. 2v2 teams                | a real 2v2                                                               |
-| 6. Champion spotlight       | Pyranda and its kit                                                      |
-| 7. Free-for-all             | a real four-way fight in the Ember Forge                                 |
-| 8. The Shop: Mythical skins | a Reel (below)                                                           |
-| 9. The Spire                | a real Spire floor                                                       |
-| 10. Found a bug? Tell us.   | the game's Menu, rings on the gear and Report a problem (report.spec.ts) |
-| 11. Play it like an app     | a carousel from a real iPhone: Safari's steps to the home screen (above) |
-| 12. The Plaza               | the Plaza in an Orb Shower, with made-up players round the fountain      |
-| 13. Bring your friends      | the Friends sheet: a request, Invite, Join and Watch, the friend code    |
+| Post                        | Picture                                                                    |
+| --------------------------- | -------------------------------------------------------------------------- |
+| 1. Welcome                  | the duel at dusk (loading art), "Open beta · free in your browser"         |
+| 2. Duels                    | a real duel, the charged beam into the lightning field                     |
+| 3. The roster               | the 18 fighters' drawings on their elements' colours                       |
+| 4. Raid boss: Lumiwick      | Lumiwick's raid splash                                                     |
+| 5. 2v2 teams                | a real 2v2                                                                 |
+| 6. Champion spotlight       | Pyranda and its kit                                                        |
+| 7. Free-for-all             | a real four-way fight in the Ember Forge                                   |
+| 8. The Shop: Mythical skins | a Reel (below)                                                             |
+| 9. The Spire                | a real Spire floor                                                         |
+| 10. Found a bug? Tell us.   | the game's Menu, rings on the gear and Report a problem (report.spec.ts)   |
+| 11. Play it like an app     | a carousel from a real iPhone: Safari's steps to the home screen (above)   |
+| 12. The Plaza               | the Plaza in an Orb Shower, made-up players with their titles (every tier) |
+| 13. Bring your friends      | the Friends sheet: a request, Invite, Join and Watch, the friend code      |
 
 **Post 8**: Post `08-skins-reel.mp4` as a **Reel**, with `08-skins-reel-cover.jpg` as
 its cover: the three skins' Entrance, Victory and Ultimate with their full
