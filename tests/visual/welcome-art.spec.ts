@@ -78,6 +78,11 @@ test("the illustrated grips stay on the panel through resizes and form changes",
             document
               .querySelector(".gate-intro .beta-tag")
               ?.getBoundingClientRect().right ?? 0,
+          beta:
+            document
+              .querySelector(".gate-intro .beta-tag")
+              ?.getBoundingClientRect()
+              .toJSON() ?? null,
           menu: document
             .querySelector(".quick-menu-trigger")!
             .getBoundingClientRect()
@@ -113,6 +118,42 @@ test("the illustrated grips stay on the panel through resizes and form changes",
             menu.bottom <= terradon.y ||
             menu.top >= terradon.bottom,
         ).toBe(true);
+      }
+      // Voltkit's flight art keeps clear of the BETA tag above it: signing
+      // up, the taller form had lifted its ear onto the tag's corner at
+      // 667 × 375 (themes/poster/onboarding.css).
+      const tag = placement.beta;
+      if (tag)
+        expect(
+          voltkit.y >= tag.bottom ||
+            voltkit.x >= tag.right ||
+            voltkit.x + voltkit.width <= tag.left ||
+            voltkit.bottom <= tag.top,
+          `${width}×${height}, ${mode}: Voltkit clear of BETA`,
+        ).toBe(true);
+      // With the Dynamic Island the fighters, the tag and MENU keep out of
+      // its insets at the sides.
+      if (width === 852) {
+        for (const [what, box] of [
+          ["Voltkit", { left: voltkit.x, right: voltkit.x + voltkit.width }],
+          [
+            "Terradon",
+            { left: terradon.x, right: terradon.x + terradon.width },
+          ],
+          [
+            "the pair",
+            { left: reaction.x, right: reaction.x + reaction.width },
+          ],
+          ["BETA", tag ?? { left: ISLAND.left, right: ISLAND.left }],
+          ["MENU", placement.menu],
+        ] as const) {
+          expect(box.left, `${what} left of the island`).toBeGreaterThanOrEqual(
+            ISLAND.left,
+          );
+          expect(box.right, `${what} right of the island`).toBeLessThanOrEqual(
+            width - ISLAND.right,
+          );
+        }
       }
       expect(placement.overflow, `${width}×${height}, ${mode}`).toBe(false);
 

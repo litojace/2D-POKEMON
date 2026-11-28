@@ -422,6 +422,15 @@
   background-image: url("/assets/welcome/signup-friends-reaction.webp");
 }
 @media (max-height: 700px) and (orientation: landscape) {
+  /* Signing up on a phone held sideways, the form stands taller, so 22% of
+     it reached up past the heading into the BETA tag (667 x 375: Voltkit's
+     ear on its corner). Lower on the wall, the art keeps clear of the tag
+     (accounts.ts sets the mode on the stage). */
+  :root[data-ui="poster"]
+    .gate-account-stage[data-auth-mode="signup"]
+    .gate-action-voltkit {
+    top: 32%;
+  }
   :root[data-ui="poster"] .welcome-gate {
     --peek-size: min(
       clamp(96px, 17vw, 150px),
@@ -445,7 +454,10 @@
   }
 }
 @media (max-width: 600px) and (orientation: landscape) {
-  :root[data-ui="poster"] .gate-action-voltkit {
+  :root[data-ui="poster"] .gate-action-voltkit,
+  :root[data-ui="poster"]
+    .gate-account-stage[data-auth-mode="signup"]
+    .gate-action-voltkit {
     top: 48%;
   }
   :root[data-ui="poster"] .welcome-gate .gate-intro h1 {
