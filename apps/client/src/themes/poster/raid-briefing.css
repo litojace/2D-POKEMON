@@ -1,0 +1,33 @@
+/* Poster: a raid briefing's steps (the audit, 28 Nov).
+   Each step's closing cue ("The boss hits the pillar and breaks its
+   armor.") was a whole sentence in the element colour: now cream words
+   after a small mark in that colour. The labels in the step's picture
+   (PILLAR, REVIVING, CORE OPEN; raid-guide-art.ts) were 9 px in a font the
+   game doesn't load, pale blue: now the game's own type, cream with an
+   ink halo, a size a phone reads. */
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .rc-steps
+  .rc-step-cue {
+  color: var(--ui-text);
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .rc-steps
+  .rc-step-cue::before {
+  content: "▸ ";
+  color: var(--el);
+}
+:root[data-ui="poster"] .raid-guide-scene text {
+  fill: var(--paper);
+  font:
+    800 calc(11px * var(--text-scale, 1)) var(--font-body),
+    sans-serif;
+  letter-spacing: 0.06em;
+  /* An ink halo, so a label set on the drawing's lines still reads (the
+     bare-word edge, for SVG text). */
+  paint-order: stroke;
+  stroke: var(--ink);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
