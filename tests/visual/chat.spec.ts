@@ -7,6 +7,7 @@ import {
   createRoom,
   inside,
 } from "./helpers";
+import { playersLook } from "./players-look";
 
 /**
  * In-game chat on phones (chat/chat-ui.ts, docs/chat-plan.md):
@@ -953,3 +954,68 @@ test("notify me of friends' messages: the gear's switch, and when it can't be of
     await iphone.close();
   }
 });
+
+// A refused message (a link): the note under the field is cream words
+// after the amber warning sign, on one line (themes/poster/notices.css).
+// It was a whole sentence in pink.
+for (const size of [
+  { name: "844x390", width: 844, height: 390 },
+  { name: "667x375", width: 667, height: 375 },
+])
+  test(`a refused message says why, in cream after a warning sign (${size.name})`, async ({
+    browser,
+  }, info) => {
+    const context = await browser.newContext({
+      viewport: { width: size.width, height: size.height },
+      isMobile: true,
+      hasTouch: true,
+    });
+    try {
+      // In the look players have: the rest of this file still measures the
+      // look underneath, where this note is a sentence in pink.
+      await playersLook(context);
+      const page = await context.newPage();
+      const errors = await openHub(page);
+      await page.evaluate(
+        ([me, pal]) => {
+          const w = window as any;
+          w.__sock.fire("chat-config", { freeText: true });
+          w.__sock.fire("party", {
+            code: "PARTY2",
+            leader: me,
+            members: [
+              { id: me, name: "tester", character: "voltkit" },
+              { id: pal, name: "Pal", character: "tidefin" },
+            ],
+          });
+        },
+        [ME, PAL],
+      );
+      await page.click("#chat-button");
+      await page.locator("#chat-input").fill("look at http://example.com/free");
+      await page.locator("#chat-drawer .chat-send").click();
+      const note = page.locator("#chat-drawer .chat-note");
+      await expect(note).toHaveText("Links can't be sent in chat.");
+      const look = await note.evaluate((n) => {
+        const cs = getComputedStyle(n),
+          sign = getComputedStyle(n, "::before"),
+          r = n.getBoundingClientRect();
+        return {
+          words: cs.color,
+          sign: sign.backgroundColor,
+          signWidth: parseFloat(sign.width),
+          lines: Math.round(r.height / parseFloat(cs.lineHeight)),
+          inView: r.bottom <= innerHeight && r.right <= innerWidth,
+        };
+      });
+      expect(look.words).toBe("rgb(244, 234, 213)");
+      expect(look.sign).toBe("rgb(255, 162, 31)");
+      expect(look.signWidth).toBeGreaterThanOrEqual(10);
+      expect(look.lines).toBe(1);
+      expect(look.inView).toBe(true);
+      await snap(page, info, `chat-refused-${size.name}`);
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
