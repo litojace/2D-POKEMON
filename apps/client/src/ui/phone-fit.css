@@ -21,7 +21,7 @@
       #hub-scenes > button,
       #account-coins > *,
       #account-profile,
-      .header-menu > summary,
+      .home-settings,
       .lobby-step,
       #lobby-mode,
       .home-panel-close,
@@ -56,7 +56,7 @@
     :is(
       #account-coins > *,
       #account-profile,
-      .header-menu > summary,
+      .home-settings,
       .lobby-step,
       #lobby-mode,
       .home-panel-close,

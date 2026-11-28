@@ -12,8 +12,8 @@ rejected.
   sticker beside the ELEMENT ARENA wordmark on index.html's boot screen, the
   loading curtain (`server-connection.ts`), the title screen
   (`title-screen.ts`) and the sign-in screen (`home-screen.ts`). It is not
-  in the battle HUD or the Lobby's top bar. Settings → About gets one "Open
-  beta" line with the support link (the gear-menu remodel, gated on the
+  in the battle HUD or the Lobby's top bar. Settings → About has one "Open
+  beta" line with the Support link (`settingsMarkup` in main.ts, behind the
   same flag).
 - **The website** (`apps/site`): an "Open beta" sticker beside "Free to
   play" and one line under the hero's buttons (docs/website.md, "Open

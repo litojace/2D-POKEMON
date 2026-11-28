@@ -90,7 +90,7 @@ for (const viewport of [
       );
       // Another screen replaces Raids; nothing of it stays behind.
       await page.click(".rh-room .ui-close");
-      await page.evaluate(() => document.getElementById("settings")!.click());
+      await page.evaluate(() => document.getElementById("home-settings")!.click());
       await expect(page.locator(".settings-screen")).toBeVisible();
       await expect(page.locator(".rh-room")).toHaveCount(0);
       expect(errors).toEqual([]);

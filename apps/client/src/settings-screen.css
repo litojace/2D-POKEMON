@@ -1,6 +1,6 @@
-/* Settings (settingsMarkup in main.ts): Sound on the left, Display or This
-   match on the right, each a card of rows: a label (and a line about it)
-   with its control at the end. The cards share a height, so the two columns
+/* Settings (settingsMarkup in main.ts), its Game tab: Sound on the left,
+   Display or This match on the right, each a card of rows: a label (and a
+   line about it) with its control at the end. The cards share a height, so the two columns
    end together. Phones held sideways show everything without scrolling:
    the rows drop their second line there. The sliders, switch and Auto /
    High / Low keep their shared look (style.css, lobby.css). */
@@ -75,6 +75,87 @@
   margin: 4px 0 0;
 }
 
+/* The tabs share one cell, so Settings keeps its tallest tab's height and
+   doesn't jump as you switch. The others are out of sight, not gone (the
+   page's [hidden] would take their room): main.ts marks them inert. */
+.settings-screen {
+  display: grid;
+}
+.settings-pane {
+  grid-area: 1 / 1;
+  align-self: start;
+  min-width: 0;
+}
+.settings-pane[data-pane-off] {
+  visibility: hidden;
+}
+/* The tabs on the masthead, after the title (dialog.ts moves them there:
+   data-dialog-head-tabs). Each tab is a finger tall; the open one is
+   underlined. */
+.settings-tabs {
+  display: flex;
+  flex: 1 1 auto;
+  align-self: stretch;
+  min-width: 0;
+  gap: 2px;
+}
+.settings-tab {
+  flex: 0 1 auto;
+  min-width: 44px;
+  min-height: 44px;
+  margin: 0;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ui-dim);
+  font: 700 var(--fs-small) / 1 var(--font-body);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.settings-tab:is(:hover, :focus-visible) {
+  color: var(--ui-text);
+}
+.settings-tab[aria-selected="true"] {
+  color: var(--ui-text);
+  box-shadow: inset 0 -3px 0 var(--ui-accent);
+}
+/* Help, Account and About: one card of rows, two columns where there is
+   room. A row's first line in each column has no rule above it. */
+.st-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 24px;
+}
+.st-list > .st-row:nth-child(-n + 2) {
+  border-top: 0;
+}
+/* The server's line (About, only while it isn't connected) spans both. */
+.st-list > .st-server {
+  grid-column: 1 / -1;
+}
+.st-list > .st-server + .st-row,
+.st-list > .st-server + .st-row + .st-row {
+  border-top: 0;
+}
+.st-server .st-value {
+  color: var(--ui-warn, #ffb86b);
+}
+.st-value {
+  flex: none;
+  color: var(--ui-text);
+  font: 700 var(--fs-small) / 1.2 var(--font-body);
+  font-variant-numeric: tabular-nums;
+}
+.st-row > .st-action {
+  min-width: 112px;
+  min-height: 44px;
+  margin: 0;
+  justify-content: center;
+}
+
 /* A phone held sideways: one line per row. */
 @media (orientation: landscape) and (max-height: 500px) {
   .st-cols {
@@ -110,11 +191,25 @@
     width: 172px;
     min-height: 36px;
   }
+  /* Help, Account and About have the room: their rows keep their line. */
+  .st-list .st-row-text > small {
+    display: block;
+  }
+  .st-list .st-row {
+    padding: 4px 0;
+  }
+  .settings-tab {
+    padding: 0 10px;
+  }
 }
 /* A phone held upright: one column. */
 @media (max-width: 620px) and (orientation: portrait) {
-  .st-cols {
+  .st-cols,
+  .st-list {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .st-list > .st-row:nth-child(2) {
+    border-top: 1px solid var(--ui-line);
   }
 }
 

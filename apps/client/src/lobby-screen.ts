@@ -297,6 +297,8 @@ export interface LobbyView {
   /** The party's members as themselves (avatars), for its bar. */
   partyFaces?: { name: string; avatar: string | null; leader: boolean }[];
   economy?: Economy;
+  /** Today's daily gift is there to claim (on top of Missions). */
+  giftWaiting?: boolean;
   /** Your equipped raid look (colours, aura...), shown on your fighter. */
   look?: RaidLoadout;
   /** Friend requests waiting for an answer. */
@@ -1178,9 +1180,11 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
         '[data-badge-for="missions"]',
       )!;
       // A plain red dot, no count: missions come back every day, so a
-      // number would sit there all day and teach players to skip red.
+      // number would sit there all day and teach players to skip red. It
+      // also says today's gift is waiting on top of Missions.
       missionBadge.hidden =
-        !missions.length || !left || featureLocked("missions", view.level);
+        ((!missions.length || !left) && !view.giftWaiting) ||
+        featureLocked("missions", view.level);
       missionBadge.classList.add("is-dot");
       // The Spire, once open: its card above Missions (a shortcut past the
       // Raid Hub), glowing with a dot on Raids while something is new.

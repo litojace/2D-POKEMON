@@ -5,7 +5,7 @@
  * them.
  *
  * It shows on the Lobby (in the Journey card's place) for a new account,
- * until every step is done or the player hides it; the Menu brings it back.
+ * until every step is done or the player hides it; Settings → Help brings it back.
  * Steps the server already knows about (a Cragmuff clear, something worn)
  * come from the account; the rest (a bot match finished)
  * are remembered per account in this browser, like seen rewards.
@@ -50,7 +50,7 @@ export interface GuideSave {
   done: Partial<Record<GuideStep, true>>;
   /** The guide was shown once: it stays until done or hidden. */
   started?: boolean;
-  /** The player hid it (the Menu shows it again). */
+  /** The player hid it (Settings → Help shows it again). */
   hidden?: boolean;
 }
 /** What the account itself says (from the server). */
@@ -70,7 +70,7 @@ export interface GuideView {
   active: boolean;
 }
 
-/** New accounts start the guide on their own; older ones from the Menu. */
+/** New accounts start the guide on their own; older ones from Settings → Help. */
 export const GUIDE_NEW_LEVEL = 5;
 const KEY = (account: string) => `arena-guide:${account}`;
 

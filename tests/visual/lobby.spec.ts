@@ -37,7 +37,7 @@ async function boxes(page: Page) {
     add("profile", document.querySelector("#account-profile"));
     add("scenes", document.querySelector("#hub-scenes"));
     add("coins", document.querySelector("#account-coins > *"));
-    add("menu", document.querySelector(".header-menu > summary"));
+    add("menu", document.querySelector("#home-settings"));
     add("rail", document.querySelector(".lobby-rail"));
     add("party", document.querySelector(".lobby-party"));
     add("nameplate", document.querySelector(".lobby-nameplate"));
@@ -253,7 +253,7 @@ for (const view of [
         const header = Math.max(
           r("#account-profile").bottom,
           r("#account-coins > *").bottom,
-          r(".header-menu > summary").bottom,
+          r("#home-settings").bottom,
           r("#hub-scenes").bottom,
         );
         return {

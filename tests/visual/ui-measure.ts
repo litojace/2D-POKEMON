@@ -123,7 +123,6 @@ export async function layoutProblems(
       add("scenes", "#hub-scenes");
       add("coins", "#account-coins > *");
       add("settings", "#home-settings");
-      add("menu", ".header-menu > summary");
       add("rail", ".lobby-rail");
       add("panel", ".ui-panel");
       if (document.querySelector(".ui-sheet")) add("play", ".lobby-play");

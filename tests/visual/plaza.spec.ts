@@ -25,7 +25,7 @@ async function hudBoxes(page: Page) {
       ["profile", "#account-profile"],
       ["scenes", "#hub-scenes"],
       ["coins", "#account-coins > *"],
-      ["menu", ".header-menu > summary"],
+      ["menu", "#home-settings"],
       ["event", "#pz-event"],
       ["clock", "#pz-clock"],
       ["quests", "#pz-quests"],
@@ -367,7 +367,7 @@ test("the Plaza rests behind Settings and wakes when it closes", async ({
   const errors = await openPlaza(page);
   const layer = page.locator(".plaza-layer");
   await expect(layer).toHaveAttribute("data-frozen", "false");
-  await page.evaluate(() => document.getElementById("settings")!.click());
+  await page.evaluate(() => document.getElementById("home-settings")!.click());
   await expect(page.locator("dialog[open]")).toHaveCount(1);
   await expect(layer).toHaveAttribute("data-frozen", "true", {
     timeout: 15_000,
@@ -1495,7 +1495,7 @@ test("on a short phone the emote wheel and a toast keep clear of the HUD", async
     const wheel = await rect("#pz-wheel");
     for (const s of [
       "#account-coins > *",
-      ".header-menu > summary",
+      "#home-settings",
       "#pz-clock",
       ".pz-left",
       ".pz-actions",

@@ -93,6 +93,11 @@ export interface GiftDialogOptions {
   claim(): Promise<DailyGiftClaim | string>;
   /** Closed (by Later, Got it, Escape or a tap outside). */
   onClose(state: DailyGiftState): void;
+  /**
+   * Claim as it opens (Missions' Claim): the calendar comes up showing what
+   * today gave and what tomorrow's is, one tap instead of two.
+   */
+  claimNow?: boolean;
 }
 export interface GiftDialog {
   readonly open: boolean;
@@ -170,6 +175,7 @@ export function openGiftDialog(o: GiftDialogOptions): GiftDialog {
   document.addEventListener("keydown", onKey, true);
   document.body.append(scrim);
   draw();
+  if (o.claimNow) void claim();
   fadeIn([scrim]);
   const modal = scrim.querySelector(".ui-modal");
   if (modal)

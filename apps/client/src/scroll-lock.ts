@@ -1,5 +1,5 @@
 /**
- * Freeze the page behind the Menu dropdown and its dialogs.
+ * Freeze the page behind dialogs.
  *
  * `overflow: hidden` alone does not stop touch scrolling on every iOS version,
  * so the page is pinned with `position: fixed` at its current offset and put
@@ -39,7 +39,7 @@ export function setScrollLock(on: boolean) {
     // The hub scenes (Lobby, Plaza) and a battle are fixed to the
     // screen too, whatever the document measures: on iOS Safari the body's
     // 100vh is the toolbar-less height, so the page looked a little taller
-    // than the screen and opening the Menu in a hub scene pinned it, lifting
+    // than the screen and opening a dialog in a hub scene pinned it, lifting
     // the scene off the bottom of the screen.
     const fixedScreen = ["hub-active", "battle-active"].some((name) =>
       body.classList?.contains(name),

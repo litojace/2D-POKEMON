@@ -210,7 +210,7 @@ test("locked bosses keep their navigation and unlock instruction visible", async
     await expect(notice).toBeInViewport();
     await snap(page, info, "hub-locked-mobile");
     await page.click(".rh-room .ui-close");
-    await page.evaluate(() => document.getElementById("settings")!.click());
+    await page.evaluate(() => document.getElementById("home-settings")!.click());
     await expect(page.locator(".settings-screen")).toBeVisible();
     await expect(page.locator(".rh-room")).toHaveCount(0);
     expect(errors).toEqual([]);

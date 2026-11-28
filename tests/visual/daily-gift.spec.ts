@@ -8,7 +8,9 @@ onPlayersLook();
 // The daily gift (daily-gift.ts): its dialog opens on the Lobby while
 // today's gift waits, shows seven days with today's lit, Claim takes it and
 // the dialog then says what it gave and what tomorrow's is; Later puts it
-// away for this visit and the Menu brings it back.
+// away for this visit and the card on top of Missions brings it back
+// (owner, 28 Nov 2026: it left the gear's menu), its Claim taking it as the
+// calendar opens.
 const today = () =>
   new Intl.DateTimeFormat("en-CA", { timeZone: "America/Los_Angeles" }).format(
     new Date(),
@@ -38,6 +40,12 @@ async function withGift(
   );
 }
 const dialog = (page: Page) => page.locator("[data-gift] .gift-modal");
+const card = (page: Page) => page.locator(".missions-sheet .missions-gift");
+/** Missions, from the Lobby rail; the gift's card sits on top. */
+async function openMissions(page: Page) {
+  await page.click('.lobby-rail [data-lobby-action="missions"]');
+  await expect(card(page)).toBeVisible();
+}
 type Box = { x: number; y: number; width: number; height: number };
 
 const SIZES = [
@@ -145,11 +153,35 @@ for (const size of SIZES) {
       await snap(page, info, `gift-taken-${name}`);
       await modal.locator("[data-gift-close]").click();
       await expect(page.locator("[data-gift]")).toHaveCount(0);
-      // Taken: it doesn't come back on its own, and the Menu shows it.
+      // Taken: it doesn't come back on its own, and Missions shows it.
       await page.waitForTimeout(600);
       await expect(page.locator("[data-gift]")).toHaveCount(0);
-      await page.click("#header-menu > summary");
-      await page.click("#daily-gift");
+      await openMissions(page);
+      await expect(card(page).locator(".missions-gift-text > b")).toHaveText(
+        "Taken: 75 coins",
+      );
+      await expect(
+        card(page).locator(".missions-gift-text > small"),
+      ).toHaveText("Tomorrow: 150 XP");
+      await expect(
+        card(page).locator(".missions-gift-days > .is-taken"),
+      ).toHaveCount(3);
+      await snap(page, info, `gift-missions-taken-${name}`);
+      // The card and its button whole, inside the sheet.
+      const sheet = (await page.locator(".missions-sheet").boundingBox())!;
+      for (const box of [
+        (await card(page).boundingBox())!,
+        (await card(page).locator("[data-gift-open]").boundingBox())!,
+      ]) {
+        expect(box.x).toBeGreaterThanOrEqual(sheet.x - 1);
+        expect(box.x + box.width).toBeLessThanOrEqual(
+          sheet.x + sheet.width + 1,
+        );
+      }
+      expect(
+        (await card(page).locator("[data-gift-open]").boundingBox())!.height,
+      ).toBeGreaterThanOrEqual(44);
+      await card(page).locator("[data-gift-open]").click();
       await expect(dialog(page).locator(".ui-title")).toHaveText(
         "Today's gift is yours",
       );
@@ -164,12 +196,17 @@ for (const size of SIZES) {
   });
 }
 
-test("Later puts it away for this visit; Escape and a tap outside close it too", async ({
+test("Later puts it away for this visit; Missions' Claim takes it; Escape and a tap outside close it", async ({
   page,
-}) => {
+}, info) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await withGift(page, { day: 1 }, { coins: 50, xp: 0, item: null });
+  // No missions today: the rail's Missions dot is the gift's alone.
+  await page.addInitScript(() => {
+    (window as any).__economyPatch = { missions: [] };
+  });
   const errors = await openHub(page);
+  const dot = page.locator('.lobby-rail [data-badge-for="missions"]');
   await expect(dialog(page)).toBeVisible();
   await dialog(page).locator('[data-gift-close]:has-text("Later")').click();
   await expect(page.locator("[data-gift]")).toHaveCount(0);
@@ -179,16 +216,32 @@ test("Later puts it away for this visit; Escape and a tap outside close it too",
   await page.waitForTimeout(600);
   await expect(page.locator("[data-gift]")).toHaveCount(0);
   expect(await page.evaluate(() => (window as any).__giftClaims ?? 0)).toBe(0);
-  // The Menu opens it, still to claim.
-  await page.click("#header-menu > summary");
-  await page.click("#daily-gift");
-  await expect(dialog(page).locator("[data-gift-claim]")).toBeVisible();
+  // Still to claim: the rail's dot says so, and Missions has it on top.
+  await expect(dot).toBeVisible();
+  await openMissions(page);
+  await expect(card(page).locator(".missions-gift-text > b")).toHaveText(
+    "Today: 50 coins",
+  );
+  await snap(page, info, "gift-missions-waiting-1440x900");
+  // Claim takes it as the calendar opens: one tap.
+  await card(page).locator("[data-gift-open]").click();
+  await expect(dialog(page).locator(".ui-title")).toHaveText(
+    "Day 1: +50 coins",
+  );
+  expect(await page.evaluate(() => (window as any).__giftClaims)).toBe(1);
   await page.keyboard.press("Escape");
   await expect(page.locator("[data-gift]")).toHaveCount(0);
-  await page.click("#header-menu > summary");
-  await page.click("#daily-gift");
+  // The card now says what's next, and the dot has gone.
+  await expect(card(page).locator(".missions-gift-text > b")).toHaveText(
+    "Taken: 50 coins",
+  );
+  await card(page).locator("[data-gift-open]").click();
+  await expect(dialog(page)).toBeVisible();
   await page.locator("[data-gift]").click({ position: { x: 8, y: 8 } });
   await expect(page.locator("[data-gift]")).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(dot).toBeHidden();
+  expect(await page.evaluate(() => (window as any).__giftClaims)).toBe(1);
   expect(errors).toEqual([]);
 });
 
@@ -264,10 +317,10 @@ test("a brand-new player plays first: no gift dialog before their first match", 
   await expect(page.locator("#lobby-play")).toBeVisible();
   await page.waitForTimeout(1500);
   await expect(page.locator("[data-gift]")).toHaveCount(0);
-  // The Menu still shows it to anyone who looks.
-  await page.click("#header-menu > summary");
-  await page.click("#daily-gift");
-  await expect(dialog(page).locator("[data-gift-claim]")).toBeVisible();
+  // Missions opens at Lv 3: no dot for a gift a new player can't reach yet.
+  await expect(
+    page.locator('.lobby-rail [data-badge-for="missions"]'),
+  ).toBeHidden();
   expect(errors).toEqual([]);
 });
 

@@ -14,6 +14,12 @@ import {
   MISSION_BY_ID,
   type Economy,
 } from "../../../../packages/shared/src/shop";
+import {
+  DAILY_GIFT_DAYS,
+  giftOn,
+  type DailyGiftState,
+} from "../../../../packages/shared/src/daily-gifts";
+import { giftLabel, tomorrowGift } from "../daily-gift";
 import { missionFeatExamples, missionHelp } from "../mission-help";
 import { menuIcon } from "../menu-icons";
 import { picksCountdown } from "../shop-ui";
@@ -39,6 +45,8 @@ export interface MissionsData {
   problem?: string;
   /** Not loaded yet. */
   loading?: boolean;
+  /** Where this account is in the daily gift's calendar (once loaded). */
+  gift?: DailyGiftState | null;
 }
 export interface MissionsView {
   /** The mission whose "how to complete" is open (its slot), if any. */
@@ -129,6 +137,28 @@ function list(e: Economy, view: MissionsView) {
   return `${summary}${rows}${streak(e)}<p class="ui-note missions-status" role="status">${esc(view.status)}</p>${notes}`;
 }
 
+/**
+ * The daily gift, on top of Missions (owner, 28 Nov 2026: it left the
+ * gear's menu): the day of seven, today's gift with Claim, or what tomorrow
+ * brings once it is taken. Its seven days as a track; Claim and Calendar
+ * open the whole calendar (daily-gift.ts), Claim taking it as it opens.
+ */
+export function giftCard(s: DailyGiftState) {
+  const today = giftOn(s.day, s);
+  const days = Array.from({ length: DAILY_GIFT_DAYS }, (_, i) => {
+    const day = i + 1;
+    const taken = day < s.day || (day === s.day && s.claimed);
+    return `<li class="${taken ? "is-taken" : ""}${day === s.day ? " is-today" : ""}"></li>`;
+  }).join("");
+  const line = s.claimed
+    ? `<b>Taken: ${esc(giftLabel(today))}</b><small>Tomorrow: ${esc(giftLabel(tomorrowGift(s)))}</small>`
+    : `<b>Today: ${esc(giftLabel(today))}</b><small>Come back every day for a bigger one.</small>`;
+  const action = s.claimed
+    ? `<button type="button" class="ui-btn missions-gift-open" data-gift-open>${menuIcon("star")}<span>Calendar</span></button>`
+    : `<button type="button" class="ui-btn is-primary missions-gift-open" data-gift-open>${menuIcon("check")}<span>Claim</span></button>`;
+  return `<section class="missions-gift${s.claimed ? " is-taken" : " is-waiting"}" aria-label="Daily gift"><div class="missions-gift-text"><span class="ui-kicker">Daily gift · Day ${s.day} of ${DAILY_GIFT_DAYS}</span>${line}</div><ol class="missions-gift-days" aria-hidden="true">${days}</ol>${action}</section>`;
+}
+
 export function missionsMarkup(view: MissionsView, d: MissionsData) {
   const e = d.economy;
   const body = e
@@ -145,5 +175,6 @@ export function missionsMarkup(view: MissionsView, d: MissionsData) {
           d.problem ||
             `Log in to get ${DAILY_MISSION_COUNT} daily missions that pay coins.`,
         );
-  return `<section class="ui-panel ui-sheet missions-sheet" role="dialog" aria-label="Missions">${panelHead("Missions", `Daily · new in ${picksCountdown()}`)}<div class="ui-panel-body missions-body" data-missions-region="body">${body}</div></section>`;
+  const gift = d.gift ? giftCard(d.gift) : "";
+  return `<section class="ui-panel ui-sheet missions-sheet" role="dialog" aria-label="Missions">${panelHead("Missions", `Daily · new in ${picksCountdown()}`)}<div class="ui-panel-body missions-body" data-missions-region="body">${gift}${body}</div></section>`;
 }

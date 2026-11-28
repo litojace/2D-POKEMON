@@ -212,7 +212,14 @@ for (const mode of ["login", "signup"] as const) {
     );
     await expired();
     await expect(page.locator("#toast")).toContainText("Your login expired");
-    await expect(page.locator("#connection")).toHaveText("LOGIN REQUIRED");
+    // Settings → About says why the server isn't connected.
+    await page.evaluate(() =>
+      document.getElementById("home-settings")!.click(),
+    );
+    await page.locator('[data-settings-tab="about"]').click();
+    await expect(page.locator("#settings-server .st-value")).toHaveText(
+      "Login required",
+    );
   });
 }
 

@@ -1,0 +1,40 @@
+/* Poster on Settings (settingsMarkup in main.ts; settings-screen.css lays
+   it out). Its tabs sit on the dialog's masthead after the title, as the
+   admin panel's do (admin.css): labels in the masthead's words, the open
+   one the masthead turned inside out, each a finger tall. Written in the
+   masthead's tokens (--head-*, tokens.css), with the colours of the
+   masthead before them as fallbacks (ink words on --el): a dimmed label
+   fell under AA there on fire, water, psychic, earth and shadow
+   (poster-contrast.spec), so it is ink until --head-dim exists. */
+:root[data-ui="poster"] .dialog-toolbar .settings-tab {
+  color: var(--head-dim, var(--ink));
+  font: 400 calc(15px * var(--text-scale, 1)) / 1 var(--font-display);
+  letter-spacing: 0.05em;
+}
+:root[data-ui="poster"]
+  .dialog-toolbar
+  .settings-tab:is(:hover, :focus-visible):not([aria-selected="true"]) {
+  background: color-mix(in srgb, var(--head-ink, var(--ink)) 12%, transparent);
+  color: var(--head-ink, var(--ink));
+}
+:root[data-ui="poster"] .dialog-toolbar .settings-tab[aria-selected="true"] {
+  background: var(--head-ink, var(--ink));
+  color: var(--head-bg, var(--el));
+  box-shadow: none;
+}
+
+/* The server's line, while it isn't connected: the hot red's words. */
+:root[data-ui="poster"] .st-server .st-value {
+  color: var(--hot);
+}
+:root[data-ui="poster"] .st-value {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+}
+
+/* Instagram's row shows Instagram's own mark (INSTAGRAM_ICON in main.ts):
+   at full strength, not dimmed as the line icons are. */
+:root[data-ui="poster"] .st-action .st-brand-icon {
+  opacity: 1;
+}
