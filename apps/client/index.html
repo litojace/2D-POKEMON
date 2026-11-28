@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-build="%MODE%">
   <head>
     <meta charset="UTF-8" />
     <meta
@@ -173,6 +173,39 @@
          the whole width and one line under it, placed from the screen's
          edges exactly as the curtain places them. */
       #app-boot .boot-crest {
+        display: none;
+      }
+      /* Open beta (open-beta.ts, open-beta.css: the same numbers), off in a
+         store build: Vite writes the build's mode on <html>. */
+      #app-boot .boot-brand {
+        position: relative;
+      }
+      #app-boot .beta-tag {
+        position: absolute;
+        z-index: 1;
+        top: -0.5em;
+        left: calc(100% - 0.5em);
+        padding: 0.3em 0.5em 0.22em;
+        background: #e0143a;
+        color: #fff;
+        font:
+          400 clamp(11px, 2.3vh, 16px) / 1 "Anton",
+          Impact,
+          "Arial Narrow",
+          sans-serif;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        white-space: nowrap;
+        transform: rotate(6deg);
+        box-shadow: 2px 2px 0 #0d0d0f;
+      }
+      .boot-art #app-boot .beta-tag {
+        top: 100%;
+        left: auto;
+        right: 0.5em;
+        margin-top: 0.15em;
+      }
+      :is([data-build="ios"], [data-build="android"]) #app-boot .beta-tag {
         display: none;
       }
       .boot-art #app-boot {
@@ -499,6 +532,7 @@
           <h1 aria-label="Element Arena">
             <span>Element</span><span>Arena</span>
           </h1>
+          <i class="beta-tag">Beta</i>
         </header>
         <div class="boot-loading">
           <p>Opening the arena…</p>
