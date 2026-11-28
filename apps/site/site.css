@@ -194,6 +194,7 @@ body::before {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-height: 44px;
   text-decoration: none;
   font: 400 1.4rem/1 var(--display);
   letter-spacing: 0.03em;
@@ -1301,10 +1302,21 @@ body::before {
     color-mix(in srgb, var(--r, var(--el)) 30%, transparent) 0deg 8deg,
     transparent 8deg 22deg
   );
-  -webkit-mask-image: radial-gradient(closest-side, #000 18%, transparent 72%);
-  mask-image: radial-gradient(closest-side, #000 18%, transparent 72%);
-  mix-blend-mode: screen;
-  opacity: 0.5;
+  /* A ring of light round the fighter, never over it; no blend mode, so
+     turning it costs the compositor one layer (older phones). */
+  -webkit-mask-image: radial-gradient(
+    closest-side,
+    transparent 36%,
+    #000 58%,
+    transparent 90%
+  );
+  mask-image: radial-gradient(
+    closest-side,
+    transparent 36%,
+    #000 58%,
+    transparent 90%
+  );
+  opacity: 0.4;
 }
 .r-mythical .stage-rays {
   background: repeating-conic-gradient(
