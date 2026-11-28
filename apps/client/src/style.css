@@ -4139,8 +4139,9 @@ html.scroll-locked {
   background: #7fd3ff33;
   color: #9fe1ff;
 }
-/* The round clock turns red while the ring closes. */
-#timer.ring-on {
+/* The round clock turns red while the ring closes (main.ts, data-clock;
+   Poster tells the ring from the last 10 seconds: severity.css). */
+#timer:is([data-clock="ring"], [data-clock="low"]) {
   color: #ff7d8f;
 }
 /* ---- Party rules (lobby) ---- */
