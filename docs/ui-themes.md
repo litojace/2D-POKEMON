@@ -237,6 +237,13 @@ game was yellow):
     pill), counters and cards, and calls to action (PLAY, Buy). An icon
     beside its word on a stage on a desktop (Entrance, Victory) is a text
     button, and stays a block.
+  - **The battle's glass is ink** (`battle-hud.css`): in a match Poster sets
+    `--aero-tint-solid` to ink and `--aero-rim` to clear, so the score
+    badge, its phase note, Jump, Dash, the target button, the spectate bar,
+    a round's card and the battle's settings lose the old look's navy and
+    gold hairline together. The touch buttons' rims are ink; a skill's art
+    keeps its own ring. Small pills (the ultimate's charge, key letters,
+    the ping, a desktop's skill labels) are square ink labels.
   - **Badges** on a bare icon are Poster's one indicator (the red square
     with an ink edge, as on the Plaza); this recipe doesn't style them.
   - **The Lobby's rail stays on its ink slab** (coordinator for the owner,

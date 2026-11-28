@@ -1,0 +1,122 @@
+/* Poster: the battle HUD's last navy (the audit's slice 8, 28 Nov 2026).
+   The battle's glass in ui/aero.css paints the score badge, the phase
+   note, Jump and Dash, the spectate bar, a round's card and the battle's
+   settings in --aero-tint-solid, a navy, with a warm-gold hairline
+   (--aero-rim). In a match the two become ink and no hairline, so every
+   one of them turns at once. The touch buttons' gold rims and the navy
+   pills, rings and badges around them become ink too; a skill's own art
+   and its element ring stay, as PLAY keeps its gold. Static rules only:
+   nothing here changes while a match runs, and no :has()
+   (battle-style-budget). */
+:root[data-ui="poster"] body.battle-active {
+  --aero-tint-solid: var(--ink);
+  --aero-rim: transparent;
+  --aero-rim-on: var(--gold);
+}
+
+/* The score badge is the slanted ink block screens.css draws behind it
+   (::before); its own box stays clear, or its square corners showed past
+   the slant. (#hud twice: the glass rule weighs three ids.) */
+:root[data-ui="poster"] body.battle-active #battle #hud#hud.hud {
+  background: none;
+}
+/* The note under the badge ("Ring closing · stay inside"): a square ink
+   label with a hard drop, as Poster's kickers. */
+:root[data-ui="poster"]
+  body.battle-active
+  #battle
+  #hud#hud.hud
+  #phase-label:not([hidden]) {
+  border-radius: 0;
+  outline: 0;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.4);
+}
+
+/* Touch controls: the rims are ink, not the old look's gold and grey. */
+:root[data-ui="poster"]
+  body.battle-active
+  .touch-buttons
+  :is(.touch-attack, .touch-ultimate, .touch-target, [data-action]) {
+  border-color: var(--ink);
+}
+/* Jump, Dash and the target button: ink discs with cream marks. */
+:root[data-ui="poster"]
+  body.battle-active
+  .touch-buttons
+  :is(.touch-target, [data-action="jump"], [data-action="dash"]) {
+  background: var(--ink);
+  color: var(--paper);
+}
+/* A locked target keeps its red ring: it says a lock holds. */
+:root[data-ui="poster"]
+  body.battle-active
+  .touch-buttons
+  .touch-target.is-locked {
+  border-color: var(--hot);
+}
+/* A skill cooling: the time left in ink, the time gone a lighter ink (the
+   old look's navy and teal). */
+:root[data-ui="poster"] body.battle-active .touch-buttons button.cooling {
+  background: conic-gradient(
+    rgba(13, 13, 15, 0.86) var(--cooldown),
+    rgba(42, 42, 48, 0.67) 0
+  );
+}
+/* The ultimate's charge ("0%", READY) and a skill's key letter sit in
+   small pills on the button's edge: square ink labels here. */
+:root[data-ui="poster"]
+  body.battle-active
+  .touch-buttons
+  button.touch-ultimate
+  .touch-cooldown,
+:root[data-ui="poster"] body.battle-active .touch-buttons button .touch-key {
+  border-radius: 0;
+  background: var(--ink);
+}
+/* The joystick's knob keeps its gold (the thing under your thumb) with an
+   ink rim and a hard drop in place of the glow. */
+:root[data-ui="poster"] body.battle-active .joystick-knob {
+  border-color: var(--ink);
+  box-shadow: 2px 3px 0 rgba(0, 0, 0, 0.4);
+}
+/* Drag-to-aim: an ink circle with a cream edge. */
+:root[data-ui="poster"] body.battle-active .touch-aim-wheel {
+  border-color: rgba(244, 234, 213, 0.5);
+  background: rgba(13, 13, 15, 0.4);
+}
+
+/* A desktop's skill row: square keys and ink labels. */
+:root[data-ui="poster"]
+  body.battle-active
+  :is(.ability, .movement-ability, .basic-hint)
+  kbd {
+  border-radius: 0;
+}
+:root[data-ui="poster"]
+  body.battle-active
+  :is(.ability, .movement-ability, .basic-hint)
+  > span
+  > small {
+  border-radius: 0;
+  background: var(--ink);
+}
+
+/* The ping beside the gear: a square ink label. */
+:root[data-ui="poster"] body.battle-active #battle-menu .ping-badge {
+  border-radius: 0;
+  background: var(--ink);
+  color: var(--paper);
+}
+
+/* A raid's stagger track and a raider's health track (the party's rows):
+   ink troughs, not navy. The boss bar keeps its own frame, and the clock
+   and the phase label are Poster's already (screens.css). */
+:root[data-ui="poster"]
+  body.battle-raid
+  #battle
+  #raid-hud#raid-hud
+  .raid-stagger,
+:root[data-ui="poster"] body.battle-active #raid-party .rp-bar {
+  border-radius: 0;
+  background-color: rgba(13, 13, 15, 0.85);
+}
