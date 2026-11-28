@@ -69,8 +69,9 @@
   -webkit-text-fill-color: var(--paper);
 }
 /* The Lobby's rank chip under the fighter's name: the gem or shield keeps
-   the tier's colour, the rank reads in cream. */
-:root[data-ui="poster"] .lobby-layer .lobby-rank-chip > span {
+   the tier's colour, the rank reads in cream. "Unranked" and "Placing"
+   have no tier (no --rank on the chip) and stay the quiet grey they were. */
+:root[data-ui="poster"] .lobby-layer .lobby-rank-chip[style*="--rank"] > span {
   color: var(--paper);
 }
 /* Your own row on the board is a cream block: its rank reads in ink. */
