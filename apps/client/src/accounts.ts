@@ -1109,8 +1109,12 @@ export class AccountUI {
     const html = `<section class="auth-panel" data-mode="${mode}"><div class="auth-head"><span class="auth-crest" aria-hidden="true"><svg viewBox="0 0 64 64"><path fill="currentColor" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span><div class="auth-title">${copy[0]}</div><p>${copy[1]}</p></div>${tabs}${!this.client ? '<p class="auth-warning">Sign-in isn\'t available right now. Please try again later.</p>' : ""}<form id="auth-form" class="auth-form">${fields}${extras}<button class="auth-submit" type="submit" ${!this.client ? "disabled" : ""}>${submitLabel}</button>${appleMarkup}<p id="auth-message" class="auth-message" role="status"></p></form>${guest}${back}<p class="auth-legal"><a href="${PRIVACY_URL}" target="_blank" rel="noopener">Privacy policy</a></p></section>`;
     // On the welcome screen the panel sits in the page; elsewhere in a dialog.
     const host = document.getElementById("gate-auth");
-    if (host) host.innerHTML = html;
-    else this.hooks.openDialog(html);
+    if (host) {
+      host.innerHTML = html;
+      // The welcome screen's art follows the form's height (themes/poster/
+      // onboarding.css: Voltkit stays clear of the BETA tag above it).
+      host.parentElement?.setAttribute("data-auth-mode", mode);
+    } else this.hooks.openDialog(html);
     document
       .querySelectorAll<HTMLButtonElement>("[data-auth-tab]")
       .forEach((tab) => {
