@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -32,7 +32,12 @@ const TYPES: Record<string, string> = {
 /** Script errors and CSP refusals on the page under test. */
 let errors: string[] = [];
 
-async function openSite(page: Page, hash = "") {
+async function openSite(
+  page: Page,
+  hash = "",
+  /** Rewrites site.css on its way to the page (a browser without a feature). */
+  css?: (text: string) => string,
+) {
   errors = [];
   page.on("pageerror", (e) => errors.push(String(e)));
   // Anything the live headers would block (a style, script or video), and
@@ -51,6 +56,15 @@ async function openSite(page: Page, hash = "") {
     if (file.endsWith("/")) file = path.join(file, "index.html");
     if (!file.startsWith(SITE) || !existsSync(file))
       return route.fulfill({ status: 404, body: "" });
+    const headers = {
+      "content-type": TYPES[path.extname(file)] ?? "application/octet-stream",
+      "content-security-policy": CSP,
+    };
+    if (css && file.endsWith("site.css"))
+      return route.fulfill({
+        body: css(readFileSync(file, "utf8")),
+        headers,
+      });
     await route.fulfill({
       path: file,
       headers: {
@@ -276,10 +290,14 @@ test.describe("website", () => {
   // The champion tape stood still after a panel opened from it closed: focus
   // went back to the name (:focus-within held it), and the click that
   // closed the panel left the mouse on it (owner, 27 Nov).
+  /** The drift's state: the first of the tape's animations (the second,
+   * where scroll timelines exist, follows the scroll and never waits). */
   const tapeState = (page: Page) =>
     page
       .locator(".ticker-run")
-      .evaluate((el) => getComputedStyle(el).animationPlayState);
+      .evaluate((el) =>
+        getComputedStyle(el).animationPlayState.split(",")[0].trim(),
+      );
   /** The middle of a name on the tape that is well inside the screen. */
   const tickOnScreen = async (page: Page) => {
     await page.locator(".ticker").scrollIntoViewIfNeeded();
@@ -490,4 +508,208 @@ test.describe("website", () => {
       );
       expect(small).toEqual([]);
     });
+  // Scroll-driven motion (owner, 27 Nov): the reading stripe, the hero
+  // leaving, the tape pushed by the scroll, the boss faces and the phone.
+  // CSS timelines only; none of it where they are missing or motion is
+  // paused.
+  test.describe("scroll-driven motion", () => {
+    /** The animations that follow the scroll, by name, and their progress. */
+    const scrollDriven = (page: Page) =>
+      page.evaluate(() =>
+        document
+          .getAnimations()
+          .filter(
+            (a) =>
+              a.timeline instanceof ScrollTimeline ||
+              a.timeline instanceof ViewTimeline,
+          )
+          .map((a) => ({
+            name: (a as CSSAnimation).animationName,
+            active: a.currentTime !== null,
+            progress: a.effect?.getComputedTiming().progress ?? null,
+          })),
+      );
+    const NEW = [
+      "read-on",
+      "sink-back",
+      "tape-push",
+      "face-up",
+      "phone-up",
+      "wipe-out",
+      "lift-off",
+      "phone-off",
+    ];
+
+    for (const [w, h] of [
+      [390, 844],
+      [1440, 900],
+    ])
+      test(`each follows the page's own scroll, ${w}x${h}`, async ({
+        page,
+      }) => {
+        await page.setViewportSize({ width: w, height: h });
+        await openSite(page);
+        const names = new Set((await scrollDriven(page)).map((a) => a.name));
+        for (const name of NEW) expect(names, name).toContain(name);
+        // The outlined name is only shown from 600 px.
+        expect(names.has("word-drift")).toBe(w >= 600);
+        // Each follows the page, not a box of its own that never scrolls (a
+        // band with overflow: hidden is a scroller: its timeline sat still).
+        const at = async (sel: string, name: string) => {
+          await page.evaluate((sel) => {
+            const el = document.querySelector(sel)!;
+            const r = el.getBoundingClientRect();
+            scrollTo({
+              top: scrollY + r.top + r.height / 2 - innerHeight * 0.75,
+              behavior: "instant",
+            });
+          }, sel);
+          await page.waitForTimeout(200);
+          const list = (await scrollDriven(page)).filter(
+            (a) => a.name === name,
+          );
+          expect(list.length, name).toBeGreaterThan(0);
+          for (const a of list) {
+            expect(a.active, name).toBe(true);
+            expect(a.progress ?? 0, name).toBeGreaterThan(0);
+          }
+        };
+        await at(".ticker", "tape-push");
+        await at(".raid-picks", "face-up");
+        await at(".phone", "phone-up");
+        await page.evaluate(() =>
+          scrollTo({ top: innerHeight / 3, behavior: "instant" }),
+        );
+        await page.waitForTimeout(200);
+        const sink = (await scrollDriven(page)).find(
+          (a) => a.name === "sink-back",
+        )!;
+        expect(sink.progress ?? 0).toBeGreaterThan(0);
+        const read = (await scrollDriven(page)).find(
+          (a) => a.name === "read-on",
+        )!;
+        expect(read.progress ?? 0).toBeGreaterThan(0);
+      });
+
+    /** Where the moving pieces sit, as the page draws them. */
+    const pieces = (page: Page) =>
+      page.evaluate(() => {
+        const t = (sel: string) =>
+          getComputedStyle(document.querySelector(sel)!).transform;
+        return {
+          stripe: getComputedStyle(document.querySelector(".bar")!, "::after")
+            .content,
+          art: t(".hero-art"),
+          word: t(".hero-word"),
+          phone: t(".phone"),
+          tape: getComputedStyle(document.querySelector(".ticker-run")!)
+            .translate,
+          hidden: [
+            ...document.querySelectorAll<HTMLElement>(
+              ".pick, .phone, .modes > li, .stores > li",
+            ),
+          ].filter((el) => Number(getComputedStyle(el).opacity) < 1).length,
+        };
+      });
+    /** The still page: each piece in its own place (rotate(-2deg) is the
+     * phone's own lean; the outlined name's is translateX(-50%) and -6deg). */
+    const still = async (page: Page) => {
+      for (const y of [0, 300, 0.5, 0.8]) {
+        await page.evaluate(
+          (y) =>
+            scrollTo({
+              top: y < 1 ? document.documentElement.scrollHeight * y : y,
+              behavior: "instant",
+            }),
+          y,
+        );
+        await page.waitForTimeout(200);
+        const p = await pieces(page);
+        expect(p.stripe, `stripe @${y}`).toBe("none");
+        expect(p.art, `art @${y}`).toBe("none");
+        expect(p.tape, `tape @${y}`).toBe("none");
+        expect(p.phone, `phone @${y}`).toBe(
+          "matrix(0.999391, -0.0348995, 0.0348995, 0.999391, 0, 0)",
+        );
+        expect(p.hidden, `faded @${y}`).toBe(0);
+      }
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth - innerWidth,
+        ),
+      ).toBeLessThanOrEqual(0);
+    };
+
+    test("with motion paused, nothing follows the scroll", async ({ page }) => {
+      await page.emulateMedia({ reducedMotion: "reduce" });
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await openSite(page);
+      await expect(page.locator("html")).toHaveAttribute(
+        "data-motion",
+        "paused",
+      );
+      expect(await scrollDriven(page)).toEqual([]);
+      await still(page);
+    });
+
+    test("a browser without scroll timelines gets the whole page, still", async ({
+      page,
+    }) => {
+      // iOS 18 and older: no animation-timeline, in CSS or in site.js.
+      await page.addInitScript(() => {
+        const supports = CSS.supports.bind(CSS);
+        CSS.supports = ((...args: [string, string?]) =>
+          /animation-timeline/.test(args.join(" "))
+            ? false
+            : supports(...(args as [string]))) as typeof CSS.supports;
+      });
+      await page.setViewportSize({ width: 390, height: 844 });
+      await openSite(page, "", (text) =>
+        text.replaceAll("(animation-timeline: view())", "(x-no-timelines: 1)"),
+      );
+      expect(await scrollDriven(page)).toEqual([]);
+      // Scrolled through once, so site.js's fallback has shown every card.
+      const height = await page.evaluate(
+        () => document.documentElement.scrollHeight,
+      );
+      for (let y = 0; y < height; y += 600) {
+        await page.evaluate(
+          (y) => scrollTo({ top: y, behavior: "instant" }),
+          y,
+        );
+        await page.waitForTimeout(60);
+      }
+      await page.waitForTimeout(800);
+      await still(page);
+    });
+
+    for (const [w, h] of [
+      [390, 844],
+      [844, 390],
+      [667, 375],
+      [852, 393],
+    ])
+      test(`no sideways scroll at any point of the page, ${w}x${h}`, async ({
+        page,
+      }) => {
+        await page.setViewportSize({ width: w, height: h });
+        await openSite(page);
+        const height = await page.evaluate(
+          () => document.documentElement.scrollHeight,
+        );
+        for (let y = 0; y < height; y += Math.round(h * 0.6)) {
+          await page.evaluate(
+            (y) => scrollTo({ top: y, behavior: "instant" }),
+            y,
+          );
+          await page.waitForTimeout(50);
+          expect(
+            await page.evaluate(
+              () => document.documentElement.scrollWidth - innerWidth,
+            ),
+            `@${y}`,
+          ).toBeLessThanOrEqual(0);
+        }
+      });
+  });
 });

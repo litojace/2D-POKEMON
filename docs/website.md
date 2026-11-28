@@ -225,6 +225,35 @@ below the screen keeps its own look (a full-page capture or a search engine
 sees it whole) and takes the first frame as it starts to enter, where no one
 sees the change.
 
+On top of the reveals, the page moves with the reader's scroll (owner,
+27 and 28 Nov: "words and panels gather in as you reach them, then each
+moves off its own way for the next part"), all in `site.css` under
+`@supports (animation-timeline: view()) and (animation-range: exit-crossing …)`,
+no script:
+
+- a red stripe fills the top bar's yellow edge as you read down
+  (`scroll(root)`);
+- the hero's painting sinks back and leans as it leaves, and the outlined
+  "Element Arena" behind it drifts slower than the page (from 600 px);
+- the champion tape is pushed against its own drift (`translate`, on top of
+  the drift's `transform`; only the drift waits under a mouse or the
+  keyboard);
+- section titles wipe out to the left, cards lift away one column after
+  another, and the raid and Shop panels ease back as they cross the top
+  edge, with no fill, so before and after they are their own selves; the
+  words stay whole until most of a box has gone;
+- the boss faces come in from above and below in turn; the phone picture
+  straightens to its own slight lean as it rises, and tilts away as it goes.
+
+A `view()` timeline follows the nearest scroll container, and
+`overflow: hidden` makes one: `.hero`, `.facts` and `.app` clip with
+`overflow: clip` instead where these timelines exist (with `display:
+flow-root`, the block formatting context hidden gave them), or their
+contents would follow a box that never scrolls. Nothing pins a section or
+snaps the scroll. `tests/visual/website.spec.ts` ("scroll-driven motion")
+checks each follows the page, that paused motion and a browser without the
+timelines get the still page, and no sideways scroll at phone sizes.
+
 ### Motion and the pause switch
 
 Every loop, the ticker, the rays and the turning spotlight stop with one
