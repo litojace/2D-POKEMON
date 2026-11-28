@@ -144,6 +144,15 @@
   > button[aria-selected="true"]:not(:focus-visible) {
   outline: 1px solid transparent;
 }
+/* The look underneath marks the chosen tab with a 3 px bar under it
+   (ui/components.css); here the ink block marks it. */
+:root[data-ui="poster"]
+  .ui-panel-head
+  .ui-tabs
+  > button[aria-selected="true"]::after {
+  display: none;
+}
+
 /* ── what sits on the masthead: ink blocks ── */
 :root[data-ui="poster"] .ui-panel-head .ui-icon-btn {
   background: var(--ink);
