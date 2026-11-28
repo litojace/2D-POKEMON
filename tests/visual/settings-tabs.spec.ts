@@ -113,6 +113,26 @@ for (const size of SIZES)
         if (height)
           expect(Math.abs(h.dialog.h - height)).toBeLessThanOrEqual(1);
         height = h.dialog.h;
+        if (tab === "About") {
+          // Instagram's row shows Instagram's own mark in its own colours
+          // (owner, 28 Nov): its gradient's id is the page's only one of
+          // that name, and the mark isn't dimmed.
+          const mark = await page.evaluate(() => {
+            const svg = document.querySelector(
+              "#settings-instagram .st-brand-icon",
+            );
+            return {
+              gradients: document.querySelectorAll("#settings-ig-app").length,
+              fill: svg?.querySelector("rect")?.getAttribute("fill") ?? "",
+              opacity: svg ? getComputedStyle(svg).opacity : "",
+            };
+          });
+          expect(mark).toEqual({
+            gradients: 1,
+            fill: "url(#settings-ig-app)",
+            opacity: "1",
+          });
+        }
         await snap(
           page,
           info,

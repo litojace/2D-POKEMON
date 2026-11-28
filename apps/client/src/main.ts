@@ -5832,16 +5832,25 @@ function settingsTabs(): SettingsTab[] {
     ? ["game", "help", "account", "about"]
     : ["game", "help", "about"];
 }
-/** A row of Settings: what it is, a line about it, and its button. */
+/** A row of Settings: what it is, a line about it, and its button. The
+ *  button shows one of the game's line icons, or a brand's own mark. */
 function settingsAction(
   id: string,
   title: string,
   note: string,
-  icon: IconName,
+  icon: IconName | { html: string },
   label: string,
 ) {
-  return `<div class="st-row"><span class="st-row-text"><b>${title}</b><small>${note}</small></span><button type="button" id="${id}" class="secondary btn-secondary st-action">${iconLabel(icon, label)}</button></div>`;
+  const content =
+    typeof icon === "string"
+      ? iconLabel(icon, label)
+      : `${icon.html}<span>${label}</span>`;
+  return `<div class="st-row"><span class="st-row-text"><b>${title}</b><small>${note}</small></span><button type="button" id="${id}" class="secondary btn-secondary st-action">${content}</button></div>`;
 }
+/** Instagram's own mark in its own colours, so the row is known at a glance
+ *  (owner, 28 Nov). Drawn as the website's Instagram link is, so the two
+ *  match; its gradient's id is one nothing else in the page uses. */
+const INSTAGRAM_ICON = `<svg class="button-icon st-brand-icon" viewBox="0 0 24 24" aria-hidden="true"><defs><radialGradient id="settings-ig-app" cx="0.3" cy="1.07" r="1.3"><stop offset="0" stop-color="#fdf497"/><stop offset="0.05" stop-color="#fdf497"/><stop offset="0.45" stop-color="#fd5949"/><stop offset="0.6" stop-color="#d6249f"/><stop offset="0.9" stop-color="#285aeb"/></radialGradient></defs><rect width="24" height="24" rx="6" fill="url(#settings-ig-app)"/><g fill="none" stroke="#fff" stroke-width="1.8"><rect x="5" y="5" width="14" height="14" rx="4"/><circle cx="12" cy="12" r="3.3"/></g><circle cx="16.4" cy="7.6" r="1.1" fill="#fff"/></svg>`;
 /** A row that says something and has nothing to press. */
 const settingsFact = (id: string, title: string, value: string) =>
   `<div class="st-row st-fact" id="${id}"><span class="st-row-text"><b>${title}</b></span><span class="st-value">${value}</span></div>`;
@@ -5881,7 +5890,7 @@ function settingsMarkup(reduced: boolean) {
   const you = account
     ? `<section class="prefs-card st-card st-list" aria-label="Account">${settingsAction("settings-profile", escape(account.displayName), account.guest ? "Playing as a guest: your player card can save your progress to an email." : "Your name, frame, titles and account are on your player card.", "user", "Player card")}${settingsAction("settings-logout", "Log out", account.guest ? "A guest's progress stays only on this device." : "Log in again any time with your email.", "leave", "Log out")}</section>`
     : "";
-  const about = `<section class="prefs-card st-card st-list" aria-label="About">${serverRow()}${settingsFact("settings-version", "Version", BUILD_ID ? escape(BUILD_ID) : "Development build")}${OPEN_BETA ? settingsAction("settings-beta", "Open beta", "The game is still growing, and things may change. Tell us what you think.", "help", "Support") : ""}${settingsAction("settings-instagram", "Instagram", "@elementarena.usa: news, new fighters and clips.", "share", "Open")}${settingsAction("settings-credits", "Credits", "Who and what made the game.", "star", "Open")}${settingsAction("settings-privacy", "Privacy policy", "What the game keeps, and why.", "help", "Open")}</section>`;
+  const about = `<section class="prefs-card st-card st-list" aria-label="About">${serverRow()}${settingsFact("settings-version", "Version", BUILD_ID ? escape(BUILD_ID) : "Development build")}${OPEN_BETA ? settingsAction("settings-beta", "Open beta", "The game is still growing, and things may change. Tell us what you think.", "help", "Support") : ""}${settingsAction("settings-instagram", "Instagram", "@elementarena.usa: news, new fighters and clips.", { html: INSTAGRAM_ICON }, "Open")}${settingsAction("settings-credits", "Credits", "Who and what made the game.", "star", "Open")}${settingsAction("settings-privacy", "Privacy policy", "What the game keeps, and why.", "help", "Open")}</section>`;
   const panes: Record<SettingsTab, string> = {
     game,
     help,

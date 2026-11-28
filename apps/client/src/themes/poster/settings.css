@@ -29,3 +29,9 @@
   font-weight: 400;
   letter-spacing: 0.04em;
 }
+
+/* Instagram's row shows Instagram's own mark (INSTAGRAM_ICON in main.ts):
+   at full strength, not dimmed as the line icons are. */
+:root[data-ui="poster"] .st-action .st-brand-icon {
+  opacity: 1;
+}
