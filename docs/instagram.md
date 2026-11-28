@@ -285,9 +285,19 @@ gets accounts locked).
   "Instagram login"). Its configuration: a **system-user access token** that
   **never expires**, for the Instagram account @elementarena.usa (id
   `17841460513990684`), with `instagram_basic`,
-  `instagram_content_publish`, `instagram_manage_comments` (and
-  `instagram_manage_messages`, unused). No App Review: the app serves only
-  the owner's own account.
+  `instagram_content_publish`, `instagram_manage_comments` and
+  `instagram_manage_insights` (reach for the weekly report). The
+  configuration also grants `instagram_manage_messages`,
+  `instagram_manage_events`, `ads_management` and `ads_read`, which nothing
+  here uses. No App Review: the app serves only the owner's own account.
+- **If the token loses the account** (`me/assigned_instagram_accounts`
+  comes back empty: on 27 Nov, linking the account to a Facebook Page while
+  editing the profile took it out of the portfolio): add it back in
+  business.facebook.com/settings → Instagram profiles, then in the app's
+  Unified login setup → Generate access tokens, generate a new token as
+  the portfolio's admin, and save it over the old one with the cloud
+  environment's credential form. Permissions added to the configuration
+  only reach a token generated after them.
 - **The token** is a network secret on the cloud environment ELEMENT_ARENA
   for `graph.facebook.com`: its proxy adds it to every request, so no
   session, file or chat ever holds it. To revoke it, remove it in the

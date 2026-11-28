@@ -406,10 +406,19 @@
   --art-bottom: max(12px, env(safe-area-inset-bottom));
   --art-left: max(28px, env(safe-area-inset-left));
   --art-right: max(28px, env(safe-area-inset-right));
-  --startup-runner: clamp(56px, 20vh, 88px);
+  /* The runner a size up over a painting (owner, 27 Nov: "a bit small"):
+     110 px on a desktop, was 88; 7 px less on a phone, below. */
+  --startup-runner: clamp(70px, 25vh, 110px);
   /* A lighter ink until the painting is in, so the name's block shows. */
   background: #1e1e22;
   color: #fff;
+}
+/* Phones held sideways: 7 px under that (owner, 27 Nov), 91 px on an
+   844 x 390 phone (78 before the size up, 98 after it). */
+@media (max-height: 500px) {
+  .server-startup.has-art {
+    --startup-runner: calc(clamp(70px, 25vh, 110px) - 7px);
+  }
 }
 /* A shade along the bottom only, for the line under the bar. */
 .server-startup.has-art::after {
