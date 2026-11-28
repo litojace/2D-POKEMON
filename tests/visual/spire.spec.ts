@@ -12,6 +12,10 @@ import {
 } from "./helpers";
 import { layoutProblems, setInsets, ISLAND, type Insets } from "./ui-measure";
 import { decodePng } from "./png";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 // The Spire: its tile and page in the Raid Hub (locked until a Cragmuff
 // clear), and a climb on the court: the Echoes, the elite, the blessing

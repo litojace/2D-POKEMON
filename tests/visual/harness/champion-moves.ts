@@ -6,14 +6,18 @@ import { CHARACTERS, type CharacterId } from "@arena/shared";
 import { FighterRig } from "../../../apps/client/src/animation/rig";
 import { rigAssets } from "../../../apps/client/src/animation/assets";
 import type { SkinLook } from "../../../apps/client/src/creature-design";
+import type { AnimationState } from "../../../apps/client/src/animation/controller";
 
 export interface Strip {
   id: CharacterId;
-  move: "wave" | "victory";
+  /** The entrance, the victory, or any triggered state (an attack). */
+  move: AnimationState;
   /** Facing: "down" (the Shop's view), "right", "left" or "up". */
   dir?: "down" | "right" | "left" | "up";
   skin?: SkinLook | null;
   reduced?: boolean;
+  /** How long a triggered state lasts (ms). */
+  ms?: number;
 }
 const ANGLE = { down: Math.PI / 2, right: 0, left: Math.PI, up: -Math.PI / 2 };
 
@@ -89,6 +93,8 @@ export function championMoves(
       for (const c of cells) {
         const rig = c.rig!;
         rig.controller.reset();
+        if (c.strip.move !== "wave" && c.strip.move !== "victory")
+          rig.trigger(c.strip.move, start, c.strip.ms ?? 700);
         const end = start + c.t * 1000;
         for (let now = start; ; now = Math.min(end, now + 1000 / 60)) {
           rig.root.setScale(scale);
