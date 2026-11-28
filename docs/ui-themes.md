@@ -219,8 +219,11 @@ game was yellow):
     its block version. Its word (if it has one) is cream with an ink
     stroke, and it turns gold under a finger or while it is open. Today:
     the battle's chat and gear, the Plaza's HUD (Map, Gifts, Album, Today,
-    the clock, the fishing count), the top bar's chat and gear, and the ‹ ›
-    beside the Lobby fighter and on the Fighters stage.
+    the clock, the fishing count), the top bar's chat and gear, the ‹ ›
+    beside the Lobby fighter and on the Fighters stage, and a raid's or a
+    Spire floor's clock under the gear (cream Anton digits with the ink
+    stroke, no pill). Beside the boss's name, its phase (or the floor's
+    wave) is a square ink label with cream words, never under 11 px.
   - **One recipe** (`tokens.css`): `--bare-ink` (cream), `--bare-hot`
     (gold), `--bare-icon-edge` (the outline, a `filter` for an icon),
     `--bare-word-edge` (the same as a `text-shadow` for words) and
