@@ -23,9 +23,11 @@ import { SPIRE_REWARDS } from "./spire.js";
  *
  * One table, filled by rule from the data that grants each title:
  *
- *  - Raid titles follow their goal: a first clear is Rare, 3 clears or a
- *    counted deed Epic; a solo or timed solo clear, a Gilded boss and 100
- *    clears Legendary.
+ *  - Raid titles follow their goal: a first clear is Rare; 3 clears, a
+ *    counted deed or a timed solo clear Epic; a solo clear without going
+ *    down, a Gilded boss and 100 clears Legendary. (Timed solo clears were
+ *    Legendary until the owner saw who holds what, 28 Nov: as many players
+ *    held them as held first clears, and Legendary outnumbered Epic.)
  *  - Spire titles follow the floor: 5 and 10 Rare, 20 and 30 Epic, 40 to 60
  *    Legendary, the summit (70) Mythical.
  *  - Journey titles follow the level: 5 Common, from 10 Rare, from 50 Epic,
@@ -63,12 +65,12 @@ const raidTier = (rule: RaidRule): TitleTier => {
     case "total-clears":
     case "gilded":
     case "solo":
-    case "speed":
     case "flawless":
     case "feat":
       return "legendary";
     case "peril":
       return rule.n >= 3 ? "legendary" : "epic";
+    case "speed":
     case "stat":
       return "epic";
   }

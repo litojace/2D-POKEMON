@@ -74,12 +74,14 @@ it("no title is in the table twice", () => {
 });
 
 it("tiers follow how hard the goal is", () => {
-  // Raids: first clear < 3 clears < solo or timed, Gilded, 100 clears.
+  // Raids: first clear < 3 clears, timed solo < solo no downs, Gilded, 100.
   expect(titleTier("Cragbreaker")).toBe("rare");
   expect(titleTier("Mountain Conqueror")).toBe("epic");
   expect(titleTier("Pillar Breaker")).toBe("epic");
   expect(titleTier("Lone Mountain")).toBe("legendary");
-  expect(titleTier("Avalanche")).toBe("legendary");
+  expect(titleTier("Avalanche")).toBe("epic");
+  expect(titleTier("Moonrunner")).toBe("epic");
+  expect(titleTier("Lone Lantern")).toBe("legendary");
   expect(titleTier("Gilded Cragbreaker")).toBe("legendary");
   expect(titleTier("Boss Hunter")).toBe("legendary");
   // The Spire climbs with its floors; only the summit is Mythical.
