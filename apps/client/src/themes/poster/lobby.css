@@ -95,12 +95,18 @@
   padding-top: 0.34em;
   margin-top: -0.34em;
 }
+/* The title, in its tier's lettering (title-tag.ts) and in the condensed
+   face it has over heads in the Plaza: the body face at this size cut
+   every title past fourteen letters short ("MOUNTAIN CONQUE…"), and the
+   card has no room to grow. The longest titles now read in full. */
 :root[data-ui="poster"] body.hub-active .nav-title {
   color: #bbb;
-  font-family: var(--font-body);
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
+}
+:root[data-ui="poster"] body.hub-active #account-profile .nav-title {
+  font-family: "Barlow Condensed", "Arial Narrow", var(--font-body);
+  font-size: calc(var(--hub-card-title) + 1px);
 }
 :root[data-ui="poster"] body.hub-active #account-profile .nav-level {
   background: var(--hot-fill);
