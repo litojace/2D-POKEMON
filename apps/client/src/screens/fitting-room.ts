@@ -126,7 +126,8 @@ export interface FittingRoomHooks {
   missions(): void;
   /** Load the player's state again. */
   retry(): void;
-  notify(message: string): void;
+  /** A toast; `kind` colours it (main.ts toast: "ok" done, "error" failed). */
+  notify(message: string, kind?: "ok" | "warn" | "error"): void;
   onClose?(): void;
 }
 export interface FittingRoomOptions {
@@ -363,7 +364,7 @@ export function openFittingRoom(
       box.textContent = message;
       box.setAttribute("role", failed ? "alert" : "status");
     }
-    hooks.notify(message);
+    hooks.notify(message, failed ? "error" : "ok");
   };
   /** Run a server call; the screen re-renders from what the server answered. */
   const work = async (

@@ -122,15 +122,16 @@ const covered = (page: Page, controls: string) =>
 
 /**
  * The deploy's last word, a toast that shows in any state, and what it
- * covers where it comes to rest. Fired, its rise awaited and measured in
- * one go in the page: the toast stays 4.5 s (toast() in main.ts), and the
- * test's round trips to a busy page between them (fire, check it shows,
- * await the rise, measure) used that up on CI's slower runners. Over a
- * raid's briefing the measure found it already gone, both tries, on a
- * runner a third slower than the green one (#678, and #646's run).
+ * covers where it comes to rest. Fired, its rise brought to its end and
+ * measured in one go in the page, with no frame in between. Waiting for
+ * the rise lost the toast on CI's slower runners (#678): it stays 4.5 s
+ * (toast() in main.ts), and a CSS transition only ends on a drawn frame.
+ * Over a raid's briefing, with the court drawn in software, the log read
+ * "10921 shown / 15426 hidden / 15601 measured": no frame for 4.5 s, the
+ * timer on time, the toast gone before its rise ended (#651's run).
  */
 async function aToast(page: Page, controls: string) {
-  const r = await page.evaluate(async (controls) => {
+  const r = await page.evaluate((controls) => {
     const w = window as any;
     w.__sock.fire("server-update", { closing: true });
     const t = document.getElementById("toast")!;
@@ -143,8 +144,9 @@ async function aToast(page: Page, controls: string) {
     const x = new DOMMatrix(getComputedStyle(t).transform).m41;
     const sideways = Math.abs(x + t.offsetWidth / 2);
     const shows = t.classList.contains("show");
-    // Measured where it comes to rest.
-    await Promise.allSettled(t.getAnimations().map((a) => a.finished));
+    // Measured where it comes to rest: its rise taken to its end now,
+    // as a drawn frame would at its end (finish() needs no frame).
+    for (const a of t.getAnimations()) a.finish();
     return { sideways, shows, ...w.__covered(controls) } as {
       sideways: number;
       shows: boolean;
