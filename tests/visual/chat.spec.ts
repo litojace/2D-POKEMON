@@ -1019,3 +1019,126 @@ for (const size of [
       await context.close();
     }
   });
+
+// The drawer's last old-look pieces, in the look players have
+// (themes/poster/chat.css): a sender's name is cream (it was blue) and
+// your own has a gold square before it, a time is the kit's grey, and the settings' two switches are one square row
+// each, a finger tall ("Notify me" was still a rounded pill, 40 px).
+for (const size of [
+  { name: "844x390", width: 844, height: 390 },
+  { name: "667x375", width: 667, height: 375 },
+])
+  test(`the chat in Poster: cream names, square switches a finger tall (${size.name})`, async ({
+    browser,
+  }, info) => {
+    const context = await browser.newContext({
+      viewport: { width: size.width, height: size.height },
+      isMobile: true,
+      hasTouch: true,
+    });
+    try {
+      await playersLook(context);
+      const page = await context.newPage();
+      const errors = await openHub(page);
+      await page.evaluate(
+        ([me, pal]) => {
+          const w = window as any;
+          const before = w.__reply;
+          w.__reply = (ev: string, data: any) =>
+            ev === "chat-history"
+              ? {
+                  ok: true,
+                  lines: [
+                    {
+                      id: 1,
+                      channel: "party",
+                      from: { id: pal, name: "Pal" },
+                      at: Date.now() - 600_000,
+                      text: "ready when you are",
+                    },
+                    {
+                      id: 2,
+                      channel: "party",
+                      from: { id: me, name: "tester" },
+                      at: Date.now() - 60_000,
+                      text: "one more match",
+                    },
+                  ],
+                }
+              : before?.(ev, data);
+          w.__sock.fire("chat-config", { freeText: true });
+          w.__sock.fire("party", {
+            code: "PARTY5",
+            leader: me,
+            members: [
+              { id: me, name: "tester", character: "voltkit" },
+              { id: pal, name: "Pal", character: "tidefin" },
+            ],
+          });
+        },
+        [ME, PAL],
+      );
+      await page.click("#chat-button");
+      const drawer = page.locator("#chat-drawer");
+      await expect(drawer.locator(".chat-line")).toHaveCount(2);
+      const colour = (selector: string) =>
+        drawer
+          .locator(selector)
+          .first()
+          .evaluate((e) => getComputedStyle(e).color);
+      expect(await colour(".chat-line:not(.is-mine) b")).toBe(
+        "rgb(244, 234, 213)",
+      );
+      expect(await colour(".chat-stamp")).toBe("rgb(184, 184, 192)");
+      // Your own line: the name cream too, after a small gold square.
+      expect(await colour(".chat-line.is-mine b")).toBe("rgb(244, 234, 213)");
+      const mark = (selector: string) =>
+        drawer
+          .locator(selector)
+          .first()
+          .evaluate((e) => {
+            const c = getComputedStyle(e, "::before");
+            return c.content === "none" ? "" : c.backgroundColor;
+          });
+      expect(await mark(".chat-line.is-mine b")).toBe("rgb(255, 214, 91)");
+      expect(await mark(".chat-line:not(.is-mine) b")).toBe("");
+      await snap(page, info, `chat-poster-lines-${size.name}`);
+
+      // The settings, with both switches shown (a phone that can notify).
+      await drawer.locator(".chat-gear").click();
+      await drawer.evaluate((d) => {
+        for (const s of [".chat-push", ".chat-news-toggle"])
+          d.querySelector<HTMLElement>(s)!.hidden = false;
+      });
+      const rows = await drawer.evaluate((d) =>
+        [".chat-push-toggle", ".chat-news-toggle", ".chat-modes button"].map(
+          (s) => {
+            const e = d.querySelector<HTMLElement>(s)!;
+            const r = e.getBoundingClientRect();
+            const c = getComputedStyle(e);
+            return {
+              s,
+              x: Math.round(r.x),
+              w: Math.round(r.width),
+              h: Math.round(r.height),
+              radius: c.borderTopLeftRadius,
+              knob: getComputedStyle(e, "::before").borderTopLeftRadius,
+            };
+          },
+        ),
+      );
+      const [push, news, mode] = rows;
+      for (const row of rows) {
+        expect(row.h, row.s).toBeGreaterThanOrEqual(44);
+        expect(row.radius, row.s).toBe("0px");
+      }
+      expect(push.knob).toBe("0px");
+      expect(news.knob).toBe("0px");
+      expect([push.x, push.w]).toEqual([news.x, news.w]);
+      expect(mode.x).toBe(push.x);
+      await snap(page, info, `chat-poster-settings-${size.name}`);
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });

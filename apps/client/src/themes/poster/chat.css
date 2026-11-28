@@ -1,0 +1,78 @@
+/* Poster: the chat drawer's last pieces of the old look (the audit, 28 Nov).
+   The drawer, its tabs, chips, field and Send are in plaza.css. */
+
+/* Who said it: cream and bold. The name was blue, a watcher's gold and
+   your own the accent: the meaning stays, on a mark. A watcher keeps the eye
+   before the name; your own lines get a small gold square before yours. */
+:root[data-ui="poster"] .chat-line b,
+:root[data-ui="poster"] .chat-line:is(.is-watcher, .is-mine) b {
+  color: var(--ui-text);
+}
+:root[data-ui="poster"] .chat-line.is-mine b::before {
+  content: "";
+  display: inline-block;
+  width: 0.5em;
+  height: 0.5em;
+  margin-right: 0.4em;
+  background: var(--gold);
+  vertical-align: 0.1em;
+}
+/* The quiet words (a time, the notification note, the field's hint): the
+   kit's dim grey, not blue-grey. */
+:root[data-ui="poster"] :is(.chat-stamp, .chat-push-note) {
+  color: var(--ui-dim);
+}
+:root[data-ui="poster"] .chat-input::placeholder {
+  color: var(--ui-dim);
+}
+
+/* The settings' boxes and the message menu: ink edges (pale blue before). */
+:root[data-ui="poster"]
+  :is(
+    .chat-prefs,
+    .chat-modes button,
+    .chat-push-toggle,
+    .chat-news-toggle,
+    .chat-menu,
+    .chat-menu button
+  ) {
+  border-color: var(--ink-3);
+}
+/* "Notify me of friends' messages" matches "Game news" under it: a square
+   ink row (it was still a rounded pill with a round switch). */
+:root[data-ui="poster"] .chat-push-toggle {
+  border-radius: 0;
+  background: var(--ink-1);
+  color: var(--ui-text);
+}
+:root[data-ui="poster"] .chat-news-toggle {
+  color: var(--ui-text);
+}
+/* Both switches: a square track and a square knob. Off, a cream knob on
+   ink; on, an ink knob on gold. */
+:root[data-ui="poster"] :is(.chat-push-toggle, .chat-news-toggle)::before {
+  border-radius: 0;
+  background:
+    linear-gradient(var(--paper), var(--paper)) 3px 50% / 14px 14px no-repeat,
+    var(--ink-3);
+}
+:root[data-ui="poster"]
+  :is(.chat-push-toggle, .chat-news-toggle)[aria-checked="true"]::before {
+  background:
+    linear-gradient(var(--ink), var(--ink)) 17px 50% / 14px 14px no-repeat,
+    var(--gold);
+}
+/* Report: the danger red on ink (a pink before). */
+:root[data-ui="poster"] .chat-menu button[data-chat-act="send"] {
+  color: var(--sev-danger);
+}
+/* Every control in the settings and the message menu is a finger tall. */
+:root[data-ui="poster"]
+  :is(
+    .chat-modes button,
+    .chat-push-toggle,
+    .chat-news-toggle,
+    .chat-menu button
+  ) {
+  min-height: 44px;
+}
