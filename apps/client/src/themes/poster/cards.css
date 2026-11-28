@@ -102,6 +102,12 @@
   background: var(--ink);
   color: var(--hot);
 }
+/* Rejoin room and Leave party stand side by side: one width, the longer
+   label's (owner, 28 Nov: neighbours match). */
+:root[data-ui="poster"] .lobby-layer .lobby-party-bar button {
+  justify-content: center;
+  min-width: 11em;
+}
 :root[data-ui="poster"] .lobby-layer .lobby-party-bar .lobby-rejoin {
   background: var(--ink-3);
   color: var(--paper);
