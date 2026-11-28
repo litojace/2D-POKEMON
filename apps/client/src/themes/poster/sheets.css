@@ -3,6 +3,14 @@
    rite and blessing cards between rounds. Loaded after screens.css, whose
    sheet rules these build on. */
 
+/* The battle's sheets and cards keep the Lobby fighter's colour as their
+   accent (a win is a sheet of it): --fighter is written on the overlay
+   (ui-theme.ts), the game's gold before a Lobby has said. Their main
+   button is gold all the same (screens.css, --sheet-cta). */
+:root[data-ui="poster"] #arena-overlay {
+  --el: var(--fighter, var(--gold));
+}
+
 /* ── defeat: an ink sheet, so its words are white ──
    screens.css draws every sheet's title, kicker, score and foot in ink for
    the element-colour sheet of a win; on a defeat's ink sheet that left the
@@ -16,7 +24,7 @@
   .is-defeat
   .rc-head
   .ui-title {
-  color: #fff;
+  color: var(--paper);
 }
 :root[data-ui="poster"]
   #arena-overlay#arena-overlay.is-sheet
@@ -33,7 +41,7 @@
   #arena-overlay#arena-overlay.is-sheet
   .is-defeat
   :is(.result-score, .result-score *) {
-  color: #fff;
+  color: var(--paper);
 }
 :root[data-ui="poster"]
   #arena-overlay#arena-overlay.is-sheet
@@ -54,7 +62,7 @@
    drawn a square in front of the slant.) The kit's .ui-btn.is-primary is
    already that block. */
 :root[data-ui="poster"] #arena-overlay#arena-overlay.is-sheet .is-defeat {
-  --sheet-cta: var(--el);
+  --sheet-cta: var(--gold);
   --sheet-cta-ink: var(--ink);
 }
 
@@ -79,7 +87,7 @@
    (#arena-overlay .overlay-card.match-reveal > ...), which had kept the
    kicker gold and the heading at 800, a weight Anton doesn't have. */
 :root[data-ui="poster"] #arena-overlay .overlay-card.match-reveal > h2 {
-  color: #fff;
+  color: var(--paper);
   font-family: var(--font-display);
   font-weight: 400;
   letter-spacing: 0.03em;
@@ -119,7 +127,7 @@
 }
 :root[data-ui="poster"] .rv-player {
   border-top: 2px solid var(--ink-3);
-  color: #fff;
+  color: var(--paper);
 }
 :root[data-ui="poster"] .rv-you {
   border-radius: 0;
@@ -164,7 +172,7 @@
   border-radius: 0;
   background: var(--ink);
   box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.4);
-  color: #fff;
+  color: var(--paper);
 }
 :root[data-ui="poster"] .overlay-card .rite-card.major {
   border-left-color: var(--el);
@@ -405,7 +413,7 @@
   font-weight: 800;
 }
 :root[data-ui="poster"] :is(.reveal-name, .reveal-title-art) {
-  color: #fff;
+  color: var(--paper);
   font-family: var(--font-display);
   font-weight: 400;
   letter-spacing: 0.03em;
@@ -447,7 +455,7 @@
   #arena-overlay#arena-overlay.is-sheet
   .result-actions
   button#return {
-  background: #fff;
+  background: var(--paper);
   color: #d01836;
   box-shadow: inset 0 0 0 2px #d01836;
 }
@@ -475,7 +483,7 @@
   border: 0;
   border-radius: 0;
   background: var(--ink);
-  color: #fff;
+  color: var(--paper);
 }
 :root[data-ui="poster"]
   #arena-overlay#arena-overlay.is-sheet
@@ -509,7 +517,7 @@
   #arena-overlay#arena-overlay.is-sheet
   .journey-level-up {
   margin: 0 0 8px;
-  color: #fff;
+  color: var(--paper);
   font: 400 calc(16px * var(--text-scale, 1)) / 1.2 var(--font-display);
   letter-spacing: 0.05em;
 }
@@ -548,7 +556,8 @@
   .standings
   li.me {
   background: var(--ink-3);
-  box-shadow: inset 4px 0 0 var(--el);
+  /* Your plate's edge is the game's gold, whoever your fighter. */
+  box-shadow: inset 4px 0 0 var(--gold);
 }
 :root[data-ui="poster"]
   #arena-overlay#arena-overlay.is-sheet
@@ -582,7 +591,7 @@
   border-left: 6px solid #ff2e4d;
   border-radius: 0;
   background: var(--ink);
-  color: #fff;
+  color: var(--paper);
 }
 
 /* A briefing's Champion tricks (raid-ui.ts perkLines, inside "Your
@@ -594,7 +603,7 @@
   border-left: 4px solid var(--el);
   border-radius: 0;
   background: var(--ink-2);
-  color: #fff;
+  color: var(--paper);
   padding: 8px 12px 8px 14px;
 }
 :root[data-ui="poster"] #arena-overlay#arena-overlay.is-sheet .raid-perks h3 {

@@ -239,18 +239,25 @@
   height: 100%;
   overflow: visible;
 }
+/* Arms, legs and the tail turn about their joints (the shoulder, the hip,
+   the tail's root), which startup-runner.ts writes on each part in the
+   drawing's own units: the battle rig's pivots. */
 .server-startup-runner
-  :is(.fighter-armL, .fighter-armR, .fighter-legL, .fighter-legR) {
-  transform-box: fill-box;
-  transform-origin: 50% 14%;
+  :is(
+    .fighter-armL,
+    .fighter-armR,
+    .fighter-legL,
+    .fighter-legR,
+    .fighter-tail
+  ) {
+  transform-box: view-box;
+  transform-origin: var(--joint);
 }
 .server-startup-runner :is(.fighter-torso, .fighter-character) {
   transform-box: fill-box;
   transform-origin: 50% 90%;
 }
 .server-startup-runner .fighter-tail {
-  transform-box: fill-box;
-  transform-origin: 80% 70%;
   animation: server-runner-tail 1.05s ease-in-out infinite alternate;
 }
 .server-startup-runner.is-running .fighter-armL {

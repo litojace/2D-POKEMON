@@ -15,12 +15,12 @@ champions, skins and features. So the posts:
 - say "open beta", and that it's free in the browser now;
 - say the iPhone and Android apps come later, with more, but never give a
   date or promise a particular champion, skin or feature;
-- ask players to report bugs: in the game, the gear at the top of the
-  Lobby, then **Report a problem** (it needs a free account), or in the
+- ask players to report bugs: in the game, **Report a problem** under the
+  gear at the top of the Lobby (it needs a free account), or in the
   comments, which the scheduled runs thank and pass on to the owner;
 - teach adding the game to the home screen early (the owner: friends keep
   asking how), with screenshots from a real phone, never drawings. The
-  game's own steps are in the Menu, **Want fullscreen?**
+  game's own steps are under the gear too
   (`apps/client/src/fullscreen-help.ts`).
 
 The game itself marks the web version BETA beside its name, never the store
@@ -62,6 +62,11 @@ The first command records, in Poster:
   coin count is blurred where it stands (the owner's rule for the website:
   no amounts of the game's money outside the game), so Journey, Ranks and
   mission rewards, which show coin amounts, are not used yet;
+- **a champion's skill buttons** (`kit.spec.ts`, `CHAMP=pyranda`): the
+  free-for-all scene with the player as that champion, nobody casting and
+  the ultimate charged, each button saved as it looks in battle, for the
+  champion spotlights (owner, 28 Nov: show what the skill buttons look
+  like);
 - **the three Mythical skins** in the game's fitting room at Stage III, in Poster
   (the spec calls `onPlayersLook()`), frame by frame on the page's own clock
   (about 6 minutes): standing, then each one's Entrance, Victory and
@@ -128,20 +133,25 @@ shows, retake it, look at it, and ship it before its time. The pictures in
 `apps/site/social/` were last made at the commit that last changed them
 (`git log -1 -- apps/site/social/<file>`).
 
-| Post                                                                 | Shows of the game                                                                            | Retake with                                         |
-| -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| 2 Duels, 5 Teams, 7 Free-for-all, 9 Spire, 11's cover and last slide | a real battle, whole screen: court, fighters, effects, HUD and touch controls                | `battles.spec.ts`, then pick the frame again by eye |
-| 3 Roster, 6 Pyranda                                                  | the fighters' drawings, names and elements (packages/shared)                                 | `make-posts.mjs`                                    |
-| 8 Skins (Reel)                                                       | the Shop's fitting room in Poster, the Mythical skins                                        | `skins.spec.ts`, `make-reel.py`                     |
-| 10 Found a bug?                                                      | the gear menu in Poster and Report a problem                                                 | `report.spec.ts`, then `make-posts.mjs`             |
-| 11 Play it like an app                                               | the app icon, and Safari's steps (iOS, not the game)                                         | `HOWTO=1 make-posts.mjs`; new iOS: new screenshots  |
-| 12 Plaza, 13 Friends                                                 | the Plaza (made-up players placed by world coordinates), the Friends sheet (made-up friends) | `screens.spec.ts`, then pick the frame again by eye |
-| 1 Welcome, 4 Lumiwick                                                | paintings only                                                                               | `make-posts.mjs`                                    |
+| Post                                                                 | Shows of the game                                                                            | Retake with                                          |
+| -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| 2 Duels, 5 Teams, 7 Free-for-all, 9 Spire, 11's cover and last slide | a real battle, whole screen: court, fighters, effects, HUD and touch controls                | `battles.spec.ts`, then pick the frame again by eye  |
+| 3 Roster                                                             | the fighters' drawings, names and elements (packages/shared)                                 | `make-posts.mjs`                                     |
+| 6 Pyranda (champion spotlights)                                      | the drawing, and each skill's button as a phone shows it in battle (owner, 28 Nov)           | `CHAMP=pyranda` `kit.spec.ts`, then `make-posts.mjs` |
+| 8 Skins (Reel)                                                       | the Shop's fitting room in Poster, the Mythical skins                                        | `skins.spec.ts`, `make-reel.py`                      |
+| 10 Found a bug?                                                      | the gear menu in Poster and Report a problem                                                 | `report.spec.ts`, then `make-posts.mjs`              |
+| 11 Play it like an app                                               | the app icon, and Safari's steps (iOS, not the game)                                         | `HOWTO=1 make-posts.mjs`; new iOS: new screenshots   |
+| 12 Plaza, 13 Friends                                                 | the Plaza (made-up players placed by world coordinates), the Friends sheet (made-up friends) | `screens.spec.ts`, then pick the frame again by eye  |
+| 1 Welcome, 4 Lumiwick                                                | paintings only                                                                               | `make-posts.mjs`                                     |
 
 Every post's frame copies Poster (colours, fonts, slabs: the CSS in
-`make-posts.mjs`), and captions name places in the game ("the gear, then
-Report a problem", "Want fullscreen?"): when Poster's palette or the gear
-menu changes, check the frames and the captions too. The sessions changing
+`make-posts.mjs`), and captions name places in the game: when Poster's
+palette or the gear changes, check the frames and the captions too. The
+gear is being remodelled (phone-fixes session, 28 Nov): it will open
+Settings, with Report a problem on its Help tab. Until that is on main,
+captions say only "report it from the gear (⚙)", true before and after;
+post 10 and `report.spec.ts` move to gear → Help → Report a problem once it
+merges. The sessions changing
 the game's look were asked (28 Nov) to tell the Instagram session when
 they merge.
 
@@ -275,7 +285,8 @@ The owner is busy and handed the posting to Claude sessions: "có chứ"
 Comments, checked three times a day: thank people, answer the usual
 questions (where to play: the link in bio; free: yes, in the browser, an
 open beta; the phone apps: later, with more champions, skins and features;
-fullscreen: add it to the home screen, the gear then Want fullscreen?), and
+fullscreen: add it to the home screen, as the "Play it like an app" post
+shows), and
 hide spam, scams and abuse. Never promise a date, a prize or a feature.
 **A bug report** gets a short thank-you ("thanks, passed on to the team")
 and goes to the owner with what the player said. Complaints, payments,

@@ -91,7 +91,7 @@ const PHONE_ASPECT = 2868 / 1320;
 /**
  * A screen outside battle, whole, from screens.spec.ts (same phone, same
  * look): the Plaza in an Orb Shower with made-up players and their titles
- * over their names, every tier (#650; frame 13: every name and title in
+ * over their names, every tier (#650; frame 14: every name and title in
  * sight, none behind a lamp post), Friends with made-up friends.
  * Coin counts are blurred where they stand (the owner's rule: no amounts of
  * the game's money outside the game).
@@ -227,7 +227,7 @@ const POSTS = [
     name: "plaza",
     kind: "shot",
     el: EL.shadow,
-    art: ui("plaza/13.png"),
+    art: ui("plaza/14.png"),
     eyebrow: "The Plaza · up to 40 players",
     title: "Hang out between fights.",
     line: "Bounce pads, a ball pitch, a dash track, a photo spot, and an Orb Shower every 15 minutes.",
@@ -268,7 +268,8 @@ html, body { margin: 0; overflow: hidden; background: var(--ink); color: var(--i
 h1 { margin: 0; font: 400 124px/.92 Anton; text-transform: uppercase; color: var(--ink); text-wrap: balance; }
 p { margin: 0; font: 600 34px/1.3 Archivo; color: var(--ink); text-wrap: pretty; }
 .play { align-self: flex-start; background: var(--ink); padding: 18px 40px; transform: skewX(-10deg); box-shadow: 12px 10px 0 var(--hot); }
-.play span { display: block; transform: skewX(10deg); font: 400 46px/1 Anton; text-transform: uppercase; letter-spacing: .02em; color: var(--el); white-space: nowrap; }
+.play span { display: block; transform: skewX(10deg); font: 400 46px/1 Anton; text-transform: uppercase; letter-spacing: .02em; color: #ffd65b; white-space: nowrap; }
+/* PLAY's word is gold for every fighter, as the game's PLAY (#673). */
 /* A word huge and outlined behind the picture, as the Lobby's fighter name. */
 .big { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) rotate(-7deg); font: 400 var(--big, 420px)/.8 Anton; text-transform: uppercase; white-space: nowrap; color: rgba(255,255,255,.42); -webkit-text-stroke: 4px rgba(13,13,15,.55); }
 /* A white clipping: the Lobby's cards. */
@@ -407,8 +408,10 @@ function championPost(post, size) {
   const small = size === "square";
   const moves = post.moves
     .map(
+      // Each skill's button as the game draws it in battle (kit.spec.ts;
+      // owner, 28 Nov: show what the skill buttons look like).
       ([name, text], i) =>
-        `<li class="${i === post.moves.length - 1 ? "ult" : ""}"><b>${name}</b><span>${text}</span></li>`,
+        `<li class="${i === post.moves.length - 1 ? "ult" : ""}"><img class="key" src="${url(`instagram-clips/kit/${c.id}/${i}.png`)}" alt=""><b>${name}</b><span>${text}</span></li>`,
     )
     .join("");
   const head = `<div class="chip">${post.eyebrow}</div><div class="plate"><span>${c.name}</span></div><div class="tags"><span class="tag">${c.element}</span><span class="tag ink">${c.role}</span></div>`;
@@ -419,7 +422,9 @@ function championPost(post, size) {
 .tag.ink { background: var(--ink); color: #fff; }
 .hero { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
 ul { list-style: none; margin: 0; padding: 0; display: grid; gap: ${small ? 10 : 12}px; }
-li { display: grid; gap: 2px; padding: ${small ? "10px 16px" : "10px 20px"}; background: #fff; border: 4px solid var(--ink); box-shadow: 8px 8px 0 rgba(0,0,0,.3); }
+li { display: grid; grid-template-columns: ${small ? 76 : 108}px 1fr; column-gap: ${small ? 14 : 18}px; row-gap: 2px; align-items: center; padding: ${small ? "8px 14px" : "8px 18px"}; background: #fff; border: 4px solid var(--ink); box-shadow: 8px 8px 0 rgba(0,0,0,.3); }
+li .key { grid-row: span 2; width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 50%; }
+li b { align-self: end; } li span { align-self: start; }
 li b { font: 400 ${small ? 28 : 32}px/1 Anton; text-transform: uppercase; color: var(--ink); }
 li span { font: 600 ${small ? 20 : 24}px/1.25 Archivo; color: #2a2a30; }
 li.ult { background: var(--ink); box-shadow: 8px 8px 0 var(--hot); }
@@ -439,15 +444,17 @@ li.ult b { color: var(--el); } li.ult span { color: #fff; }`;
       ) +
       `<img class="hero" src="${drawing(c.id)}">`
     );
+  // Feed and story: the drawing placed on its own, beside the name in the
+  // feed and the story, so the taller list
+  // (each move with its button) never shrinks it.
+  const hero =
+    size === "story"
+      ? `.hero { inset: auto; right: 10px; top: 330px; width: 600px; height: 600px; }`
+      : `.hero { inset: auto; right: 10px; top: 150px; width: 560px; height: 560px; }`;
   return (
     back +
-    flow(
-      size,
-      head,
-      `<img class="hero" src="${drawing(c.id)}">`,
-      `<ul>${moves}</ul>`,
-      css,
-    )
+    flow(size, head, ``, `<ul>${moves}</ul>`, css + hero) +
+    `<img class="hero" src="${drawing(c.id)}">`
   );
 }
 
@@ -633,7 +640,7 @@ function howtoDone(size, phone) {
       `<div class="chip">Done</div><h1>Tap the icon. Turn it sideways. Play.</h1>`,
       // Narrower in the feed: the last slide's words take three lines.
       iconAndGame(phone, size, HOWTO_SHOTS.done, 720),
-      `<p>Fullscreen, no browser bars. On Android: Chrome's menu, then <b>Install app</b>. Found a bug? Tap the gear, then <b>Report a problem</b>.</p>${PLAY}`,
+      `<p>Fullscreen, no browser bars. On Android: Chrome's menu, then <b>Install app</b>. Found a bug? Report it from the gear <b>(⚙)</b> in the game.</p>${PLAY}`,
       PAIR_CSS + `h1 { font-size: ${size === "story" ? 110 : 96}px; }`,
     )
   );

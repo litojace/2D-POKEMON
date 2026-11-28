@@ -18,6 +18,14 @@ rejected.
 - **The website** (`apps/site`): an "Open beta" sticker beside "Free to
   play" and one line under the hero's buttons (docs/website.md, "Open
   beta").
+- **Support** (`apps/client/public/support.html`, copied to the website's
+  `/support/` by `node apps/site/tools/legal-pages.mjs`): an "Open beta"
+  section of four questions (what it means, whether progress is kept, how
+  to report a bug or send feedback, whether there are apps), with its tile
+  and contents line. The page is plain HTML, so the flag can't reach it, and
+  it doesn't need to: the app opens the web copy in Safari (`SUPPORT_URL`,
+  `native.ts`), never the one in its bundle. Its app answer ("Not yet: the
+  apps are on their way") must change the day an app goes live.
 - **README.md**: the line under "Play now".
 
 What the line promises is true of the code: progress lives on the server
@@ -56,5 +64,6 @@ of the wordmark's letters, whole on screen, at 667 × 375, 844 × 390,
 ## Removing it
 
 When the game leaves beta, delete `open-beta.ts`, `open-beta.css`, their
-tests, the boot screen's tag and its rules, and the copy on the website and
-in the README.
+tests, the boot screen's tag and its rules, the copy on the website and
+in the README, and Support's "Open beta" section, tile and contents line
+(then run `node apps/site/tools/legal-pages.mjs`).

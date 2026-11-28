@@ -79,7 +79,7 @@
 }
 :root[data-ui="poster"] .plaza-layer .pz-card .pc-acts button[data-pc="party"],
 :root[data-ui="poster"] .plaza-layer .pz-ask button[data-pa="yes"] {
-  background: var(--el);
+  background: var(--gold);
   color: var(--ink);
   box-shadow: 3px 3px 0 var(--hot);
 }
@@ -122,9 +122,13 @@
   color: #ffe08a;
 }
 /* The letters are painted with a gradient from Rare up (the text shows
-   through its own shape). */
+   through its own shape). Only the fill is transparent: the text keeps the
+   title's colour, one of the stops of every tier's gradient, as its
+   colour, so contrast checks, high-contrast modes and selection still see
+   a real colour (tests/visual/poster-contrast.spec.ts read the corner's title as
+   invisible when the colour itself was transparent). */
 :root[data-ui="poster"] .title-tag:not([data-tier="common"]) > span {
-  color: transparent;
+  -webkit-text-fill-color: transparent;
   -webkit-background-clip: text;
   background-clip: text;
   background-image: linear-gradient(
@@ -184,6 +188,47 @@
 }
 :root[data-ui="poster"] .title-tag[data-tier="mythic"] > i {
   color: #fff3c4;
+}
+/* Where it sits in a line that has its own type (the Lobby's corner, the
+   Profile's card and title picker): the font, size, case and spacing are
+   that line's; only the tier's paint and its stars are added. */
+/* It is plain inline text there, so the line's own cutting ("…") works as
+   it did for the bare title. */
+:root[data-ui="poster"] .title-tag.is-fit {
+  display: inline;
+  max-width: none;
+  min-height: 0;
+  overflow: visible;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+}
+:root[data-ui="poster"] .title-tag.is-fit > span {
+  overflow: visible;
+}
+:root[data-ui="poster"] .title-tag.is-fit > i {
+  display: inline-block;
+  margin-right: 0.4em;
+  font-size: 0.8em;
+  line-height: 1;
+  vertical-align: 0.08em;
+}
+:root[data-ui="poster"] .title-tag.is-fit > i:last-child {
+  margin: 0 0 0 0.4em;
+}
+/* Never moving: where a title is always on screen (the Lobby's corner) or
+   one of many (the title picker); and the Plaza's card on Low graphics. */
+:root[data-ui="poster"] .title-tag.is-still[data-tier] > span,
+:root[data-ui="poster"] .title-tag.is-still[data-tier] > i,
+:root[data-ui="poster"]
+  .plaza-layer[data-graphics="low"]
+  .title-tag[data-tier]
+  > span,
+:root[data-ui="poster"]
+  .plaza-layer[data-graphics="low"]
+  .title-tag[data-tier]
+  > i {
+  animation: none;
 }
 /* On a player's card it has a row to itself, tucked under the name, so the
    longest title reads in full. */
@@ -254,31 +299,32 @@
     calc(-10px - var(--safe-left, 0px));
   padding: max(8px, calc(var(--safe-top, 0px) + 6px)) 10px 8px
     calc(var(--safe-left, 0px) + 10px);
-  background: var(--el);
-  color: var(--ink);
+  background: var(--head-bg);
+  color: var(--head-ink);
+  box-shadow: inset 0 -3px 0 var(--head-ink);
 }
-/* Tabs on the masthead: the words in quiet ink, the chosen one an ink
-   block with its word in the element colour (kit.css's masthead tabs). */
+/* Tabs on the masthead: the words in quiet cream, the chosen one a cream
+   block with ink words (kit.css's masthead tabs). */
 :root[data-ui="poster"] .chat-tab {
   border: 0;
   border-radius: 0;
   background: transparent;
-  color: var(--on-el-dim);
+  color: var(--head-dim);
   font-weight: 400;
 }
 :root[data-ui="poster"] .chat-tab[aria-selected="true"] {
   border-color: transparent;
-  background: var(--ink);
-  color: var(--el-text);
-}
-/* An unread count on the masthead: ink on the element colour, red on the
-   chosen tab's ink (5.3:1). */
-:root[data-ui="poster"] .chat-tab i {
+  background: var(--el);
   color: var(--ink);
+}
+/* An unread count on the masthead: red on its ink (5.3:1), ink on the
+   chosen tab's cream. */
+:root[data-ui="poster"] .chat-tab i {
+  color: var(--hot);
   font-weight: 800;
 }
 :root[data-ui="poster"] .chat-tab[aria-selected="true"] i {
-  color: var(--hot);
+  color: var(--ink);
 }
 :root[data-ui="poster"]
   :is(
@@ -326,15 +372,15 @@
   border-radius: 0;
   background: var(--ink-2);
 }
-/* Settings and Close on the masthead: ink blocks, white icons (kit.css's
-   masthead buttons); the gear in the element colour while it is open. */
+/* Settings and Close on the masthead: blocks of its lighter ink, cream
+   icons (kit.css's masthead buttons); the gear in gold while it is open. */
 :root[data-ui="poster"] .chat-head :is(.chat-gear, .chat-close) {
   border: 0;
-  background: var(--ink);
-  color: #fff;
+  background: var(--head-box);
+  color: var(--head-ink);
 }
 :root[data-ui="poster"] .chat-head .chat-gear[aria-expanded="true"] {
-  color: var(--el-text);
+  color: var(--gold);
 }
 /* The chat over the results: the sheet starts right of the drawer, so the
    title, the score and the reward tiles stay in sight beside it instead of

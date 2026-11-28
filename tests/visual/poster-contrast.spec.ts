@@ -1,8 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 import { hubMenu, openHub, skipTour } from "./helpers";
 
-// Poster paints with the Lobby fighter's element colour (--el). Each word on
-// the Lobby, the hub's screens and Settings must keep WCAG AA contrast
+// Poster's chrome is fixed (cream, ink, gold and red), and the Lobby's field,
+// name plate and seats take the Lobby fighter's element colour (--fighter).
+// Each word on the Lobby, the hub's screens and Settings must keep WCAG AA contrast
 // (4.5:1, 3:1 for large text) against what is really drawn under it, in
 // every element colour: the page is shot once with its words hidden, and
 // each word's colour is compared with the middle of the pixels under it.
@@ -207,7 +208,14 @@ test("Poster: words keep AA contrast in every element colour", async ({
   const shots = process.env.CONTRAST_SHOTS;
   for (const [name, hex] of Object.entries(COLOURS)) {
     await page.evaluate(
-      (hex) => document.documentElement.style.setProperty("--el", hex),
+      // Where the game writes the fighter's colour (ui-theme.ts,
+      // FIGHTER_COLOUR_HOSTS); on the element itself, over the game's rule.
+      (hex) => {
+        for (const host of document.querySelectorAll<HTMLElement>(
+          ".lobby-layer, .room-screen, #arena-overlay",
+        ))
+          host.style.setProperty("--fighter", hex);
+      },
       hex,
     );
     failures.push(...(await measure(page, `${name} lobby`)));

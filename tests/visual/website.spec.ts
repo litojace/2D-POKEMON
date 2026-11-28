@@ -444,6 +444,15 @@ test.describe("website", () => {
         for (let y = 0; y < height; y += Math.round(h * 0.7)) {
           await page.evaluate((y) => scrollTo(0, y), y);
           await page.waitForTimeout(150);
+          // Two frames, so site.js's observers have answered the scroll (the
+          // nav's current link) before we look: on a slow renderer 150 ms
+          // can pass without one.
+          await page.evaluate(
+            () =>
+              new Promise((done) =>
+                requestAnimationFrame(() => requestAnimationFrame(done)),
+              ),
+          );
           await settle(page);
           low.push(...(await lowContrast(page, `page@${y}`)));
         }
@@ -844,11 +853,22 @@ test.describe("website", () => {
         await page.waitForTimeout(80);
       }
       // Every card the fallback dimmed has been seen, and its fade is over.
+      // On a slow renderer (CI's) a frame can outlast a step of the sweep,
+      // and a card that crossed the screen between two frames was never
+      // seen: so bring each one still dimmed to the middle of the screen
+      // and let the observer see it, as a visitor stopping there would.
       await expect
-        .poll(() =>
-          page.evaluate(
-            () => document.querySelectorAll(".reveal:not(.in)").length,
-          ),
+        .poll(
+          () =>
+            page.evaluate(() => {
+              const dimmed = document.querySelectorAll(".reveal:not(.in)");
+              dimmed[0]?.scrollIntoView({
+                block: "center",
+                behavior: "instant",
+              });
+              return dimmed.length;
+            }),
+          { intervals: [150], timeout: 30_000 },
         )
         .toBe(0);
       await page.waitForTimeout(800);

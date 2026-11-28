@@ -1,13 +1,45 @@
-/* Poster's tokens: ink black and the Lobby fighter's element colour (--el),
+/* Poster's tokens: ink black, cream paper, the game's gold and a hot red;
    nothing rounded, hard offset shadows instead of glass. The game's shared
    tokens (ui/tokens.css) are re-pointed here, so every screen built on them
-   follows before any rule of its own. */
+   follows before any rule of its own.
+
+   One chrome for every fighter (owner, 27 Nov 2026, "direction G"):
+   - --paper, cream: words on ink, the Lobby's clippings, and the accent
+     (--el) of every chosen thing: a chosen tab, the open screen on the
+     rail, a pressed chip, a picked tile's frame.
+   - --gold: what to press (the primary button, PLAY), coins, progress.
+   - --hot: the level badge, a sale, leaving. Nothing else.
+   - A fighter's element colour only where it means the fighter: what
+     carries its own --el (a stage, a card, an element chip, a boss's
+     banner), and the Lobby fighter's on the Lobby's field, name plate and
+     seats, the raid room's backdrop and the battle's sheets, which read
+     --fighter (ui-theme.ts writes it there, not on the root). */
 :root[data-ui="poster"] {
   --ink: #0d0d0f;
   --ink-1: #151518;
   --ink-2: #1e1e22;
   --ink-3: #2a2a30;
   --hot: #ff2e4d;
+  --paper: #f4ead5;
+  --gold: #ffd65b;
+  /* The chrome's accent. Not the fighter's colour: see above. */
+  --el: var(--paper);
+  /* A masthead: ink, cream words, a cream rule under it; what sits on it
+     (a close button, a switch) is a lighter ink block. */
+  --head-bg: var(--ink);
+  --head-ink: var(--paper);
+  --head-dim: rgba(244, 234, 213, 0.78);
+  --head-box: var(--ink-3);
+  /* A panel's board: a step lighter than its masthead, with a halftone so
+     faint it only keeps the ink from lying flat (it was the masthead's own
+     ink, and the masthead was told from the board by its rule alone). */
+  --board: #17171b;
+  --board-dots: radial-gradient(
+      circle,
+      rgba(244, 234, 213, 0.05) 1.2px,
+      transparent 1.7px
+    )
+    0 0 / 9px 9px;
   /* Contrast (WCAG AA, measured for every element, boss and Spire colour:
      tests/visual/poster-contrast.spec.ts). Every --el is light, so what is
      drawn on --el is ink, never white (ink on the darkest, Shadow's
@@ -28,7 +60,9 @@
   --ui-glass: var(--ink);
   --ui-line: rgba(255, 255, 255, 0.12);
   --ui-line-2: rgba(255, 255, 255, 0.24);
-  --ui-text: #ffffff;
+  /* One white: words on ink are the cream paper too. Pure white stays only
+     on red (the level badge, a sale), where cream would miss AA. */
+  --ui-text: var(--paper);
   --ui-dim: #b8b8c0;
   --ui-faint: #92929b;
   /* Words in the element colour on ink panels: --el, lifted to at least
@@ -63,9 +97,9 @@
   --fill-card-hi: var(--ink-3);
   --fill-bar: #070708;
   --scrim: rgba(0, 0, 0, 0.55);
-  --btn-primary-bg: var(--el);
+  --btn-primary-bg: var(--gold);
   --btn-primary-ink: var(--ink);
-  --cta-bg: var(--el);
+  --cta-bg: var(--gold);
   --icon-btn-bg: var(--ink);
   --icon-btn-line: transparent;
   --shadow-1: 5px 5px 0 rgba(0, 0, 0, 0.35);
@@ -78,6 +112,21 @@
   --scroll-track: var(--ink);
   --scroll-thumb: var(--el);
   --scroll-thumb-light: var(--el);
+}
+/* The Lobby fighter's colour as a whole-screen field (the Lobby, the raid
+   room, a win's sheet): 20% of the way to the cream, so a fighter's field
+   sits calmer beside the party's other fighters, each in a colour of its
+   own (owner, 27 Nov 2026). The name plate and the seats keep --fighter
+   whole. Mixed in oklab, a straight line to the cream: in oklch the hue
+   travels an arc and Water's cyan turned green. Without color-mix it is
+   the fighter's colour as it is. */
+:root[data-ui="poster"] :is(.lobby-layer, .room-screen, #arena-overlay) {
+  --field: var(--fighter, var(--gold));
+}
+@supports (color: color-mix(in oklab, red 80%, white)) {
+  :root[data-ui="poster"] :is(.lobby-layer, .room-screen, #arena-overlay) {
+    --field: color-mix(in oklab, var(--fighter, var(--gold)) 80%, #f4ead5);
+  }
 }
 @supports (color: oklch(from red l c h)) {
   :root[data-ui="poster"] {

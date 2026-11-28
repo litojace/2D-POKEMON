@@ -103,6 +103,8 @@ import {
 } from "./screens/friends";
 import type { FriendsData, FriendsRoom } from "./screens/friends-view";
 import { noteServerTime } from "./server-clock";
+import { titleTag } from "./title-tag";
+import { setStoredTitleTiers } from "../../../packages/shared/src/title-tier";
 import {
   authRedirectUrl,
   authErrorMessage,
@@ -523,6 +525,9 @@ export class AccountUI {
         if (version !== this.generation) return;
         freshAccount = true;
         this.account = account;
+        // The tiers administrators gave the titles they made (migration
+        // 20261128060000): none before it, and never in the way.
+        void this.loadTitleTiers();
         // Announcements still running (migration 20261122120000); none
         // before it, and never in the way of signing in.
         void this.api("/api/announcements").then(
@@ -916,11 +921,21 @@ export class AccountUI {
     });
     avatar.dataset.avatarLook = key;
   }
+  /** The tiers of admin-made titles, for every place a title shows
+   *  (title-tier.ts); the corner is drawn again once they are here. */
+  async loadTitleTiers() {
+    try {
+      setStoredTitleTiers(await this.api("/api/title-tiers"));
+      this.renderNav();
+    } catch {
+      // An older server, or offline: admin-made titles stay Common.
+    }
+  }
   renderNav() {
     const root = element("account-nav");
     if (!root) return;
     root.innerHTML = this.account
-      ? `<button class="quiet coin-button" id="account-coins" aria-label="Shop: ${this.economy?.unlimitedCoins ? "unlimited" : this.economy ? coins(this.economy.balance) : "your"} coins">${coinChip(this.economy?.balance, "", this.economy?.unlimitedCoins, true)}</button><button class="quiet" id="account-profile"><span class="account-avatar" data-champion="${this.hooks.selectedCharacter?.() ?? "voltkit"}" aria-hidden="true"></span><span class="account-name">${escape(this.account.displayName)}</span>${this.economy?.journey ? `<small class="nav-level">Lv ${playerLevel(this.economy.journey.xp).level}</small><span class="nav-xp" aria-hidden="true"><i style="width:${Math.round(playerLevel(this.economy.journey.xp).percent)}%"></i></span>` : ""}${this.account.title ? `<small class="nav-title" style="color:${escape(this.account.titleColor ?? "#ffe58f")}">${escape(this.account.title)}</small>` : ""}</button>${this.account.isAdmin ? `<button class="quiet" id="account-admin" aria-label="Admin" title="Admin">${iconLabel("admin", "Admin")}</button>` : ""}<button class="quiet" id="account-logout" aria-label="Log out" title="Log out">${iconLabel("leave", "Log out")}</button>`
+      ? `<button class="quiet coin-button" id="account-coins" aria-label="Shop: ${this.economy?.unlimitedCoins ? "unlimited" : this.economy ? coins(this.economy.balance) : "your"} coins">${coinChip(this.economy?.balance, "", this.economy?.unlimitedCoins, true)}</button><button class="quiet" id="account-profile"><span class="account-avatar" data-champion="${this.hooks.selectedCharacter?.() ?? "voltkit"}" aria-hidden="true"></span><span class="account-name">${escape(this.account.displayName)}</span>${this.economy?.journey ? `<small class="nav-level">Lv ${playerLevel(this.economy.journey.xp).level}</small><span class="nav-xp" aria-hidden="true"><i style="width:${Math.round(playerLevel(this.economy.journey.xp).percent)}%"></i></span>` : ""}${this.account.title ? `<small class="nav-title" style="color:${escape(this.account.titleColor ?? "#ffe58f")}">${titleTag(this.account.title, this.account.titleColor ?? "#ffe58f", { fit: true, still: true })}</small>` : ""}</button>${this.account.isAdmin ? `<button class="quiet" id="account-admin" aria-label="Admin" title="Admin">${iconLabel("admin", "Admin")}</button>` : ""}<button class="quiet" id="account-logout" aria-label="Log out" title="Log out">${iconLabel("leave", "Log out")}</button>`
       : `<button class="quiet" id="account-login">${iconLabel("enter", "Log in")}</button><button class="secondary" id="account-signup">${iconLabel("add-friend", "Sign up")}</button>`;
     this.syncAvatar();
     if (this.account) {
@@ -1108,8 +1123,12 @@ export class AccountUI {
     const html = `<section class="auth-panel" data-mode="${mode}"><div class="auth-head"><span class="auth-crest" aria-hidden="true"><svg viewBox="0 0 64 64"><path fill="currentColor" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span><div class="auth-title">${copy[0]}</div><p>${copy[1]}</p></div>${tabs}${!this.client ? '<p class="auth-warning">Sign-in isn\'t available right now. Please try again later.</p>' : ""}<form id="auth-form" class="auth-form">${fields}${extras}<button class="auth-submit" type="submit" ${!this.client ? "disabled" : ""}>${submitLabel}</button>${appleMarkup}<p id="auth-message" class="auth-message" role="status"></p></form>${guest}${back}<p class="auth-legal"><a href="${PRIVACY_URL}" target="_blank" rel="noopener">Privacy policy</a></p></section>`;
     // On the welcome screen the panel sits in the page; elsewhere in a dialog.
     const host = document.getElementById("gate-auth");
-    if (host) host.innerHTML = html;
-    else this.hooks.openDialog(html);
+    if (host) {
+      host.innerHTML = html;
+      // The welcome screen's art follows the form's height (themes/poster/
+      // onboarding.css: Voltkit stays clear of the BETA tag above it).
+      host.parentElement?.setAttribute("data-auth-mode", mode);
+    } else this.hooks.openDialog(html);
     document
       .querySelectorAll<HTMLButtonElement>("[data-auth-tab]")
       .forEach((tab) => {
@@ -2419,6 +2438,7 @@ export class AccountUI {
       }
       this.adminPanel ??= new panel.AdminPanel({
         api: (path, body) => this.api(path, body),
+        titlesChanged: () => void this.loadTitleTiers(),
         openDialog: (html) => this.hooks.openDialog(html),
         fighterName: (id) => CHARACTERS[id as CharacterId]?.name ?? id,
       });

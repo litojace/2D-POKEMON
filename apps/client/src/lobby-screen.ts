@@ -361,6 +361,14 @@ const escape = (s: string) =>
       ]!,
   );
 const hex = (color: number) => `#${color.toString(16).padStart(6, "0")}`;
+/**
+ * A field colour of its own for a fighter whose colour is the game's gold:
+ * under Poster's fixed chrome PLAY and the XP bar are that gold for
+ * everyone, and with Voltkit they sat on a field of the very same gold
+ * (owner, 27 Nov 2026). Voltkit's field is a lemon; its art, cards and
+ * element chip keep its own colour.
+ */
+const POSTER_FIELD: Partial<Record<string, string>> = { voltkit: "#f3e53b" };
 
 /** A mode's name: a bot match's level in its colour, with its pips. */
 const modeLabel = (m: (typeof LOBBY_MODES)[number]) =>
@@ -1077,8 +1085,12 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
         const fighter = CHARACTERS[character];
         const art = $("lobby-fighter-art");
         $("lobby-fighter").style.setProperty("--element", hex(fighter.color));
-        // Both looks draw with it, on every screen (ui-theme.ts).
-        setUiElementColour(hex(fighter.color));
+        // The look underneath draws with it on every screen; Poster on
+        // the fighter's own things (ui-theme.ts).
+        setUiElementColour(
+          hex(fighter.color),
+          POSTER_FIELD[character] ?? hex(fighter.color),
+        );
         // The name behind the fighter, for a look that shows it (Poster).
         $("lobby-bigname").textContent = fighter.name;
         art.innerHTML = fighterStageArt(
@@ -1094,6 +1106,12 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
         $("lobby-fighter-name").textContent = fighter.name;
         $("lobby-fighter-element").innerHTML =
           `${elementIcon(fighter.element)}${fighter.element}`;
+        // Its element's own colour (ui/tokens.css --el-*), for the look
+        // that marks the element (Poster: an element square for the icon).
+        $("lobby-fighter-element").style.setProperty(
+          "--el",
+          `var(--el-${fighter.element.toLowerCase()})`,
+        );
         art.classList.toggle("is-still", options.reduced);
         // New artwork: the rig re-attaches its canvas and poses the new look.
         if (rig) rig.update($("lobby-fighter"), "selection");

@@ -16,6 +16,16 @@ import type Phaser from "phaser";
 import { CHARACTERS, type CharacterId } from "@arena/shared";
 import { moodFor, squashFor } from "./expression";
 import {
+  ENTRANCES,
+  MAX_TURN,
+  MIN_WIDTH,
+  SETTLED,
+  VICTORIES,
+  keepHeadRigid,
+  type MoveAccent,
+  type MoveStage,
+} from "./champion-moves";
+import {
   AnimationController,
   facing,
   type AnimationPose,
@@ -117,8 +127,25 @@ const ROCK_PILE = 24;
  * the free paw does the big moves.
  */
 export const UPRIGHT_PROP_ARM: Partial<
-  Record<CharacterId, { front: number; side: number; swing: number }>
-> = { astrabun: { front: -0.35, side: 0.35, swing: 0.4 } };
+  Record<
+    CharacterId,
+    { front: number; side: number; swing: number; sideSwing?: number }
+  >
+> = {
+  // (Measured by sweeping the arm, 28 Nov 2026. The owner: "the mallet arm
+  // can't move, it looks paralysed". Seen from the front or back the mallet
+  // clears the body from held high beside the head (-0.55) to swung out
+  // level (1.15); side on it sits behind the back, clear from over the
+  // shoulder (0.45) down to the ground behind (-1.25). So the arm swings
+  // freely in that range; `front` and `side` are its middle.)
+  astrabun: { front: 0.3, side: -0.4, swing: 0.85 },
+  // Tidefin's blade is painted on the near paw too. Seen from the front it
+  // clears the body only while that arm turns outward (about -0.4 to 1.6
+  // rad): turned inward, the blade lies across the chest (owner, 28 Nov
+  // 2026: "it looks like it stabs its own body"). Side on, the blade is
+  // edge-on and the arm swings freely.
+  tidefin: { front: 0.6, side: 0, swing: 1, sideSwing: 2.6 },
+};
 const MAX_PARTICLES = 48;
 
 type ParticleShape = FxShape;
@@ -162,6 +189,9 @@ export class FighterRig {
   /** Drawn under the fighter (the victory rock pile). */
   private under: Phaser.GameObjects.Graphics;
   private lastProgress = 0;
+  /** The champion's own move last frame, and how far into it (seconds). */
+  private moveState: AnimationState = "idle";
+  private moveT = 0;
   /** The scale the caller asked for (view zoom, giants); squash multiplies it. */
   private baseX = 1;
   private baseY = 1;
@@ -754,8 +784,85 @@ export class FighterRig {
       armR.rotation = -0.7;
       this.root.setAlpha(alpha * 0.65);
     }
-    // ---- Greetings (round intro) and victories, one for each champion.
-    if (state === "wave" && !reduced)
+    // ---- Entrances (the round's greeting) and victories, one for each
+    // champion (champion-moves.ts). An equipped Victory reward that brings
+    // its own action (Rockslide Flex) replaces the champion's victory move.
+    const ownMove =
+      state === "wave"
+        ? ENTRANCES[this.character]
+        : state === "victory" && pose.look?.victory !== "rockslide-flex"
+          ? VICTORIES[this.character]
+          : undefined;
+    const accents: [MoveAccent, number][] = [];
+    if (ownMove) {
+      const at = reduced ? SETTLED : t;
+      const before =
+        this.moveState === state && this.moveT <= at ? this.moveT : -1;
+      const stage: MoveStage = {
+        t: at,
+        calm: reduced,
+        facing: dir,
+        side: dir === "left" ? -1 : 1,
+        p: {
+          head,
+          body,
+          armL,
+          armR,
+          legL,
+          legR,
+          tail,
+          wings,
+          flame,
+          ears,
+          scarf,
+        },
+        move: (dx, dy) => {
+          offsetX += dx;
+          offsetY += dy;
+        },
+        squash: (x, y) => {
+          sx *= x;
+          sy *= y;
+        },
+        spin: (angle) => {
+          this.root.rotation += angle;
+        },
+        mood: (wanted) => {
+          if (dir === "up") return;
+          const key = moodKey(this.character, dir, wanted, this.suffix);
+          if (eyes.texture.key !== key && this.scene.textures.exists(key))
+            eyes.setTexture(key);
+        },
+        shut: (amount) => {
+          eyes.scaleY = Math.max(0.055, 0.5 * (1 - amount));
+        },
+        fade: (k) => {
+          this.root.setAlpha(this.root.alpha * Math.max(0, Math.min(1, k)));
+        },
+        sway: (speed, phase = 0) =>
+          reduced ? 0 : Math.sin(at * speed + phase),
+        passed: (moment) => !reduced && before < moment && at >= moment,
+        accent: (kind, count) => {
+          accents.push([kind, count]);
+        },
+      };
+      const neck = head.y;
+      ownMove(stage);
+      // Nothing leaves the body: the head stays on its neck (it may sink,
+      // never lift) and barely tilts; a headpiece drawn across the head
+      // (gills, ears) never widens off it.
+      head.y = Math.max(neck, head.y);
+      head.rotation = Math.max(-0.16, Math.min(0.16, head.rotation));
+      ears.scaleX = Math.min(0.54, ears.scaleX);
+      // No spins: the art is flat, so a turn past a lean, or a squash that
+      // narrows it to fake turning edge-on, reads as paper flipping over.
+      this.root.rotation = Math.max(
+        -MAX_TURN,
+        Math.min(MAX_TURN, this.root.rotation),
+      );
+      sx = Math.max(MIN_WIDTH, sx);
+      this.moveT = at;
+    } else if (state === "wave" && !reduced)
       this.wave(
         t,
         { head, body, armL, armR, legL, legR, tail, wings, flame, ears },
@@ -765,8 +872,7 @@ export class FighterRig {
         },
       );
     else if (state === "wave") armR.rotation = -2.4;
-    // An equipped Victory reward replaces the champion's own victory move.
-    if (
+    else if (
       state === "victory" &&
       !reduced &&
       t < 2.2 &&
@@ -780,6 +886,8 @@ export class FighterRig {
           offsetY += dy;
         },
       );
+    this.moveState = ownMove ? state : "idle";
+    for (const [kind, count] of accents) this.moveAccent(kind, count, x, y);
     // Rockslide Flex (a Victory reward): a pile of rocks rises under the
     // fighter, who stands on top flexing while pebbles bounce away.
     const flexing =
@@ -815,11 +923,27 @@ export class FighterRig {
     // An upright prop stays upright: its arm never swings overhead.
     const prop = this.propHold();
     if (prop !== undefined && (state === "wave" || state === "victory")) {
-      const swing = UPRIGHT_PROP_ARM[this.character]!.swing;
+      const held = UPRIGHT_PROP_ARM[this.character]!;
+      const swing =
+        (this.dir === "left" || this.dir === "right"
+          ? held.sideSwing
+          : undefined) ?? held.swing;
       armR.rotation = Math.max(
         prop - swing,
         Math.min(prop + swing, armR.rotation),
       );
+    }
+    // The same prop in an attack, seen from the front or back: a swing that
+    // would carry it inward (the blade across the chest, the mallet upside
+    // down on the belly) goes outward by as much instead (owner, 28 Nov
+    // 2026: props never cut into the body). Side on, the swing is free.
+    if (prop !== undefined && attack && (dir === "down" || dir === "up")) {
+      const inner = prop - UPRIGHT_PROP_ARM[this.character]!.swing;
+      if (armR.rotation < inner)
+        armR.rotation = Math.min(
+          prop + UPRIGHT_PROP_ARM[this.character]!.swing,
+          2 * inner - armR.rotation,
+        );
     }
     // Side drawings are mirrored; their local limb poses must mirror too.
     // World-space lean, lunge and wind already use the aiming direction.
@@ -979,6 +1103,16 @@ export class FighterRig {
       }
     }
     this.carriedRotation = dir === "down" ? 0 : body.rotation;
+    // A champion's own move never flattens the face: the squash or stretch
+    // is the body's, and the head with all it carries keeps its size and
+    // shape, riding on top (owner, 28 Nov 2026).
+    if (ownMove && (sx !== 1 || sy !== 1))
+      keepHeadRigid(
+        PROFILE_FACE_PARTS.flatMap((part) => this.images.get(part) ?? []),
+        { x: head.x, y: head.y },
+        sx,
+        sy,
+      );
     for (const image of this.images.values()) image.setVisible(true);
     // Shell Up: head, limbs and sprout tuck away; only the mossy shell shows.
     if (pose.shell)
@@ -1191,6 +1325,42 @@ export class FighterRig {
     const prop = UPRIGHT_PROP_ARM[this.character];
     if (!prop) return undefined;
     return this.dir === "left" || this.dir === "right" ? prop.side : prop.front;
+  }
+
+  /** A few particles that belong to a champion's move (champion-moves.ts). */
+  private moveAccent(kind: MoveAccent, count: number, x: number, y: number) {
+    const sc = this.baseX,
+      feet = y + FEET * this.baseY;
+    for (let i = 0; i < Math.min(count, 6); i++) {
+      const out = (i / Math.max(1, count - 1) - 0.5) * 2 || 0;
+      if (kind === "ember")
+        this.emit({
+          x: x + out * 12 * sc,
+          y: y - 44 * this.baseY,
+          vx: out * 40,
+          vy: -50 - Math.random() * 40,
+          life: 0.6,
+          size: (1.6 + Math.random() * 1.4) * sc,
+          color: i % 2 ? 0xffd34d : 0xff7a4f,
+          shape: "dot",
+        });
+      else
+        this.emit({
+          x: x + (out * 14 + (Math.random() - 0.5) * 6) * sc,
+          y: feet - (2 + Math.random() * 5) * sc,
+          vx: out * (kind === "dust" ? 46 : 70) * (0.6 + Math.random() * 0.8),
+          vy:
+            kind === "dust"
+              ? -18 - Math.random() * 14
+              : -60 - Math.random() * 50,
+          life: kind === "dust" ? 0.45 : 0.4,
+          size: (kind === "dust" ? 2.6 : kind === "spark" ? 4.5 : 2.4) * sc,
+          color:
+            kind === "spark" ? 0x7ff3ff : kind === "drop" ? 0xbff6ff : 0xcbb89a,
+          shape:
+            kind === "spark" ? "spark" : kind === "drop" ? "bubble" : "dot",
+        });
+    }
   }
 
   /** Each champion's own greeting at the start of a round. */

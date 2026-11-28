@@ -44,7 +44,8 @@ import {
 } from "../../../../packages/shared/src/avatars";
 import { avatarImage, identityPortrait } from "../portraits";
 import { fighterPortrait } from "../fighter-art";
-import { sortTitles, titleTreatment } from "../player-nameplate";
+import { sortTitles } from "../player-nameplate";
+import { titleTag } from "../title-tag";
 import { raidSplashImage } from "../raid-splash-art";
 import { menuIcon } from "../menu-icons";
 import {
@@ -264,7 +265,7 @@ export function playerCard(d: ProfileData, label = "Your player card") {
       : "",
     best ? tag(best.text) : "",
   ].join("");
-  return `<aside class="pf-card" style="--el:${elVar(d.fighter)}" aria-label="${esc(label)}"><span class="pf-card-art pf-card-avatar" aria-hidden="true">${identityPortrait({ avatar: d.avatar, raidLook: d.look, raidClears: d.clears })}</span><span class="pf-card-text">${d.title ? `<small class="pf-card-title player-title title-${titleTreatment(d.title)}" style="--title-color:${safeColor(d.titleColor)};color:${safeColor(d.titleColor)}">${esc(d.title)}</small>` : ""}<b class="pf-card-name">${esc(d.name)}</b><span class="pf-card-tags">${tags}</span></span></aside>`;
+  return `<aside class="pf-card" style="--el:${elVar(d.fighter)}" aria-label="${esc(label)}"><span class="pf-card-art pf-card-avatar" aria-hidden="true">${identityPortrait({ avatar: d.avatar, raidLook: d.look, raidClears: d.clears })}</span><span class="pf-card-text">${d.title ? `<small class="pf-card-title">${titleTag(d.title, d.titleColor, { fit: true })}</small>` : ""}<b class="pf-card-name">${esc(d.name)}</b><span class="pf-card-tags">${tags}</span></span></aside>`;
 }
 
 function tiles(d: ProfileData) {
@@ -288,7 +289,7 @@ function titleChips(d: ProfileData, view: ProfileView) {
     const on = id === current;
     const busy = view.equipping === id;
     const color = t ? safeColor(t.color) : "var(--ui-dim)";
-    return `<button type="button" class="pf-title-chip${on ? " is-on" : ""}" style="--title:${color}" aria-pressed="${on}" data-profile-title="${esc(id)}"${t?.description ? ` title="${esc(t.description)}"` : ""}${view.equipping !== null ? " disabled" : ""}${busy ? ' aria-busy="true"' : ""}><span>${esc(t?.name ?? "No title")}</span></button>`;
+    return `<button type="button" class="pf-title-chip${on ? " is-on" : ""}" style="--title:${color}" aria-pressed="${on}" data-profile-title="${esc(id)}"${t?.description ? ` title="${esc(t.description)}"` : ""}${view.equipping !== null ? " disabled" : ""}${busy ? ' aria-busy="true"' : ""}>${t ? titleTag(t.name, t.color, { fit: true, still: true }) : "<span>No title</span>"}</button>`;
   };
   return `<div class="pf-titles" role="group" aria-labelledby="pf-titles-h">${chip(null)}${sorted.map(chip).join("")}</div>${sorted.length ? "" : '<p class="ui-note">Earn titles from ranks, raids, achievements and events. They show up here.</p>'}<p class="ui-note pf-status" role="status">${esc(view.status)}</p>`;
 }

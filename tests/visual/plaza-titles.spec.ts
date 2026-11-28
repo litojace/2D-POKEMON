@@ -17,11 +17,14 @@ const drawn = (page: Page) =>
   page.evaluate(
     (names) => {
       const p = (window as any).__plaza;
+      const full = p.fullFx();
       const row = (b: any) => ({
         name: b.name,
         bot: !!b.bot,
         tier: b.titleTier ?? null,
         moving: !!b.titleMoving,
+        // The scene picked it for the full effects this frame.
+        full: full.has(b),
       });
       const others = [...p.others.values()];
       return {
@@ -109,13 +112,20 @@ for (const viewport of [
       // be sent to this player changes as they wander: on CI none were, at
       // one size, so their number is not held to.)
       expect(d.bots.filter((b) => b.tier)).toEqual([]);
-      // What moves plays for the player and the nearest five only.
-      expect(d.me.moving).toBe(true);
-      expect(d.crowd.filter((c) => c?.moving).map((c) => c?.name)).toEqual(
-        TITLE_CROWD.slice(0, 5)
-          .filter((c) => c[2])
-          .map((c) => c[1]),
-      );
+      // What moves plays for the player and the nearest five only: the
+      // scene's own pick, which counts the townsfolk too, so which of the
+      // staged crowd are in it depends on where they wander (a test that
+      // named the four nearest failed when townsfolk came closer).
+      expect(d.me).toMatchObject({ moving: true, full: true });
+      const near = [...d.crowd, ...d.bots].filter((c) => c?.full);
+      expect(near.length).toBeLessThanOrEqual(5);
+      for (const c of d.crowd)
+        expect(c?.moving, c?.name).toBe(!!c?.full && c?.tier !== null);
+      // Those staged 200 px and more away are never among the nearest five
+      // (five of the crowd stand within 100 px), so theirs hold still.
+      expect(d.crowd.slice(5).filter((c) => c?.full || c?.moving)).toEqual([]);
+      // And some of the near crowd's titles do move.
+      expect(d.crowd.slice(0, 5).some((c) => c?.moving)).toBe(true);
       // Sol, who has no title, has nothing drawn over the name.
       expect(d.crowd[TITLE_CROWD.findIndex((c) => c[1] === "Sol")]?.tier).toBe(
         null,
