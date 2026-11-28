@@ -296,12 +296,15 @@ const tidefinEntrance: Move = (s) => {
   p.legR.rotation = 0.55 * thrust;
   p.scarf.rotation = -0.5 * thrust + 0.3 * back * (1 - lunge);
   p.tail.rotation = -0.5 * thrust;
-  // The blade arm: thrust, a full flourish, then a salute beside the head.
-  const reach = lunge * (1 - ease(t, 1.26, 1.38));
-  const flourish = ease(t, 0.84, 1.26);
+  // The blade is painted on this arm: it only ever turns outward, away from
+  // the body (UPRIGHT_PROP_ARM in rig.ts). A thrust out to the side, two
+  // quick flicks, then the blade held upright in salute while the free arm
+  // sweeps high.
+  const reach = lunge * (1 - ease(t, 0.84, 0.96));
+  const flick = bump(t, 0.86, 1.06) + bump(t, 1.06, 1.26);
   const salute = ease(t, 1.26, 1.38) * (1 - ease(t, 1.8, 2.0));
-  p.armR.rotation = -1.5 * reach - Math.PI * 2 * flourish - 2.55 * salute;
-  p.armL.rotation = -0.5 * Math.max(thrust, salute);
+  p.armR.rotation = 1.1 * reach + 0.4 + 1.0 * flick - 0.4 * salute;
+  p.armL.rotation = -0.5 * thrust + 2.2 * salute;
   // The skid stops in a heel-click hop; the gills bloom wide and settle.
   const click = arc(t, 0.84, 1.2);
   s.move(0, -click * 9);
@@ -320,8 +323,8 @@ const tidefinEntrance: Move = (s) => {
   const guard = ease(t, 1.85, 2.05);
   s.move(0, -Math.max(0, s.sway(10)) * 3 * guard);
   s.spin(s.side * 0.06 * guard);
-  p.armR.rotation += (-1.15 + s.sway(5) * 0.1) * guard;
-  p.armL.rotation += 1.9 * guard;
+  p.armR.rotation += (0.5 + s.sway(5) * 0.1) * guard;
+  p.armL.rotation += 1.2 * guard;
   p.legL.rotation += -0.25 * guard;
   p.legR.rotation += 0.3 * guard;
   p.tail.rotation += (0.35 + s.sway(5) * 0.12) * guard;
@@ -342,7 +345,7 @@ const tidefinVictory: Move = (s) => {
   p.legL.rotation = 0.3 * air;
   p.legR.rotation = -0.3 * air;
   p.armL.rotation = 1.2 * air;
-  p.armR.rotation = -1.2 * air;
+  p.armR.rotation = 1.2 * air;
   p.tail.rotation = (0.5 * up - 0.5 * down) * 1.2;
   p.scarf.rotation = 0.4 * up - 0.4 * down;
   land(s, 0.92, 0.18);
@@ -356,15 +359,16 @@ const tidefinVictory: Move = (s) => {
   s.spin(
     s.side * 0.12 * bow * (s.facing === "left" || s.facing === "right" ? 1 : 0),
   );
-  p.armR.rotation += 1.0 * bow;
-  p.armL.rotation += 1.5 * bow;
+  p.armR.rotation += 1.3 * bow;
+  p.armL.rotation += -0.6 * bow;
   p.tail.rotation = 0.5 * bow;
-  // Hold: up on its toes, blade raised in salute, gills fanned, tail high.
+  // Hold: up on its toes, blade upright at its side, free arm high, gills
+  // fanned, tail high.
   const hold = ease(t, 1.86, 2.1);
   const rise = bump(t, 1.86, 2.2);
   s.move(0, -rise * 6 - s.sway(2.6) * 1.2 * hold);
-  p.armR.rotation += (-2.45 + s.sway(4) * 0.06) * hold;
-  p.armL.rotation += -0.55 * hold;
+  p.armR.rotation += (0.15 + s.sway(4) * 0.08) * hold;
+  p.armL.rotation += (2.3 + s.sway(4) * 0.1) * hold;
   p.legR.rotation += 0.32 * hold;
   s.spin(s.side * 0.06 * hold);
   p.head.rotation += -0.1 * hold;

@@ -124,8 +124,19 @@ const ROCK_PILE = 24;
  * the free paw does the big moves.
  */
 export const UPRIGHT_PROP_ARM: Partial<
-  Record<CharacterId, { front: number; side: number; swing: number }>
-> = { astrabun: { front: -0.35, side: 0.35, swing: 0.4 } };
+  Record<
+    CharacterId,
+    { front: number; side: number; swing: number; sideSwing?: number }
+  >
+> = {
+  astrabun: { front: -0.35, side: 0.35, swing: 0.4 },
+  // Tidefin's blade is painted on the near paw too. Seen from the front it
+  // clears the body only while that arm turns outward (about -0.4 to 1.6
+  // rad): turned inward, the blade lies across the chest (owner, 28 Nov
+  // 2026: "it looks like it stabs its own body"). Side on, the blade is
+  // edge-on and the arm swings freely.
+  tidefin: { front: 0.6, side: 0, swing: 1, sideSwing: 2.6 },
+};
 const MAX_PARTICLES = 48;
 
 type ParticleShape = FxShape;
@@ -893,7 +904,11 @@ export class FighterRig {
     // An upright prop stays upright: its arm never swings overhead.
     const prop = this.propHold();
     if (prop !== undefined && (state === "wave" || state === "victory")) {
-      const swing = UPRIGHT_PROP_ARM[this.character]!.swing;
+      const held = UPRIGHT_PROP_ARM[this.character]!;
+      const swing =
+        (this.dir === "left" || this.dir === "right"
+          ? held.sideSwing
+          : undefined) ?? held.swing;
       armR.rotation = Math.max(
         prop - swing,
         Math.min(prop + swing, armR.rotation),
