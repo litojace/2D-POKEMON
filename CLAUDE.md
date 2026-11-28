@@ -231,7 +231,9 @@ Other notes:
   so the next run starts a fresh one.
 - `VISUAL_SHOTS=<folder>` saves a screenshot of each `snap()` to look over.
 - A visual test that must not pass by luck: break the fix on purpose, check
-  that the test fails, then restore the fix.
+  that the test fails, then restore the fix. Restart the harness server
+  first (`pkill -f tests/visual/vite.config`): Vite can keep serving a
+  stylesheet you just removed, so the broken run passes falsely.
 - Measure an opened dialog, sheet or panel only after `await settle(page)`
   (`tests/visual/helpers.ts`; `box()` and `layoutProblems` call it). Their
   open animations scale them, and CI's slow renderer can still be at the

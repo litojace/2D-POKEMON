@@ -555,7 +555,7 @@ function bossMarkup(view: RaidView, d: RaidData) {
       }),
     ),
   );
-  return `<section class="ui-panel is-split rh-room" role="dialog" aria-label="${esc(b.name)}" data-raid-mode="boss" data-raid-boss="${view.boss}" style="--boss:${b.color}">${stage(view.boss)}<div class="ui-split-main"><header class="ui-panel-head rh-head">${button("All bosses", { size: "s", icon: "back", attrs: { "data-raid-back": true } })}${view.tab === "guide" ? "" : `<span class="ui-note rh-hint">${esc(b.blurb)}</span>`}${iconButton("cancel", "Back to the Lobby", { class: "ui-close", "data-ui-close": true })}</header>${tabRow}<div class="ui-panel-body rh-body" data-raid-region="body" data-tab="${view.tab}">${body}</div>${foot}</div></section>`;
+  return `<section class="ui-panel is-split rh-room" role="dialog" aria-label="${esc(b.name)}" data-raid-mode="boss" data-raid-boss="${view.boss}" style="--boss:${b.color}">${stage(view.boss)}<div class="ui-split-main"><header class="ui-panel-head rh-head">${button("All bosses", { size: "s", icon: "back", attrs: { "data-raid-back": true } })}<span class="rh-head-gap" aria-hidden="true"></span>${iconButton("cancel", "Back to the Lobby", { class: "ui-close", "data-ui-close": true })}</header>${tabRow}<div class="ui-panel-body rh-body" data-raid-region="body" data-tab="${view.tab}">${view.tab === "guide" ? "" : `<p class="ui-note rh-lede">${esc(b.blurb)}</p>`}${body}</div>${foot}</div></section>`;
 }
 
 /** The whole screen: the hall, or one boss's page. */
