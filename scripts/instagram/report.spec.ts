@@ -7,7 +7,8 @@
  *   npx playwright test --config scripts/instagram/playwright.config.ts report.spec.ts
  *
  * Writes instagram-clips/report/menu.png and form.png (2532 x 1170), and
- * boxes.json: where the gear, Report a problem, the menu and the coins are.
+ * boxes.json: where the gear, the Help tab, Report a problem, the sheet and
+ * the coins are.
  */
 import { expect, test } from "@playwright/test";
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -30,22 +31,30 @@ test("report a problem", async ({ browser }) => {
     const page = await context.newPage();
     await openHub(page);
     expect(await lookShown(page)).toBe("poster");
-    // The gear at the top right opens the Menu, Report a problem in it.
-    await page.locator("#header-menu > summary").click();
-    const report = page.locator("#report-problem");
+    // The gear at the top right opens Settings (#674); Report a problem is
+    // on its Help tab.
+    const gearBox = (await page.locator("#home-settings").boundingBox())!;
+    await page.screenshot({ path: `${OUT}/lobby.png` });
+    await page.locator("#home-settings").click();
+    const help = page.locator('[data-settings-tab="help"]');
+    await expect(help).toBeVisible();
+    await help.click();
+    const report = page.locator("#settings-report");
     await expect(report).toBeVisible();
     await page.waitForTimeout(600);
     await page.screenshot({ path: `${OUT}/menu.png` });
-    // Where the gear, Report a problem, the open menu and the coin count
-    // are (CSS pixels), for the post's crop, its rings and its cover.
+    // Where the gear (before Settings opened), the Help tab, Report a
+    // problem, the sheet and the coin count are (CSS pixels), for the
+    // post's crop, its rings and its cover.
     const at = async (selector: string) =>
       (await page.locator(selector).first().boundingBox())!;
     writeFileSync(
       `${OUT}/boxes.json`,
       JSON.stringify({
-        gear: await at("#header-menu > summary"),
-        report: await at("#report-problem"),
-        panel: await at(".header-menu-panel"),
+        gear: gearBox,
+        help: await at('[data-settings-tab="help"]'),
+        report: await at("#settings-report"),
+        panel: await at("#dialog"),
         coins: await at("#account-coins"),
       }),
     );
