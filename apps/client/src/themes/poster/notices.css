@@ -1,0 +1,23 @@
+/* Poster audit: notices that were a whole sentence in a colour (28 Nov
+   2026). The colour standard (severity.css) puts the colour on a mark, a
+   key word or an edge, never on the sentence; the words are cream. These
+   three are warnings (something was refused or could not load, nothing is
+   lost): the amber sign before cream words. */
+:root[data-ui="poster"] .rh-note.is-problem,
+:root[data-ui="poster"] .fit-warning,
+:root[data-ui="poster"] .chat-note {
+  color: var(--ui-text);
+}
+:root[data-ui="poster"] .rh-note.is-problem::before,
+:root[data-ui="poster"] .fit-warning::before,
+:root[data-ui="poster"] .chat-note:not(:empty)::before {
+  content: "";
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  margin-right: 0.4em;
+  vertical-align: -0.14em;
+  background: var(--sev-warn);
+  -webkit-mask: var(--sev-sign) center / contain no-repeat;
+  mask: var(--sev-sign) center / contain no-repeat;
+}
