@@ -62,6 +62,178 @@ async function openSite(page: Page, hash = "") {
   await page.goto(HOME + hash);
 }
 
+type Word = {
+  name: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  fg: [number, number, number, number];
+  need: number;
+};
+
+/**
+ * The words in view, with their colour and the contrast they need (WCAG
+ * AA: 4.5:1, 3:1 for large text). As tests/visual/poster-contrast.spec.ts
+ * does for the game: any colour syntax is painted to a pixel and read back.
+ */
+const wordsInView = (page: Page) =>
+  page.evaluate(() => {
+    const out: Word[] = [];
+    const paint = document.createElement("canvas").getContext("2d", {
+      willReadFrequently: true,
+    })!;
+    paint.canvas.width = paint.canvas.height = 1;
+    const toRgba = (c: string) => {
+      paint.clearRect(0, 0, 1, 1);
+      paint.fillStyle = c;
+      paint.fillRect(0, 0, 1, 1);
+      const d = paint.getImageData(0, 0, 1, 1).data;
+      return [d[0], d[1], d[2], d[3] / 255];
+    };
+    const walker = document.createTreeWalker(
+      document.body,
+      NodeFilter.SHOW_TEXT,
+    );
+    const seen = new Set<Element>();
+    for (let t = walker.nextNode(); t; t = walker.nextNode()) {
+      const el = t.parentElement;
+      const text = t.textContent?.trim();
+      if (!el || seen.has(el) || !text) continue;
+      seen.add(el);
+      if (el.closest("svg, [aria-hidden='true'], .vh, .skin-n")) continue;
+      const range = document.createRange();
+      range.selectNodeContents(t);
+      const r = range.getBoundingClientRect();
+      if (r.width < 2 || r.height < 2) continue;
+      if (
+        r.left < 0 ||
+        r.top < 0 ||
+        r.right > innerWidth ||
+        r.bottom > innerHeight
+      )
+        continue;
+      const cs = getComputedStyle(el);
+      if (cs.visibility !== "visible") continue;
+      let op = 1;
+      for (let n: Element | null = el; n; n = n.parentElement)
+        op *= Number(getComputedStyle(n).opacity);
+      if (op < 0.05) continue;
+      // Seen whole: the middle and all four corners land on this text, not
+      // on something over it or past the edge of a box it scrolls in.
+      const box = el.getBoundingClientRect();
+      if (box.width < 2 || box.height < 2) continue;
+      const points = [
+        [r.x + r.width / 2, r.y + r.height / 2],
+        [r.left + 2, r.top + 2],
+        [r.right - 2, r.top + 2],
+        [r.left + 2, r.bottom - 2],
+        [r.right - 2, r.bottom - 2],
+      ];
+      const whole = points.every(([x, y]) => {
+        const hit = document.elementFromPoint(x, y);
+        // The text's own element (a point on a dialog's backdrop hits the
+        // dialog, which contains every word in it).
+        return !!hit && el.contains(hit);
+      });
+      if (!whole) continue;
+      const p = toRgba(cs.color);
+      const size = parseFloat(cs.fontSize);
+      const bold =
+        Number(cs.fontWeight) >= 700 || cs.fontFamily.includes("Anton");
+      out.push({
+        name: `${el.tagName.toLowerCase()}${el.id ? `#${el.id}` : ""}${typeof el.className === "string" && el.className ? `.${el.className.split(" ")[0]}` : ""} "${text.slice(0, 28)}"`,
+        x: r.x,
+        y: r.y,
+        w: r.width,
+        h: r.height,
+        fg: [p[0], p[1], p[2], (p[3] ?? 1) * op],
+        need: size >= 24 || (bold && size >= 18.66) ? 3 : 4.5,
+      });
+    }
+    return out;
+  });
+
+/**
+ * Wait for every animation and transition that ends to have ended (a
+ * colour caught half-way measures as neither).
+ */
+const settle = (page: Page) =>
+  page.waitForFunction(
+    () =>
+      document
+        .getAnimations()
+        .every(
+          (a) =>
+            a.playState !== "running" ||
+            a.effect?.getComputedTiming().endTime === Infinity,
+        ),
+    null,
+    { timeout: 20_000, polling: 100 },
+  );
+
+/** Words in view under the contrast they need, measured on the pixels drawn under them. */
+async function lowContrast(page: Page, where: string) {
+  // No pointer resting on a control: a hover colour is not what a reader
+  // sees by default.
+  await page.mouse.move(1, 1);
+  const list = await wordsInView(page);
+  const hide = await page.addStyleTag({
+    content:
+      "*, *::before, *::after { color: transparent !important; text-shadow: none !important; -webkit-text-stroke: 0 !important; caret-color: transparent !important; transition: none !important; }",
+  });
+  const png = (await page.screenshot({ animations: "disabled" })).toString(
+    "base64",
+  );
+  await hide.evaluate((s) => (s as Element).remove());
+  return page.evaluate(
+    async ({ png, list, where }) => {
+      const img = new Image();
+      img.src = `data:image/png;base64,${png}`;
+      await img.decode();
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
+      ctx.drawImage(img, 0, 0);
+      const scale = img.width / innerWidth;
+      const lum = (c: number[]) => {
+        const f = (v: number) => {
+          v /= 255;
+          return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+        };
+        return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]);
+      };
+      const out: string[] = [];
+      for (const w of list) {
+        const data = ctx.getImageData(
+          Math.floor(w.x * scale),
+          Math.floor(w.y * scale),
+          Math.max(1, Math.floor(w.w * scale)),
+          Math.max(1, Math.floor(w.h * scale)),
+        ).data;
+        // The backdrop's middle: the median pixel by brightness.
+        const px: number[][] = [];
+        for (let i = 0; i < data.length; i += 4)
+          px.push([data[i], data[i + 1], data[i + 2]]);
+        px.sort((a, b) => lum(a) - lum(b));
+        const bg = px[px.length >> 1];
+        const a = w.fg[3];
+        const fg = [0, 1, 2].map((i) => w.fg[i] * a + bg[i] * (1 - a));
+        const l1 = lum(fg);
+        const l2 = lum(bg);
+        const ratio = (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+        if (ratio < w.need)
+          out.push(
+            `${where} ${w.name} ${ratio.toFixed(2)} < ${w.need} (fg rgb(${fg.map((v) => v | 0)}), bg rgb(${bg}))`,
+          );
+      }
+      return out;
+    },
+    { png, list, where },
+  );
+}
+
 test.describe("website", () => {
   test.afterEach(() => expect(errors).toEqual([]));
 
@@ -121,6 +293,79 @@ test.describe("website", () => {
     expect(
       await page.evaluate(() => localStorage.getItem("ea-site-motion")),
     ).toBe("on");
+  });
+
+  test.describe("easy to read", () => {
+    // The measure hides the words with a style of its own, which the live
+    // CSP would refuse; the tests above check the CSP.
+    test.use({ bypassCSP: true });
+    // Customers read every word (owner, 28 Nov): each one keeps WCAG AA
+    // contrast against what is really drawn under it, on the whole page at a
+    // phone's and a desktop's size, in the champion panel in every element's
+    // colour, and on every Shop piece.
+    for (const [w, h] of [
+      [390, 844],
+      [1440, 900],
+    ])
+      test(`every word reads at AA contrast, ${w}x${h}`, async ({ page }) => {
+        test.setTimeout(300_000);
+        // Motion paused: nothing is caught half-way through an entrance.
+        await page.emulateMedia({ reducedMotion: "reduce" });
+        await page.setViewportSize({ width: w, height: h });
+        await openSite(page);
+        await page.evaluate(() => document.fonts.ready);
+        const low: string[] = [];
+        const height = await page.evaluate(
+          () => document.documentElement.scrollHeight,
+        );
+        for (let y = 0; y < height; y += Math.round(h * 0.7)) {
+          await page.evaluate((y) => scrollTo(0, y), y);
+          await page.waitForTimeout(150);
+          await settle(page);
+          low.push(...(await lowContrast(page, `page@${y}`)));
+        }
+        // Every Shop piece (both rarities' colours).
+        const picks = page.locator(".shop-pick");
+        for (let i = 0; i < (await picks.count()); i++) {
+          await picks.nth(i).click();
+          await page.locator(".spot:not([hidden])").scrollIntoViewIfNeeded();
+          await settle(page);
+          low.push(...(await lowContrast(page, `shop#${i}`)));
+        }
+        // The champion panel in each element's colour, top and bottom.
+        const ELEMENTS = [
+          "voltkit",
+          "cindrake",
+          "tidefin",
+          "auralynx",
+          "lumoth",
+          "mystowl",
+          "terradon",
+          "duskveil",
+          "pangrove",
+        ];
+        for (const id of ELEMENTS) {
+          await page.evaluate(
+            (id) =>
+              document
+                .querySelector<HTMLElement>(`.roster [data-champion="${id}"]`)!
+                .click(),
+            id,
+          );
+          await expect(page.locator("#champ-name"), id).toHaveText(
+            new RegExp(id, "i"),
+          );
+          await settle(page);
+          low.push(...(await lowContrast(page, `${id}:top`)));
+          await page.evaluate(() =>
+            document.querySelector("#champ")!.scrollTo(0, 1e5),
+          );
+          low.push(...(await lowContrast(page, `${id}:end`)));
+          await page.click(".champ-x");
+          await expect(page.locator("#champ")).toHaveJSProperty("open", false);
+        }
+        expect(low).toEqual([]);
+      });
   });
 
   for (const [w, h] of [

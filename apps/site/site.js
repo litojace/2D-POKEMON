@@ -110,7 +110,13 @@
     try {
       const t = document.startViewTransition(update);
       t.finished.then(done, done);
-      return t.updateCallbackDone.then(() => true);
+      // A transition skipped by the next one (a quick second tap) rejects
+      // `ready`: expected, not an error.
+      t.ready.catch(() => {});
+      return t.updateCallbackDone.then(
+        () => true,
+        () => false,
+      );
     } catch {
       done();
       update();
@@ -582,7 +588,7 @@
       skins.append(li);
     }
     $("#champ-count").textContent =
-      `${c.skins.length} of ${c.skinCount} skins shown · every one in the Shop`;
+      `Showing ${c.skins.length} of ${c.skinCount} skins · see them all in the Shop`;
     wear(c, null);
     if (location.hash !== `#champion-${c.id}`)
       history.replaceState(null, "", `#champion-${c.id}`);

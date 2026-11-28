@@ -141,8 +141,11 @@ const RAID_ART: Record<
 const lineup = RAID_BOSS_ORDER.map((id) => RAID_BOSSES[id]);
 const rewardsOf = (id: RaidBossId) =>
   RAID_REWARDS.filter((r) => r.boss === id).length;
+// Filled stars in the boss's colour, empty ones as outlines in grey that
+// still reads on ink (dimmed filled stars were 1.7:1); one picture with its
+// difficulty as its name.
 const stars = (n: number) =>
-  `<p class="stars" aria-label="Difficulty ${n} of 3">${"★".repeat(n)}${n < 3 ? `<span>${"★".repeat(3 - n)}</span>` : ""}</p>`;
+  `<p class="stars" role="img" aria-label="Difficulty ${n} of 3">${"★".repeat(n)}${n < 3 ? `<span>${"☆".repeat(3 - n)}</span>` : ""}</p>`;
 const raidPanels = lineup
   .map(
     (

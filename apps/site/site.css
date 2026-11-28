@@ -340,16 +340,28 @@ body::before {
   isolation: isolate;
   overflow: hidden;
   padding-top: calc(var(--bar-h) + env(safe-area-inset-top, 0px));
-  background: var(--dots), var(--brand);
+  background: var(--brand);
   color: var(--ink);
   border-bottom: 4px solid var(--ink);
+}
+/* The halftone sits behind the painting and fades out before the words, so
+   nothing speckles behind them. */
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background: var(--dots);
+  -webkit-mask-image: linear-gradient(to bottom, #000 30%, transparent 62%);
+  mask-image: linear-gradient(to bottom, #000 30%, transparent 62%);
+  pointer-events: none;
 }
 /* The game's name, huge and outlined, behind everything (the Lobby's
    fighter name). */
 .hero-word {
   position: absolute;
   left: 50%;
-  bottom: 2%;
+  top: calc(var(--bar-h) + 10%);
   z-index: -1;
   transform: translateX(-50%) rotate(-6deg);
   font: 400 clamp(110px, 19vw, 300px) / 0.8 var(--display);
@@ -452,9 +464,9 @@ body::before {
   box-shadow: inset 0 0 0 2px var(--ink);
 }
 .fine {
-  font-size: 0.92rem;
+  font-size: 0.95rem;
   font-weight: 500;
-  color: rgba(13, 13, 15, 0.78);
+  color: rgba(13, 13, 15, 0.86);
 }
 /* Wide screens: the painting framed in ink with a hard shadow, cut to its
    two fighters and the beam; the words under it, never over a creature
@@ -711,14 +723,14 @@ body::before {
   font-size: 1.75rem;
 }
 .el {
-  font: 400 0.88rem/1.3 var(--display);
+  font: 400 0.95rem/1.3 var(--display);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--el-text);
 }
 .role {
   color: var(--dim);
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   line-height: 1.35;
 }
 .mon-btn:hover,
@@ -781,8 +793,8 @@ body::before {
   background: var(--brand);
 }
 .hint {
-  color: var(--faint);
-  font-size: 0.92rem;
+  color: var(--dim);
+  font-size: 0.98rem;
   margin-top: 16px;
 }
 .roster > li[hidden] {
@@ -931,7 +943,7 @@ body::before {
   line-height: 1;
 }
 .stars span {
-  opacity: 0.3;
+  color: var(--dim);
 }
 .epithet {
   font-size: 1rem;
@@ -942,7 +954,7 @@ body::before {
 .blurb {
   display: none;
   margin-top: 4px;
-  font-size: 0.96rem;
+  font-size: 1rem;
   line-height: 1.5;
   color: var(--dim);
 }
@@ -956,10 +968,10 @@ body::before {
   box-shadow: 5px 5px 0 var(--hot);
 }
 .beat span {
-  font: 400 0.82rem/1 var(--display);
-  letter-spacing: 0.12em;
+  font: 400 0.9rem/1 var(--display);
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(13, 13, 15, 0.8);
+  color: var(--ink);
 }
 .trick {
   font-size: 1rem;
@@ -1198,8 +1210,8 @@ body::before {
   color: var(--dim);
 }
 .spot-note {
-  font-size: 0.9rem;
-  color: var(--faint);
+  font-size: 0.95rem;
+  color: var(--dim);
 }
 .spot-go {
   --btn-bg: var(--r);
@@ -1495,11 +1507,17 @@ body::before {
   border-left: 6px solid var(--hot);
   box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.35);
 }
+/* "Coming soon" as a sticker: white on the red fill reads at 4.85:1 (the
+   red as words on ink was 3.65:1). */
 .store-k {
-  font: 400 0.88rem/1.2 var(--display);
-  letter-spacing: 0.14em;
+  justify-self: start;
+  margin-bottom: 4px;
+  padding: 4px 8px 3px;
+  background: var(--hot-fill);
+  color: var(--paper);
+  font: 400 0.92rem/1.2 var(--display);
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--hot);
 }
 .store-n {
   font: 400 2rem/1.05 var(--display);
@@ -1557,8 +1575,8 @@ body::before {
   color: var(--brand);
 }
 .copy {
-  color: var(--faint);
-  font-size: 0.88rem;
+  color: var(--dim);
+  font-size: 0.95rem;
 }
 @media (min-width: 900px) {
   .foot-in {
@@ -1699,11 +1717,18 @@ body::before {
   width: min(100%, 440px);
   justify-self: center;
 }
+/* Words on a solid block between the arrows, never on the halftone. */
 .champ-count {
   flex: 1;
-  color: rgba(13, 13, 15, 0.82);
-  font: 600 0.85rem/1.3 var(--body);
+  align-self: stretch;
+  display: grid;
+  place-items: center;
+  padding: 4px 10px;
+  background: var(--ink);
+  color: var(--paper);
+  font: 600 0.95rem/1.3 var(--body);
   text-align: center;
+  text-wrap: balance;
 }
 .champ-step {
   flex: none;
@@ -1803,7 +1828,7 @@ body::before {
   }
   .champ-look {
     padding: 4px 7px 3px;
-    font-size: 0.78rem;
+    font-size: 0.875rem;
   }
 }
 .champ-info {
@@ -1921,7 +1946,7 @@ body::before {
   color: var(--el-text);
 }
 .mv-n {
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   font-weight: 500;
   line-height: 1.2;
   color: var(--dim);
@@ -1971,10 +1996,10 @@ body::before {
   align-content: start;
 }
 .move-slot {
-  font: 400 0.9rem/1 var(--display);
-  letter-spacing: 0.14em;
+  font: 400 0.95rem/1 var(--display);
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--faint);
+  color: var(--dim);
 }
 .move-name {
   margin: 0;
@@ -1994,7 +2019,7 @@ body::before {
   padding: 6px 9px 5px;
   background: var(--ink);
   color: var(--el-text);
-  font: 700 0.85rem/1 var(--body);
+  font: 700 0.9rem/1 var(--body);
   letter-spacing: 0.02em;
   text-transform: uppercase;
   font-variant-numeric: tabular-nums;

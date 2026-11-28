@@ -47,6 +47,27 @@ footer), slanted tabs (the nav, the element filter), the red rotated badge
 their element's colour, and slanted slab edges (the raid panel, the roster
 cards' art).
 
+## Easy to read (owner, 28 Nov: "đảm bảo nội dung text dễ đọc cho khách hàng")
+
+- **Contrast, measured on the pixels:** `tests/visual/website.spec.ts`
+  ("every word reads at AA contrast") shoots each screenful with its words
+  hidden and compares every word's colour with the middle of the pixels
+  under it (as `poster-contrast.spec.ts` does for the game): WCAG AA, 4.5:1,
+  3:1 for large text. It runs over the whole page at 390 × 844 and
+  1440 × 900, every Shop piece, and the champion panel in each element's
+  colour, top and bottom.
+- **No words on texture:** the hero's halftone fades out above its words,
+  the outlined "Element Arena" sits behind the painting, and the panel's
+  skin count is on an ink block, not the halftone.
+- **Sizes:** sentences 16 to 17 px, secondary lines at least 15 px, small
+  capital labels at least 14 px; the skill tabs' names are 12.8 px and
+  hidden under 480 px wide (the move below names it in full).
+- **Words:** US spelling on the page's own copy (center, practice; names
+  and descriptions from the game stay as the game writes them), and plain
+  lines over gamer shorthand ("beat it once and the other six open", "every
+  piece changes your look, never your power"). "Coming soon" is white on the
+  red fill: the red as words on ink was 3.65:1.
+
 ## Champion data comes from the game
 
 `data/champions.json` (stats, basic attack, three skills, the ultimate,
@@ -128,8 +149,10 @@ python3 apps/site/tools/make-skin-clips.py        # -> media/skins/, img/skins/
   plays on Voltkit, and the Classic look stands in its idle. The recording
   starts where the stage's clock (`data-animation-time`) crosses a cycle,
   so the loop is one whole cycle; the idle has no cycle, so
-  `make-skin-clips.py` takes the stretch that comes back closest to its
-  first frame. Eight frames past the end are blended into the start, so
+  `make-skin-clips.py` finds where it comes back round (the stretches closer
+  to the first frame than their neighbours) and takes the shortest nearly
+  as close as the best: one breath, 2.6 to 3.4 s (Lumoth's and Terradon's
+  ambient effects turn slower, so theirs are about 5.5 to 6 s). Eight frames past the end are blended into the start, so
   nothing jumps where the loop wraps.
 - **How 60 frames a second come off a machine that draws a few:** the
   stage runs on Playwright's clock. Time is paused and moved on 16 ms
@@ -140,8 +163,9 @@ python3 apps/site/tools/make-skin-clips.py        # -> media/skins/, img/skins/
   60 frames a second the loop plays 4% slower than the game, which no one
   can see.
 - **One file per loop, H.264 MP4**, 720 x 720, CRF 28 tuned for animation,
-  fast start, no sound: about 90 to 190 KB for an idle, 200 to 230 KB for a
-  Legendary, about 300 KB for a Mythical; about 20 MB for all 92. VP9 and
+  fast start, no sound: an idle 42 to 299 KB (most under 110), a
+  Legendary 154 to 391 KB (median 230), a Mythical 253 to 363 KB (median
+  296); 21 MB for all 92, and 2.9 MB of posters and thumbnails. VP9 and
   AV1 (WebM) came out larger than H.264 on these stages, and older iPhones
   play no AV1, so there is no WebM. (Playwright's own Chromium has no H.264;
   the cloud container's Chrome for Testing plays it.)
@@ -375,6 +399,8 @@ at a higher frame rate; study famous games' sites):
       spotlight and the filter; scroll-driven reveals; one pause switch
 - [x] Checked at 390×844, 375×667, 667×375, 844×390, 852×393 with the
       island inset and 1440×900, and each transition mid-way
+- [x] Easy to read (owner, 28 Nov): AA contrast measured on the pixels,
+      no words on texture, minimum sizes, plain US wording
 - [ ] Support and Privacy keep the game's own look (they are the game's
       pages, copied): restyle them with the game's `legal.css` when the
       game's pages move to Poster

@@ -50,12 +50,20 @@ def idle_loop(src: Path, count: int, tail: int, step_ms: int) -> int:
     small = [load(src, i, 96) for i in range(count)]
     head = np.stack(small[:tail])
     lo = round(2500 / step_ms)
-    best, length = None, count - tail
-    for n in range(lo, count - tail + 1):
-        d = float(np.abs(np.stack(small[n : n + tail]) - head).mean())
-        if best is None or d < best:
-            best, length = d, n
-    return length
+    diffs = {
+        n: float(np.abs(np.stack(small[n : n + tail]) - head).mean())
+        for n in range(lo, count - tail + 1)
+    }
+    best = min(diffs.values())
+    # Where the idle comes back round: the stretches closer than their
+    # neighbours. The shortest of those nearly as close as the best is one
+    # breath, not two (half the file, the same look once blended).
+    turns = [
+        n
+        for n, d in diffs.items()
+        if d <= diffs.get(n - 1, d) and d <= diffs.get(n + 1, d)
+    ]
+    return min(n for n in turns if diffs[n] <= best * 1.2 + 0.15)
 
 
 def encode(frames, out: Path):
