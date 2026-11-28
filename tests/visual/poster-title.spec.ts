@@ -132,9 +132,11 @@ for (const size of SIZES)
     });
     try {
       const page = await context.newPage();
-      if (size.island) await setInsets(page, ISLAND);
       const errors = await openTitle(page);
       await connect(page);
+      // After the page has loaded: set on the blank page before it, the
+      // inset was lost with it.
+      if (size.island) await setInsets(page, ISLAND);
 
       // Four tools live behind one compact, finger-sized disclosure.
       const menu = page.locator(".quick-menu-trigger");
@@ -224,7 +226,6 @@ for (const size of SIZES)
     });
     try {
       const page = await context.newPage();
-      if (size.island) await setInsets(page, ISLAND);
       // Real signed-out app and auth forms, without a real account.
       await page.route("**/stubs.ts*", async (route) => {
         const response = await route.fetch();
@@ -239,6 +240,8 @@ for (const size of SIZES)
       await page.goto("/");
       await expect(page.locator(".auth-panel")).toBeVisible();
       await expect(page.locator("#server-startup")).toHaveCount(0);
+      // The island once the page is in (a blank page's inset goes with it).
+      if (size.island) await setInsets(page, ISLAND);
       const menu = page.locator(".quick-menu-trigger");
       await expect(page.locator(".gate-quick")).toBeHidden();
       await menu.click();
