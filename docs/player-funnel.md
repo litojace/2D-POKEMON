@@ -93,7 +93,7 @@ What changed after this run:
   place: play a match against a bot, defeat Cragmuff, wear the first
   reward, visit the Farm, open the Bistro (those two steps went with the
   Farm and the Bistro in Nov 2026). Each has a Go button; the guide
-  can be hidden, and the Menu's _Getting started_ brings it back. Steps the
+  can be hidden, and Settings → Help → _Getting started_ brings it back. Steps the
   server knows (a Cragmuff clear, something worn) come from the account;
   the others are remembered per account in the browser.
 - The reward reveal offers **Wear it now** for an appearance reward.

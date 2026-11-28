@@ -77,9 +77,7 @@
 /* header */
 :root[data-ui="poster"] body.hub-active #account-profile,
 :root[data-ui="poster"] body.hub-active #account-coins > *,
-:root[data-ui="poster"] body.hub-active .header-menu > summary,
-:root[data-ui="poster"] .hub-scenes,
-:root[data-ui="poster"] body.hub-active .chat-button {
+:root[data-ui="poster"] .hub-scenes {
   background: var(--ink);
   border: 0;
   border-radius: 4px;
@@ -131,9 +129,44 @@
   font-variant-numeric: tabular-nums;
   letter-spacing: 0;
 }
-:root[data-ui="poster"] body.hub-active .header-menu > summary svg,
-:root[data-ui="poster"] body.hub-active .chat-button svg {
-  color: var(--paper);
+/* The top bar's chat and gear: bare icons on the scene (docs/ui-themes.md,
+   "Bare icons"; owner, 28 Nov), as the battle's corner icons and the
+   Plaza's are: no ink square, the icon cream with the ink outline and a
+   size up, gold under a finger or while the chat is open. The button keeps
+   its box (42 px, 36 px on a short phone, with phone-fit.css's 44 px hit
+   area), so nothing beside it moves. The player card and the coin pill
+   stay blocks: a card and a count, not icons. (An id and its class: the
+   old look's glass rules, ui/aero.css, list these in :is() with ids, and
+   its Low graphics rule doubles a class.) */
+:root[data-ui="poster"]
+  body.hub-active
+  :is(#home-settings.home-settings, #chat-button.chat-button) {
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  color: var(--bare-ink);
+}
+:root[data-ui="poster"]
+  body.hub-active
+  :is(#home-settings.home-settings, #chat-button.chat-button)
+  > svg {
+  width: 28px;
+  height: 28px;
+  color: inherit;
+  opacity: 1;
+  filter: var(--bare-icon-edge);
+}
+:root[data-ui="poster"]
+  body.hub-active
+  :is(#home-settings.home-settings, #chat-button.chat-button):is(
+    :hover,
+    :focus-visible,
+    [aria-expanded="true"]
+  ) {
+  color: var(--bare-hot);
 }
 :root[data-ui="poster"] .hub-scenes {
   padding: 4px;
@@ -308,12 +341,43 @@
   border-radius: 0;
   box-shadow: none;
 }
+/* The arrows either side of the fighter's name: bare chevrons on the
+   field (docs/ui-themes.md, "Bare icons"), drawn (--bare-chevron) in the
+   button's 44 px box (32 px on a short phone, with phone-fit.css's hit
+   area); the typed ‹ › stays for nothing but its place, at no size. The
+   ink outline goes round the drawn chevron: the button has nothing else
+   to draw. */
 :root[data-ui="poster"] .lobby-layer .lobby-step {
-  background: var(--ink);
-  color: var(--paper);
   border: 0;
-  border-radius: 2px;
-  transform: skewX(-10deg);
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  color: var(--bare-ink);
+  font-size: 0;
+  filter: var(--bare-icon-edge);
+}
+:root[data-ui="poster"] .lobby-layer .lobby-step::before {
+  content: "";
+  width: 16px;
+  height: 28px;
+  background: currentColor;
+  clip-path: var(--bare-chevron);
+}
+:root[data-ui="poster"] .lobby-layer .lobby-step[data-lobby-step="1"]::before {
+  transform: scaleX(-1);
+}
+:root[data-ui="poster"]
+  .lobby-layer
+  .lobby-step:is(:hover, :focus-visible, :active) {
+  color: var(--bare-hot);
+}
+@media (max-height: 500px) {
+  :root[data-ui="poster"] .lobby-layer .lobby-step::before {
+    width: 13px;
+    height: 22px;
+  }
 }
 /* cards: white clippings */
 :root[data-ui="poster"] .lobby-layer .lobby-cards {

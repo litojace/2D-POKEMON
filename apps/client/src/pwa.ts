@@ -14,6 +14,26 @@ interface InstallPrompt extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: string }>;
 }
+/** Opens "Want fullscreen?" once setupPWA has run (never in the native app). */
+let fullscreenHelpOpener: (() => void) | undefined;
+/**
+ * The steps to play full screen: add the game to the home screen, or go
+ * full screen now where the browser can (Settings → Game → Full screen,
+ * where the switch can't do it itself: an iPhone's browser).
+ */
+export const showFullscreenHelp = () => fullscreenHelpOpener?.();
+let installOffered = () => false;
+/** The browser offered to install the game (Chrome's beforeinstallprompt). */
+export const installAvailable = () => installOffered();
+/** Opened from the home screen: the game is already full screen. */
+export function runningStandalone() {
+  const nav = navigator as Navigator & { standalone?: boolean };
+  return (
+    matchMedia("(display-mode: standalone)").matches ||
+    matchMedia("(display-mode: fullscreen)").matches ||
+    nav.standalone === true
+  );
+}
 export function setupPWA(
   getPhase: () => string | undefined,
   openDialog: (html: string) => void,
@@ -245,18 +265,20 @@ export function setupPWA(
     install = undefined;
     notify("Element Arena installed. Open it from your home screen.");
   });
-  document.getElementById("install-app")!.onclick = () => {
-    const nav = navigator as Navigator & { standalone?: boolean };
-    const standalone =
-      matchMedia("(display-mode: standalone)").matches ||
-      matchMedia("(display-mode: fullscreen)").matches ||
-      nav.standalone === true;
+  installOffered = () => !!install;
+  fullscreenHelpOpener = () => {
+    const standalone = runningStandalone();
     const platform = fullscreenPlatform(
       navigator.userAgent,
       navigator.maxTouchPoints,
     );
+    // As Settings decides (fullscreenSupported, main.ts): where the page
+    // may not go full screen (fullscreenEnabled false), no button that
+    // can't work.
     const canFullscreen =
-      !!document.documentElement.requestFullscreen && platform !== "iphone";
+      !!document.documentElement.requestFullscreen &&
+      document.fullscreenEnabled !== false &&
+      platform !== "iphone";
     openDialog(
       fullscreenHelp({
         standalone,

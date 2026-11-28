@@ -17,7 +17,7 @@
    draws it. The ping when one appears stays, square; with Reduce motion it
    is off, as before. */
 :root[data-ui="poster"] {
-  --badge-news: #8a63f5;
+  --badge-news: #9370ff;
   --badge-edge: 0 0 0 1.5px var(--ink), 2px 2px 0 1.5px rgba(0, 0, 0, 0.45);
 }
 

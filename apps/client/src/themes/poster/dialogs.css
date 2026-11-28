@@ -30,3 +30,13 @@
   gap: 6px;
   font-size: calc(13px * var(--text-scale, 1));
 }
+
+/* In a match the shared dialog (Settings from the gear, Your skills,
+   Change fighter…) took the look underneath's navy glass (ui/aero.css, a
+   rule with an id's weight): Poster's ink board and hard shadow there too,
+   as in the Lobby (screens.css, "dialogs"). */
+:root[data-ui="poster"] body.battle-active dialog#dialog[open] {
+  background: var(--board-dots), var(--board);
+  border-color: transparent;
+  box-shadow: 10px 10px 0 rgba(0, 0, 0, 0.5);
+}

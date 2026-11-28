@@ -1,0 +1,82 @@
+/* Poster on Missions (missions-view.ts; screens/missions.css lays it out).
+   The panel's head was Poster; what it holds was still the look
+   underneath: rounded grey cards with a 1 px line, tinted rounded
+   difficulty tags, round tracks and pips (the owner asked on 28 Nov 2026,
+   from a phone, whether Missions had the new look). Now:
+   - Each mission is a Poster row (kit.css, .ui-row): square, ink-1 on the
+     board, its 4 px left edge in the mission's difficulty.
+   - Its difficulty is a square block in that colour with ink words, as the
+     Spire card's label is. The three colours are the ones missions always
+     had, so players keep knowing them; ink on each reads at 7:1 or more
+     (easy 12.0, medium 7.9, hard 8.4).
+   - Progress is gold on an ink track, square; a finished mission's stays
+     the game's green, beside its Paid tick.
+   - The streak's days and the daily gift's are square pips: ink-3 to come,
+     gold when lit; today's gift has a gold edge. The streak's +300 is a
+     square gold tag, filled once the week is done.
+   - The daily gift is a row too, its edge gold (the colour of what it
+     gives).
+   Gold reads --gold (#673's chrome), its value the fallback until then. */
+:root[data-ui="poster"]
+  :is(.missions-row, .missions-streak-row, .missions-gift) {
+  border: 0;
+  border-left: 4px solid var(--ink-3);
+  border-radius: 0;
+  background: var(--ink-1);
+}
+:root[data-ui="poster"] .missions-row {
+  border-left-color: var(--tier);
+}
+:root[data-ui="poster"] .missions-gift {
+  border-left-color: var(--gold, #ffd65b);
+}
+:root[data-ui="poster"] .missions-main {
+  border-radius: 0;
+}
+:root[data-ui="poster"] .missions-diff {
+  padding: 2px 6px;
+  border-radius: 0;
+  background: var(--tier);
+  color: var(--ink);
+  line-height: 1.2;
+}
+/* Progress: an ink track, square, its fill gold until the mission is done
+   (missions-view.ts paints a done one --ui-ok inline). */
+:root[data-ui="poster"] .missions-row .ui-bar {
+  border-radius: 0;
+  background: var(--ink);
+}
+:root[data-ui="poster"] .missions-row .ui-bar > i {
+  border-radius: 0;
+}
+:root[data-ui="poster"] .missions-row:not(.is-done) .ui-bar > i {
+  background: var(--gold, #ffd65b);
+}
+/* The streak's and the gift's days. */
+:root[data-ui="poster"] :is(.missions-streak-days i, .missions-gift-days > li) {
+  border-radius: 0;
+  background: var(--ink-3);
+}
+:root[data-ui="poster"]
+  :is(.missions-streak-days i.is-on, .missions-gift-days > li.is-taken) {
+  background: var(--gold, #ffd65b);
+}
+:root[data-ui="poster"] .missions-gift-days > li.is-today:not(.is-taken) {
+  box-shadow: inset 0 0 0 2px var(--gold, #ffd65b);
+}
+:root[data-ui="poster"] .missions-streak-days i.is-pay {
+  border: 2px solid var(--gold, #ffd65b);
+  background: transparent;
+  color: var(--gold, #ffd65b);
+  font-family: var(--font-body);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+:root[data-ui="poster"] .missions-streak-days i.is-pay.is-on {
+  background: var(--gold, #ffd65b);
+  color: var(--ink);
+}
+/* The gift's kicker in its gold, as the row's edge. */
+:root[data-ui="poster"] .missions-gift .ui-kicker {
+  color: var(--gold, #ffd65b);
+}

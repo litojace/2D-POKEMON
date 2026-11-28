@@ -178,7 +178,7 @@ function roadRow(t: RoadTier, tier: number, passed: boolean) {
     ? `<span class="rk-got" role="img" aria-label="Earned">${menuIcon("check")}</span>`
     : `<span class="rk-got" aria-hidden="true"></span>`;
   const where = t.current ? `Your tier, step ${RANK_STEPS[t.step ?? 0]}. ` : "";
-  return `<li class="rk-tier${t.current ? " is-cur" : ""}${t.earned ? " is-earned" : ""}" style="--rank:${t.color}"${t.current ? ' aria-current="true"' : ""}><i class="rk-gem" aria-hidden="true"></i><span class="rk-tier-name"><b>${esc(t.name)}</b>${t.current ? tag("You", "new") : ""}<span class="sr-only"> ${where}From ${num(t.from)} rating.</span></span><small class="rk-from ui-num" aria-hidden="true">${num(t.from)}</small>${steps(t, tier, passed)}${reward}${state}</li>`;
+  return `<li class="rk-tier${t.current ? " is-cur" : ""}${t.earned ? " is-earned" : ""}" style="--rank:${t.color}"${t.current ? ' aria-current="true"' : ""}><i class="rk-gem" aria-hidden="true"></i><span class="rk-tier-name"><b>${esc(t.name)}</b>${t.current ? tag("You", "mark") : ""}<span class="sr-only"> ${where}From ${num(t.from)} rating.</span></span><small class="rk-from ui-num" aria-hidden="true">${num(t.from)}</small>${steps(t, tier, passed)}${reward}${state}</li>`;
 }
 /**
  * The rank road: the seven tiers from Legend down to Sprout, each with its
@@ -236,7 +236,7 @@ function wl(wins: number, losses: number) {
 export function boardRow(r: BoardRow, pinned = false) {
   const color = rankColor(r.rankName);
   const sub = r.sub ?? r.rankName;
-  return `<li class="rk-row${r.me ? " is-me" : ""}${pinned ? " is-pinned" : ""}${r.place !== null && r.place <= 3 ? ` is-top` : ""}"${pinned ? ' aria-label="Your row"' : ""}>${placeCell(r.place)}${rowAvatar(r, color)}<span class="rk-name"><span class="rk-name-top"><b>${esc(r.name)}</b>${r.me ? tag("You", "new") : ""}</span><small style="color:${color}">${esc(sub)}</small></span><span class="rk-rating-cell ui-num">${r.rating === null ? "—" : num(r.rating)}</span>${wl(r.wins, r.matches - r.wins)}</li>`;
+  return `<li class="rk-row${r.me ? " is-me" : ""}${pinned ? " is-pinned" : ""}${r.place !== null && r.place <= 3 ? ` is-top` : ""}"${pinned ? ' aria-label="Your row"' : ""}>${placeCell(r.place)}${rowAvatar(r, color)}<span class="rk-name"><span class="rk-name-top"><b>${esc(r.name)}</b>${r.me ? tag("You", "mark") : ""}</span><small style="color:${color}">${esc(sub)}</small></span><span class="rk-rating-cell ui-num">${r.rating === null ? "—" : num(r.rating)}</span>${wl(r.wins, r.matches - r.wins)}</li>`;
 }
 
 /** Everyone: the top 20 by rating, the players placing, and you, pinned. */

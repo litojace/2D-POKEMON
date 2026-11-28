@@ -40,9 +40,11 @@ async function measure(page: Page) {
     };
   });
 }
-const menu = async (page: Page, id: string) => {
-  await page.locator("#header-menu > summary").click();
-  await page.locator(`#${id}`).click();
+/** Settings, by the gear, on one of its tabs (the gear's menu went: #674). */
+const settings = async (page: Page, tab: string) => {
+  await page.locator("#home-settings").click();
+  await expect(page.locator("#dialog .settings-screen")).toBeVisible();
+  await page.locator(`[data-settings-tab="${tab}"]`).click();
 };
 const close = async (page: Page) => {
   await page.locator("dialog[open] #close-dialog").click();
@@ -61,6 +63,14 @@ for (const size of SIZES)
     });
     try {
       const page = await context.newPage();
+      // A browser that can't go full screen (iPhone Safari): Settings →
+      // Game offers "How", which opens Want fullscreen?.
+      await page.addInitScript(() =>
+        Object.defineProperty(Document.prototype, "fullscreenEnabled", {
+          configurable: true,
+          get: () => false,
+        }),
+      );
       await skipTour(page);
       await openHub(page);
       if (size.island) await setInsets(page, ISLAND);
@@ -85,7 +95,8 @@ for (const size of SIZES)
       await close(page);
 
       // Want fullscreen?
-      await menu(page, "install-app");
+      await settings(page, "game");
+      await page.locator("#settings-fullscreen-how").click();
       m = await measure(page);
       expect(m.size).toBe("s");
       expect(m.width).toBeLessThanOrEqual(440);
@@ -94,7 +105,8 @@ for (const size of SIZES)
       await close(page);
 
       // Report a problem: a short form, a medium dialog.
-      await menu(page, "report-problem");
+      await settings(page, "help");
+      await page.locator("#settings-report").click();
       m = await measure(page);
       expect(m.size).toBe("m");
       expect(m.width).toBeLessThanOrEqual(560);
@@ -103,7 +115,7 @@ for (const size of SIZES)
       await close(page);
 
       // Settings keeps its width; its Credits page is a medium dialog.
-      await menu(page, "settings");
+      await settings(page, "about");
       m = await measure(page);
       expect(m.size).toBe("");
       if (size.phone) expect(m.width).toBeGreaterThan(560);

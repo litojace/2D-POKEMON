@@ -100,7 +100,7 @@ export function createGuide(hooks: GuideHooks) {
     view,
     mark,
     open,
-    /** The Menu's "Getting started": back on the Lobby, and open. */
+    /** Settings → Help → Getting started: back on the Lobby, and open. */
     reopen() {
       setHidden(false);
       open();
