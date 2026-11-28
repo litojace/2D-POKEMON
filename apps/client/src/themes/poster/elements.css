@@ -1,0 +1,62 @@
+/* An element in its own colour wherever it means the element (owner, 27 Nov
+   2026: "symbol icons like these should have matching colours, so the game
+   feels livelier"). The colours are the game's own (ui/tokens.css
+   --el-*), carried as --el by the markup; nothing here adds one. Every
+   --el is light: on ink an icon in it holds 3:1 or more (Shadow's 3.8:1
+   on the chip's grey, the darkest), and what is drawn on it is ink
+   (5.2:1 or more). docs/ui-themes.md, "Colour that means something". */
+
+/* The Fighters element filter: each icon in its element's colour; pressed,
+   the square filled with it and the icon ink. "All" keeps the chrome's
+   cream. */
+:root[data-ui="poster"]
+  .ui-panel-head
+  .roster-el[style*="--el"]:not([aria-pressed="true"])
+  svg {
+  color: var(--el);
+}
+:root[data-ui="poster"]
+  .ui-panel-head
+  .roster-el[style*="--el"][aria-pressed="true"] {
+  background: var(--el);
+  color: var(--ink);
+}
+:root[data-ui="poster"]
+  .ui-panel-head
+  .roster-el[style*="--el"][aria-pressed="true"]
+  svg {
+  color: var(--ink);
+}
+
+/* An element tag (components.ts elementTag: a card's corner, a fighter's
+   page, a boss's page): a filled square of the element, ink inside, as
+   every chosen thing in the look is filled. It was a faint tint with the
+   word in the element's colour. */
+:root[data-ui="poster"] .ui-element {
+  border-radius: 0;
+  background: var(--el);
+  color: var(--ink);
+}
+:root[data-ui="poster"] .ui-element svg {
+  color: var(--ink);
+}
+
+/* The Lobby's element tag: the words stay ink on cream (an element colour
+   on cream would not hold 3:1), and the icon sits on a square of the
+   element (lobby-screen.ts sets --el on the tag), inset in the cream so
+   the cream frames it even on a field of the same colour (Voltkit's
+   yellow). */
+:root[data-ui="poster"] .lobby-layer .lobby-name .element-pill[style*="--el"] {
+  padding-left: 3px;
+}
+:root[data-ui="poster"]
+  .lobby-layer
+  .lobby-name
+  .element-pill[style*="--el"]
+  svg {
+  box-sizing: content-box;
+  padding: 3px 5px;
+  margin: -1px 2px -1px 0;
+  background: var(--el);
+  color: var(--ink);
+}

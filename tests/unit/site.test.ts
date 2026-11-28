@@ -36,6 +36,8 @@ const html = readFileSync(path.join(SITE, "index.html"), "utf8")
   .replace(/" \/>/g, '"/>');
 const css = readFileSync(path.join(SITE, "site.css"), "utf8");
 const GAME = "https://play.elementarenausa.com/";
+/** The game's Instagram (docs/instagram.md). */
+const INSTAGRAM = "https://www.instagram.com/elementarena.usa/";
 
 const flatHtml = () => html.replace(/>\s+/g, ">").replace(/\s+</g, "<");
 
@@ -129,7 +131,9 @@ describe("website", () => {
           (u) =>
             !u.startsWith(GAME) &&
             !u.includes("schema.org") &&
-            !u.includes("sitemaps.org"),
+            !u.includes("sitemaps.org") &&
+            // The game's Instagram: someone else's site, checked below.
+            u !== INSTAGRAM,
         );
     const addresses = [
       ...own(html),
@@ -138,6 +142,34 @@ describe("website", () => {
     ];
     expect(addresses.length).toBeGreaterThan(5);
     for (const u of addresses) expect(u.startsWith(canonical), u).toBe(true);
+  });
+
+  it("links the game's one Instagram, in the footer, on Support and in the README", () => {
+    const pages = {
+      "index.html": html,
+      "support/index.html": readFileSync(
+        path.join(SITE, "support/index.html"),
+        "utf8",
+      ),
+      "support.html": readFileSync(
+        path.join(SITE, "../client/public/support.html"),
+        "utf8",
+      ),
+      "README.md": readFileSync(path.join(SITE, "../../README.md"), "utf8"),
+    };
+    for (const [name, text] of Object.entries(pages)) {
+      const links = [
+        ...text.matchAll(/https:\/\/[^"<\s)]*instagram\.com[^"<\s)]*/g),
+      ].map((m) => m[0]);
+      expect(links.length, name).toBeGreaterThan(0);
+      for (const u of links) expect(u, name).toBe(INSTAGRAM);
+    }
+    // It opens in its own tab, without handing the page over.
+    for (const text of [pages["index.html"], pages["support.html"]])
+      for (const m of text.matchAll(/<a\b[^>]*instagram\.com[^>]*>/g)) {
+        expect(m[0]).toContain('target="_blank"');
+        expect(m[0]).toContain('rel="noopener"');
+      }
   });
 
   it("has the meta a shared link and a search engine need", () => {

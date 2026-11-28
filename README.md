@@ -4,7 +4,7 @@
 
 ### [▶ Play now at play.elementarenausa.com](https://play.elementarenausa.com)
 
-Free in your browser, on a phone (best in landscape) or a computer, in open beta: we're still adding and polishing, and your progress carries over through every update. More about the game at [elementarenausa.com](https://elementarenausa.com).
+Free in your browser, on a phone (best in landscape) or a computer, in open beta: we're still adding and polishing, and your progress carries over through every update. More about the game at [elementarenausa.com](https://elementarenausa.com). News and clips: [@elementarena.usa on Instagram](https://www.instagram.com/elementarena.usa/).
 
 <p align="center">
   <img src="docs/readme/lobby.webp" width="49%" alt="The Lobby on a phone in landscape: Pyranda, a red panda, stands in the middle with Invite slots on each side, the Fighters, Shop, Raids, Missions, Ranks and Friends menu on the left, and Journey, Daily missions and a big Play button on the right.">
