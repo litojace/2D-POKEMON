@@ -876,6 +876,13 @@ const pyrandaEntrance: Move = (s) => {
   p.armR.rotation = 0.5 * brave;
   p.tail.rotation += (-0.2 + s.sway(5) * 0.25) * brave;
   p.tail.setScale(0.5 + 0.04 * brave, 0.5 + 0.05 * brave);
+  // Legs.
+  spread(s, -0.2 * hide);
+  lift(p.legL, peekA, 0.3, 3);
+  lift(p.legR, peekB, -0.3, 3);
+  lift(p.legR, bump(t, 1.62, 1.95), -0.5, 4);
+  spread(s, 0.2 * brave);
+  lift(p.legL, Math.max(0, s.sway(5)) * brave * 0.5, 0.2, 2);
 };
 const pyrandaVictory: Move = (s) => {
   const { t, p } = s;
@@ -905,6 +912,11 @@ const pyrandaVictory: Move = (s) => {
   p.tail.rotation += s.sway(6) * 0.3 * proud;
   p.tail.setScale(0.5 + 0.05 * proud, 0.5 + 0.07 * proud);
   p.head.rotation = s.sway(2.2) * 0.08 * sway;
+  // Legs.
+  spread(s, 0.6 * eep - 0.2 * hide);
+  spread(s, 0.5 * (arc(t, 1.3, 1.6) + arc(t, 1.65, 1.95)));
+  p.legR.rotation += s.sway(2.2) * 0.3 * sway;
+  lift(p.legL, Math.max(0, s.sway(4.4)) * sway * 0.6, 0.2, 2);
 };
 
 // --------------------------------------------------------------- Glacelle
@@ -932,6 +944,14 @@ const glacelleEntrance: Move = (s) => {
   p.armL.rotation -= (0.7 - s.sway(2) * 0.15) * poise;
   p.armR.rotation += (0.7 - s.sway(2) * 0.15) * poise;
   s.move(0, -(1 + s.sway(2)) * 1.5 * poise);
+  // Legs.
+  // (A sea angel: its tail fin and little feet trail and flick.)
+  p.tail.rotation += spiral * 0.5 * ease(t, 0, 0.3) + 0.5 * curtsey;
+  p.legL.rotation += -spiral * 0.4 * ease(t, 0, 0.3);
+  p.legR.rotation += -spiral * 0.4 * ease(t, 0, 0.3);
+  spread(s, 0.35 * curtsey);
+  kick(s, poise, 2, 0.25);
+  p.tail.rotation += s.sway(2, 1) * 0.3 * poise;
 };
 const glacelleVictory: Move = (s) => {
   const { t, p } = s;
@@ -966,6 +986,13 @@ const glacelleVictory: Move = (s) => {
   s.move(0, -s.sway(1.8) * 2 * drift);
   p.armL.rotation += s.sway(1.8) * 0.12 * drift;
   p.armR.rotation -= s.sway(1.8) * 0.12 * drift;
+  // Legs.
+  p.tail.rotation += -0.6 * lean + 0.5 * pop;
+  p.legL.rotation += -0.5 * lean;
+  p.legR.rotation += -0.5 * lean;
+  lift(p.legR, pose, -0.5, 3);
+  kick(s, drift, 1.8, 0.2);
+  p.tail.rotation += s.sway(1.8, 1) * 0.3 * drift;
 };
 
 // ---------------------------------------------------------------- Halcyra
@@ -998,6 +1025,13 @@ const halcyraEntrance: Move = (s) => {
   // Then a bird's quick looks about: the head snaps, it never drifts.
   const look = s.calm ? 0 : [0, 1, 0, -1, 1, 0, -1][Math.floor(t * 2.2) % 7];
   p.head.rotation = look * 0.11 * ease(t, 2.3, 2.35);
+  // Legs.
+  p.legL.rotation += 0.5 * swept - 0.6 * brake;
+  p.legR.rotation += 0.5 * swept - 0.6 * brake;
+  lift(p.legL, bump(t, 1.02, 1.16), 0.3, 3);
+  lift(p.legR, bump(t, 1.16, 1.3), -0.3, 3);
+  p.legR.rotation += 0.35 * aim;
+  lift(p.legL, Math.max(0, s.sway(4.4)) * ease(t, 2.3, 2.4) * 0.6, 0.25, 2);
 };
 const halcyraVictory: Move = (s) => {
   const { t, p } = s;
@@ -1022,6 +1056,11 @@ const halcyraVictory: Move = (s) => {
   // Poised: beak high, a bird's quick looks about.
   const look = s.calm ? 0 : [0, -1, 0, 1, 0, 1, -1][Math.floor(t * 2.2) % 7];
   p.head.rotation += (-0.06 + look * 0.1) * ease(t, 2.05, 2.1);
+  // Legs.
+  lift(p.legR, preen, -0.4, 5);
+  spread(s, 0.4 * arc(t, 0.95, 1.25));
+  p.legR.rotation += 0.4 * bow;
+  tap(s, ease(t, 2.05, 2.2), 4.4, 0.3, 3);
 };
 
 // ---------------------------------------------------------------- Sunbara
@@ -1049,6 +1088,11 @@ const sunbaraEntrance: Move = (s) => {
   s.spin(s.sway(1.6) * 0.05 * hug);
   s.move(s.sway(1.6) * 2 * hug, 0);
   p.flame.rotation += s.sway(1.6, 1) * 0.08 * hug;
+  // Legs.
+  lift(p.legL, Math.max(0, rock), 0.3, 3);
+  lift(p.legR, Math.max(0, -rock), -0.3, 3);
+  lift(p.legR, tip, -0.5, 4);
+  tap(s, hug, 3.2, 0.2, 2);
 };
 const sunbaraVictory: Move = (s) => {
   const { t, p } = s;
@@ -1067,6 +1111,9 @@ const sunbaraVictory: Move = (s) => {
   if (sigh > 0) s.squash(1 - 0.03 * sigh, 1 + 0.05 * sigh);
   p.flame.rotation =
     s.sway(1.5, 1) * 0.1 * soak + Math.sin(t * 8) * 0.2 * bump(t, 0.1, 1.0);
+  // Legs.
+  lift(p.legL, bump(t, 0.1, 0.5), 0.3, 3);
+  kick(s, ease(t, 1.2, 1.6), 6, 0.12);
 };
 
 // --------------------------------------------------------------- Astrabun
@@ -1100,6 +1147,9 @@ const astrabunEntrance: Move = (s) => {
   s.move(0, -Math.max(0, s.sway(9)) * 5 * perk);
   p.armL.rotation += (0.6 + s.sway(9) * 0.1) * perk;
   p.ears.rotation += s.sway(9, 1) * 0.07 * perk;
+  // Legs.
+  spread(s, 0.4 * (arc(t, 0, 0.4) + arc(t, 0.4, 0.95)));
+  spread(s, 0.35 * Math.max(0, s.sway(9)) * perk);
 };
 const astrabunVictory: Move = (s) => {
   const { t, p } = s;
@@ -1129,6 +1179,9 @@ const astrabunVictory: Move = (s) => {
   p.armL.rotation = (2.4 + s.sway(13) * 0.3) * hold;
   s.move(0, -Math.max(0, s.sway(8)) * 8 * ease(t, 2.05, 2.25));
   p.ears.rotation += s.sway(8, 1) * 0.1 * ease(t, 2.05, 2.25);
+  // Legs.
+  spread(s, 0.5 * (arc(t, 0, 0.36) + arc(t, 0.42, 0.78)));
+  lift(p.legR, Math.max(0, s.sway(16)) * ease(t, 2.05, 2.25), -0.3, 3);
 };
 
 export const ENTRANCES: Partial<Record<CharacterId, Move>> = {
