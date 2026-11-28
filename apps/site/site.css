@@ -221,6 +221,10 @@ body::before {
   font: 400 1.02rem/1 var(--display);
   letter-spacing: 0.06em;
   text-transform: uppercase;
+  /* The word turns to ink (or back) half-way through the block's slide,
+     when the block covers most of it (or has mostly left): switching at
+     once left ink words on the ink bar until the block arrived. */
+  transition: color 0s linear 0.11s;
 }
 /* A slanted block slides under the link pointed at (Poster's tabs). */
 .nav a::before {
@@ -242,6 +246,11 @@ body::before {
 .nav a:focus-visible::before,
 .nav a[aria-current="true"]::before {
   transform: skewX(-12deg) scaleX(1);
+}
+/* Motion paused: the block and the word change together, at once. */
+:root[data-motion="paused"] .nav a,
+:root[data-motion="paused"] .nav a::before {
+  transition: none;
 }
 .bar .btn-play {
   margin-left: auto;
