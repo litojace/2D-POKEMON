@@ -234,6 +234,7 @@ import {
   showFullscreenHelp,
 } from "./pwa";
 import {
+  INSTAGRAM_URL,
   PRIVACY_URL,
   SUPPORT_URL,
   isNativeApp,
@@ -5880,7 +5881,7 @@ function settingsMarkup(reduced: boolean) {
   const you = account
     ? `<section class="prefs-card st-card st-list" aria-label="Account">${settingsAction("settings-profile", escape(account.displayName), account.guest ? "Playing as a guest: your player card can save your progress to an email." : "Your name, frame, titles and account are on your player card.", "user", "Player card")}${settingsAction("settings-logout", "Log out", account.guest ? "A guest's progress stays only on this device." : "Log in again any time with your email.", "leave", "Log out")}</section>`
     : "";
-  const about = `<section class="prefs-card st-card st-list" aria-label="About">${serverRow()}${settingsFact("settings-version", "Version", BUILD_ID ? escape(BUILD_ID) : "Development build")}${OPEN_BETA ? settingsAction("settings-beta", "Open beta", "The game is still growing, and things may change. Tell us what you think.", "help", "Support") : ""}${settingsAction("settings-credits", "Credits", "Who and what made the game.", "star", "Open")}${settingsAction("settings-privacy", "Privacy policy", "What the game keeps, and why.", "help", "Open")}</section>`;
+  const about = `<section class="prefs-card st-card st-list" aria-label="About">${serverRow()}${settingsFact("settings-version", "Version", BUILD_ID ? escape(BUILD_ID) : "Development build")}${OPEN_BETA ? settingsAction("settings-beta", "Open beta", "The game is still growing, and things may change. Tell us what you think.", "help", "Support") : ""}${settingsAction("settings-instagram", "Instagram", "@elementarena.usa: news, new fighters and clips.", "share", "Open")}${settingsAction("settings-credits", "Credits", "Who and what made the game.", "star", "Open")}${settingsAction("settings-privacy", "Privacy policy", "What the game keeps, and why.", "help", "Open")}</section>`;
   const panes: Record<SettingsTab, string> = {
     game,
     help,
@@ -6034,6 +6035,9 @@ function showSettings() {
     document.getElementById("account-logout")?.click();
   });
   on("settings-beta", () => window.open(SUPPORT_URL, "_blank", "noopener"));
+  on("settings-instagram", () =>
+    window.open(INSTAGRAM_URL, "_blank", "noopener"),
+  );
   on("settings-credits", showCredits);
   on("settings-privacy", () => window.open(PRIVACY_URL, "_blank", "noopener"));
   on("settings-skills", showSkills);

@@ -45,7 +45,12 @@ for (const s of SCREENS)
           "#settings-report",
         ],
         account: ["#settings-profile", "#settings-logout"],
-        about: ["#settings-version", "#settings-credits", "#settings-privacy"],
+        about: [
+          "#settings-version",
+          "#settings-instagram",
+          "#settings-credits",
+          "#settings-privacy",
+        ],
       };
       for (const [tab, ids] of Object.entries(ACTIONS)) {
         const button = dialog.locator(`[data-settings-tab="${tab}"]`);

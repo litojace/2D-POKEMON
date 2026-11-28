@@ -1,9 +1,10 @@
 /* Poster on Settings (settingsMarkup in main.ts; settings-screen.css lays
-   it out). Its tabs sit on the dialog's masthead after the title, drawn as
-   the admin panel's tabs there (admin.css): ink labels, the open one an
-   ink block in the element colour, each a finger tall. */
+   it out). Its tabs sit on the dialog's masthead after the title: ink
+   labels, as the title is (at 66% they fell under AA on fire, water,
+   psychic, earth and shadow: poster-contrast.spec), the open one an ink
+   block in the element colour, each a finger tall. */
 :root[data-ui="poster"] .dialog-toolbar .settings-tab {
-  color: rgba(13, 13, 15, 0.66);
+  color: var(--ink);
   font: 400 calc(15px * var(--text-scale, 1)) / 1 var(--font-display);
   letter-spacing: 0.05em;
 }
