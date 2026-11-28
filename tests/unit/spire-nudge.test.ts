@@ -189,7 +189,9 @@ describe("spireNudge", () => {
 });
 
 // The Lobby's Spire card stays once the Spire is open (a shortcut past the
-// Raid Hub): the news while a zone is new, else your best floor.
+// Raid Hub): the news while a zone is new, else the next title within
+// reach with how far it is and your best floor (owner, 27 Nov 2026: the
+// card should give a reason to tap), and the floors to it as a ladder.
 describe("spireLobbyCard", () => {
   it("is absent before the Spire opens or while the climb is unknown", () => {
     expect(
@@ -203,15 +205,17 @@ describe("spireLobbyCard", () => {
     expect(spireLobbyCard({ spire: climb(), seen: [] })).toEqual({
       key: "new:s0-z1",
       title: "The Spire is open",
-      note: "Climb from floor 1",
+      note: "Floor 5 → new title",
       fresh: true,
+      ladder: { from: 1, to: 5, cleared: 0 },
     });
   });
   it("stays once seen, with the climb's standing and no news", () => {
     expect(spireLobbyCard({ spire: climb(), seen: ["s0-z1"] })).toMatchObject({
       title: "Start your climb",
-      note: "Climb from floor 1 · Raid Coliseum",
+      note: "Floor 5 → new title",
       fresh: false,
+      ladder: { from: 1, to: 5, cleared: 0 },
     });
     // The raid records' clear counts open it too.
     expect(
@@ -221,18 +225,24 @@ describe("spireLobbyCard", () => {
         seen: [],
       }),
     ).toMatchObject({
-      title: "Best: floor 7",
-      // Past zone 1's elite (floor 5): the climb starts at floor 6.
-      note: "Climb from floor 6 · Raid Coliseum",
+      // Past the title at floor 5: the next is floor 10's.
+      title: "Floor 10 → title",
+      note: "3 floors to go · best 7",
       fresh: false,
+      ladder: { from: 6, to: 10, cleared: 7 },
     });
     expect(
       spireLobbyCard({ spire: { ...zone1Done, highestFloor: 14 }, seen: [] }),
     ).toMatchObject({
-      title: "Best: floor 14",
-      note: "Climb from floor 11 · Lagoon",
+      title: "Floor 20 → title",
+      note: "6 floors to go · best 14",
       fresh: false,
+      ladder: { from: 11, to: 20, cleared: 14 },
     });
+    // One floor short.
+    expect(
+      spireLobbyCard({ spire: { ...zone1Done, highestFloor: 19 }, seen: [] }),
+    ).toMatchObject({ note: "1 floor to go · best 19" });
   });
   it("says so once every released floor is cleared", () => {
     const three = expandedSpire(3);
@@ -269,8 +279,9 @@ describe("spireLobbyCard", () => {
       }),
     ).toMatchObject({
       title: "Zone 7 is open",
-      note: "Climb from floor 61 · Conductor Ring",
+      note: "Floor 70 → new title",
       fresh: true,
+      ladder: { from: 61, to: 70, cleared: 60 },
     });
   });
   it("changes its key when its words change", () => {
