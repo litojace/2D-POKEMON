@@ -38,3 +38,43 @@
 :root[data-ui="poster"] .st-action .st-brand-icon {
   opacity: 1;
 }
+
+/* Switches (Vibration, Full screen, Reduce motion): square. Off is an ink
+   block with a cream edge and cream words (the look underneath's navy and
+   blue are not Poster's); On is the accent block with ink words, as a
+   chosen tab or chip is. Graphics' Auto / High / Low: one square ink strip,
+   the chosen one the accent block, as Poster's other segmented choices
+   (kit.css, .ui-seg). --ui-text is the cream (white before the one chrome
+   of #673). */
+:root[data-ui="poster"] .prefs-switch {
+  border: 2px solid var(--ui-text);
+  border-radius: 0;
+  background: var(--ink);
+  color: var(--ui-text);
+  font-family: var(--font-body);
+  font-weight: 800;
+}
+:root[data-ui="poster"] .prefs-switch[aria-checked="true"] {
+  border-color: var(--el);
+  background: var(--el);
+  color: var(--ink);
+}
+:root[data-ui="poster"] .prefs-choice {
+  border: 0;
+  border-radius: 0;
+  background: var(--ink);
+}
+:root[data-ui="poster"] .framed-dialog .prefs-choice > button {
+  border: 0;
+  border-radius: 0;
+  color: var(--ui-text);
+  font-family: var(--font-body);
+  font-weight: 800;
+}
+:root[data-ui="poster"]
+  .framed-dialog
+  .prefs-choice
+  > button[aria-checked="true"] {
+  background: var(--el);
+  color: var(--ink);
+}
