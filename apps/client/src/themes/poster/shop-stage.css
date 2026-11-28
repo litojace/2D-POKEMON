@@ -18,6 +18,9 @@
 @media (max-height: 500px) {
   :root[data-ui="poster"] .ui-panel.is-split.fit-room {
     --stage-w: clamp(210px, 30vw, 290px);
+    /* Whole pixels where the browser can round (30vw of 852 is 255.6 px,
+       and everything right of the stage stood on a fraction). */
+    --stage-w: clamp(210px, round(30vw, 1px), 290px);
     /* The rail: 40 px of buttons and the 8 px they stand in from the edge. */
     --fit-rail: 48px;
   }
@@ -109,5 +112,98 @@
 @media (max-height: 500px) and (max-width: 900px) {
   :root[data-ui="poster"] .fit-room .fit-slots {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* Equip is the button to press: gold with ink words, as PLAY is. It was a
+   green fill, and green is kept for "done" (the owner's colour standard).
+   Every size, not only phones. */
+:root[data-ui="poster"] .fit-room .ui-panel-foot .ui-btn.is-ok {
+  background: var(--gold);
+  box-shadow: 4px 4px 0 var(--hot);
+  color: var(--ink);
+}
+
+/* A row that scrolls sideways in the Shop's head and body (the tabs, the
+   portraits): where more of it is hidden, the last 48 px fade out, so a
+   half-seen tab or portrait reads as "more this way", not as a cut. The
+   shared fade is 32 px, less than one portrait. */
+@media (max-height: 500px) {
+  :root[data-ui="poster"]
+    .fit-room
+    :is(.ui-tabs, .fit-fighters).has-more-right {
+    -webkit-mask-image: linear-gradient(
+      90deg,
+      #000 calc(100% - 48px),
+      transparent
+    );
+    mask-image: linear-gradient(90deg, #000 calc(100% - 48px), transparent);
+  }
+  :root[data-ui="poster"]
+    .fit-room
+    :is(.ui-tabs, .fit-fighters).has-more-left.has-more-right {
+    -webkit-mask-image: linear-gradient(
+      90deg,
+      transparent,
+      #000 32px,
+      #000 calc(100% - 48px),
+      transparent
+    );
+    mask-image: linear-gradient(
+      90deg,
+      transparent,
+      #000 32px,
+      #000 calc(100% - 48px),
+      transparent
+    );
+  }
+}
+
+/* Phones under 400 px tall (844×390, 852×393, 667×375): with a skin chosen
+   and the action bar up, the portraits and the filters above the cards
+   left about 118 px for a 148 px card, so the first row's name and price
+   were cut (the owner's screenshot). The portraits and filters already
+   scroll away with the cards; here they are tighter and the pictures a
+   little flatter, so a whole first row shows before any scrolling. */
+@media (max-height: 400px) {
+  :root[data-ui="poster"] .fit-room .fit-body {
+    gap: 4px;
+    padding-block: 4px;
+  }
+  :root[data-ui="poster"] .fit-room .fit-fighters {
+    padding-block: 3px;
+  }
+  :root[data-ui="poster"] .fit-room .fit-filters .ui-seg {
+    --h: 32px;
+    height: 32px;
+  }
+  :root[data-ui="poster"] .fit-grid .ui-tile-art {
+    aspect-ratio: 21 / 10;
+  }
+}
+
+/* Phones up to 900 px wide: with the wider stage, Shop | Wardrobe, four
+   tabs and Close have under 300 px, and Collections ran under Close
+   (852×393 with the island) or off the row (667×375). The switch and the
+   tabs stand closer and a size smaller, so all four tabs are on the row.
+   The row keeps its own 4 px at each end: the chosen tab's slanted block
+   leans into it (poster-masthead-tabs.spec). */
+@media (max-height: 500px) and (max-width: 900px) {
+  :root[data-ui="poster"] .fit-room .fit-head .ui-seg.is-display > button {
+    padding: 0 6px;
+  }
+  :root[data-ui="poster"] .fit-room .fit-head .ui-tabs > button[role="tab"] {
+    padding-inline: 4px;
+    font-size: calc(11px * var(--text-scale, 1));
+    letter-spacing: 0.01em;
+  }
+}
+/* The narrowest phones (667×375) need a few pixels more for Collections. */
+@media (max-height: 500px) and (max-width: 720px) {
+  :root[data-ui="poster"] .fit-room .fit-head .ui-seg.is-display > button {
+    padding: 0 4px;
+  }
+  :root[data-ui="poster"] .fit-room .fit-head .ui-tabs > button[role="tab"] {
+    padding-inline: 2px;
   }
 }
