@@ -94,6 +94,7 @@
           <a href="#champions">Champions</a>
           <a href="#modes">Modes</a>
           <a href="#raids">Raids</a>
+          <a href="#plaza">Plaza</a>
           <a href="#mobile">Mobile</a>
           <a href="/account/">Account</a>
         </nav>
@@ -1434,7 +1435,7 @@
                     img/modes/plaza-800.webp 800w
                   "
                   sizes="(min-width: 1000px) 380px, (min-width: 640px) 50vw, 100vw"
-                  alt="The Plaza in the game: players meeting by the fountain"
+                  alt="The Plaza in the game: a player fishing from the dock with two friends beside them"
                   width="800"
                   height="450"
                   loading="lazy"
@@ -1442,10 +1443,10 @@
                 />
               </picture>
               <h3>The Plaza</h3>
-              <p class="count">Hang out</p>
+              <p class="count">Hang out &amp; fish</p>
               <p>
-                Meet other players between matches, show off your look and send
-                a friend invite.
+                Meet other players between matches, show off your look, then
+                <a href="#plaza">fish the pond together</a>.
               </p>
             </li>
           </ul>
@@ -1983,9 +1984,381 @@
         </div>
       </section>
 
+      <section class="band pond" id="plaza" aria-labelledby="plaza-title">
+        <div class="wrap">
+          <div class="split pond-top">
+            <header class="head" data-n="04">
+              <p class="eyebrow">The Plaza</p>
+              <h2 id="plaza-title">
+                Hang out. <span class="hi">Go fishing.</span>
+              </h2>
+              <p class="sub">
+                Between matches, the Plaza is where everyone meets. Walk around,
+                wave, dance, show off your look and add a friend. Then head for
+                the pond and fish side by side.
+              </p>
+              <ol class="pond-steps" aria-label="How fishing works">
+                <li><b>Cast</b> your line from the dock.</li>
+                <li>
+                  <b>Wait</b> for the bobber to dip. It nibbles first: tap too
+                  soon and the fish is gone.
+                </li>
+                <li>
+                  <b>Reel</b> it in. Rarer fish fight harder, so give line when
+                  it pulls.
+                </li>
+              </ol>
+            </header>
+            <figure class="pond-shot">
+              <picture>
+                <source
+                  type="image/avif"
+                  srcset="
+                    img/plaza/pond-640.avif   640w,
+                    img/plaza/pond-1280.avif 1280w
+                  "
+                  sizes="(min-width: 900px) 640px, 100vw"
+                />
+                <img
+                  src="img/plaza/pond-640.webp"
+                  srcset="
+                    img/plaza/pond-640.webp   640w,
+                    img/plaza/pond-1280.webp 1280w
+                  "
+                  sizes="(min-width: 900px) 640px, 100vw"
+                  alt="The Plaza's pond in the game: Blaze fishes from the dock as the bobber dips, with Nova and Kai on the path and two ducks on the water"
+                  width="1280"
+                  height="853"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </picture>
+              <figcaption class="pond-tag">It's biting!</figcaption>
+            </figure>
+          </div>
+          <ul class="pond-facts" aria-label="The pond at a glance">
+            <!-- pond:start -->
+            <li><b>22</b><span>fish in the pond</span></li>
+            <li><b>3</b><span>bite by day only</span></li>
+            <li><b>6</b><span>bite by night only</span></li>
+            <!-- pond:end -->
+          </ul>
+          <div class="fish-head">
+            <h3>The Fish book</h3>
+            <p>
+              One fish for every mood of the nine elements. The Plaza keeps your
+              own clock, so some only bite by day and some only at night. The
+              rarest stay a mystery until you land them.
+              <!-- angler:start -->
+              Catch every fish in the book and the title <b>Master Angler</b> is
+              yours.
+              <!-- angler:end -->
+            </p>
+          </div>
+          <ul class="fish-book">
+            <!-- fish:start -->
+            <li class="fish r-common" style="--el: var(--el-fire)">
+              <img
+                src="img/fish/ember-minnow.svg"
+                alt=""
+                width="128"
+                height="80"
+                loading="lazy"
+                decoding="async"
+              />
+              <b>Ember Minnow</b>
+              <small>Common</small>
+              <small class="fish-el">Fire</small>
+            </li>
+            <li class="fish r-common" style="--el: var(--el-water)">
+              <img
+                src="img/fish/tide-guppy.svg"
+                alt=""
+                width="128"
+                height="80"
+                loading="lazy"
+                decoding="async"
+              />
+              <b>Tide Guppy</b>
+              <small>Common</small>
+              <small class="fish-el">Water</small>
+            </li>
+            <li class="fish r-common" style="--el: var(--el-earth)">
+              <img
+                src="img/fish/pebble-carp.svg"
+                alt=""
+                width="128"
+                height="80"
+                loading="lazy"
+                decoding="async"
+              />
+              <b>Pebble Carp</b>
+              <small>Common</small>
+              <small class="fish-el">Earth</small>
+            </li>
+            <li class="fish r-common" style="--el: var(--el-nature)">
+              <img
+                src="img/fish/reed-perch.svg"
+                alt=""
+                width="128"
+                height="80"
+                loading="lazy"
+                decoding="async"
+              />
+              <b>Reed Perch</b>
+              <small>Common</small>
+              <small class="fish-el">Nature</small>
+            </li>
+            <li class="fish r-common" style="--el: var(--el-electric)">
+              <img
+                src="img/fish/volt-shiner.svg"
+                alt=""
+                width="128"
+                height="80"
+                loading="lazy"
+                decoding="async"
+              />
+              <b>Volt Shiner</b>
+              <small>Common</small>
+              <small class="fish-el">Electric</small>
+            </li>
+            <li class="fish r-common" style="--el: var(--el-light)">
+              <img
+                src="img/fish/dawn-dace.svg"
+                alt=""
+                width="128"
+                height="80"
+                loading="lazy"
+                decoding="async"
+              />
+              <b>Dawn Dace</b>
+              <small>Common</small>
+              <small class="fish-el">Light</small>
+              <span class="fish-when">Day only</span>
+            </li>
+            <li class="fish r-common" style="--el: var(--el-shadow)">
+              <img
+                src="img/fish/dusk-loach.svg"
+                alt=""
+                width="128"
+                height="80"
+                loading="lazy"
+                decoding="async"
+              />
+              <b>Dusk Loach</b>
+              <small>Common</small>
+              <small class="fish-el">Shadow</small>
+              <span class="fish-when">Night only</span>
+            </li>
+            <li class="fish r-common" style="--el: var(--el-psychic)">
+              <img
+                src="img/fish/dream-darter.svg"
+                alt=""
+                width="128"
+                height="80"
+                loading="lazy"
+                decoding="async"
+              />
+              <b>Dream Darter</b>
+              <small>Common</small>
+              <small class="fish-el">Psychic</small>
+            </li>
+            <li class="fish r-uncommon" style="--el: var(--el-electric)">
+              <img
+                src="img/fish/zap-eel.svg"
+                alt=""
+                width="128"
+                height="80"
+                loading="lazy"
+                decoding="async"
+              />
+              <b>Zap Eel</b>
+              <small>Uncommon</small>
+              <small class="fish-el">Electric</small>
+            </li>
+            <li class="fish r-uncommon" style="--el: var(--el-light)">
+              <img
+                src="img/fish/sunscale-koi.svg"
+                alt=""
+                width="128"
+                height="80"
+                loading="lazy"
+                decoding="async"
+              />
+              <b>Sunscale Koi</b>
+              <small>Uncommon</small>
+              <small class="fish-el">Light</small>
+              <span class="fish-when">Day only</span>
+            </li>
+            <li class="fish r-uncommon" style="--el: var(--el-shadow)">
+              <img
+                src="img/fish/gloom-catfish.svg"
+                alt=""
+                width="128"
+                height="80"
+                loading="lazy"
+                decoding="async"
+              />
+              <b>Gloom Catfish</b>
+              <small>Uncommon</small>
+              <small class="fish-el">Shadow</small>
+              <span class="fish-when">Night only</span>
+            </li>
+            <li class="fish r-uncommon" style="--el: var(--el-water)">
+              <img
+                src="img/fish/bubble-puffer.svg"
+                alt=""
+                width="128"
+                height="80"
+                loading="lazy"
+                decoding="async"
+              />
+              <b>Bubble Puffer</b>
+              <small>Uncommon</small>
+              <small class="fish-el">Water</small>
+            </li>
+            <li class="fish r-uncommon" style="--el: var(--el-earth)">
+              <img
+                src="img/fish/rust-trout.svg"
+                alt=""
+                width="128"
+                height="80"
+                loading="lazy"
+                decoding="async"
+              />
+              <b>Rust Trout</b>
+              <small>Uncommon</small>
+              <small class="fish-el">Earth</small>
+            </li>
+            <li class="fish r-uncommon" style="--el: var(--el-nature)">
+              <img
+                src="img/fish/thorn-puffer.svg"
+                alt=""
+                width="128"
+                height="80"
+                loading="lazy"
+                decoding="async"
+              />
+              <b>Thorn Puffer</b>
+              <small>Uncommon</small>
+              <small class="fish-el">Nature</small>
+            </li>
+            <li class="fish r-uncommon" style="--el: var(--el-aura)">
+              <img
+                src="img/fish/glow-tetra.svg"
+                alt=""
+                width="128"
+                height="80"
+                loading="lazy"
+                decoding="async"
+              />
+              <b>Glow Tetra</b>
+              <small>Uncommon</small>
+              <small class="fish-el">Aura</small>
+              <span class="fish-when">Night only</span>
+            </li>
+            <li class="fish r-rare unknown">
+              <img
+                src="img/fish/unknown-betta.svg"
+                alt=""
+                width="128"
+                height="80"
+                loading="lazy"
+                decoding="async"
+              />
+              <b>???</b>
+              <small>Rare</small>
+            </li>
+            <li class="fish r-rare unknown">
+              <img
+                src="img/fish/unknown-angel.svg"
+                alt=""
+                width="128"
+                height="80"
+                loading="lazy"
+                decoding="async"
+              />
+              <b>???</b>
+              <small>Rare</small>
+            </li>
+            <li class="fish r-rare unknown">
+              <img
+                src="img/fish/unknown-lantern.svg"
+                alt=""
+                width="128"
+                height="80"
+                loading="lazy"
+                decoding="async"
+              />
+              <b>???</b>
+              <small>Rare</small>
+              <span class="fish-when">Night only</span>
+            </li>
+            <li class="fish r-rare unknown">
+              <img
+                src="img/fish/unknown-ray.svg"
+                alt=""
+                width="128"
+                height="80"
+                loading="lazy"
+                decoding="async"
+              />
+              <b>???</b>
+              <small>Rare</small>
+            </li>
+            <li class="fish r-rare unknown">
+              <img
+                src="img/fish/unknown-ray.svg"
+                alt=""
+                width="128"
+                height="80"
+                loading="lazy"
+                decoding="async"
+              />
+              <b>???</b>
+              <small>Rare</small>
+              <span class="fish-when">Night only</span>
+            </li>
+            <li class="fish r-legendary unknown">
+              <img
+                src="img/fish/unknown-sturgeon.svg"
+                alt=""
+                width="128"
+                height="80"
+                loading="lazy"
+                decoding="async"
+              />
+              <b>???</b>
+              <small>Legendary</small>
+              <span class="fish-when">Night only</span>
+            </li>
+            <li class="fish r-legendary unknown">
+              <img
+                src="img/fish/unknown-marlin.svg"
+                alt=""
+                width="128"
+                height="80"
+                loading="lazy"
+                decoding="async"
+              />
+              <b>???</b>
+              <small>Legendary</small>
+              <span class="fish-when">Day only</span>
+            </li>
+            <!-- fish:end -->
+          </ul>
+          <div class="cta pond-cta">
+            <a class="btn btn-play" href="https://play.elementarenausa.com/"
+              >Go fishing
+              <span class="arrow" aria-hidden="true">&rsaquo;</span></a
+            >
+          </div>
+        </div>
+      </section>
+
       <section class="band" id="style" aria-labelledby="style-title">
         <div class="wrap">
-          <header class="head" data-n="04">
+          <header class="head" data-n="05">
             <p class="eyebrow">The Shop</p>
             <h2 id="style-title">Walk in <span class="hi">a legend</span></h2>
             <p class="sub">
@@ -2480,7 +2853,7 @@
 
       <section class="band app" id="mobile" aria-labelledby="mobile-title">
         <div class="wrap split">
-          <header class="head" data-n="05">
+          <header class="head" data-n="06">
             <p class="eyebrow">Mobile</p>
             <h2 id="mobile-title">
               Coming soon to <span class="hi">iPhone and Android</span>

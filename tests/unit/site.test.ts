@@ -9,6 +9,11 @@ import {
 } from "../../packages/shared/src/raid";
 import { siteChampions } from "../../apps/site/tools/champion-data";
 import {
+  PLAZA_FISH,
+  PLAZA_FISH_RARITY,
+  PLAZA_FISH_TITLE,
+} from "../../packages/shared/src/plaza";
+import {
   CHAMPION_SKINS,
   LOOK_ITEMS,
   itemListPrice,
@@ -224,6 +229,44 @@ describe("website", () => {
         ),
       );
     }
+  });
+
+  it("its Fish book is the Plaza pond's, as a new angler sees it (npx tsx apps/site/tools/gen-data.ts)", () => {
+    const flat = flatHtml();
+    const cards = [
+      ...flat.matchAll(
+        /<li class="fish r-(\w+)( unknown)?"[^>]*><img src="img\/fish\/([\w-]+)\.svg"[^>]*\/><b>([^<]+)<\/b><small>(\w+)<\/small>(?:<small class="fish-el">(\w+)<\/small>)?(?:<span class="fish-when">([\w ]+)<\/span>)?<\/li>/g,
+      ),
+    ];
+    // Every fish in the pond, in the book's order.
+    expect(cards).toHaveLength(PLAZA_FISH.length);
+    cards.forEach(
+      ([, rarity, unknown, file, name, rarityName, element, when], i) => {
+        const f = PLAZA_FISH[i];
+        expect(rarity, f.id).toBe(f.rarity);
+        expect(rarityName, f.id).toBe(PLAZA_FISH_RARITY[f.rarity].name);
+        expect(when, f.id).toBe(
+          f.time ? { day: "Day only", night: "Night only" }[f.time] : undefined,
+        );
+        // Rare and Legendary fish stay the game's "???" and shadow: the page
+        // never gives their names or colours away.
+        const known = f.rarity === "common" || f.rarity === "uncommon";
+        expect(!unknown, f.id).toBe(known);
+        expect(name, f.id).toBe(known ? f.name : "???");
+        expect(element, f.id).toBe(known ? f.element : undefined);
+        expect(file, f.id).toBe(known ? f.id : `unknown-${f.shape}`);
+        if (!known) expect(html, f.id).not.toContain(f.name);
+        expect(existsSync(path.join(SITE, `img/fish/${file}.svg`)), file).toBe(
+          true,
+        );
+      },
+    );
+    // The numbers beside it, and the title for filling the book.
+    const timed = (t: string) => PLAZA_FISH.filter((f) => f.time === t).length;
+    expect(flat).toContain(
+      `<li><b>${PLAZA_FISH.length}</b><span>fish in the pond</span></li><li><b>${timed("day")}</b><span>bite by day only</span></li><li><b>${timed("night")}</b><span>bite by night only</span></li>`,
+    );
+    expect(html).toContain(`<b>${PLAZA_FISH_TITLE.name}</b>`);
   });
 
   it("never names an amount of the game's money (owner, 27 Nov)", () => {

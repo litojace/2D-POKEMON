@@ -7,10 +7,10 @@ effects").
 
 For each recording (site-clips/skins/<name>/):
 
-- the loop: one showcase cycle (4.4 s of the stage's clock) for a skin, or
-  the stretch of the idle that comes back closest to its first frame for a
-  Classic look. The frames recorded past the loop are blended into its first
-  frames, so it wraps without a jump.
+- the loop: one showcase cycle (4.4 s of the stage's clock) for each action
+  recorded: a skin's victory or ultimate, or a Classic look's entrance and
+  then its victory. Each action's first frames are faded in from what comes
+  before them, so the loop wraps without a jump.
 - media/skins/<name>.mp4: H.264, which every browser and phone plays,
   720 x 720 at 60 frames a second, no sound. (VP9 and AV1 came out larger
   than H.264 tuned for animation on these stages, so there is one file.)
@@ -34,36 +34,15 @@ SITE = ROOT / "apps/site"
 SIZE = 720
 THUMB = 192
 FPS = 60
-# Where the poster is taken from, in seconds into the loop: a skin's effect
-# in full (the victory's sign, the ultimate after its flash), the Classic
-# look at rest.
-POSTER_AT = {"victory": 1.0, "ultimate": 0.9, "idle": 0.0}
+# Where the poster is taken from, in seconds into the loop's first action: a
+# skin's effect in full (the victory's sign, the ultimate after its flash),
+# the Classic look in the ready stance its entrance ends on.
+POSTER_AT = {"victory": 1.0, "ultimate": 0.9, "entrance": 2.6}
 
 
 def load(src: Path, i: int, size: int) -> np.ndarray:
     im = Image.open(src / f"{i:03d}.jpg").convert("RGB")
     return np.asarray(im.resize((size, size), Image.LANCZOS), dtype=np.float32)
-
-
-def idle_loop(src: Path, count: int, tail: int, step_ms: int) -> int:
-    """The loop length (in frames) whose wrap differs least from its start."""
-    small = [load(src, i, 96) for i in range(count)]
-    head = np.stack(small[:tail])
-    lo = round(2500 / step_ms)
-    diffs = {
-        n: float(np.abs(np.stack(small[n : n + tail]) - head).mean())
-        for n in range(lo, count - tail + 1)
-    }
-    best = min(diffs.values())
-    # Where the idle comes back round: the stretches closer than their
-    # neighbours. The shortest of those nearly as close as the best is one
-    # breath, not two (half the file, the same look once blended).
-    turns = [
-        n
-        for n, d in diffs.items()
-        if d <= diffs.get(n - 1, d) and d <= diffs.get(n + 1, d)
-    ]
-    return min(n for n in turns if diffs[n] <= best * 1.2 + 0.15)
 
 
 def encode(frames, out: Path):
@@ -80,26 +59,37 @@ def make(name: str):
     src = FRAMES / name
     meta = json.loads((src / "meta.json").read_text())
     tail, step = meta["tail"], meta["stepMs"]
-    count = len(meta["clocks"])
-    steps = {b - a for a, b in zip(meta["clocks"], meta["clocks"][1:])}
-    if steps != {step}:
-        print(f"  {name}: uneven steps {sorted(steps)} (expected {step} ms)")
-    if meta["action"] == "idle":
-        length = idle_loop(src, count, tail, step)
-    else:
-        length = round(meta["cycleMs"] / step)
-    length = min(length, count - tail)
-    frames = [load(src, i, SIZE) for i in range(length + tail)]
-    loop = frames[:length]
-    for i in range(tail):
-        a = (i + 1) / (tail + 1)
-        loop[i] = frames[length + i] * (1 - a) + frames[i] * a
+    segments = meta["segments"]
+    loop = []
+    for n, seg in enumerate(segments):
+        start, length = seg["start"], seg["length"]
+        clocks = meta["clocks"][start : start + length + tail]
+        steps = {b - a for a, b in zip(clocks, clocks[1:])}
+        if steps != {step}:
+            print(f"  {name}: uneven steps {sorted(steps)} (expected {step} ms)")
+        frames = [load(src, start + i, SIZE) for i in range(length + tail)]
+        part = frames[:length]
+        # Where the loop comes round to this action. A loop of one action:
+        # its next cycle's first frames (recorded past its end) fade into its
+        # own, so effects that never repeat exactly don't jump. After another
+        # action: that action's last frame, held, fades into this one.
+        before = segments[n - 1]
+        if before is seg:
+            lead = frames[length:]
+        else:
+            last = load(src, before["start"] + before["length"] - 1, SIZE)
+            lead = [last] * tail
+        for i in range(tail):
+            a = (i + 1) / (tail + 1)
+            part[i] = lead[i] * (1 - a) + part[i] * a
+        loop += part
+    length = len(loop)
     mp4 = SITE / "media/skins" / f"{name}.mp4"
     mp4.parent.mkdir(parents=True, exist_ok=True)
     encode(loop, mp4)
     img = SITE / "img/skins"
     img.mkdir(parents=True, exist_ok=True)
-    at = min(length - 1, round(POSTER_AT[meta["action"]] * FPS))
+    at = min(segments[0]["length"] - 1, round(POSTER_AT[segments[0]["action"]] * FPS))
     still = Image.fromarray(np.clip(loop[at], 0, 255).astype(np.uint8))
     still.save(img / f"{name}.webp", "WEBP", quality=80, method=6)
     # The strip's thumbnail: the fighter itself, cut closer.
