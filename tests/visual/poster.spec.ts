@@ -530,3 +530,81 @@ for (const size of [
     }
   });
 }
+
+// A whole-screen field of the fighter's colour is softened, 30% of the way
+// to a cream paper (--el-soft; owner, 27 Nov 2026: "a little paler, so it
+// isn't so loud; only the background"). The Lobby's field takes it; a
+// masthead, the open rail block and PLAY's word keep the colour at full
+// strength.
+test("Poster: the Lobby's field is the fighter's colour softened; mastheads keep it whole", async ({
+  browser,
+}, info) => {
+  test.setTimeout(90_000);
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    await skipTour(page);
+    // Tidefin: Water's cyan, which a mix in oklch bent toward green.
+    await page.addInitScript(() =>
+      localStorage.setItem("arena-featured-fighter", "tidefin"),
+    );
+    await withPoster(page);
+    const errors = await openHub(page);
+    await page.evaluate(() => document.fonts.ready);
+    await hubMenu(page, "missions");
+    await expect(page.locator(".ui-panel-head").last()).toBeVisible();
+    await page.waitForTimeout(600);
+    await page.mouse.move(600, 380);
+    const colours = await page.evaluate(() => {
+      const paint = document.createElement("canvas").getContext("2d", {
+        willReadFrequently: true,
+      })!;
+      paint.canvas.width = paint.canvas.height = 1;
+      // Through a canvas: computed colours can be oklch() or color-mix().
+      const rgb = (c: string) => {
+        paint.clearRect(0, 0, 1, 1);
+        paint.fillStyle = "#000";
+        paint.fillStyle = c;
+        paint.fillRect(0, 0, 1, 1);
+        return Array.from(paint.getImageData(0, 0, 1, 1).data.slice(0, 3));
+      };
+      const el = getComputedStyle(document.documentElement)
+        .getPropertyValue("--el")
+        .trim();
+      const bg = (sel: string, pseudo?: string) =>
+        rgb(
+          getComputedStyle(document.querySelector(sel)!, pseudo)
+            .backgroundColor,
+        );
+      return {
+        el: rgb(el),
+        soft: rgb(`color-mix(in oklab, ${el} 70%, #f4ead5)`),
+        field: bg(".lobby-layer"),
+        head: bg(".ui-panel-head"),
+        rail: bg('.lobby-rail [data-lobby-action="missions"]', "::before"),
+        play: rgb(
+          getComputedStyle(document.querySelector(".lobby-play-button")!).color,
+        ),
+      };
+    });
+    const near = (a: number[], b: number[]) =>
+      a.every((v, i) => Math.abs(v - b[i]) <= 1);
+    const where = JSON.stringify(colours);
+    expect(near(colours.field, colours.soft), where).toBe(true);
+    expect(near(colours.field, colours.el), where).toBe(false);
+    // Still the fighter's hue: of Water's cyan, blue stays the strongest
+    // channel and red the weakest.
+    expect(colours.field[2], where).toBeGreaterThan(colours.field[1]);
+    expect(colours.field[1], where).toBeGreaterThan(colours.field[0]);
+    for (const part of [colours.head, colours.rail, colours.play])
+      expect(near(part, colours.el), where).toBe(true);
+    await snap(page, info, "poster-soft-field-844x390");
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});

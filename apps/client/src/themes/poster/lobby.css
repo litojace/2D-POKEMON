@@ -1,9 +1,10 @@
 /* Poster's Lobby and the hub's top bar: the screen takes the fighter's
-   element colour; an ink slab carries the rail, the fighter's name stands
-   huge and outlined behind it, the cards are white clippings. */
+   element colour, softened as every whole-screen field of it is
+   (--el-soft, tokens.css); an ink slab carries the rail, the fighter's name
+   stands huge and outlined behind it, the cards are white clippings. */
 :root[data-ui="poster"] .lobby-layer {
   --lobby-rail: 132px;
-  background: var(--el);
+  background: var(--el-soft);
   font-family: var(--font-body);
   color: var(--ink);
 }
@@ -14,7 +15,7 @@
   background:
     radial-gradient(circle, rgba(0, 0, 0, 0.16) 1.4px, transparent 1.8px) 0 0 /
       9px 9px,
-    var(--el);
+    var(--el-soft);
   -webkit-mask: none;
 }
 :root[data-ui="poster"] .lobby-layer .lobby-backdrop::before {
@@ -24,7 +25,7 @@
   inset: 0;
   background: radial-gradient(
     48% 60% at 52% 58%,
-    var(--el) 30%,
+    var(--el-soft) 30%,
     transparent 75%
   );
 }

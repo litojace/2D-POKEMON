@@ -36,6 +36,14 @@
      at 4.5:1 on the lightest panel ink (--ink-3); lighter colours are
      unchanged. Older browsers keep --el (below). */
   --el-text: var(--el);
+  /* The element colour as a whole-screen field (the Lobby, the raid room,
+     a result sheet): 30% of the way to a cream paper, so a screen full of
+     it is calmer (owner, 27 Nov 2026: "a little paler, so it isn't so
+     loud; only the background"). Mastheads, words and accents keep --el at
+     full strength. Mixed in oklab, a straight line to the cream: in oklch
+     the hue travels an arc and Water's cyan turned green. Older browsers
+     keep --el (below). */
+  --el-soft: var(--el);
   --ui-accent: var(--el-text);
   --ui-accent-hi: var(--el-text);
   --ui-accent-lo: var(--el-text);
@@ -78,6 +86,11 @@
   --scroll-track: var(--ink);
   --scroll-thumb: var(--el);
   --scroll-thumb-light: var(--el);
+}
+@supports (color: color-mix(in oklab, red 70%, white)) {
+  :root[data-ui="poster"] {
+    --el-soft: color-mix(in oklab, var(--el) 70%, #f4ead5);
+  }
 }
 @supports (color: oklch(from red l c h)) {
   :root[data-ui="poster"] {

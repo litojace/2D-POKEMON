@@ -135,6 +135,13 @@ raid room need). Sweep: `tests/visual/poster.spec.ts`.
   `tests/visual/poster-contrast.spec.ts` measures every word on the Lobby,
   the hub's screens and Settings in each element colour, against the pixels
   really under it.
+- **Whole-screen fields are softened** (owner, 27 Nov 2026): the Lobby's
+  field, the raid room's backdrop and a result sheet's field are
+  `--el-soft`, the element colour 30% of the way to a cream paper
+  (`color-mix(in oklab, var(--el) 70%, #f4ead5)`), so a screen full of it is
+  calmer. Mastheads, words and accents keep `--el` whole. The mix is in
+  oklab, a straight line to the cream: in oklch the hue travels an arc and
+  Water's cyan turned green. A browser without `color-mix` keeps `--el`.
 - Inside a Fighters card `--el` is that card's element colour
   (`roster-view.ts` sets it), not the Lobby fighter's.
 - One screen, one file: `screens.css` has the title screen, the countdown
