@@ -238,36 +238,62 @@
   animation: none;
 }
 
-/* Compact ink labels replace the page-height diagonal slab. The rays remain
-   visible around the brand, with the account card as the only large panel. */
-:root[data-ui="poster"] .welcome-gate::before,
-:root[data-ui="poster"] .welcome-gate::after,
+/* Selected cover A: a continuous diagonal, narrower than the original
+   half-screen slab. The actors and the ray origin keep their own anchors. */
 :root[data-ui="poster"] .welcome-gate.is-title::before,
 :root[data-ui="poster"] .welcome-gate.is-title::after,
 :root[data-ui="poster"] .welcome-gate:not(.is-title)::before,
 :root[data-ui="poster"] .welcome-gate:not(.is-title)::after {
-  display: none;
+  content: "";
+  display: block;
+  position: absolute;
+  inset: 0;
+  block-size: auto;
+  pointer-events: none;
+}
+:root[data-ui="poster"] .welcome-gate.is-title::before,
+:root[data-ui="poster"] .welcome-gate.is-title::after {
+  z-index: 0;
+}
+:root[data-ui="poster"] .welcome-gate:not(.is-title)::before,
+:root[data-ui="poster"] .welcome-gate:not(.is-title)::after {
+  z-index: -1;
+}
+:root[data-ui="poster"] .welcome-gate.is-title::before,
+:root[data-ui="poster"] .welcome-gate:not(.is-title)::before {
+  background: var(--ink);
+  clip-path: polygon(0 0, 40% 0, 30% 100%, 0 100%);
+}
+:root[data-ui="poster"] .welcome-gate.is-title::after,
+:root[data-ui="poster"] .welcome-gate:not(.is-title)::after {
+  background: #fff;
+  clip-path: polygon(
+    calc(40% + 5px) 0,
+    calc(40% + 11px) 0,
+    calc(30% + 11px) 100%,
+    calc(30% + 5px) 100%
+  );
 }
 :root[data-ui="poster"] .welcome-gate .gate-heading,
 :root[data-ui="poster"] .welcome-gate .title-brand {
   inline-size: fit-content;
   max-inline-size: 100%;
-  padding: clamp(12px, 1.8vw, 24px);
+  padding: 0;
   box-sizing: border-box;
-  background: var(--ink);
-  box-shadow: 5px 5px 0 var(--hot);
+  background: none;
+  box-shadow: none;
 }
 :root[data-ui="poster"] .welcome-gate .title-brand h1 {
   font-size: clamp(48px, 8vw, 112px);
 }
 :root[data-ui="poster"] .welcome-gate.is-title .title-prompt {
-  color: var(--el);
+  color: var(--ink);
 }
 :root[data-ui="poster"] .welcome-gate.is-title .title-prompt::before {
-  background: var(--ink);
+  background: var(--el);
 }
 :root[data-ui="poster"] .welcome-gate.is-title .title-hint {
-  color: var(--ink);
+  color: #e6e2d9;
   text-shadow: none;
 }
 :root[data-ui="poster"] .welcome-gate .gate-mark {
@@ -479,7 +505,7 @@
   :root[data-ui="poster"] .welcome-gate .title-brand {
     left: 24px;
     top: 162px;
-    padding: 16px;
+    padding: 0;
     transform: none;
   }
   :root[data-ui="poster"] .welcome-gate .title-brand h1 {
@@ -536,12 +562,46 @@
   }
   :root[data-ui="poster"] .welcome-gate .title-brand {
     top: 138px;
-    padding: 10px;
+    padding: 0;
   }
   :root[data-ui="poster"] .welcome-gate .title-brand h1 {
     font-size: 36px;
   }
   :root[data-ui="poster"] .welcome-gate.is-title .title-quick {
     top: 70px;
+  }
+}
+
+@media (max-width: 750px) and (orientation: landscape) {
+  :root[data-ui="poster"] .welcome-gate .title-brand .gate-kicker {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+  }
+}
+@media (orientation: portrait) {
+  :root[data-ui="poster"] .welcome-gate.is-title::before,
+  :root[data-ui="poster"] .welcome-gate:not(.is-title)::before {
+    clip-path: polygon(0 0, 100% 0, 100% 36dvh, 0 40dvh);
+  }
+  :root[data-ui="poster"] .welcome-gate.is-title::after,
+  :root[data-ui="poster"] .welcome-gate:not(.is-title)::after {
+    clip-path: polygon(
+      0 calc(40dvh + 5px),
+      100% calc(36dvh + 5px),
+      100% calc(36dvh + 11px),
+      0 calc(40dvh + 11px)
+    );
+  }
+  :root[data-ui="poster"] .welcome-gate.is-title .title-prompt {
+    color: var(--el);
+  }
+  :root[data-ui="poster"] .welcome-gate.is-title .title-prompt::before {
+    background: var(--ink);
+  }
+  :root[data-ui="poster"] .welcome-gate.is-title .title-hint {
+    color: var(--ink);
+  }
+  :root[data-ui="poster"] .welcome-gate.is-title .title-quick-btn {
+    color: var(--el);
   }
 }
