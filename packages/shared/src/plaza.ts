@@ -1386,6 +1386,9 @@ export interface PlazaPlace {
   quests: readonly string[];
   /** Which side of its pin the map writes its name (default: centred). */
   label?: "left" | "right";
+  /** A shorter name for its pin, where the full one has no room on the map
+   * (the list beside the map keeps the full name). */
+  pin?: string;
 }
 export const PLAZA_PLACES: readonly PlazaPlace[] = [
   {
@@ -1414,6 +1417,8 @@ export const PLAZA_PLACES: readonly PlazaPlace[] = [
     x: PLAZA_PHOTO.x,
     y: PLAZA_PHOTO.y + 40,
     quests: ["photo"],
+    // The Runway's pin is 80 px to its right: centred, its name covered it.
+    label: "left",
   },
   {
     id: "cafe",
@@ -1423,6 +1428,8 @@ export const PLAZA_PLACES: readonly PlazaPlace[] = [
     x: PLAZA_CAFE.x - 30,
     y: PLAZA_CAFE.y + 80,
     quests: [],
+    // The Runway's name ends 3 px into a centred one.
+    label: "right",
   },
   {
     id: "pitch",
@@ -1453,6 +1460,9 @@ export const PLAZA_PLACES: readonly PlazaPlace[] = [
     x: PLAZA_LEADER.x + 10,
     y: PLAZA_LEADER.y + 40,
     quests: [],
+    // 60 px from the map's left edge with the Dash Track's pin 78 px to its
+    // right: the whole name ran 9 px past the picture and 5 px into that pin.
+    pin: "TOP DASH",
   },
   {
     id: "pond",

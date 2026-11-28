@@ -777,28 +777,29 @@
   border-bottom: 0;
   background: var(--el);
 }
+/* Each tab is the row's full height, so its own box is the 44 px a finger
+   needs, centred on what it shows; what it shows is the block under the
+   row's top 7 px (the chosen one's ink, with the row's colour painted over
+   its top 7 px), its label in the middle of that block. (A 37 px button
+   with a strip above it as its reach left a tap just under the tab hitting
+   nothing: spire-safe-area.) */
 :root[data-ui="poster"] .ui-split-main > .ui-tabs > button {
   position: relative;
-  align-self: flex-end;
-  height: calc(100% - 7px);
+  align-self: stretch;
+  height: auto;
   min-height: 0;
   color: var(--on-el-dim);
   margin: 0;
-  padding-top: 0;
+  padding-top: 7px;
   padding-bottom: 0;
   border-bottom: 0;
-}
-:root[data-ui="poster"] .ui-split-main > .ui-tabs > button::before {
-  content: "";
-  position: absolute;
-  inset: -7px 0 100%;
 }
 :root[data-ui="poster"]
   .ui-split-main
   > .ui-tabs
   > button[aria-selected="true"] {
   color: var(--el);
-  background: var(--ink);
+  background: linear-gradient(var(--el) 0 7px, transparent 7px) var(--ink);
   transform: skewX(-10deg);
 }
 :root[data-ui="poster"]
@@ -854,6 +855,13 @@
   }
 }
 /* ranks: the board and the rank road */
+/* A rank step's numeral and rating in the middle of the step: the old
+   look lifts them 2 px for its own type (ranks.css, padding-bottom), which
+   left Poster's 2 px high on a desktop (rank-road.spec, "your step");
+   Poster's figures sit high in their line, so they come down 1 px instead. */
+:root[data-ui="poster"] .rk-steps > i {
+  padding: 1px 0 0;
+}
 /* Three labels in the middle of their boxes, where Poster's type sat a
    pixel high or left of it (1-1.5 px; 1.5 on CI's renderer, past the
    suite's 1 px): Anton's capitals stand high in their line, and a tag's
@@ -1212,15 +1220,19 @@
   letter-spacing: 0.04em;
 }
 /* The quick buttons (Settings, Help, Support, Repair), here and on the
-   sign-in screen, stay round: one shape on both screens (owner;
-   title-screen.spec.ts). Poster's ink and hard shadow, no blur. */
+   sign-in screen: square ink tiles, as every other control in Poster
+   (owner, 27 Nov 2026: option C of three; until then they were the one
+   round shape left on these two screens). On the title they stand on the
+   cover: plain ink, their labels ink with no outline. On the sign-in
+   screen's slab a tile is the lighter ink with the cover's colour along
+   its bottom edge (onboarding.css). 44 px, a finger wide. */
 :root[data-ui="poster"] .title-quick-icon {
   border: 0;
-  border-radius: 50%;
+  border-radius: 0;
   background: var(--ink);
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
-  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.35);
+  box-shadow: none;
 }
 :root[data-ui="poster"] .title-quick-btn:hover .title-quick-icon {
   background: var(--ink-2);
@@ -1229,20 +1241,28 @@
   color: var(--el);
 }
 :root[data-ui="poster"] .title-quick-btn {
+  color: #fff;
   font: 400 calc(11px * var(--text-scale, 1)) / 1.1 var(--font-display);
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  text-shadow:
-    0 1px 0 var(--ink),
-    1px 0 0 var(--ink),
-    -1px 0 0 var(--ink),
-    0 -1px 0 var(--ink);
+  text-shadow: none;
+}
+:root[data-ui="poster"] .welcome-gate.is-title .title-quick-btn {
+  color: var(--ink);
 }
 :root[data-ui="poster"] :is(.title-status, .title-build) {
   padding: 4px 8px;
   background: var(--ink);
   color: #fff;
   text-shadow: none;
+}
+/* The version: quiet words in the body face, here and under the sign-in
+   screen's quick buttons (it was Anton, as loud as a label). */
+:root[data-ui="poster"] :is(.title-build, .gate-build) {
+  font-family: var(--font-body);
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--ui-faint);
 }
 :root[data-ui="poster"]:where([data-motion="reduced"]) .title-prompt {
   animation: none;

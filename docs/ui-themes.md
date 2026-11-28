@@ -60,7 +60,7 @@ Lobby and its safe areas, poster), moved in #569; slice 2, the hub screens
 (the Shop and fitting room, the roster, raids, Ranks and Friends, the
 Profile, Missions, Match history, panel-scroll, phone-fit, text-collisions),
 in #581; slice 3, the match screens (the results sheets, the battle badge,
-rooms, the party flow, the Reveal), in #601. `ui-theme.spec.ts` sets
+rooms, the party flow, the Reveal), in #601; slice 4a, the raids, in #607. `ui-theme.spec.ts` sets
 its look itself and tests the pin; it moves with the PR that removes it.
 
 **The budgets measure Poster** (27 Nov 2026): `battle-style-budget`,
@@ -89,6 +89,17 @@ battle canvas, which no look touches) and the frame-rate profiles
 - Every selector sits under `:root[data-ui="poster"]`; no `backdrop-filter`
   but `none` and no animation that runs for ever (`tests/unit/ui-theme.test.ts`
   checks all three).
+  - **One exception, by the owner's leave (27 Nov 2026):** the title
+    screen's sunburst turns once in 100 s (`poster-cover-turn` in
+    `onboarding.css`), "to feel alive". It is allowed because it cannot
+    reach a fight or a screen you read: it runs on the title screen only
+    (never behind the sign-in form), on a layer of its own that the
+    compositor rotates without drawing it again, and it is gone with the
+    title screen, which leaves the page before the Lobby. It stops with
+    Settings → Reduce motion and on Low graphics
+    (`ui/light-effects.css`). The unit test names this one animation and
+    fails on any other; `tests/visual/poster-title.spec.ts` checks where it
+    runs and where it stops.
 - Fonts are self-hosted woff2 (latin and Vietnamese subsets) with their OFL
   licence files, inside the folder (`font-src 'self'` is already allowed).
 - Markup Poster needs that the look underneath doesn't goes into the shared

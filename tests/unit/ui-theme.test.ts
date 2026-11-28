@@ -147,7 +147,17 @@ describe("the look as shipped", () => {
         // reference's rules for both looks). `none` is allowed: a look
         // turns off the blurs the look underneath writes by value.
         expect(css, file).not.toMatch(BLURS);
-        expect(css, file).not.toMatch(/\binfinite\b/);
+        // One animation runs for ever, by the owner's leave (27 Nov 2026):
+        // the title cover's slow turn (docs/ui-themes.md). Nothing else.
+        const endless = css.match(/animation[^;{}]*\binfinite\b[^;{}]*/g) ?? [];
+        expect(css.match(/\binfinite\b/g) ?? [], file).toHaveLength(
+          endless.length,
+        );
+        for (const rule of endless)
+          expect(rule, file).toMatch(/\bposter-cover-turn\b/);
+        expect(endless.length, file).toBe(
+          t.id === "poster" && file.endsWith("onboarding.css") ? 1 : 0,
+        );
         for (const rule of selectors(css))
           for (const one of rule.split(/,(?![^()]*\))/))
             expect(one.trim().startsWith(scope), `${file}: ${one.trim()}`).toBe(

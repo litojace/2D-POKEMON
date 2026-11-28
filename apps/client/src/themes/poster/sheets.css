@@ -451,3 +451,164 @@
   color: #d01836;
   box-shadow: inset 0 0 0 2px #d01836;
 }
+
+/* ── The results' last old-look pieces (audit C08, C09, C10, C41) ── */
+/* A reward tile's news (LEVEL UP, TIER UP, BRONZE): a flat block in the
+   element colour, square, no glow; and the tiles with news keep the same
+   edge as the others (three wore a thin gold rim, Coins none: C08). */
+:root[data-ui="poster"] #arena-overlay#arena-overlay .rw-burst {
+  border-radius: 0;
+  background: var(--el);
+  color: var(--ink);
+  box-shadow: none;
+  font-weight: 400;
+}
+:root[data-ui="poster"] #arena-overlay#arena-overlay .rw-tile.has-burst {
+  border-color: var(--ui-line);
+}
+/* A bot match's XP (journey-result-xp, adventure-ui.ts): an ink block,
+   the level a square in the element colour, the bar flat, and the level-up
+   line readable Anton capitals, not 8 px words (C09). */
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  :is(.journey-result-xp, .journey-level) {
+  border: 0;
+  border-radius: 0;
+  background: var(--ink);
+  color: #fff;
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .journey-result-xp
+  > strong {
+  color: var(--el);
+  font-weight: 400;
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .journey-level-badge {
+  border: 0;
+  border-radius: 0;
+  background: var(--el);
+  color: var(--ink);
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .journey-level-badge
+  b {
+  font-weight: 400;
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .journey-level
+  progress {
+  accent-color: var(--el);
+  border-radius: 0;
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .journey-level-up {
+  margin: 0 0 8px;
+  color: #fff;
+  font: 400 calc(16px * var(--text-scale, 1)) / 1.2 var(--font-display);
+  letter-spacing: 0.05em;
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .journey-level-up
+  > small {
+  display: block;
+  color: #d6d5dc;
+  font: 600 calc(12px * var(--text-scale, 1)) / 1.3 var(--font-body);
+  letter-spacing: 0;
+}
+/* A free-for-all's places: the recap's ink card and plates, square; the
+   place a square medal (C10: pills on grey-blue rows with a thin edge). */
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .overlay-card
+  .standings-card {
+  border: 0;
+  border-radius: 0;
+  background: var(--ink);
+  box-shadow: 8px 8px 0 rgba(0, 0, 0, 0.28);
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .overlay-card
+  .standings
+  li {
+  border: 0;
+  border-radius: 0;
+  background: var(--ink-2);
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .overlay-card
+  .standings
+  li.me {
+  background: var(--ink-3);
+  box-shadow: inset 4px 0 0 var(--el);
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .overlay-card
+  .standings
+  li
+  > span {
+  border-radius: 0;
+  font-weight: 400;
+}
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  .overlay-card
+  .standings
+  li
+  > em {
+  font-weight: 400;
+}
+:root[data-ui="poster"] #arena-overlay#arena-overlay .recap .mvp {
+  border-radius: 0;
+}
+/* Solo against a ★★★ boss: the warning an ink block with a red edge, its
+   words white (C41: a see-through brown pill, dark words on the sheet). */
+/* (In a sheet's foot, over the foot's ink words for its notes.) */
+:root[data-ui="poster"] .raid-solo-warning,
+:root[data-ui="poster"]
+  #arena-overlay#arena-overlay.is-sheet
+  :is(.panel-actions, .rc-foot)
+  > p.raid-solo-warning {
+  border: 0;
+  border-left: 6px solid #ff2e4d;
+  border-radius: 0;
+  background: var(--ink);
+  color: #fff;
+}
+
+/* A briefing's Champion tricks (raid-ui.ts perkLines, inside "Your
+   fighter, team & modifiers"): an ink plate with the element colour's
+   edge and an Anton heading, its lines clear of the plate's left edge
+   (audit C41: a see-through rounded brown box with a thin gold rim). */
+:root[data-ui="poster"] #arena-overlay#arena-overlay.is-sheet .raid-perks {
+  border: 0;
+  border-left: 4px solid var(--el);
+  border-radius: 0;
+  background: var(--ink-2);
+  color: #fff;
+  padding: 8px 12px 8px 14px;
+}
+:root[data-ui="poster"] #arena-overlay#arena-overlay.is-sheet .raid-perks h3 {
+  color: var(--el);
+  font: 400 calc(14px * var(--text-scale, 1)) / 1.2 var(--font-display);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+:root[data-ui="poster"] #arena-overlay#arena-overlay.is-sheet .raid-perks ul {
+  padding-left: 16px;
+  color: #d6d5dc;
+}
+/* Its block's lines (the summary, the variant, the team signals) clear of
+   the ink plate's left edge, as every other plate's (C41). */
+:root[data-ui="poster"] #arena-overlay#arena-overlay.is-sheet .rc-extra {
+  padding: 8px 14px;
+}

@@ -239,6 +239,17 @@
 :root[data-ui="poster"] .lobby-layer .lobby-slot span {
   color: var(--ink);
 }
+/* A seat too small for its word shows the plus alone: on the shortest
+   phones (844 x 280, 568 x 320) the seat is 44 px, "INVITE" is 40 px of ink
+   in 38 px of room, and the frame cut through it (audit B04). The word
+   needs a seat of 52 px; under that its row closes (the multiplier turns
+   one pixel short into nothing). The button's aria-label still names it.
+   Not a container query: the seat's size is in container units, which a
+   container on the seat would re-measure for what is inside it. */
+:root[data-ui="poster"] .lobby-layer .lobby-slot small {
+  overflow: hidden;
+  max-height: clamp(0px, calc((var(--seat) * 0.8 - 51px) * 100), 1.2em);
+}
 /* A party member's name under their fighter: white on its ink pill (it
    took the seat's ink and could not be read; yours keeps its colour). */
 :root[data-ui="poster"] .lobby-layer .lobby-member:not(.is-you) figcaption {
@@ -476,10 +487,10 @@
     letter-spacing: 0.03em;
   }
 }
-/* The narrowest phones (667 px): the mode's hint takes two lines there, so
-   the box gives its 3 px frame back to the words; a card's count and its
-   timer stack when they don't fit side by side. */
-@media (max-width: 760px) and (max-height: 500px) {
+/* A phone held sideways: the mode's hint takes two lines there (lobby.css),
+   so the box gives its 3 px frame back to the words; a card's count and
+   its timer stack when they don't fit side by side. */
+@media (max-height: 500px) {
   :root[data-ui="poster"] .lobby-layer .lobby-mode {
     border-width: 2px;
   }

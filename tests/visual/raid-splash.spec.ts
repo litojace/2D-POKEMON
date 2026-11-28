@@ -1,6 +1,10 @@
 import { test, expect } from "@playwright/test";
 import { box, inside, openHub, snap, hubMenu, settle } from "./helpers";
 import { bossFraming } from "./raid-frames";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 for (const viewport of [
   { width: 1440, height: 900 },
   { width: 844, height: 390 },

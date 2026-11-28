@@ -1,5 +1,9 @@
 import { expect, test } from "@playwright/test";
 import { openHub, snap, hubMenu } from "./helpers";
+import { onPlayersLook } from "./players-look";
+
+// In the look players have (players-look.ts).
+onPlayersLook();
 
 for (const viewport of [
   { width: 1440, height: 900 },

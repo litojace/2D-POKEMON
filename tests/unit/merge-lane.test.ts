@@ -19,13 +19,18 @@ describe("mergeLane", () => {
     expect(r).toMatchObject({ lane: "FAST", reasons: [], docsOnly: false });
   });
 
-  it("the website's images and fonts don't count toward the file limit", () => {
+  it("the website's images, loops and fonts don't count toward the file limit", () => {
     const art = Array.from(
       { length: MAX_FAST_FILES + 10 },
       (_, i) => `apps/site/img/creatures/c${i}.svg`,
     );
+    const loops = Array.from(
+      { length: MAX_FAST_FILES + 10 },
+      (_, i) => `apps/site/media/skins/s${i}.mp4`,
+    );
     const r = mergeLane([
       ...art,
+      ...loops,
       "apps/site/img/hero-960.avif",
       "apps/site/fonts/dm-sans-latin-400-normal.woff2",
       "apps/site/index.html",
@@ -46,6 +51,12 @@ describe("mergeLane", () => {
       (_, i) => `apps/client/apps/site/img/x${i}.webp`,
     );
     expect(mergeLane(lookalike).lane).toBe("FULL");
+    // Video outside the website counts too.
+    const clips = Array.from(
+      { length: MAX_FAST_FILES + 1 },
+      (_, i) => `apps/client/public/assets/clip${i}.mp4`,
+    );
+    expect(mergeLane(clips).lane).toBe("FULL");
   });
 
   it("the website's HTML, CSS and tools count toward the limit", () => {

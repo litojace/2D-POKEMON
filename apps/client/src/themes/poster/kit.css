@@ -325,6 +325,19 @@
   font-family: var(--font-body);
   font-weight: 700;
 }
+/* Watching a fight on a touch screen: no joystick and no skills, so the
+   toast keeps no gutters for them (ui/components.css). Squeezed between
+   them, "Watching room …" took three lines and rose into the countdown's
+   line under its number (watch-countdown.spec.ts, 667 x 375). It also sits
+   low, in the install pill's row (style.css, #pwa-banner, 6 px up): any
+   higher and at 844 x 390 and 852 x 393 it ran into that line, which sits
+   lower since the kicker stands clear of the number (sheets.css, D13). The
+   pill takes no taps; the toast covers it for its 4.5 s at most. */
+:root[data-ui="poster"] body.battle-active.touch-mode.spectating #toast {
+  --toast-l: calc(var(--safe-left) + 8px);
+  --toast-r: calc(var(--safe-right) + 8px);
+  bottom: calc(var(--safe-bottom) + 6px);
+}
 
 /* ── the update ask (pwa.ts): the banner, and the first ask over the whole
    screen. They were the look underneath's: a rounded teal card the Plaza's
@@ -454,4 +467,36 @@
   flex-basis: 100%;
   font-size: 0.75em;
   line-height: 1.1;
+}
+
+/* ── A dialog's ledger (confirmModal, ui/components.ts; audit C34, C35) ── */
+/* The total's rule runs across both columns: drawn on each cell, it broke
+   in two at the 12 px gap between them ("After" on a purchase). */
+:root[data-ui="poster"] .ui-ledger dt.is-total {
+  margin-right: -12px;
+  padding-right: 12px;
+}
+/* A line's name stays on one line and its words take the rest: "What
+   happens" broke in two in a narrow column beside a long answer. */
+:root[data-ui="poster"] .ui-ledger dt {
+  white-space: nowrap;
+}
+:root[data-ui="poster"] .ui-ledger dd {
+  min-width: 0;
+}
+
+/* A fighter's combo (roster-view.ts): the tag a flat block in the element
+   colour and the note an ink plate, as the skills above it (audit C33: a
+   gold-outlined pill on a dashed card). */
+:root[data-ui="poster"] .roster-combo {
+  border: 0;
+  border-radius: 0;
+  background: var(--ink-2);
+}
+:root[data-ui="poster"] .roster-combo-tag {
+  border: 0;
+  border-radius: 0;
+  background: var(--el);
+  color: var(--ink);
+  font-weight: 400;
 }
