@@ -148,8 +148,8 @@
 /* The cover keeps Poster's halftone sunburst behind still character cutouts. */
 :root[data-ui="poster"] .welcome-gate {
   /* Where the rays meet, as a share of the screen. */
-  --cover-x: 0.74;
-  --cover-y: 0.54;
+  --cover-x: 0.7;
+  --cover-y: 0.55;
 }
 :root[data-ui="poster"] .welcome-gate .gate-backdrop {
   inset: 0;
@@ -238,28 +238,37 @@
   animation: none;
 }
 
-/* ── The sign-in side: the title's ink slab and white stripe, the name in
-      Anton on it; the form (above) stands on the cover. ── */
-:root[data-ui="poster"] .welcome-gate:not(.is-title)::before {
-  inset: 0;
-  z-index: -1;
-  background: var(--ink);
-  clip-path: polygon(0 0, 50% 0, 40% 100%, 0 100%);
-}
+/* Compact ink labels replace the page-height diagonal slab. The rays remain
+   visible around the brand, with the account card as the only large panel. */
+:root[data-ui="poster"] .welcome-gate::before,
+:root[data-ui="poster"] .welcome-gate::after,
+:root[data-ui="poster"] .welcome-gate.is-title::before,
+:root[data-ui="poster"] .welcome-gate.is-title::after,
+:root[data-ui="poster"] .welcome-gate:not(.is-title)::before,
 :root[data-ui="poster"] .welcome-gate:not(.is-title)::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  block-size: auto;
-  z-index: -1;
-  background: #fff;
-  clip-path: polygon(
-    calc(50% + 6px) 0,
-    calc(50% + 14px) 0,
-    calc(40% + 14px) 100%,
-    calc(40% + 6px) 100%
-  );
-  pointer-events: none;
+  display: none;
+}
+:root[data-ui="poster"] .welcome-gate .gate-heading,
+:root[data-ui="poster"] .welcome-gate .title-brand {
+  inline-size: fit-content;
+  max-inline-size: 100%;
+  padding: clamp(12px, 1.8vw, 24px);
+  box-sizing: border-box;
+  background: var(--ink);
+  box-shadow: 5px 5px 0 var(--hot);
+}
+:root[data-ui="poster"] .welcome-gate .title-brand h1 {
+  font-size: clamp(48px, 8vw, 112px);
+}
+:root[data-ui="poster"] .welcome-gate.is-title .title-prompt {
+  color: var(--el);
+}
+:root[data-ui="poster"] .welcome-gate.is-title .title-prompt::before {
+  background: var(--ink);
+}
+:root[data-ui="poster"] .welcome-gate.is-title .title-hint {
+  color: var(--ink);
+  text-shadow: none;
 }
 :root[data-ui="poster"] .welcome-gate .gate-mark {
   color: var(--el, #ffd65b);
@@ -270,7 +279,7 @@
   font-weight: 800;
 }
 :root[data-ui="poster"] .welcome-gate .gate-intro h1 {
-  font: 400 calc(clamp(52px, 9vw, 118px) * var(--text-scale, 1)) / 0.88
+  font: 400 calc(clamp(44px, 7vw, 90px) * var(--text-scale, 1)) / 0.88
     var(--font-display);
   letter-spacing: 0.01em;
   text-shadow: none;
@@ -284,8 +293,11 @@
   :is(.gate-lead, .gate-invite) {
   text-shadow: none;
 }
-/* The quick buttons stand on the slab here: a lighter ink, to show, with
-   the cover's colour along the bottom edge (screens.css has the tile). */
+/* Full ink tiles keep the labels readable over the rays. */
+:root[data-ui="poster"] .welcome-gate .gate-quick .title-quick-btn {
+  background: var(--ink);
+  padding-block-end: 4px;
+}
 :root[data-ui="poster"] .welcome-gate .gate-quick .title-quick-icon {
   background: var(--ink-2);
   box-shadow: inset 0 -3px 0 var(--el, #ffd65b);
@@ -307,8 +319,18 @@
   display: block;
   position: absolute;
   z-index: 1;
-  inset: max(84px, 12dvh) max(24px, var(--safe-right, 0px))
-    max(36px, calc(var(--safe-bottom, 0px) + 24px)) 44%;
+  /* Both the image centre and the ray origin use these same coordinates. */
+  left: calc(var(--cover-x) * 100%);
+  top: calc(var(--cover-y) * 100%);
+  inline-size: min(
+    54vw,
+    104dvh,
+    calc(
+      2 * (100vw - max(24px, var(--safe-right, 0px)) - var(--cover-x) * 100vw)
+    )
+  );
+  aspect-ratio: 3 / 2;
+  transform: translate(-50%, -50%);
   background: url("/assets/welcome/title-plaza-mischief.webp") center / contain
     no-repeat;
   pointer-events: none;
@@ -316,10 +338,22 @@
 :root[data-ui="poster"] .welcome-gate:not(.is-title) .gate-layout {
   grid-template-columns: minmax(0, 1fr) clamp(292px, 36vw, 440px);
   padding-right: max(130px, calc(var(--safe-right, 0px) + 9vw));
+  align-items: end;
 }
 :root[data-ui="poster"] .gate-account-stage {
   position: relative;
   min-inline-size: 0;
+  align-self: end;
+}
+/* One quiet ground line connects the feet and pond to the panel's base. */
+:root[data-ui="poster"] .gate-account-stage::after {
+  content: "";
+  position: absolute;
+  left: -12%;
+  right: -18%;
+  bottom: 0;
+  border-bottom: 2px solid #0d0d0f66;
+  pointer-events: none;
 }
 :root[data-ui="poster"] .gate-account-stage .gate-card {
   position: relative;
@@ -345,9 +379,10 @@
   inline-size: clamp(76px, 10vw, 130px);
   aspect-ratio: 2 / 3;
   left: 100%;
-  top: 35%;
-  /* Both paws hold the left edge of this cutout. */
-  transform: translate(-9%, -35%);
+  bottom: 0;
+  /* Paw contact stays on the right edge; the soles at y=98% stand on
+     the shared floor, never partway up the wall. */
+  transform: translate(-9%, 2%);
   background-image: url("/assets/welcome/peek-pyranda.webp");
 }
 :root[data-ui="poster"] .gate-action-tidefin {
@@ -355,9 +390,9 @@
   aspect-ratio: 4 / 3;
   left: 0;
   bottom: 0;
-  /* The reaching paw hugs the panel; the rock shares its bottom baseline. */
+  /* A freestanding pond: Tidefin plays with its tail, with no paw on the panel. */
   transform: translateX(-84%);
-  background-image: url("/assets/welcome/signup-tidefin-splash.webp");
+  background-image: url("/assets/welcome/signup-tidefin-tail-ball.webp");
 }
 @media (max-height: 700px) and (orientation: landscape) {
   :root[data-ui="poster"] .welcome-gate:not(.is-title) .gate-layout {
@@ -365,7 +400,7 @@
     padding-right: max(80px, calc(var(--safe-right, 0px) + 76px));
   }
   :root[data-ui="poster"] .welcome-gate .gate-intro h1 {
-    font-size: clamp(40px, 7.2vw, 70px);
+    font-size: clamp(36px, 6vw, 64px);
   }
   :root[data-ui="poster"] .gate-action-voltkit {
     inline-size: clamp(96px, 17vw, 150px);
@@ -403,12 +438,6 @@
     padding: max(24px, var(--safe-top, 0px)) 16px
       max(28px, var(--safe-bottom, 0px));
   }
-  :root[data-ui="poster"] .welcome-gate:not(.is-title)::before {
-    clip-path: polygon(0 0, 100% 0, 100% 160px, 0 200px);
-  }
-  :root[data-ui="poster"] .welcome-gate:not(.is-title)::after {
-    display: none;
-  }
   :root[data-ui="poster"] .welcome-gate .gate-intro h1 {
     font-size: 48px;
   }
@@ -439,22 +468,25 @@
   :root[data-ui="poster"] .gate-quick .title-quick-btn {
     background: var(--ink);
   }
-  :root[data-ui="poster"] .title-brand {
+  :root[data-ui="poster"] .welcome-gate.is-title {
+    --cover-x: 0.5;
+    --cover-y: 0.58;
+  }
+  :root[data-ui="poster"] .welcome-gate.is-title .title-who {
+    inline-size: max-content;
+    max-inline-size: calc(100vw - 48px);
+  }
+  :root[data-ui="poster"] .welcome-gate .title-brand {
     left: 24px;
-    top: 180px;
+    top: 162px;
+    padding: 16px;
     transform: none;
   }
-  :root[data-ui="poster"] .title-brand h1 {
-    font-size: clamp(44px, 12vw, 64px);
-  }
-  :root[data-ui="poster"] .welcome-gate.is-title::before {
-    clip-path: polygon(0 0, 100% 0, 100% 250px, 0 300px);
-  }
-  :root[data-ui="poster"] .welcome-gate.is-title::after {
-    display: none;
+  :root[data-ui="poster"] .welcome-gate .title-brand h1 {
+    font-size: 48px;
   }
   :root[data-ui="poster"] .title-illustration {
-    inset: 300px 12px 110px;
+    inline-size: calc(100vw - 24px);
   }
   :root[data-ui="poster"] .title-tap {
     padding-left: 24px;
@@ -495,5 +527,21 @@
     left: 24px;
     right: 24px;
     justify-content: flex-start;
+  }
+}
+
+@media (max-width: 640px) and (orientation: portrait) and (max-height: 700px) {
+  :root[data-ui="poster"] .welcome-gate.is-title {
+    --cover-y: 0.6;
+  }
+  :root[data-ui="poster"] .welcome-gate .title-brand {
+    top: 138px;
+    padding: 10px;
+  }
+  :root[data-ui="poster"] .welcome-gate .title-brand h1 {
+    font-size: 36px;
+  }
+  :root[data-ui="poster"] .welcome-gate.is-title .title-quick {
+    top: 70px;
   }
 }

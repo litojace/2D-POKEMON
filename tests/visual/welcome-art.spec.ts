@@ -47,7 +47,13 @@ test("the illustrated grips stay on the panel through resizes and form changes",
         const read = (name: string) => {
           const element = document.querySelector(`.gate-action-${name}`)!;
           const r = element.getBoundingClientRect();
-          return { x: r.x, y: r.y, width: r.width, bottom: r.bottom };
+          return {
+            x: r.x,
+            y: r.y,
+            width: r.width,
+            height: r.height,
+            bottom: r.bottom,
+          };
         };
         return {
           card: { left: card.left, right: card.right, bottom: card.bottom },
@@ -59,7 +65,7 @@ test("the illustrated grips stay on the panel through resizes and form changes",
         };
       });
       // These contact lines are measured on the source illustrations:
-      // Voltkit's two paws/braced foot, Pyranda's grip and Tidefin's reaching paw.
+      // Voltkit's paws/foot and Pyranda's grip/soles. Tidefin is freestanding.
       const { card, stage, voltkit, pyranda, tidefin } = placement;
       expect(stage).toEqual(card);
       expect(
@@ -69,8 +75,12 @@ test("the illustrated grips stay on the panel through resizes and form changes",
         Math.abs(pyranda.x + pyranda.width * 0.09 - card.right),
       ).toBeLessThan(1);
       expect(
-        Math.abs(tidefin.x + tidefin.width * 0.84 - card.left),
+        Math.abs(pyranda.bottom - pyranda.height * 0.02 - card.bottom),
       ).toBeLessThan(1);
+      if (width > height) {
+        // The shared floor stays near the safe bottom of the screen.
+        expect(height - card.bottom).toBeLessThanOrEqual(48);
+      }
       expect(Math.abs(tidefin.bottom - card.bottom)).toBeLessThan(1);
       expect(placement.overflow, `${width}×${height}, ${mode}`).toBe(false);
 
@@ -94,5 +104,58 @@ test("the illustrated grips stay on the panel through resizes and form changes",
         ).toBe(true);
       }
     }
+  }
+});
+
+test("the group illustration is centred on the rays at each screen size", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    (window as any).__showTitle = true;
+  });
+  await page.goto("/");
+  await expect(page.locator("[data-title-card]")).toBeVisible();
+  await expect(page.locator("#server-startup")).toHaveCount(0);
+  for (const [width, height] of [
+    [1440, 900],
+    [844, 390],
+    [667, 375],
+    [852, 393],
+    [390, 844],
+    [320, 568],
+  ]) {
+    await page.setViewportSize({ width, height });
+    await setInsets(
+      page,
+      width === 852 ? ISLAND : { left: 0, right: 0, top: 0, bottom: 0 },
+    );
+    const at = await page.evaluate(() => {
+      const gate = document.querySelector(".welcome-gate")!;
+      const r = gate.getBoundingClientRect();
+      const css = getComputedStyle(gate);
+      const art = document
+        .querySelector(".title-illustration")!
+        .getBoundingClientRect();
+      return {
+        dx:
+          art.x +
+          art.width / 2 -
+          (r.x + r.width * parseFloat(css.getPropertyValue("--cover-x"))),
+        dy:
+          art.y +
+          art.height / 2 -
+          (r.y + r.height * parseFloat(css.getPropertyValue("--cover-y"))),
+        left: art.left,
+        right: art.right,
+        top: art.top,
+        bottom: art.bottom,
+      };
+    });
+    expect(Math.abs(at.dx)).toBeLessThan(1);
+    expect(Math.abs(at.dy)).toBeLessThan(1);
+    expect(at.left).toBeGreaterThanOrEqual(0);
+    expect(at.right).toBeLessThanOrEqual(width);
+    expect(at.top).toBeGreaterThanOrEqual(0);
+    expect(at.bottom).toBeLessThanOrEqual(height);
   }
 });
