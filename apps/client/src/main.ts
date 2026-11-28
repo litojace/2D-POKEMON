@@ -5870,7 +5870,7 @@ function settingsMarkup(reduced: boolean) {
     // In a room: what this match offers, then motion.
     const practiceTools =
       state.practice && touch.enabled
-        ? `<div class="st-row settings-quick-actions"><span class="st-row-text"><b>Solo test</b><small>Fighter, cooldowns, target and your numbers.</small></span><button id="settings-practice" class="secondary btn-secondary">${iconLabel("target", "Practice tools")}</button></div>`
+        ? `<div class="st-row settings-quick-actions"><span class="st-row-text"><b>Solo test</b><small>Fighter, cooldowns, target and your numbers.</small></span><button id="settings-practice" class="secondary btn-secondary">${iconLabel("target", "Tools")}</button></div>`
         : "";
     const note = state.practice
       ? ""

@@ -63,7 +63,7 @@
   color: var(--ui-dim);
   font-size: var(--fs-small);
 }
-/* The match card's buttons (Practice tools, Skills): one width, one edge. */
+/* The match card's buttons (Solo test's Tools, Skills): one width, one edge. */
 .st-row > #settings-practice,
 .st-row > #settings-skills {
   width: 184px;
